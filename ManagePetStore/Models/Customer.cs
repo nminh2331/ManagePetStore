@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace ManagePetStore.Model;
+namespace ManagePetStore.Models;
 
 public partial class Customer
 {
     public int CustomerId { get; set; }
+
+    public int? UserId { get; set; }
 
     public string FullName { get; set; } = null!;
 
@@ -13,23 +15,21 @@ public partial class Customer
 
     public string? Email { get; set; }
 
-    public string? PasswordHash { get; set; }
+    public int LoyaltyPoints { get; set; }
 
-    public int? LoyaltyPoints { get; set; }
+    public string MembershipTier { get; set; } = null!;
 
-    public string? MembershipTier { get; set; }
-
-    public string? Status { get; set; }
-
-    public DateTime? CreatedAt { get; set; }
-
-    public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
-
-    public virtual ICollection<Cart> Carts { get; set; } = new List<Cart>();
+    public DateTime CreatedAt { get; set; }
 
     public virtual ICollection<HotelBooking> HotelBookings { get; set; } = new List<HotelBooking>();
 
     public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
 
     public virtual ICollection<Pet> Pets { get; set; } = new List<Pet>();
+
+    public virtual ICollection<SpaBooking> SpaBookings { get; set; } = new List<SpaBooking>();
+
+    public virtual ICollection<StaffTask> StaffTasks { get; set; } = new List<StaffTask>();
+
+    public virtual User? User { get; set; }
 }
