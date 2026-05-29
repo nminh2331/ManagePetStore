@@ -126,6 +126,36 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 return View();
             }
 
+            // 1. Validate Username length (0 < length < 20)
+            if (username.Length < 1 || username.Length >= 20)
+            {
+                ModelState.AddModelError("", "Tên đăng nhập phải từ 1 đến 19 ký tự.");
+            }
+
+            // 2. Validate Họ và tên (không chứa số)
+            if (fullName.Any(char.IsDigit))
+            {
+                ModelState.AddModelError("", "Họ và tên không được chứa chữ số.");
+            }
+
+            // 3. Validate Email đúng cú pháp
+            var emailRegex = new System.Text.RegularExpressions.Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+            if (!emailRegex.IsMatch(email))
+            {
+                ModelState.AddModelError("", "Email không đúng định dạng.");
+            }
+
+            // 4. Validate Mật khẩu (0 < length < 20)
+            if (password.Length < 1 || password.Length >= 20)
+            {
+                ModelState.AddModelError("", "Mật khẩu phải từ 1 đến 19 ký tự.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return View();
+            }
+
             // Kiểm tra trùng username
             if (await _context.Users.AnyAsync(u => u.Username == username))
             {
