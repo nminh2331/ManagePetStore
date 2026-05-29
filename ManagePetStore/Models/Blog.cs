@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace ManagePetStore.Model;
+namespace ManagePetStore.Models;
 
 public partial class Blog
 {
@@ -11,23 +11,15 @@ public partial class Blog
 
     public string Slug { get; set; } = null!;
 
-    public string? Summary { get; set; }
-
     public string ContentBody { get; set; } = null!;
 
     public int AuthorId { get; set; }
 
     public string? CoverImage { get; set; }
 
-    public string? MetaTitle { get; set; }
+    public bool IsPublished { get; set; }
 
-    public string? MetaDescription { get; set; }
-
-    public bool? IsPublished { get; set; }
-
-    public DateTime? CreatedAt { get; set; }
-
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 
     public virtual User Author { get; set; } = null!;
 }

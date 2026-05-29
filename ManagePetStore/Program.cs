@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
-using ManagePetStore.Model; // CHÚ Ý: Đổi lại tên Namespace này nếu tên Project của mày đặt khác
+using ManagePetStore.Models; // CHÚ Ý: Đổi lại tên Namespace này nếu tên Project của mày đặt khác
 
 var builder = WebApplication.CreateBuilder(args);
 

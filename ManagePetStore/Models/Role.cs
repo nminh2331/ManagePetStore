@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace ManagePetStore.Model;
+namespace ManagePetStore.Models;
 
 public partial class Role
 {
