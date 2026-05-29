@@ -1,0 +1,196 @@
+@model ManagePetStore.Models.User
+@{
+    ViewData["Title"] = "Thông tin cá nhân";
+}
+
+<link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
+
+<div class="container py-5" style="font-family: 'Outfit', sans-serif; max-width: 1000px;">
+    <!-- Profile Summary Banner -->
+    <div class="profile-card mb-5 border-0 shadow-sm" style="border-radius: 24px; overflow: hidden; background-color: #FFFFFF;">
+        <div class="profile-header" style="background: linear-gradient(135deg, #F2780C 0%, #FF9F43 100%); padding: 50px 30px; text-align: center; color: #FFFFFF;">
+            <div class="profile-avatar-wrapper" style="width: 110px; height: 110px; border-radius: 50%; background-color: #FFFFFF; color: #F2780C; font-size: 3rem; font-weight: 700; display: flex; justify-content: center; align-items: center; margin: 0 auto 15px auto; box-shadow: 0 8px 24px rgba(242, 120, 12, 0.25);">
+                @Model.FullName.Substring(0, 1).ToUpper()
+            </div>
+            <h3 class="profile-name" style="font-size: 1.8rem; font-weight: 700; margin-bottom: 5px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">@Model.FullName</h3>
+            <span class="badge text-uppercase" style="background-color: rgba(255,255,255,0.25); color: #FFFFFF; font-size: 0.8rem; font-weight: 600; padding: 8px 20px; border-radius: 20px; letter-spacing: 0.5px;">
+                @Model.Role.RoleName
+            </span>
+        </div>
+
+        @if (Model.RoleId == 5 && Model.Customer != null)
+        {
+            <!-- Customer Stats block -->
+            <div class="profile-stats" style="display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid #F5F5F5; background-color: #FCFBF9;">
+                <div class="profile-stat-item" style="text-align: center; padding: 25px; border-right: 1px solid #F5F5F5;">
+                    <div class="profile-stat-val" style="font-size: 1.8rem; font-weight: 700; color: #F2780C;">@Model.Customer.LoyaltyPoints</div>
+                    <div class="profile-stat-lbl" style="font-size: 0.8rem; color: #8E7D73; font-weight: 600; text-transform: uppercase; margin-top: 5px;">Điểm tích lũy</div>
+                </div>
+                <div class="profile-stat-item" style="text-align: center; padding: 25px;">
+                    <div class="profile-stat-val text-uppercase" style="font-size: 1.8rem; font-weight: 700; color: #D66505;">
+                        @Model.Customer.MembershipTier
+                    </div>
+                    <div class="profile-stat-lbl" style="font-size: 0.8rem; color: #8E7D73; font-weight: 600; text-transform: uppercase; margin-top: 5px;">Hạng thành viên</div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="row">
+        <!-- Edit Profile Form -->
+        <div class="col-lg-7 mb-4">
+            <div class="card border-0 shadow-sm p-4" style="border-radius: 24px; background-color: #FFFFFF;">
+                <h4 class="profile-section-title" style="font-size: 1.2rem; font-weight: 700; color: #3A2B20; margin-bottom: 25px; border-left: 4px solid #F2780C; padding-left: 12px;">Cập nhật thông tin tài khoản</h4>
+
+                @if (TempData["SuccessMessage"] != null)
+                {
+                    <div class="auth-alert auth-alert-success" style="border-radius: 12px; margin-bottom: 25px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        @TempData["SuccessMessage"]
+                    </div>
+                }
+                
+                @if (TempData["ErrorMessage"] != null)
+                {
+                    <div class="auth-alert auth-alert-danger" style="border-radius: 12px; margin-bottom: 25px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        @TempData["ErrorMessage"]
+                    </div>
+                }
+
+                <form asp-action="Profile" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="auth-input-group">
+                        <label class="auth-input-label">Tên đăng nhập</label>
+                        <div class="auth-input-wrapper">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <input type="text" class="auth-input-field" value="@Model.Username" disabled style="background-color: #F1F1F1; cursor: not-allowed; border-color: #E0E0E0;" />
+                        </div>
+                        <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">Không thể thay đổi tên đăng nhập tài khoản.</small>
+                    </div>
+
+                    <div class="auth-input-group">
+                        <label class="auth-input-label">Họ và tên *</label>
+                        <div class="auth-input-wrapper">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <input type="text" name="fullName" class="auth-input-field" value="@Model.FullName" required />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="auth-input-group">
+                                <label class="auth-input-label">Email *</label>
+                                <div class="auth-input-wrapper">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    </svg>
+                                    <input type="email" name="email" class="auth-input-field" value="@Model.Email" required />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="auth-input-group">
+                                <label class="auth-input-label">Số điện thoại *</label>
+                                <div class="auth-input-wrapper">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                    </svg>
+                                    <input type="tel" name="phone" class="auth-input-field" value="@Model.Phone" required />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="auth-input-group">
+                        <label class="auth-input-label">Ngày tham gia</label>
+                        <div class="auth-input-wrapper">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <input type="text" class="auth-input-field" value="@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")" disabled style="background-color: #F1F1F1; cursor: not-allowed; border-color: #E0E0E0;" />
+                        </div>
+                    </div>
+
+                    <button type="submit" class="auth-btn-submit" style="margin-top: 10px;">
+                        Lưu thay đổi thông tin
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Change Password Form -->
+        <div class="col-lg-5 mb-4">
+            <div class="card border-0 shadow-sm p-4" style="border-radius: 24px; background-color: #FFFFFF;">
+                <h4 class="profile-section-title" style="font-size: 1.2rem; font-weight: 700; color: #3A2B20; margin-bottom: 25px; border-left: 4px solid #F2780C; padding-left: 12px;">Đổi mật khẩu</h4>
+
+                @if (TempData["PasswordSuccess"] != null)
+                {
+                    <div class="auth-alert auth-alert-success" style="border-radius: 12px; margin-bottom: 25px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        @TempData["PasswordSuccess"]
+                    </div>
+                }
+
+                @if (TempData["PasswordError"] != null)
+                {
+                    <div class="auth-alert auth-alert-danger" style="border-radius: 12px; margin-bottom: 25px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        @TempData["PasswordError"]
+                    </div>
+                }
+
+                <form asp-action="ChangePassword" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="auth-input-group">
+                        <label class="auth-input-label">Mật khẩu hiện tại</label>
+                        <div class="auth-input-wrapper">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            <input type="password" name="currentPassword" class="auth-input-field" required placeholder="Mật khẩu hiện tại" />
+                        </div>
+                    </div>
+
+                    <div class="auth-input-group">
+                        <label class="auth-input-label">Mật khẩu mới</label>
+                        <div class="auth-input-wrapper">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            <input type="password" name="newPassword" class="auth-input-field" required placeholder="Tối thiểu 6 ký tự" />
+                        </div>
+                    </div>
+
+                    <div class="auth-input-group">
+                        <label class="auth-input-label">Xác nhận mật khẩu mới</label>
+                        <div class="auth-input-wrapper">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            <input type="password" name="confirmNewPassword" class="auth-input-field" required placeholder="Nhập lại mật khẩu mới" />
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn w-100 py-3 mt-2" style="background-color: transparent; border: 2px solid #F2780C; color: #F2780C; font-weight: 600; border-radius: 12px; transition: all 0.3s;">
+                        Cập nhật mật khẩu mới
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
