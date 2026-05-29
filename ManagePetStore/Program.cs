@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using ManagePetStore.Models; // CHÚ Ý: Đổi lại tên Namespace này nếu tên Project của mày đặt khác
 

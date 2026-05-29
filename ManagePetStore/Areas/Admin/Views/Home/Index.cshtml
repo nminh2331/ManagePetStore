@@ -1,0 +1,31 @@
+@{
+    ViewData["Title"] = "Bảng điều khiển Quản trị";
+}
+
+<div class="container py-5" style="font-family: 'Outfit', sans-serif;">
+    <div class="card border-0 shadow-sm p-5" style="border-radius: 20px; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: #ffffff;">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <span class="badge bg-warning text-dark mb-3 px-3 py-2" style="font-size: 0.8rem; font-weight: 600; border-radius: 20px;">HỆ THỐNG QUẢN TRỊ</span>
+                <h1 class="display-4 font-weight-bold" style="font-weight: 700;">Xin chào, @User.FindFirst("FullName")?.Value!</h1>
+                <p class="lead" style="opacity: 0.9;">Bạn đang đăng nhập dưới quyền <strong>Admin</strong>. Tại đây bạn có thể kiểm soát toàn bộ cơ sở dữ liệu, quản lý tài khoản người dùng, sản phẩm, và các dịch vụ spa của Pet Store.</p>
+                <hr class="my-4" style="background-color: rgba(255,255,255,0.2);">
+                <div class="d-flex gap-3 flex-wrap">
+                    <a href="/Customer/Account/Profile" class="btn btn-warning px-4 py-2 text-dark font-weight-bold" style="border-radius: 10px; font-weight: 600;">
+                        Xem Thông Tin Cá Nhân
+                    </a>
+                    <form asp-area="Customer" asp-controller="Account" asp-action="Logout" method="post" style="display:inline;">
+                        <button type="submit" class="btn btn-outline-light px-4 py-2" style="border-radius: 10px; font-weight: 600;">
+                            Đăng xuất
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="col-md-4 text-center d-none d-md-block">
+                <svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="opacity: 0.2;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg>
+            </div>
+        </div>
+    </div>
+</div>

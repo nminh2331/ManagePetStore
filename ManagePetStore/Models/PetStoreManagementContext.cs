@@ -66,8 +66,15 @@ public partial class PetStoreManagementContext : DbContext
     public virtual DbSet<Voucher> Vouchers { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        var builder = new ConfigurationBuilder()
+        .SetBasePath(Directory.GetCurrentDirectory())
+        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+        IConfigurationRoot configuration = builder.Build();
+        optionsBuilder.UseSqlServer(configuration.GetConnectionString("DefaultConnection"));
+    }
 
-        => optionsBuilder.UseSqlServer("Server=DESKTOP-0NF6T35;database=PetStoreManagement;uid=sa;pwd=123;Encrypt=false;");
+     //   => optionsBuilder.UseSqlServer("Server=DESKTOP-0NF6T35;database=PetStoreManagement;uid=sa;pwd=123;Encrypt=false;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

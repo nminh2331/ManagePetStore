@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -25,6 +25,50 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
                         </li>
+                    </ul>
+                    <ul class="navbar-nav">
+                        @if (User.Identity != null && User.Identity.IsAuthenticated)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-weight: 500;">
+                                    Xin chào, @User.FindFirst("FullName")?.Value
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end border-0 shadow-sm" aria-labelledby="navbarDropdown" style="border-radius: 12px; margin-top: 10px;">
+                                    <li><a class="dropdown-item" asp-area="Customer" asp-controller="Account" asp-action="Profile">Thông tin cá nhân</a></li>
+                                    @if (User.IsInRole("admin"))
+                                    {
+                                        <li><a class="dropdown-item text-primary" asp-area="Admin" asp-controller="Home" asp-action="Index" style="font-weight: 500;">Bảng quản trị</a></li>
+                                    }
+                                    else if (User.IsInRole("cashier"))
+                                    {
+                                        <li><a class="dropdown-item text-primary" asp-area="Cashier" asp-controller="Home" asp-action="Index" style="font-weight: 500;">Trang thu ngân</a></li>
+                                    }
+                                    else if (User.IsInRole("service"))
+                                    {
+                                        <li><a class="dropdown-item text-primary" asp-area="Service" asp-controller="Home" asp-action="Index" style="font-weight: 500;">Trang dịch vụ</a></li>
+                                    }
+                                    else if (User.IsInRole("warehouse"))
+                                    {
+                                        <li><a class="dropdown-item text-primary" asp-area="Warehouse" asp-controller="Home" asp-action="Index" style="font-weight: 500;">Trang thủ kho</a></li>
+                                    }
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <form asp-area="Customer" asp-controller="Account" asp-action="Logout" method="post" class="px-3 py-1">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger w-100" style="border-radius: 8px;">Đăng xuất</button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="Customer" asp-controller="Account" asp-action="Login">Đăng nhập</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="Customer" asp-controller="Account" asp-action="Register">Đăng ký</a>
+                            </li>
+                        }
                     </ul>
                 </div>
             </div>
