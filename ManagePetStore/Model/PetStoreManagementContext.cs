@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -503,15 +503,18 @@ public partial class PetStoreManagementContext : DbContext
         {
             entity.HasKey(e => e.RoomId).HasName("PK__Rooms__32863939C422D6F6");
 
-            entity.Property(e => e.RoomName).HasMaxLength(50);
+            entity.Property(e => e.RoomCode)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+            entity.Property(e => e.RoomType)
+                .HasMaxLength(100);
+            entity.Property(e => e.DailyRate)
+                .HasColumnType("decimal(18, 2)");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
                 .HasDefaultValue("Available");
-
-            entity.HasOne(d => d.RoomType).WithMany(p => p.Rooms)
-                .HasForeignKey(d => d.RoomTypeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Rooms__RoomTypeI__6477ECF3");
+            entity.Property(e => e.Dimensions)
+                .HasMaxLength(100);
         });
 
         modelBuilder.Entity<RoomType>(entity =>
