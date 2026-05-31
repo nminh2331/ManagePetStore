@@ -1,0 +1,552 @@
+@using ManagePetStore.Models
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Quản lý tài khoản";
+
+    string activeTab = ViewBag.ActiveTab as string ?? "staff";
+    var staffList = ViewBag.StaffList as List<User> ?? new List<User>();
+    var customerList = ViewBag.CustomerList as List<User> ?? new List<User>();
+    var rolesList = ViewBag.RolesList as List<Role> ?? new List<Role>();
+
+    // Filters values
+    string searchStaff = ViewBag.SearchStaff as string ?? "";
+    string searchCustomer = ViewBag.SearchCustomer as string ?? "";
+    string roleFilter = ViewBag.RoleFilter as string ?? "All";
+    string statusFilter = ViewBag.StatusFilter as string ?? "All";
+
+    // Counters
+    int staffCount = ViewBag.StaffCount;
+    int staffActive = ViewBag.StaffActive;
+    int staffLocked = ViewBag.StaffLocked;
+
+    int customerCount = ViewBag.CustomerCount;
+    int customerActive = ViewBag.CustomerActive;
+    int customerLocked = ViewBag.CustomerLocked;
+}
+
+<div class="admin-title-row">
+    <div>
+        <h1>Quản lý Hệ thống Tài khoản</h1>
+        <p>Xem danh sách, kiểm tra mật khẩu, khóa, mở khóa, xóa tài khoản Nhân viên và Khách hàng.</p>
+    </div>
+    
+    @if (activeTab == "staff")
+    {
+        <button class="admin-btn-primary" onclick="openModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            </svg>
+            Tạo Tài khoản Nhân viên
+        </button>
+    }
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: 12px; font-family: 'Outfit';">
+        <strong>Thành công!</strong> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: 12px; font-family: 'Outfit';">
+        <strong>Lỗi!</strong> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Tab Headers -->
+<div class="admin-tabs">
+    <a href="@Url.Action("Index", new { activeTab = "staff" })" class="admin-tab @(activeTab == "staff" ? "active" : "")">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+        Tài khoản Nhân viên (@staffCount)
+    </a>
+    <a href="@Url.Action("Index", new { activeTab = "customer" })" class="admin-tab @(activeTab == "customer" ? "active" : "")">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        Tài khoản Khách hàng (@customerCount)
+    </a>
+</div>
+
+<!-- Statistics Cards -->
+<div class="admin-stats-grid">
+    <div class="admin-stat-card">
+        <div class="admin-stat-icon admin-stat-icon-total">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+        </div>
+        <div class="admin-stat-details">
+            <h4>TỔNG @(activeTab == "staff" ? "NHÂN VIÊN" : "KHÁCH HÀNG")</h4>
+            <div>@(activeTab == "staff" ? staffCount : customerCount)</div>
+        </div>
+    </div>
+    
+    <div class="admin-stat-card">
+        <div class="admin-stat-icon admin-stat-icon-active">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </div>
+        <div class="admin-stat-details">
+            <h4>ĐANG HOẠT ĐỘNG</h4>
+            <div>@(activeTab == "staff" ? staffActive : customerActive)</div>
+        </div>
+    </div>
+    
+    <div class="admin-stat-card">
+        <div class="admin-stat-icon admin-stat-icon-blocked">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+        </div>
+        <div class="admin-stat-details">
+            <h4>BỊ KHÓA</h4>
+            <div>@(activeTab == "staff" ? staffLocked : customerLocked)</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters Bar -->
+<div class="admin-table-filters">
+    <!-- Search Form -->
+    <form method="get" action="@Url.Action("Index")" class="d-flex align-items-center gap-2" style="max-width: 350px; width:100%;">
+        <input type="hidden" name="activeTab" value="@activeTab" />
+        <input type="hidden" name="roleFilter" value="@roleFilter" />
+        <input type="hidden" name="statusFilter" value="@statusFilter" />
+        
+        <div class="admin-search-wrapper" style="max-width: 100%;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            @if (activeTab == "staff")
+            {
+                <input type="text" name="searchStaff" class="admin-search-input" value="@searchStaff" placeholder="Tìm nhân viên bằng tên/email..." />
+            }
+            else
+            {
+                <input type="text" name="searchCustomer" class="admin-search-input" value="@searchCustomer" placeholder="Tìm khách bằng tên/email..." />
+            }
+        </div>
+        <button type="submit" class="btn btn-sm btn-dark" style="border-radius: 20px; font-size: 0.8rem; padding: 8px 16px;">Tìm</button>
+    </form>
+
+    <!-- Role or Status filters pills -->
+    <div class="admin-filter-pills">
+        @if (activeTab == "staff")
+        {
+            <a href="@Url.Action("Index", new { activeTab = "staff", searchStaff = searchStaff, roleFilter = "All", statusFilter = statusFilter })" class="admin-filter-pill @(roleFilter == "All" ? "active" : "")">Tất cả</a>
+            <a href="@Url.Action("Index", new { activeTab = "staff", searchStaff = searchStaff, roleFilter = "1", statusFilter = statusFilter })" class="admin-filter-pill @(roleFilter == "1" ? "active" : "")">Quản trị</a>
+            <a href="@Url.Action("Index", new { activeTab = "staff", searchStaff = searchStaff, roleFilter = "2", statusFilter = statusFilter })" class="admin-filter-pill @(roleFilter == "2" ? "active" : "")">Thu ngân</a>
+            <a href="@Url.Action("Index", new { activeTab = "staff", searchStaff = searchStaff, roleFilter = "3", statusFilter = statusFilter })" class="admin-filter-pill @(roleFilter == "3" ? "active" : "")">Chăm sóc</a>
+            <a href="@Url.Action("Index", new { activeTab = "staff", searchStaff = searchStaff, roleFilter = "4", statusFilter = statusFilter })" class="admin-filter-pill @(roleFilter == "4" ? "active" : "")">Thủ kho</a>
+        }
+        else
+        {
+            <a href="@Url.Action("Index", new { activeTab = "customer", searchCustomer = searchCustomer, statusFilter = "All" })" class="admin-filter-pill @(statusFilter == "All" ? "active" : "")">Tất cả</a>
+            <a href="@Url.Action("Index", new { activeTab = "customer", searchCustomer = searchCustomer, statusFilter = "Active" })" class="admin-filter-pill @(statusFilter == "Active" ? "active" : "")">Hoạt động</a>
+            <a href="@Url.Action("Index", new { activeTab = "customer", searchCustomer = searchCustomer, statusFilter = "Locked" })" class="admin-filter-pill @(statusFilter == "Locked" ? "active" : "")">Đang khóa</a>
+        }
+    </div>
+</div>
+
+<!-- Dynamic Table lists -->
+<div class="admin-table-container">
+    @if (activeTab == "staff")
+    {
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Họ tên nhân viên</th>
+                    <th>Email liên kết</th>
+                    <th>Vai trò</th>
+                    <th>Mật khẩu cấp</th>
+                    <th>Ngày tạo</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (staffList.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">Không tìm thấy nhân viên nào phù hợp.</td>
+                    </tr>
+                }
+                @foreach (var user in staffList)
+                {
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="admin-avatar" style="width: 36px; height: 36px; font-size: 0.95rem;">
+                                    @user.FullName.Substring(0, 1).ToUpper()
+                                </div>
+                                <div>
+                                    <div style="font-weight: 600;">@user.FullName</div>
+                                    <div style="font-size: 0.75rem; color: var(--admin-text-muted);">STF-@user.UserId.ToString("D3")</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span style="color: var(--admin-text-muted);">@user.Email</span>
+                            @if (!string.IsNullOrEmpty(user.Phone))
+                            {
+                                <div style="font-size: 0.8rem; color: var(--admin-text-muted);">SĐT: @user.Phone</div>
+                            }
+                        </td>
+                        <td>
+                            @if (user.RoleId == 1)
+                            {
+                                <span class="badge-role badge-role-admin">Quản trị viên</span>
+                            }
+                            else if (user.RoleId == 2)
+                            {
+                                <span class="badge-role badge-role-cashier">Thu ngân</span>
+                            }
+                            else if (user.RoleId == 3)
+                            {
+                                <span class="badge-role badge-role-service">Nhân viên Chăm sóc</span>
+                            }
+                            else if (user.RoleId == 4)
+                            {
+                                <span class="badge-role badge-role-warehouse">Nhân viên Kho</span>
+                            }
+                        </td>
+                        <td>
+                            <span style="font-family: monospace; font-weight: 500;">@user.Password</span>
+                        </td>
+                        <td>
+                            <span style="color: var(--admin-text-muted);">@user.CreatedAt.ToString("dd/MM/yyyy")</span>
+                        </td>
+                        <td>
+                            @if (user.Status == "Active")
+                            {
+                                <span class="badge-status badge-status-active">
+                                    <span style="width: 8px; height: 8px; border-radius: 50%; background-color: #2F9E58; display: inline-block;"></span>
+                                    HOẠT ĐỘNG
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge-status badge-status-locked">
+                                    <span style="width: 8px; height: 8px; border-radius: 50%; background-color: #EC5959; display: inline-block;"></span>
+                                    BỊ KHÓA
+                                </span>
+                            }
+                        </td>
+                        <td>
+                            @if (user.Username != User.Identity?.Name)
+                            {
+                                <button type="button" class="admin-action-btn btn-edit-staff" title="Sửa tài khoản"
+                                        data-userid="@user.UserId"
+                                        data-fullname="@user.FullName"
+                                        data-phone="@user.Phone"
+                                        data-password="@user.Password"
+                                        data-email="@user.Email"
+                                        data-role="@(user.Role?.RoleName ?? "")">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                </button>
+
+                                <form asp-action="ToggleStatus" method="post" class="d-inline">
+                                    <input type="hidden" name="userId" value="@user.UserId" />
+                                    <input type="hidden" name="activeTab" value="staff" />
+                                    <button type="submit" class="admin-action-btn admin-action-btn-lock" title="@(user.Status == "Active" ? "Khóa tài khoản" : "Mở khóa tài khoản")">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                        </svg>
+                                    </button>
+                                </form>
+                                
+                                @* Temporarily hidden delete button as requested
+                                <form asp-action="DeleteUser" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản nhân viên này?');">
+                                    <input type="hidden" name="userId" value="@user.UserId" />
+                                    <input type="hidden" name="activeTab" value="staff" />
+                                    <button type="submit" class="admin-action-btn text-danger" title="Xóa tài khoản">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </form>
+                                *@
+                            }
+                            else
+                            {
+                                <span style="font-size: 0.8rem; color: var(--admin-text-muted); font-style: italic;">Tài khoản của bạn</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Họ tên khách hàng</th>
+                    <th>Email liên kết</th>
+                    <th>Mật khẩu cấp</th>
+                    <th>Ngày tạo</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (customerList.Count == 0)
+                {
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">Không tìm thấy khách hàng nào phù hợp.</td>
+                    </tr>
+                }
+                @foreach (var user in customerList)
+                {
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="admin-avatar" style="width: 36px; height: 36px; font-size: 0.95rem; background-color: #FFF2EA; color: #D66505;">
+                                    @user.FullName.Substring(0, 1).ToUpper()
+                                </div>
+                                <div>
+                                    <div style="font-weight: 600;">@user.FullName</div>
+                                    <div style="font-size: 0.75rem; color: var(--admin-text-muted);">ACC-@user.UserId.ToString("D3")</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span style="color: var(--admin-text-muted);">@user.Email</span>
+                        </td>
+                        <td>
+                            <span style="font-family: monospace; font-weight: 500;">@user.Password</span>
+                        </td>
+                        <td>
+                            <span style="color: var(--admin-text-muted);">@user.CreatedAt.ToString("dd/MM/yyyy")</span>
+                        </td>
+                        <td>
+                            @if (user.Status == "Active")
+                            {
+                                <span class="badge-status badge-status-active">
+                                    <span style="width: 8px; height: 8px; border-radius: 50%; background-color: #2F9E58; display: inline-block;"></span>
+                                    HOẠT ĐỘNG
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge-status badge-status-locked">
+                                    <span style="width: 8px; height: 8px; border-radius: 50%; background-color: #EC5959; display: inline-block;"></span>
+                                    BỊ KHÓA
+                                </span>
+                            }
+                        </td>
+                        <td>
+                            <form asp-action="ToggleStatus" method="post" class="d-inline">
+                                <input type="hidden" name="userId" value="@user.UserId" />
+                                <input type="hidden" name="activeTab" value="customer" />
+                                <button type="submit" class="admin-action-btn admin-action-btn-lock" title="@(user.Status == "Active" ? "Khóa tài khoản" : "Mở khóa tài khoản")">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                </button>
+                            </form>
+                            
+                            @* Temporarily hidden delete button as requested
+                            <form asp-action="DeleteUser" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản khách hàng này?');">
+                                <input type="hidden" name="userId" value="@user.UserId" />
+                                <input type="hidden" name="activeTab" value="customer" />
+                                <button type="submit" class="admin-action-btn text-danger" title="Xóa tài khoản">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </form>
+                            *@
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+<!-- Modal: Tạo tài khoản Nhân viên -->
+<div class="admin-modal-backdrop" id="createStaffModal">
+    <div class="admin-modal">
+        <div class="admin-modal-header">
+            <div>
+                <div class="admin-modal-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    Cấp tài khoản nhân viên
+                </div>
+                <div class="admin-modal-subtitle">Tạo mới nhân viên và gán quyền truy cập hệ thống.</div>
+            </div>
+            <button class="admin-modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        
+        <form asp-action="CreateStaff" method="post">
+            @Html.AntiForgeryToken()
+
+            <div class="admin-form-group">
+                <label>Họ và tên nhân viên *</label>
+                <input type="text" name="fullName" class="admin-form-input" placeholder="Nguyễn Văn A" required />
+            </div>
+
+            <div class="row">
+                <div class="col-6">
+                    <div class="admin-form-group">
+                        <label>Email đăng nhập *</label>
+                        <input type="email" name="email" class="admin-form-input" placeholder="name@petstore.com" required />
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="admin-form-group">
+                        <label>Số điện thoại *</label>
+                        <input type="text" name="phone" class="admin-form-input" placeholder="0912345678" required />
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-6">
+                    <div class="admin-form-group">
+                        <label>Vai trò công việc *</label>
+                        <select name="roleId" class="admin-form-select" required>
+                            @foreach (var role in rolesList)
+                            {
+                                <option value="@role.RoleId">@role.RoleName</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="admin-form-group">
+                        <label>Mật khẩu cấp *</label>
+                        <input type="text" name="password" class="admin-form-input" value="123456" required />
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-modal-footer">
+                <button type="button" class="admin-btn-secondary" onclick="closeModal()">Hủy</button>
+                <button type="submit" class="admin-btn-primary" style="box-shadow: none;">Lưu & Cấp tài khoản</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Chỉnh sửa tài khoản Nhân viên -->
+<div class="admin-modal-backdrop" id="editStaffModal">
+    <div class="admin-modal">
+        <div class="admin-modal-header">
+            <div>
+                <div class="admin-modal-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Chỉnh sửa tài khoản nhân viên
+                </div>
+                <div class="admin-modal-subtitle">Chỉnh sửa thông tin tài khoản nhân viên.</div>
+            </div>
+            <button class="admin-modal-close" onclick="closeEditModal()">&times;</button>
+        </div>
+        
+        <form asp-action="EditStaff" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="userId" id="editUserId" />
+
+            <div class="admin-form-group">
+                <label>Họ và tên nhân viên *</label>
+                <input type="text" name="fullName" id="editFullName" class="admin-form-input" required />
+            </div>
+
+            <div class="row">
+                <div class="col-6">
+                    <div class="admin-form-group">
+                        <label>Email đăng nhập (Không thể sửa)</label>
+                        <input type="email" id="editEmail" class="admin-form-input" disabled />
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="admin-form-group">
+                        <label>Số điện thoại *</label>
+                        <input type="text" name="phone" id="editPhone" class="admin-form-input" required />
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-6">
+                    <div class="admin-form-group">
+                        <label>Vai trò công việc (Không thể sửa)</label>
+                        <input type="text" id="editRole" class="admin-form-input" disabled />
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="admin-form-group">
+                        <label>Mật khẩu cấp *</label>
+                        <input type="text" name="password" id="editPassword" class="admin-form-input" required />
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-modal-footer">
+                <button type="button" class="admin-btn-secondary" onclick="closeEditModal()">Hủy</button>
+                <button type="submit" class="admin-btn-primary" style="box-shadow: none;">Lưu thay đổi</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function openModal() {
+            document.getElementById('createStaffModal').style.display = 'flex';
+        }
+        function closeModal() {
+            document.getElementById('createStaffModal').style.display = 'none';
+        }
+        
+        // Mở và đóng Edit Modal dùng JQuery
+        $(document).on('click', '.btn-edit-staff', function() {
+            var userId = $(this).data('userid');
+            var fullName = $(this).data('fullname');
+            var phone = $(this).data('phone');
+            var password = $(this).data('password');
+            var email = $(this).data('email');
+            var role = $(this).data('role');
+
+            $('#editUserId').val(userId);
+            $('#editFullName').val(fullName);
+            $('#editPhone').val(phone);
+            $('#editPassword').val(password);
+            $('#editEmail').val(email);
+            $('#editRole').val(role);
+
+            $('#editStaffModal').css('display', 'flex');
+        });
+
+        function closeEditModal() {
+            $('#editStaffModal').css('display', 'none');
+        }
+        
+        // Đóng modal khi bấm bên ngoài
+        window.onclick = function(event) {
+            var createModal = document.getElementById('createStaffModal');
+            var editModal = document.getElementById('editStaffModal');
+            if (event.target == createModal) {
+                createModal.style.display = 'none';
+            }
+            if (event.target == editModal) {
+                editModal.style.display = 'none';
+            }
+        }
+    </script>
+}

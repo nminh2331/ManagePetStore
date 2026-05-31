@@ -1,0 +1,415 @@
+/* wwwroot/css/auth.css */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --auth-bg-left: #FDF8ED;
+    --auth-primary: #F2780C;
+    --auth-primary-hover: #D66505;
+    --auth-text-dark: #3A2B20;
+    --auth-text-muted: #8E7D73;
+    --auth-input-bg: #F8F9FA;
+    --auth-border-color: #EAEAEA;
+    --auth-font: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+body.auth-body {
+    font-family: var(--auth-font);
+    background-color: #FFFFFF;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: stretch;
+}
+
+.auth-wrapper {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+}
+
+/* Left Section */
+.auth-left {
+    flex: 1;
+    background-color: var(--auth-bg-left);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    position: relative;
+    text-align: center;
+}
+
+.auth-left-content {
+    max-width: 440px;
+    animation: fadeInUp 0.8s ease-out;
+}
+
+.auth-puppy-frame {
+    width: 260px;
+    height: 260px;
+    margin: 0 auto 30px auto;
+    background: #FFFFFF;
+    padding: 15px;
+    border-radius: 30px;
+    box-shadow: 0 15px 35px rgba(242, 120, 12, 0.15);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.auth-puppy-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 20px;
+}
+
+.auth-left h2 {
+    color: var(--auth-text-dark);
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.auth-left h2 span {
+    color: var(--auth-primary);
+}
+
+.auth-left p {
+    color: var(--auth-text-muted);
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-top: 15px;
+}
+
+/* Right Section */
+.auth-right {
+    flex: 1;
+    background-color: #FFFFFF;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 80px;
+    position: relative;
+    animation: fadeInRight 0.8s ease-out;
+}
+
+@media (max-width: 991px) {
+    .auth-wrapper {
+        flex-direction: column;
+    }
+    .auth-left {
+        padding: 60px 20px;
+    }
+    .auth-right {
+        padding: 40px 20px;
+    }
+}
+
+.auth-form-container {
+    max-width: 450px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.auth-header {
+    margin-bottom: 35px;
+}
+
+.auth-header h1 {
+    color: var(--auth-text-dark);
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.auth-header p {
+    color: var(--auth-text-muted);
+    font-size: 0.95rem;
+}
+
+/* Input Fields styling */
+.auth-input-group {
+    margin-bottom: 22px;
+    position: relative;
+}
+
+.auth-input-label {
+    display: block;
+    color: var(--auth-text-dark);
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+}
+
+.auth-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.auth-input-wrapper i,
+.auth-input-wrapper svg {
+    position: absolute;
+    left: 16px;
+    color: var(--auth-text-muted);
+    width: 18px;
+    height: 18px;
+}
+
+.auth-input-field {
+    width: 100%;
+    padding: 14px 16px 14px 48px;
+    font-family: var(--auth-font);
+    background-color: var(--auth-input-bg);
+    border: 1px solid var(--auth-border-color);
+    border-radius: 12px;
+    font-size: 0.95rem;
+    color: var(--auth-text-dark);
+    transition: all 0.3s ease;
+}
+
+.auth-input-field:focus {
+    outline: none;
+    border-color: var(--auth-primary);
+    background-color: #FFFFFF;
+    box-shadow: 0 0 0 4px rgba(242, 120, 12, 0.1);
+}
+
+.auth-password-toggle {
+    position: absolute;
+    right: 16px;
+    cursor: pointer;
+    color: var(--auth-text-muted);
+    background: none;
+    border: none;
+    padding: 0;
+    display: flex;
+    align-items: center;
+}
+
+.auth-password-toggle:hover {
+    color: var(--auth-primary);
+}
+
+/* Options (Remember me & Forgot password) */
+.auth-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    font-size: 0.85rem;
+}
+
+.auth-remember {
+    display: flex;
+    align-items: center;
+    color: var(--auth-text-dark);
+    font-weight: 500;
+}
+
+.auth-remember input {
+    margin-right: 8px;
+    accent-color: var(--auth-primary);
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.auth-forgot {
+    color: var(--auth-primary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s;
+}
+
+.auth-forgot:hover {
+    color: var(--auth-primary-hover);
+    text-decoration: underline;
+}
+
+/* Submit Button */
+.auth-btn-submit {
+    width: 100%;
+    padding: 15px;
+    background-color: var(--auth-primary);
+    color: #FFFFFF;
+    border: none;
+    border-radius: 12px;
+    font-family: var(--auth-font);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 8px 20px rgba(242, 120, 12, 0.25);
+}
+
+.auth-btn-submit:hover {
+    background-color: var(--auth-primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(242, 120, 12, 0.35);
+}
+
+.auth-btn-submit:active {
+    transform: translateY(0);
+}
+
+/* Footer Link */
+.auth-footer-link {
+    text-align: center;
+    margin-top: 30px;
+    font-size: 0.9rem;
+    color: var(--auth-text-muted);
+}
+
+.auth-footer-link a {
+    color: var(--auth-primary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s;
+}
+
+.auth-footer-link a:hover {
+    color: var(--auth-primary-hover);
+    text-decoration: underline;
+}
+
+/* Alerts and Messages */
+.auth-alert {
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.auth-alert-danger {
+    background-color: #FDF2F2;
+    color: #EC5959;
+    border: 1px solid #FAD7D7;
+}
+
+.auth-alert-success {
+    background-color: #F2FAF5;
+    color: #2F9E58;
+    border: 1px solid #D6EFE0;
+}
+
+/* Profiles */
+.profile-card {
+    background: #FFFFFF;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    border: 1px solid var(--auth-border-color);
+    overflow: hidden;
+}
+
+.profile-header {
+    background: linear-gradient(135deg, var(--auth-primary), #FF9838);
+    color: #FFFFFF;
+    padding: 40px;
+    text-align: center;
+    position: relative;
+}
+
+.profile-avatar-wrapper {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: #FFFFFF;
+    margin: 0 auto 15px auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    font-size: 2.5rem;
+    color: var(--auth-primary);
+    font-weight: 700;
+}
+
+.profile-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 5px 0;
+}
+
+.profile-role {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.profile-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid var(--auth-border-color);
+    background: #FAFAFA;
+}
+
+.profile-stat-item {
+    text-align: center;
+    padding: 20px;
+    border-right: 1px solid var(--auth-border-color);
+}
+
+.profile-stat-item:last-child {
+    border-right: none;
+}
+
+.profile-stat-val {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--auth-primary);
+}
+
+.profile-stat-lbl {
+    font-size: 0.8rem;
+    color: var(--auth-text-muted);
+    text-transform: uppercase;
+    margin-top: 4px;
+}
+
+.profile-body {
+    padding: 30px;
+}
+
+.profile-section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--auth-text-dark);
+    margin-bottom: 20px;
+    border-left: 4px solid var(--auth-primary);
+    padding-left: 10px;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}

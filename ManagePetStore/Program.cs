@@ -1,6 +1,12 @@
-﻿using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
-using ManagePetStore.Model; // CHÚ Ý: Đổi lại tên Namespace này nếu tên Project của mày đặt khác
+<<<<<<< HEAD
+using ManagePetStore.Models; // CHÚ Ý: Đổi lại tên Namespace này nếu tên Project của mày đặt khác
+=======
+using ManagePetStore.Model;
+using ManagePetStore.Repositories;
+using ManagePetStore.Services;
+>>>>>>> Nam
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,6 +46,13 @@ builder.Services.AddSession(options =>
 
 // Thêm các dịch vụ hỗ trợ cho kiến trúc MVC
 builder.Services.AddControllersWithViews();
+
+// =========================================================================
+// 4. ĐĂNG KÝ DEPENDENCY INJECTION
+// =========================================================================
+builder.Services.AddScoped<IRoomRepository, RoomRepository>();
+builder.Services.AddScoped<IRoomService, RoomService>();
+
 
 var app = builder.Build();
 
