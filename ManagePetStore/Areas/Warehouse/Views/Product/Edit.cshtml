@@ -76,8 +76,14 @@
 
                 <div class="col-md-12 mb-4">
                     <label asp-for="ImageUrl" class="form-label fw-bold">Đường dẫn hình ảnh (URL)</label>
-                    <input asp-for="ImageUrl" class="form-control" style="border-radius: 8px;" />
+                    <input asp-for="ImageUrl" id="imgUrlInput" class="form-control" style="border-radius: 8px;" oninput="previewImage(this.value)" />
                     <span asp-validation-for="ImageUrl" class="text-danger small"></span>
+                    <div id="imgPreviewBox" class="mt-2" style="display:none;">
+                        <p class="text-muted small mb-1">Xem trước:</p>
+                        <img id="imgPreview" src="" alt="preview"
+                             style="max-height:160px;max-width:100%;border-radius:10px;border:1px solid #eee;object-fit:contain;background:#fafafa;padding:4px;"
+                             onerror="document.getElementById('imgPreviewBox').style.display='none';" />
+                    </div>
                 </div>
             </div>
             
@@ -92,4 +98,21 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        function previewImage(url) {
+            var box = document.getElementById('imgPreviewBox');
+            var img = document.getElementById('imgPreview');
+            if (url && url.trim() !== '') {
+                img.src = url.trim();
+                box.style.display = 'block';
+            } else {
+                box.style.display = 'none';
+            }
+        }
+        // Auto-preview on page load if URL already exists
+        document.addEventListener('DOMContentLoaded', function () {
+            var existing = document.getElementById('imgUrlInput').value;
+            if (existing) previewImage(existing);
+        });
+    </script>
 }

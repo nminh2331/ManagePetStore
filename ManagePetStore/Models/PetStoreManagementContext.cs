@@ -45,6 +45,8 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<Role> Roles { get; set; }
 
+    public virtual DbSet<Room> Rooms { get; set; }
+
     public virtual DbSet<RoomType> RoomTypes { get; set; }
 
     public virtual DbSet<SpaBooking> SpaBookings { get; set; }

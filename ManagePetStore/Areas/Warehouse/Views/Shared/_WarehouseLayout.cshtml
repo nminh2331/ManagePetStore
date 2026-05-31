@@ -45,7 +45,7 @@
         }
         .admin-header {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-end;
             padding: 1rem 2rem;
             background-color: #fff;
             border-bottom: 1px solid #f0f0f0;
@@ -130,14 +130,11 @@
     <div class="admin-wrapper">
         <!-- Sidebar -->
         <aside class="admin-sidebar">
-            <a href="/" class="admin-logo">
-                <i class="fas fa-paw"></i> PetStore AI
-            </a>
+            <div class="admin-logo" style="cursor:default;font-size:.85rem;letter-spacing:.5px;">
+                <i class="fas fa-paw"></i> PET STORE MANAGEMENT SYSTEM
+            </div>
             
             <nav class="admin-nav mt-3">
-                <a asp-area="Warehouse" asp-controller="Home" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Home" ? "active" : "")">
-                    <i class="fas fa-boxes"></i> Quản lý Kho
-                </a>
                 <a asp-area="Warehouse" asp-controller="Product" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Product" ? "active" : "")">
                     <i class="fas fa-box-open"></i> Danh sách Sản phẩm
                 </a>
@@ -160,10 +157,7 @@
         <main class="admin-content">
             <!-- Header -->
             <header class="admin-header">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-search text-muted position-absolute ms-3"></i>
-                    <input type="text" class="admin-search-input ps-5" placeholder="Tìm kiếm nhanh..." />
-                </div>
+
 
                 <div class="admin-user-info">
                     <button class="btn btn-link text-muted position-relative">

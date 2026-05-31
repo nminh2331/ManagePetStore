@@ -9,7 +9,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
     {
         public IActionResult Index()
         {
-            return View();
+            return RedirectToAction("Index", "Product");
         }
     }
 }

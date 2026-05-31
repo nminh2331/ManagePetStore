@@ -94,7 +94,10 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 return Redirect(returnUrl);
             }
 
-            return RedirectToDashboard();
+            // Pass the role name directly — User.IsInRole() is unreliable on the same
+            // request immediately after SignInAsync() because the principal hasn't been
+            // refreshed yet from the new cookie.
+            return RedirectToDashboard(user.Role.RoleName);
         }
 
         // =========================================================================
@@ -431,25 +434,32 @@ namespace ManagePetStore.Areas.Customer.Controllers
         // =========================================================================
         // HELPER: ĐIỀU HƯỚNG THEO VAI TRÒ (DASHBOARD REDIRECT)
         // =========================================================================
+        // Overload used right after login (User principal not yet refreshed on current request)
+        private IActionResult RedirectToDashboard(string roleName)
+        {
+            return roleName.ToLowerInvariant() switch
+            {
+                "admin"     => RedirectToAction("Index", "Home", new { area = "Admin" }),
+                "cashier"   => RedirectToAction("Index", "Home", new { area = "Cashier" }),
+                "service"   => RedirectToAction("Index", "Home", new { area = "Service" }),
+                "warehouse" => RedirectToAction("Index", "Home", new { area = "Warehouse" }),
+                // customer or any other role → public home
+                _           => RedirectToAction("Index", "Home", new { area = "" })
+            };
+        }
+
+        // Overload used when user is already authenticated (e.g. hitting /Login while logged in)
         private IActionResult RedirectToDashboard()
         {
             if (User.IsInRole("admin"))
-            {
                 return RedirectToAction("Index", "Home", new { area = "Admin" });
-            }
             if (User.IsInRole("cashier"))
-            {
                 return RedirectToAction("Index", "Home", new { area = "Cashier" });
-            }
             if (User.IsInRole("service"))
-            {
                 return RedirectToAction("Index", "Home", new { area = "Service" });
-            }
             if (User.IsInRole("warehouse"))
-            {
                 return RedirectToAction("Index", "Home", new { area = "Warehouse" });
-            }
-            
+
             // Mặc định là customer hoặc vai trò khác -> về Trang chủ của Home ngoài Area
             return RedirectToAction("Index", "Home", new { area = "" });
         }

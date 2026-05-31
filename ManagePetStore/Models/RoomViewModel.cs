@@ -21,7 +21,7 @@ public class RoomViewModel
     public decimal DailyRate { get; set; }
 
     [Display(Name = "Trạng thái")]
-    public string Status { get; set; } = ManagePetStore.Model.RoomStatus.Available;
+    public string Status { get; set; } = ManagePetStore.Models.RoomStatus.Available;
 
     [Display(Name = "Kích thước")]
     [StringLength(100, ErrorMessage = "Kích thước tối đa 100 ký tự")]

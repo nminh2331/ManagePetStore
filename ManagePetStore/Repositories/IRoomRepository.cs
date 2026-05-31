@@ -1,4 +1,4 @@
-using ManagePetStore.Model;
+using ManagePetStore.Models;
 
 namespace ManagePetStore.Repositories;
 

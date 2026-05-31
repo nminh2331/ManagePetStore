@@ -1,4 +1,4 @@
-using ManagePetStore.Model;
+using ManagePetStore.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace ManagePetStore.Repositories;

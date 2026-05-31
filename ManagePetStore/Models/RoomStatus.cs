@@ -1,4 +1,4 @@
-namespace ManagePetStore.Model;
+namespace ManagePetStore.Models;
 
 public static class RoomStatus
 {

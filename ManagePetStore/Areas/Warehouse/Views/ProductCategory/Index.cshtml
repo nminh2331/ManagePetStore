@@ -2,40 +2,112 @@
 
 @{
     ViewData["Title"] = "Danh mục Sản phẩm";
+    int totalCategories = ViewBag.TotalCategories ?? 0;
+    int totalProducts   = ViewBag.TotalProducts   ?? 0;
+    int emptyCategories = ViewBag.EmptyCategories ?? 0;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold m-0" style="color: #333;"><i class="fas fa-tags" style="color: #e65c00;"></i> Quản lý Danh mục Sản phẩm</h2>
-    <a asp-action="Create" class="btn btn-primary-custom">
-        <i class="fas fa-plus"></i> Thêm mới
+<!-- ── Stat Cards ───────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-4">
+        <div class="stat-card" style="--accent:#e65c00;">
+            <div class="stat-icon" style="background:rgba(230,92,0,.12);">
+                <i class="fas fa-tags" style="color:#e65c00;"></i>
+            </div>
+            <div>
+                <p class="stat-label">Tổng danh mục</p>
+                <h3 class="stat-value">@totalCategories</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-4">
+        <div class="stat-card" style="--accent:#10b981;">
+            <div class="stat-icon" style="background:rgba(16,185,129,.12);">
+                <i class="fas fa-boxes" style="color:#10b981;"></i>
+            </div>
+            <div>
+                <p class="stat-label">Tổng sản phẩm</p>
+                <h3 class="stat-value">@totalProducts</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-4">
+        <div class="stat-card" style="--accent:#6366f1;">
+            <div class="stat-icon" style="background:rgba(99,102,241,.12);">
+                <i class="fas fa-folder-open" style="color:#6366f1;"></i>
+            </div>
+            <div>
+                <p class="stat-label">Danh mục trống</p>
+                <h3 class="stat-value">@emptyCategories</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Header ─────────────────────────────────────────────── -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="fw-bold m-0" style="color:#333;">
+            <i class="fas fa-tags" style="color:#e65c00;"></i> Danh mục Sản phẩm
+        </h2>
+        <p class="text-muted small mb-0">@totalCategories danh mục · @totalProducts sản phẩm</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary-custom btn-custom">
+        <i class="fas fa-plus"></i> Thêm danh mục
     </a>
 </div>
 
+<!-- ── Table ──────────────────────────────────────────────── -->
 <div class="table-custom">
     <table class="table mb-0">
         <thead>
             <tr>
-                <th>ID</th>
+                <th style="width:60px;">#</th>
                 <th>Tên danh mục</th>
                 <th>Mô tả</th>
+                <th style="width:130px;">Số sản phẩm</th>
                 <th class="text-end">Hành động</th>
             </tr>
         </thead>
         <tbody>
             @if (Model != null && Model.Any())
             {
+                int idx = 1;
                 foreach (var item in Model)
                 {
+                    int productCount = item.Products?.Count ?? 0;
                     <tr>
-                        <td>@item.CategoryId</td>
-                        <td class="fw-bold">@item.Name</td>
-                        <td>@item.Description</td>
+                        <td class="text-muted">@(idx++)</td>
+                        <td class="fw-bold">
+                            <i class="fas fa-tag me-1" style="color:#e65c00;font-size:.85rem;"></i>
+                            @item.Name
+                        </td>
+                        <td class="text-muted">
+                            @(string.IsNullOrEmpty(item.Description) ? "—" : item.Description)
+                        </td>
+                        <td>
+                            @if (productCount == 0)
+                            {
+                                <span class="badge" style="background:#f3f4f6;color:#6b7280;border-radius:20px;padding:4px 10px;">
+                                    Chưa có SP
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge" style="background:#fff3e0;color:#e65c00;font-weight:600;border-radius:20px;padding:4px 12px;">
+                                    @productCount sản phẩm
+                                </span>
+                            }
+                        </td>
                         <td class="text-end">
-                            <a asp-action="Edit" asp-route-id="@item.CategoryId" class="btn btn-sm btn-outline-primary" style="border-radius: 8px;">
+                            <a asp-action="Edit" asp-route-id="@item.CategoryId"
+                               class="btn btn-sm btn-outline-primary" style="border-radius:8px;" title="Chỉnh sửa">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <form asp-action="Delete" asp-route-id="@item.CategoryId" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa danh mục này?');">
-                                <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius: 8px;">
+                            <form asp-action="Delete" asp-route-id="@item.CategoryId" method="post"
+                                  class="d-inline" onsubmit="return confirm('Xóa danh mục \'@item.Name\'? Các sản phẩm sẽ mất danh mục!');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        style="border-radius:8px;" title="Xóa">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>
@@ -46,9 +118,34 @@
             else
             {
                 <tr>
-                    <td colspan="4" class="text-center py-4 text-muted">Chưa có danh mục nào.</td>
+                    <td colspan="5" class="text-center py-5 text-muted">
+                        <i class="fas fa-tags" style="font-size:2rem;opacity:.3;"></i>
+                        <p class="mt-2 mb-0">Chưa có danh mục nào. Hãy tạo danh mục đầu tiên!</p>
+                    </td>
                 </tr>
             }
         </tbody>
     </table>
 </div>
+
+<style>
+    .stat-card {
+        background: #fff;
+        border-radius: 14px;
+        padding: 1.1rem 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,.06);
+        border-left: 4px solid var(--accent);
+        transition: transform .2s, box-shadow .2s;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.1); }
+    .stat-icon {
+        width: 48px; height: 48px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.3rem; flex-shrink: 0;
+    }
+    .stat-label { font-size: .78rem; color: #888; margin: 0; font-weight: 500; }
+    .stat-value { font-size: 1.4rem; font-weight: 700; margin: 0; color: #222; }
+</style>

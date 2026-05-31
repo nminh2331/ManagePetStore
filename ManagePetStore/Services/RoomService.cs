@@ -1,5 +1,4 @@
 using ManagePetStore.Exceptions;
-using ManagePetStore.Model;
 using ManagePetStore.Models;
 using ManagePetStore.Repositories;
 

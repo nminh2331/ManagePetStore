@@ -1,12 +1,8 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
-<<<<<<< HEAD
 using ManagePetStore.Models; // CHÚ Ý: Đổi lại tên Namespace này nếu tên Project của mày đặt khác
-=======
-using ManagePetStore.Model;
 using ManagePetStore.Repositories;
 using ManagePetStore.Services;
->>>>>>> Nam
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,6 +48,16 @@ builder.Services.AddControllersWithViews();
 // =========================================================================
 builder.Services.AddScoped<IRoomRepository, RoomRepository>();
 builder.Services.AddScoped<IRoomService, RoomService>();
+
+// Warehouse repositories
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IProductCategoryRepository, ProductCategoryRepository>();
+
+// Warehouse services
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IProductCategoryService, ProductCategoryService>();
+
+
 
 
 var app = builder.Build();
