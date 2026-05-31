@@ -1,0 +1,83 @@
+@{
+    Layout = "_PetStoreLayout";
+    ViewData["Title"] = "Câu hỏi thường gặp";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/customer-support.css" asp-append-version="true" />
+}
+
+<section class="support-page">
+    <div class="support-page-inner">
+        <a asp-area="" asp-controller="Home" asp-action="Index" class="support-back">
+            <i class="bi bi-arrow-left"></i> Về trang chủ
+        </a>
+
+        @await Html.PartialAsync("_SupportNav", "faq")
+
+        <div class="support-hero">
+            <div class="support-hero-icon"><i class="bi bi-question-circle"></i></div>
+            <h1>Câu Hỏi Thường Gặp (FAQ)</h1>
+            <p>Giải đáp nhanh các thắc mắc phổ biến khi mua sắm và sử dụng dịch vụ tại PetStore.</p>
+        </div>
+
+        <div class="support-faq-list">
+            <div class="support-faq-item open">
+                <button type="button" class="support-faq-question">
+                    Làm sao để tôi đặt lịch Spa/Cắt tỉa lông cho thú cưng trên Website?
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="support-faq-answer">
+                    Bạn cần <strong>Đăng nhập</strong>, sau đó vào trang <strong>Hồ sơ thú cưng (Pet Profile)</strong> để thêm thông tin về bé nhà mình (Giống, Cân nặng). Tiếp theo, bạn vào mục <strong>Danh mục Spa</strong>, hệ thống sẽ tự động tính toán giá tiền dựa trên cân nặng của bé. Việc còn lại là chọn khung giờ trống và đặt lịch!
+                </div>
+            </div>
+
+            <div class="support-faq-item">
+                <button type="button" class="support-faq-question">
+                    Cửa hàng có nhận lưu chuồng (Pet Hotel) vào các dịp Lễ, Tết không?
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="support-faq-answer">
+                    <strong>Có!</strong> Hệ thống khách sạn lưu chuồng của chúng tôi hoạt động <strong>24/7</strong> kể cả Lễ, Tết với chế độ gửi nhật ký ăn uống mỗi ngày qua tài khoản của bạn. Tuy nhiên, vào các dịp cao điểm, chuồng thường xuyên kín chỗ. Khách hàng vui lòng đặt phòng trước trên Website ít nhất <strong>1 tuần lễ</strong>.
+                </div>
+            </div>
+
+            <div class="support-faq-item">
+                <button type="button" class="support-faq-question">
+                    Điểm tích lũy (Loyalty Points) được tính và sử dụng như thế nào?
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="support-faq-answer">
+                    Khi mua sắm hoặc sử dụng dịch vụ thành công, hệ thống sẽ tự động cộng điểm dựa trên số tiền thanh toán và <strong>Hạng thành viên</strong> của bạn (Đồng, Bạc, Vàng). Ở bước <strong>Thanh toán Giỏ hàng</strong>, bạn có thể gõ số điểm muốn dùng để quy đổi trực tiếp thành tiền trừ vào Tổng hóa đơn.
+                </div>
+            </div>
+
+            <div class="support-faq-item">
+                <button type="button" class="support-faq-question">
+                    Tôi lỡ mua nhầm size áo cho cún, có đổi được không?
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <div class="support-faq-answer">
+                    <strong>Được hỗ trợ đổi size ngay lập tức.</strong> Miễn là sản phẩm chưa cắt mác, chưa qua giặt tẩy và không dính lông, bạn có thể mang tới trực tiếp cửa hàng để đổi size trong vòng <strong>7 ngày</strong> kể từ ngày xuất hóa đơn.
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.support-faq-question').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var item = btn.closest('.support-faq-item');
+                var isOpen = item.classList.contains('open');
+                document.querySelectorAll('.support-faq-item').forEach(function (el) {
+                    el.classList.remove('open');
+                });
+                if (!isOpen) {
+                    item.classList.add('open');
+                }
+            });
+        });
+    </script>
+}
