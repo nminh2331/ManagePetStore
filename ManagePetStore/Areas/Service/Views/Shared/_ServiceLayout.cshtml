@@ -21,26 +21,16 @@
 
             @{
                 var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
-                var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
             }
 
             <nav class="admin-nav">
-                <!-- Tổng quan -->
+                <!-- Tiếp nhận & Theo dõi (trang chính) -->
                 <a asp-area="Service" asp-controller="Home" asp-action="Index"
-                   class="admin-nav-item @(currentController == "Home" && currentAction == "Index" ? "active" : "")">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                    </svg>
-                    Tổng quan
-                </a>
-
-                <!-- Tiếp nhận & Khám -->
-                <a asp-area="Service" asp-controller="Home" asp-action="Index"
-                   class="admin-nav-item @(currentController == "Home" && currentAction == "CheckIn" ? "active" : "")">
+                   class="admin-nav-item @(currentController == "Home" ? "active" : "")">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                     </svg>
-                    Tiếp nhận & Khám
+                    Tiếp nhận & Khám SK
                 </a>
 
                 <!-- Nhật ký cho ăn (placeholder) -->
@@ -49,7 +39,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                     </svg>
                     Nhật ký Cho ăn
-                    <span style="font-size: 0.65rem; background: #FFF7EB; color: #F2780C; padding: 2px 6px; border-radius: 4px; margin-left: auto;">Sắp ra</span>
+                    <span style="font-size: 0.65rem; background: #E6FDF9; color: var(--admin-primary); padding: 2px 6px; border-radius: 4px; margin-left: auto;">Sắp ra</span>
                 </a>
 
                 <!-- Công việc của tôi (placeholder) -->
@@ -58,16 +48,16 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                     </svg>
                     Công việc của tôi
-                    <span style="font-size: 0.65rem; background: #FFF7EB; color: #F2780C; padding: 2px 6px; border-radius: 4px; margin-left: auto;">Sắp ra</span>
+                    <span style="font-size: 0.65rem; background: #E6FDF9; color: var(--admin-primary); padding: 2px 6px; border-radius: 4px; margin-left: auto;">Sắp ra</span>
                 </a>
 
-                <!-- Quản lý Loại Phòng (Service có thể xem) -->
-                <a asp-area="Admin" asp-controller="RoomTypes" asp-action="Index"
-                   class="admin-nav-item">
+                <!-- Loại Chuồng/Phòng — giờ trỏ đúng vào Service area -->
+                <a asp-area="Service" asp-controller="RoomTypes" asp-action="Index"
+                   class="admin-nav-item @(currentController == "RoomTypes" ? "active" : "")">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
-                    Loại Chuồng/Phòng
+                    Loại Chuồng / Phòng
                 </a>
             </nav>
 

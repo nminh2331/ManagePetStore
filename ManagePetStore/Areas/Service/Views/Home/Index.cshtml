@@ -1,73 +1,136 @@
 @using ManagePetStore.Models
 @{
     Layout = "_ServiceLayout";
-    ViewData["Title"] = "Tổng quan Dịch vụ";
+    ViewData["Title"] = "Tiếp nhận & Khám Sức khoẻ";
 
-    var activeBookings = ViewBag.ActiveBookings as List<HotelBooking> ?? new List<HotelBooking>();
-    int totalActive = ViewBag.TotalActive ?? 0;
-    int checkedInToday = ViewBag.CheckedInToday ?? 0;
-    string staffName = User.FindFirst("FullName")?.Value ?? "Nhân viên";
+    var activeBookings  = ViewBag.ActiveBookings  as List<HotelBooking> ?? new List<HotelBooking>();
+    var pendingCheckIn  = ViewBag.PendingCheckIn  as List<HotelBooking> ?? new List<HotelBooking>();
+    var assessedBookings = ViewBag.AssessedBookings as List<HotelBooking> ?? new List<HotelBooking>();
+    int totalActive   = ViewBag.TotalActive   ?? 0;
+    int pendingCount  = ViewBag.PendingCount  ?? 0;
+    int assessedCount = ViewBag.AssessedCount ?? 0;
+    int todayCount    = ViewBag.CheckedInToday ?? 0;
 }
 
 <!-- Tiêu đề -->
-<div class="admin-title-row" style="margin-bottom: 20px;">
+<div class="admin-title-row">
     <div>
-        <h1>Xin chào, @staffName 👋</h1>
-        <p>Tổng quan các thú cưng đang lưu trú. Tiếp nhận & ghi nhận sức khoẻ ban đầu khi check-in.</p>
+        <h1>Tiếp nhận &amp; Khám Sức khoẻ</h1>
+        <p>Quản lý thú cưng đang lưu trú. Ghi nhận sức khoẻ ban đầu khi nhận phòng ngay trên trang này.</p>
     </div>
-    <div style="font-size: 0.85rem; color: var(--admin-text-muted); text-align: right;">
-        <div style="font-weight: 600; font-size: 1rem;">@DateTime.Now.ToString("dd/MM/yyyy")</div>
-        <div>@DateTime.Now.ToString("HH:mm")</div>
+    <div style="text-align:right;color:var(--admin-text-muted);font-size:0.85rem;">
+        <div style="font-weight:700;font-size:1rem;color:var(--admin-text-dark);">@DateTime.Now.ToString("dd/MM/yyyy")</div>
+        <div>@DateTime.Now.ToString("HH:mm") — Ca hiện tại</div>
     </div>
 </div>
 
+<!-- Thông báo -->
 @if (TempData["SuccessMessage"] != null)
 {
-    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: 12px; font-family: 'Outfit';">
+    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius:12px;font-family:'Outfit';">
         <strong>Thành công!</strong> @TempData["SuccessMessage"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 }
 @if (TempData["ErrorMessage"] != null)
 {
-    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: 12px; font-family: 'Outfit';">
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius:12px;font-family:'Outfit';">
         <strong>Lỗi!</strong> @TempData["ErrorMessage"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 }
 
-<!-- Thống kê nhanh -->
-<div class="admin-stats-grid" style="grid-template-columns: repeat(2, 1fr); max-width: 560px; margin-bottom: 28px;">
+<!-- Thống kê -->
+<div class="admin-stats-grid" style="grid-template-columns:repeat(3,1fr);max-width:680px;margin-bottom:28px;">
     <div class="admin-stat-card">
         <div class="admin-stat-icon admin-stat-icon-active">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
             </svg>
         </div>
-        <div class="admin-stat-details">
-            <h4>ĐANG LƯU TRÚ</h4>
-            <div>@totalActive</div>
+        <div class="admin-stat-details"><h4>ĐANG LƯU TRÚ</h4><div>@totalActive</div></div>
+    </div>
+    <div class="admin-stat-card" style="border-color:@(pendingCount > 0 ? "#FCD34D" : "var(--admin-border)");">
+        <div class="admin-stat-icon" style="background:#FEF3C7;color:#D97706;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
         </div>
+        <div class="admin-stat-details"><h4>CHỜ KHÁM SK</h4><div>@pendingCount</div></div>
     </div>
     <div class="admin-stat-card">
-        <div class="admin-stat-icon" style="background-color: #EFF6FF; color: #2563EB;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        <div class="admin-stat-icon" style="background:#ECFDF5;color:#059669;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
         </div>
-        <div class="admin-stat-details">
-            <h4>NHẬN HÔM NAY</h4>
-            <div>@checkedInToday</div>
-        </div>
+        <div class="admin-stat-details"><h4>ĐÃ KHÁM SK</h4><div>@assessedCount</div></div>
     </div>
 </div>
 
-<!-- Danh sách thú cưng đang lưu trú -->
-<div style="font-size: 1.05rem; font-weight: 700; color: var(--admin-text-dark); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+<!-- ===================================================================== -->
+<!-- BẢNG THÔNG BÁO: THÚ CƯNG CẦN KHÁM SỨC KHOẺ                          -->
+<!-- ===================================================================== -->
+@if (pendingCheckIn.Any())
+{
+    <div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1.5px solid #FCD34D;border-radius:16px;padding:20px 24px;margin-bottom:28px;">
+        <div style="display:flex;align-items:center;gap:10px;font-weight:700;font-size:1rem;color:#92400E;margin-bottom:16px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+            @pendingCount thú cưng đang chờ được khám sức khoẻ tiếp nhận
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
+            @foreach (var b in pendingCheckIn)
+            {
+                <div style="background:#ffffff;border-radius:12px;padding:16px;border:1px solid #FDE68A;box-shadow:0 2px 8px rgba(245,158,11,0.08);">
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+                        <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#0D9488,#0F766E);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;flex-shrink:0;">
+                            @(b.Pet?.Name?.Substring(0,1).ToUpper() ?? "?")
+                        </div>
+                        <div>
+                            <div style="font-weight:700;color:#1E3A3A;">@b.Pet?.Name</div>
+                            <div style="font-size:0.75rem;color:#6B8FA0;">@b.Pet?.Species @(string.IsNullOrEmpty(b.Pet?.Breed) ? "" : $"· {b.Pet.Breed}")</div>
+                        </div>
+                    </div>
+                    <div style="font-size:0.8rem;color:#6B8FA0;line-height:1.8;">
+                        <div>🏠 <strong>@b.CageId</strong> · @b.Cage?.RoomType?.Type</div>
+                        <div>👤 @b.Customer?.FullName</div>
+                        <div>⏰ Nhận: @b.CheckInDate.ToString("dd/MM HH:mm")</div>
+                    </div>
+                    <button class="btn-open-checkin"
+                            style="margin-top:12px;width:100%;background:linear-gradient(135deg,#0D9488,#0F766E);color:#fff;border:none;border-radius:10px;padding:9px;font-weight:600;font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all 0.2s;"
+                            onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'"
+                            data-booking-id="@b.HotelBookingId"
+                            data-pet-name="@b.Pet?.Name"
+                            data-pet-weight="@b.Pet?.Weight"
+                            data-pet-species="@b.Pet?.Species"
+                            data-pet-breed="@b.Pet?.Breed"
+                            data-pet-pathology="@b.Pet?.Pathology"
+                            data-customer-name="@b.Customer?.FullName"
+                            data-customer-phone="@b.Customer?.Phone"
+                            data-cage-id="@b.CageId"
+                            data-room-type="@b.Cage?.RoomType?.Type">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                        </svg>
+                        Khám ngay
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<!-- ===================================================================== -->
+<!-- BẢNG TẤT CẢ BOOKING ĐANG HOẠT ĐỘNG                                   -->
+<!-- ===================================================================== -->
+<div style="font-size:1rem;font-weight:700;color:var(--admin-text-dark);margin-bottom:14px;display:flex;align-items:center;gap:8px;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
     </svg>
-    Thú cưng đang ở (@totalActive)
+    Tất cả thú cưng đang lưu trú (@totalActive)
 </div>
 
 <div class="admin-table-container">
@@ -76,10 +139,10 @@
             <tr>
                 <th>Thú cưng</th>
                 <th>Chủ nuôi</th>
-                <th>Chuồng / Loại phòng</th>
+                <th>Chuồng / Phòng</th>
                 <th>Check-in</th>
-                <th>Dự kiến Check-out</th>
-                <th>Trạng thái</th>
+                <th>Check-out</th>
+                <th>Tình trạng SK</th>
                 <th>Hành động</th>
             </tr>
         </thead>
@@ -87,71 +150,308 @@
             @if (!activeBookings.Any())
             {
                 <tr>
-                    <td colspan="7" class="text-center py-5" style="color: var(--admin-text-muted);">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="opacity: 0.15; display: block; margin: 0 auto 12px;">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                        </svg>
-                        Hiện tại không có thú cưng nào đang lưu trú.
+                    <td colspan="7" class="text-center py-5" style="color:var(--admin-text-muted);">
+                        Chưa có thú cưng nào đang lưu trú.
                     </td>
                 </tr>
             }
-            @foreach (var booking in activeBookings)
+            @foreach (var b in activeBookings)
             {
-                <tr>
+                bool isPending = b.Pet != null && !b.Pet.PetBioTimelines.Any(t => t.Type == "CheckIn");
+                <tr style="@(isPending ? "background:#FFFBEB;" : "")">
                     <td>
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="admin-avatar" style="width: 40px; height: 40px; background-color: var(--admin-bg-light); color: var(--admin-primary); font-size: 1rem;">
-                                @(booking.Pet?.Name?.Substring(0, 1).ToUpper() ?? "?")
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <div class="admin-avatar" style="width:38px;height:38px;background:var(--admin-bg-light);color:var(--admin-primary);font-size:0.95rem;">
+                                @(b.Pet?.Name?.Substring(0,1).ToUpper() ?? "?")
                             </div>
                             <div>
-                                <div style="font-weight: 600;">@booking.Pet?.Name</div>
-                                <div style="font-size: 0.75rem; color: var(--admin-text-muted);">
-                                    @booking.Pet?.Species @(string.IsNullOrEmpty(booking.Pet?.Breed) ? "" : $"· {booking.Pet.Breed}")
+                                <div style="font-weight:600;">@b.Pet?.Name</div>
+                                <div style="font-size:0.74rem;color:var(--admin-text-muted);">
+                                    @b.Pet?.Species @(string.IsNullOrEmpty(b.Pet?.Breed) ? "" : $"· {b.Pet.Breed}")
                                 </div>
                             </div>
                         </div>
                     </td>
                     <td>
-                        <div style="font-weight: 500;">@booking.Customer?.FullName</div>
-                        <div style="font-size: 0.78rem; color: var(--admin-text-muted);">@booking.Customer?.Phone</div>
+                        <div style="font-weight:500;">@b.Customer?.FullName</div>
+                        <div style="font-size:0.78rem;color:var(--admin-text-muted);">@b.Customer?.Phone</div>
                     </td>
                     <td>
-                        <div style="font-weight: 600;">🏠 @booking.CageId</div>
-                        <div style="font-size: 0.75rem; color: var(--admin-text-muted);">@booking.Cage?.RoomType?.Type</div>
+                        <div style="font-weight:600;">🏠 @b.CageId</div>
+                        <div style="font-size:0.74rem;color:var(--admin-text-muted);">@b.Cage?.RoomType?.Type</div>
                     </td>
-                    <td style="font-size: 0.85rem;">
-                        <div style="color: var(--admin-text-muted);">@booking.CheckInDate.ToString("dd/MM/yyyy")</div>
-                        <div style="font-weight: 600; color: var(--admin-text-dark);">@booking.CheckInDate.ToString("HH:mm")</div>
+                    <td style="font-size:0.83rem;">
+                        <div style="color:var(--admin-text-muted);">@b.CheckInDate.ToString("dd/MM/yyyy")</div>
+                        <div style="font-weight:600;">@b.CheckInDate.ToString("HH:mm")</div>
                     </td>
-                    <td style="font-size: 0.85rem;">
-                        @if (booking.CheckOutDate.HasValue)
+                    <td style="font-size:0.83rem;color:var(--admin-text-muted);">
+                        @if (b.CheckOutDate.HasValue)
                         {
-                            <div style="color: var(--admin-text-muted);">@booking.CheckOutDate.Value.ToString("dd/MM/yyyy")</div>
-                            <div style="font-weight: 600; color: var(--admin-text-dark);">@booking.CheckOutDate.Value.ToString("HH:mm")</div>
+                            <div>@b.CheckOutDate.Value.ToString("dd/MM/yyyy")</div>
+                            <div style="font-weight:600;color:var(--admin-text-dark);">@b.CheckOutDate.Value.ToString("HH:mm")</div>
+                        }
+                        else { <span style="font-style:italic;">Chưa xác định</span> }
+                    </td>
+                    <td>
+                        @if (isPending)
+                        {
+                            <span style="background:#FEF3C7;color:#D97706;font-size:0.75rem;font-weight:600;padding:4px 10px;border-radius:8px;display:inline-block;">
+                                ⏳ Chờ khám SK
+                            </span>
                         }
                         else
                         {
-                            <span style="font-style: italic; color: var(--admin-text-muted);">Chưa xác định</span>
+                            <span style="background:#ECFDF5;color:#059669;font-size:0.75rem;font-weight:600;padding:4px 10px;border-radius:8px;display:inline-block;">
+                                ✅ Đã khám SK
+                            </span>
                         }
                     </td>
                     <td>
-                        <span class="badge-booking badge-booking-active">
-                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #16A34A; display: inline-block; margin-right: 5px;"></span>
-                            Đang ở
-                        </span>
-                    </td>
-                    <td>
-                        <a asp-area="Service" asp-controller="Home" asp-action="CheckIn"
-                           asp-route-id="@booking.HotelBookingId"
-                           class="service-action-btn">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                            </svg>
-                            Ghi nhận SK
-                        </a>
+                        @if (isPending)
+                        {
+                            <button class="service-action-btn btn-open-checkin"
+                                    data-booking-id="@b.HotelBookingId"
+                                    data-pet-name="@b.Pet?.Name"
+                                    data-pet-weight="@b.Pet?.Weight"
+                                    data-pet-species="@b.Pet?.Species"
+                                    data-pet-breed="@b.Pet?.Breed"
+                                    data-pet-pathology="@b.Pet?.Pathology"
+                                    data-customer-name="@b.Customer?.FullName"
+                                    data-customer-phone="@b.Customer?.Phone"
+                                    data-cage-id="@b.CageId"
+                                    data-room-type="@b.Cage?.RoomType?.Type">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                                </svg>
+                                Khám SK
+                            </button>
+                        }
+                        else
+                        {
+                            <span style="font-size:0.8rem;color:var(--admin-text-muted);">Hoàn tất</span>
+                        }
                     </td>
                 </tr>
             }
         </tbody>
     </table>
 </div>
+
+<!-- ===================================================================== -->
+<!-- BOOTSTRAP MODAL: FORM KHÁM SỨC KHOẺ BAN ĐẦU                         -->
+<!-- ===================================================================== -->
+<div class="modal fade" id="checkInModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="border:none;border-radius:20px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.18);">
+
+            <!-- Header gradient teal (cập nhật qua JS) -->
+            <div id="modalPetHeader" style="background:linear-gradient(135deg,#0D9488 0%,#0F766E 100%);color:#fff;padding:24px 28px;">
+                <div style="display:flex;align-items:center;gap:14px;">
+                    <div id="modalPetAvatar" style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.4);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;flex-shrink:0;">?</div>
+                    <div style="flex:1;">
+                        <div id="modalPetName" style="font-size:1.35rem;font-weight:700;">—</div>
+                        <div id="modalPetMeta" style="font-size:0.88rem;opacity:0.85;margin-top:2px;">—</div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div id="modalBookingInfo" style="display:flex;gap:24px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.2);font-size:0.83rem;flex-wrap:wrap;"></div>
+                <div id="modalPathologyWarn" style="display:none;margin-top:10px;background:rgba(255,255,255,0.15);border-radius:8px;padding:8px 12px;font-size:0.83rem;">
+                    ⚠️ <strong>Bệnh lý tiền sử:</strong> <span id="modalPathologyText"></span>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <form method="post" asp-area="Service" asp-controller="Home" asp-action="CheckIn">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="hotelBookingId" id="modalBookingId" />
+
+                <div class="modal-body" style="padding:0;">
+
+                    <!-- ======================================================= -->
+                    <!-- PHẦN 1: TIẼP NHẬN                                          -->
+                    <!-- ======================================================= -->
+                    <div style="padding:24px 28px 20px;background:#F8FFFE;border-bottom:1.5px solid #D1FAF5;">
+                        <div style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:0.95rem;color:#0D9488;margin-bottom:18px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                            </svg>
+                            Bước 1 &mdash; Xác nhận tiếp nhận
+                            <span style="font-size:0.72rem;background:#D1FAF5;color:#0F766E;padding:2px 8px;border-radius:20px;font-weight:500;margin-left:4px;">Tùy chọn</span>
+                        </div>
+
+                        <div class="admin-form-group">
+                            <label>Dặn dò / Yêu cầu đặc biệt từ chủ nuôi</label>
+                            <textarea id="ownerNotes" name="ownerNotes" class="admin-form-input" rows="2"
+                                      placeholder="VD: Bé hay cắn khi sợ, không ăn thịt bò, cần nhiều sự chú ý..."
+                                      style="resize:vertical;"></textarea>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <div class="admin-form-group" style="margin:0;">
+                                    <label>Hướng dẫn cho ăn</label>
+                                    <textarea id="feedingInstructions" name="feedingInstructions" class="admin-form-input" rows="2"
+                                              placeholder="VD: 80g hạt Royal Canin, 2 bữa/ngày..."
+                                              style="resize:vertical;"></textarea>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="admin-form-group" style="margin:0;">
+                                    <label>Thuốc cần uống (nếu có)</label>
+                                    <textarea id="medications" name="medications" class="admin-form-input" rows="2"
+                                              placeholder="VD: Amoxicillin 125mg, sáng + tối sau khi ăn..."
+                                              style="resize:vertical;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ======================================================= -->
+                    <!-- PHẦN 2: KHÁM SỨC KHOẸ BAN ĐẦU                              -->
+                    <!-- ======================================================= -->
+                    <div style="padding:24px 28px 16px;">
+                        <div style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:0.95rem;color:var(--admin-text-dark);margin-bottom:18px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color:var(--admin-primary);">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                            Bước 2 &mdash; Khám sức khoẾ ban đầu
+                            <span style="font-size:0.72rem;background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:20px;font-weight:500;margin-left:4px;">Bắt buộc</span>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-5">
+                                <div class="admin-form-group" style="margin:0;">
+                                    <label>Cân nặng (kg) <span style="color:#EC5959;">*</span></label>
+                                    <input type="number" id="modalWeight" name="weight" class="admin-form-input"
+                                           min="0.1" max="200" step="0.01" required />
+                                    <div id="modalWeightHint" style="font-size:0.75rem;color:var(--admin-text-muted);margin-top:4px;"></div>
+                                </div>
+                            </div>
+                            <div class="col-7">
+                                <div class="admin-form-group" style="margin:0;">
+                                    <label>Tình trạng lông / da <span style="color:#EC5959;">*</span></label>
+                                    <select id="coatCondition" name="coatCondition" class="admin-form-select" required>
+                                        <option value="" disabled selected>-- Chọn tình trạng --</option>
+                                        <option value="Tốt, sạch sẽ">Tốt, sạch sẽ</option>
+                                        <option value="Bình thường, chưa tắm">Bình thường, chưa tắm</option>
+                                        <option value="Rối / bết">Rối / bết</option>
+                                        <option value="Bẩn, cần tắm ngay">Bẩn, cần tắm ngay</option>
+                                        <option value="Rụng nhiều bất thường">Rụng nhiều bất thường</option>
+                                        <option value="Có dấu hiệu da liễu">Có dấu hiệu da liễu</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="admin-form-group">
+                            <label class="toggle-checkbox-row" for="hasInjury" style="margin:0;">
+                                <input type="hidden" name="hasInjury" value="false" />
+                                <input type="checkbox" id="hasInjury" name="hasInjury" value="true"
+                                       onchange="toggleInjuryNote(this.checked)" />
+                                <span style="font-weight:600;">Có phát hiện vết thương / tổn thương bên ngoài</span>
+                            </label>
+                        </div>
+                        <div id="injuryNoteGroup" style="display:none;" class="admin-form-group">
+                            <label>Mô tả vết thương <span style="color:#EC5959;">*</span></label>
+                            <textarea id="injuryNote" name="injuryNote" class="admin-form-input" rows="2"
+                                      placeholder="Vị trí, kích thước, mức độ tổn thương..."
+                                      style="resize:vertical;"></textarea>
+                            <div style="font-size:0.75rem;color:#EC5959;margin-top:3px;">⚠️ Bắt buộc mô tả khi có vết thương — bằng chứng tránh tranh chấp.</div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <div class="admin-form-group" style="margin:0;">
+                                    <label>Biểu hiện tâm lý / Hành vi</label>
+                                    <textarea id="behaviorNote" name="behaviorNote" class="admin-form-input" rows="3"
+                                              placeholder="Bình thường, vui vẻ · Lo lắng · Hung hăng · Thụ động..."
+                                              style="resize:vertical;"></textarea>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="admin-form-group" style="margin:0;">
+                                    <label>Ghi chú thêm (tùy chọn)</label>
+                                    <textarea id="generalNote" name="generalNote" class="admin-form-input" rows="3"
+                                              placeholder="Những lưu ý khác..."
+                                              style="resize:vertical;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer" style="border-top:1px solid var(--admin-border);padding:16px 28px;gap:10px;">
+                    <button type="button" class="admin-btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="admin-btn-primary" style="box-shadow:none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Hoàn tất tiếp nhận
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Mở modal và điền dữ liệu từ data attributes
+        document.querySelectorAll('.btn-open-checkin').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var d = this.dataset;
+
+                // Điền thông tin pet vào header modal
+                document.getElementById('modalBookingId').value = d.bookingId;
+                document.getElementById('modalPetAvatar').textContent = d.petName ? d.petName.charAt(0).toUpperCase() : '?';
+                document.getElementById('modalPetName').textContent = d.petName || '—';
+
+                var meta = d.petSpecies || '';
+                if (d.petBreed) meta += ' · ' + d.petBreed;
+                document.getElementById('modalPetMeta').textContent = meta;
+
+                // Weight
+                var w = parseFloat(d.petWeight) || '';
+                document.getElementById('modalWeight').value = w;
+                document.getElementById('modalWeightHint').textContent = w ? 'Trước đây: ' + w + ' kg' : '';
+
+                // Bệnh lý tiền sử
+                var pathDiv = document.getElementById('modalPathologyWarn');
+                if (d.petPathology && d.petPathology.trim() !== '') {
+                    document.getElementById('modalPathologyText').textContent = d.petPathology;
+                    pathDiv.style.display = 'block';
+                } else {
+                    pathDiv.style.display = 'none';
+                }
+
+                // Thông tin booking
+                document.getElementById('modalBookingInfo').innerHTML =
+                    '<div style="opacity:0.75">Chuồng<div style="font-weight:700;opacity:1;">🏠 ' + (d.cageId || '—') + '</div></div>' +
+                    '<div style="opacity:0.75">Loại phòng<div style="font-weight:700;opacity:1;">' + (d.roomType || '—') + '</div></div>' +
+                    '<div style="opacity:0.75">Chủ nuôi<div style="font-weight:700;opacity:1;">' + (d.customerName || '—') + '</div></div>' +
+                    '<div style="opacity:0.75">SĐT<div style="font-weight:700;opacity:1;">' + (d.customerPhone || '—') + '</div></div>';
+
+                // Reset tất cả fields
+                document.getElementById('coatCondition').value = '';
+                document.getElementById('hasInjury').checked = false;
+                toggleInjuryNote(false);
+                document.getElementById('behaviorNote').value = '';
+                document.getElementById('generalNote').value = '';
+                document.getElementById('ownerNotes').value = '';
+                document.getElementById('feedingInstructions').value = '';
+                document.getElementById('medications').value = '';
+
+                // Hiện modal
+                new bootstrap.Modal(document.getElementById('checkInModal')).show();
+            });
+        });
+
+        function toggleInjuryNote(checked) {
+            var g = document.getElementById('injuryNoteGroup');
+            var ta = document.getElementById('injuryNote');
+            g.style.display = checked ? 'block' : 'none';
+            if (checked) { ta.setAttribute('required', 'required'); }
+            else { ta.removeAttribute('required'); ta.value = ''; }
+        }
+    </script>
+}

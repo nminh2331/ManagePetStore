@@ -20,25 +20,32 @@ namespace ManagePetStore.Areas.Service.Controllers
             _context = context;
         }
 
-        // =========================================================================
-        // 1. TỔNG QUAN - DANH SÁCH THÚ CƯNG ĐANG LƯU TRÚ
-        // =========================================================================
         [HttpGet]
         public async Task<IActionResult> Index()
         {
             var activeBookings = await _context.HotelBookings
-                .Include(b => b.Pet)
+                .Include(b => b.Pet).ThenInclude(p => p.PetBioTimelines)
                 .Include(b => b.Customer)
-                .Include(b => b.Cage)
-                    .ThenInclude(c => c.RoomType)
+                .Include(b => b.Cage).ThenInclude(c => c.RoomType)
                 .Where(b => b.Status == "Active")
                 .OrderBy(b => b.CheckInDate)
                 .ToListAsync();
 
-            ViewBag.ActiveBookings = activeBookings;
-            ViewBag.TotalActive = activeBookings.Count;
+            // Phân loại: chưa khám SK vs đã khám SK
+            var pendingCheckIn = activeBookings
+                .Where(b => b.Pet != null && !b.Pet.PetBioTimelines.Any(t => t.Type == "CheckIn"))
+                .ToList();
 
-            // Thống kê nhanh
+            var assessedBookings = activeBookings
+                .Where(b => b.Pet != null && b.Pet.PetBioTimelines.Any(t => t.Type == "CheckIn"))
+                .ToList();
+
+            ViewBag.ActiveBookings = activeBookings;
+            ViewBag.PendingCheckIn = pendingCheckIn;
+            ViewBag.AssessedBookings = assessedBookings;
+            ViewBag.TotalActive = activeBookings.Count;
+            ViewBag.PendingCount = pendingCheckIn.Count;
+            ViewBag.AssessedCount = assessedBookings.Count;
             ViewBag.CheckedInToday = activeBookings.Count(b => b.CheckInDate.Date == DateTime.Today);
 
             return View();
@@ -74,7 +81,8 @@ namespace ManagePetStore.Areas.Service.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CheckIn(int hotelBookingId, decimal weight,
             string coatCondition, bool hasInjury, string? injuryNote,
-            string? behaviorNote, string? generalNote)
+            string? behaviorNote, string? generalNote,
+            string? ownerNotes, string? feedingInstructions, string? medications)
         {
             if (weight <= 0 || weight > 200)
             {
@@ -102,7 +110,11 @@ namespace ManagePetStore.Areas.Service.Controllers
 
                 // 2. Tạo bản ghi PetBioTimeline
                 var staffName = User.FindFirst("FullName")?.Value ?? "Nhân viên dịch vụ";
-                var description = BuildCheckInDescription(weight, coatCondition, hasInjury, injuryNote, behaviorNote, generalNote, staffName);
+                var description = BuildCheckInDescription(
+                    weight, coatCondition, hasInjury, injuryNote,
+                    behaviorNote, generalNote,
+                    ownerNotes, feedingInstructions, medications,
+                    staffName);
 
                 _context.PetBioTimelines.Add(new PetBioTimeline
                 {
@@ -116,12 +128,12 @@ namespace ManagePetStore.Areas.Service.Controllers
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                TempData["SuccessMessage"] = $"Đã ghi nhận sức khoẻ ban đầu cho {pet.Name} thành công! Hồ sơ đã được lưu vào lịch sử sinh học.";
+                TempData["SuccessMessage"] = $"Đã hoàn tất tiếp nhận {pet.Name}! Hồ sơ sức khoẻ đã được lưu.";
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                TempData["ErrorMessage"] = "Có lỗi xảy ra khi lưu dữ liệu: " + ex.Message;
+                TempData["ErrorMessage"] = "Có lỗi xảy ra: " + ex.Message;
             }
 
             return RedirectToAction("Index");
@@ -131,18 +143,29 @@ namespace ManagePetStore.Areas.Service.Controllers
         // HELPER: TẠO NỘI DUNG MÔ TẢ KHÁM SỨC KHOẺ
         // =========================================================================
         private static string BuildCheckInDescription(decimal weight, string coatCondition,
-            bool hasInjury, string? injuryNote, string? behaviorNote, string? generalNote, string staffName)
+            bool hasInjury, string? injuryNote, string? behaviorNote, string? generalNote,
+            string? ownerNotes, string? feedingInstructions, string? medications,
+            string staffName)
         {
             var sb = new StringBuilder();
+            sb.AppendLine("=== TIẾP NHẬN ===");
+            if (!string.IsNullOrWhiteSpace(ownerNotes))
+                sb.AppendLine($"[Dặn dò từ chủ nuôi] {ownerNotes.Trim()}");
+            if (!string.IsNullOrWhiteSpace(feedingInstructions))
+                sb.AppendLine($"[Hướng dẫn cho ăn] {feedingInstructions.Trim()}");
+            if (!string.IsNullOrWhiteSpace(medications))
+                sb.AppendLine($"[Thuốc cần uống] {medications.Trim()}");
+
+            sb.AppendLine("=== KHÁM SỨC KHOẺ ===");
             sb.AppendLine($"[Cân nặng] {weight:F2} kg");
             sb.AppendLine($"[Tình trạng lông] {coatCondition}");
-            sb.AppendLine($"[Vết thương / Tổn thương] {(hasInjury ? "CÓ" : "Không có")}");
+            sb.AppendLine($"[Vết thương] {(hasInjury ? "CÓ" : "Không có")}");
             if (hasInjury && !string.IsNullOrWhiteSpace(injuryNote))
                 sb.AppendLine($"[Mô tả vết thương] {injuryNote.Trim()}");
             if (!string.IsNullOrWhiteSpace(behaviorNote))
-                sb.AppendLine($"[Biểu hiện tâm lý] {behaviorNote.Trim()}");
+                sb.AppendLine($"[Tâm lý / Hành vi] {behaviorNote.Trim()}");
             if (!string.IsNullOrWhiteSpace(generalNote))
-                sb.AppendLine($"[Ghi chú tổng quát] {generalNote.Trim()}");
+                sb.AppendLine($"[Ghi chú khác] {generalNote.Trim()}");
             sb.AppendLine($"[Nhân viên tiếp nhận] {staffName}");
             return sb.ToString().Trim();
         }
