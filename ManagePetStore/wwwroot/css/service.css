@@ -1,0 +1,151 @@
+/* wwwroot/css/service.css */
+/* Ghi đè màu sắc biến CSS của admin.css cho Service Area (Teal theme) */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --admin-primary: #0D9488;
+    --admin-primary-hover: #0F766E;
+    --admin-bg-light: #F0FDFA;
+    --admin-text-dark: #134E4A;
+    --admin-text-muted: #5B8A8A;
+}
+
+/* Amenity badges - dùng chung cho Service và Admin RoomTypes */
+.amenity-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-right: 4px;
+    white-space: nowrap;
+}
+
+.amenity-badge-ac   { background: #EBF3FF; color: #2563EB; }
+.amenity-badge-cam  { background: #F3F0FF; color: #7C3AED; }
+.amenity-badge-food { background: #FFF0FA; color: #DB2777; }
+
+/* Badge trạng thái đặt phòng */
+.badge-booking {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 8px;
+    display: inline-block;
+}
+
+.badge-booking-active {
+    background-color: #EBFDF2;
+    color: #16A34A;
+}
+
+/* Check-in form styles */
+.checkin-pet-card {
+    background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%);
+    color: #ffffff;
+    border-radius: 20px;
+    padding: 28px 32px;
+    margin-bottom: 28px;
+    box-shadow: 0 8px 24px rgba(13, 148, 136, 0.25);
+}
+
+.checkin-pet-card h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+}
+
+.checkin-pet-card .pet-meta {
+    font-size: 0.9rem;
+    opacity: 0.85;
+    margin: 0;
+}
+
+.checkin-pet-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.25);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.8rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.checkin-section-card {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid var(--admin-border);
+    padding: 24px 28px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.checkin-section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--admin-text-dark);
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--admin-border);
+}
+
+.checkin-section-title svg {
+    color: var(--admin-primary);
+}
+
+/* Toggle checkbox pill */
+.toggle-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1.5px solid var(--admin-border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.toggle-checkbox-row:hover {
+    border-color: var(--admin-primary);
+    background-color: var(--admin-bg-light);
+}
+
+.toggle-checkbox-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--admin-primary);
+}
+
+/* Service-specific action button */
+.service-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--admin-primary);
+    color: #ffffff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-family: var(--admin-font);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.service-action-btn:hover {
+    background-color: var(--admin-primary-hover);
+    transform: translateY(-1px);
+    color: #ffffff;
+}

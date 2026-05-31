@@ -1,31 +1,157 @@
+@using ManagePetStore.Models
 @{
-    ViewData["Title"] = "Trang Nhân Viên Dịch Vụ";
+    Layout = "_ServiceLayout";
+    ViewData["Title"] = "Tổng quan Dịch vụ";
+
+    var activeBookings = ViewBag.ActiveBookings as List<HotelBooking> ?? new List<HotelBooking>();
+    int totalActive = ViewBag.TotalActive ?? 0;
+    int checkedInToday = ViewBag.CheckedInToday ?? 0;
+    string staffName = User.FindFirst("FullName")?.Value ?? "Nhân viên";
 }
 
-<div class="container py-5" style="font-family: 'Outfit', sans-serif;">
-    <div class="card border-0 shadow-sm p-5" style="border-radius: 20px; background: linear-gradient(135deg, #cc2b5e 0%, #753a88 100%); color: #ffffff;">
-        <div class="row align-items-center">
-            <div class="col-md-8">
-                <span class="badge bg-warning text-dark mb-3 px-3 py-2" style="font-size: 0.8rem; font-weight: 600; border-radius: 20px;">PHÂN HỆ DỊCH VỤ SPA & KHÁCH SẠN</span>
-                <h1 class="display-4 font-weight-bold" style="font-weight: 700;">Xin chào, @User.FindFirst("FullName")?.Value!</h1>
-                <p class="lead" style="opacity: 0.9;">Bạn đang đăng nhập dưới quyền <strong>Service Staff (Nhân viên dịch vụ)</strong>. Tại đây bạn có thể quản lý lịch đặt chỗ spa, theo dõi nhật ký ăn uống cho thú cưng và cập nhật trạng thái sức khỏe của pet.</p>
-                <hr class="my-4" style="background-color: rgba(255,255,255,0.2);">
-                <div class="d-flex gap-3 flex-wrap">
-                    <a href="/Customer/Account/Profile" class="btn btn-warning px-4 py-2 text-dark font-weight-bold" style="border-radius: 10px; font-weight: 600;">
-                        Xem Thông Tin Cá Nhân
-                    </a>
-                    <form asp-area="Customer" asp-controller="Account" asp-action="Logout" method="post" style="display:inline;">
-                        <button type="submit" class="btn btn-outline-light px-4 py-2" style="border-radius: 10px; font-weight: 600;">
-                            Đăng xuất
-                        </button>
-                    </form>
-                </div>
-            </div>
-            <div class="col-md-4 text-center d-none d-md-block">
-                <svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="opacity: 0.2;">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-            </div>
+<!-- Tiêu đề -->
+<div class="admin-title-row" style="margin-bottom: 20px;">
+    <div>
+        <h1>Xin chào, @staffName 👋</h1>
+        <p>Tổng quan các thú cưng đang lưu trú. Tiếp nhận & ghi nhận sức khoẻ ban đầu khi check-in.</p>
+    </div>
+    <div style="font-size: 0.85rem; color: var(--admin-text-muted); text-align: right;">
+        <div style="font-weight: 600; font-size: 1rem;">@DateTime.Now.ToString("dd/MM/yyyy")</div>
+        <div>@DateTime.Now.ToString("HH:mm")</div>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: 12px; font-family: 'Outfit';">
+        <strong>Thành công!</strong> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: 12px; font-family: 'Outfit';">
+        <strong>Lỗi!</strong> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Thống kê nhanh -->
+<div class="admin-stats-grid" style="grid-template-columns: repeat(2, 1fr); max-width: 560px; margin-bottom: 28px;">
+    <div class="admin-stat-card">
+        <div class="admin-stat-icon admin-stat-icon-active">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+        </div>
+        <div class="admin-stat-details">
+            <h4>ĐANG LƯU TRÚ</h4>
+            <div>@totalActive</div>
         </div>
     </div>
+    <div class="admin-stat-card">
+        <div class="admin-stat-icon" style="background-color: #EFF6FF; color: #2563EB;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+        </div>
+        <div class="admin-stat-details">
+            <h4>NHẬN HÔM NAY</h4>
+            <div>@checkedInToday</div>
+        </div>
+    </div>
+</div>
+
+<!-- Danh sách thú cưng đang lưu trú -->
+<div style="font-size: 1.05rem; font-weight: 700; color: var(--admin-text-dark); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+    </svg>
+    Thú cưng đang ở (@totalActive)
+</div>
+
+<div class="admin-table-container">
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Thú cưng</th>
+                <th>Chủ nuôi</th>
+                <th>Chuồng / Loại phòng</th>
+                <th>Check-in</th>
+                <th>Dự kiến Check-out</th>
+                <th>Trạng thái</th>
+                <th>Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!activeBookings.Any())
+            {
+                <tr>
+                    <td colspan="7" class="text-center py-5" style="color: var(--admin-text-muted);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="opacity: 0.15; display: block; margin: 0 auto 12px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                        </svg>
+                        Hiện tại không có thú cưng nào đang lưu trú.
+                    </td>
+                </tr>
+            }
+            @foreach (var booking in activeBookings)
+            {
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="admin-avatar" style="width: 40px; height: 40px; background-color: var(--admin-bg-light); color: var(--admin-primary); font-size: 1rem;">
+                                @(booking.Pet?.Name?.Substring(0, 1).ToUpper() ?? "?")
+                            </div>
+                            <div>
+                                <div style="font-weight: 600;">@booking.Pet?.Name</div>
+                                <div style="font-size: 0.75rem; color: var(--admin-text-muted);">
+                                    @booking.Pet?.Species @(string.IsNullOrEmpty(booking.Pet?.Breed) ? "" : $"· {booking.Pet.Breed}")
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="font-weight: 500;">@booking.Customer?.FullName</div>
+                        <div style="font-size: 0.78rem; color: var(--admin-text-muted);">@booking.Customer?.Phone</div>
+                    </td>
+                    <td>
+                        <div style="font-weight: 600;">🏠 @booking.CageId</div>
+                        <div style="font-size: 0.75rem; color: var(--admin-text-muted);">@booking.Cage?.RoomType?.Type</div>
+                    </td>
+                    <td style="font-size: 0.85rem;">
+                        <div style="color: var(--admin-text-muted);">@booking.CheckInDate.ToString("dd/MM/yyyy")</div>
+                        <div style="font-weight: 600; color: var(--admin-text-dark);">@booking.CheckInDate.ToString("HH:mm")</div>
+                    </td>
+                    <td style="font-size: 0.85rem;">
+                        @if (booking.CheckOutDate.HasValue)
+                        {
+                            <div style="color: var(--admin-text-muted);">@booking.CheckOutDate.Value.ToString("dd/MM/yyyy")</div>
+                            <div style="font-weight: 600; color: var(--admin-text-dark);">@booking.CheckOutDate.Value.ToString("HH:mm")</div>
+                        }
+                        else
+                        {
+                            <span style="font-style: italic; color: var(--admin-text-muted);">Chưa xác định</span>
+                        }
+                    </td>
+                    <td>
+                        <span class="badge-booking badge-booking-active">
+                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #16A34A; display: inline-block; margin-right: 5px;"></span>
+                            Đang ở
+                        </span>
+                    </td>
+                    <td>
+                        <a asp-area="Service" asp-controller="Home" asp-action="CheckIn"
+                           asp-route-id="@booking.HotelBookingId"
+                           class="service-action-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                            </svg>
+                            Ghi nhận SK
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
 </div>
