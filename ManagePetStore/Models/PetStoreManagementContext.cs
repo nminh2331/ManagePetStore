@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,6 +40,8 @@ public partial class PetStoreManagementContext : DbContext
     public virtual DbSet<PetBioTimeline> PetBioTimelines { get; set; }
 
     public virtual DbSet<Product> Products { get; set; }
+
+    public virtual DbSet<ProductCategory> ProductCategories { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
 
@@ -313,7 +315,6 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasKey(e => e.Sku);
 
             entity.Property(e => e.Sku).HasMaxLength(50);
-            entity.Property(e => e.Category).HasMaxLength(50);
             entity.Property(e => e.ExpiryDate).HasColumnType("datetime");
             entity.Property(e => e.ImageUrl)
                 .HasMaxLength(500)
@@ -322,6 +323,18 @@ public partial class PetStoreManagementContext : DbContext
             entity.Property(e => e.Price).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.ShelfLocation).HasMaxLength(50);
             entity.Property(e => e.Unit).HasMaxLength(30);
+
+            entity.HasOne(d => d.Category).WithMany(p => p.Products)
+                .HasForeignKey(d => d.CategoryId)
+                .HasConstraintName("FK_Products_ProductCategories");
+        });
+
+        modelBuilder.Entity<ProductCategory>(entity =>
+        {
+            entity.HasKey(e => e.CategoryId);
+
+            entity.Property(e => e.Name).HasMaxLength(150);
+            entity.Property(e => e.Description).HasMaxLength(500);
         });
 
         modelBuilder.Entity<Role>(entity =>

@@ -1,0 +1,95 @@
+@model ManagePetStore.Models.Product
+
+@{
+    ViewData["Title"] = "Chỉnh sửa Sản phẩm";
+}
+
+<div class="mb-4">
+    <a asp-action="Index" class="text-decoration-none text-muted mb-2 d-inline-block">
+        <i class="fas fa-arrow-left"></i> Quay lại danh sách
+    </a>
+    <h2 class="fw-bold m-0" style="color: #333;">Chỉnh sửa Sản phẩm</h2>
+</div>
+
+<div class="card border-0 shadow-sm" style="border-radius: 12px;">
+    <div class="card-body p-4">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <input type="hidden" asp-for="Sku" />
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Sku" class="form-label fw-bold">Mã sản phẩm (SKU)</label>
+                    <input asp-for="Sku" class="form-control" style="border-radius: 8px;" disabled />
+                    <span class="text-muted small">Mã sản phẩm không thể thay đổi</span>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Name" class="form-label fw-bold">Tên sản phẩm <span class="text-danger">*</span></label>
+                    <input asp-for="Name" class="form-control" style="border-radius: 8px;" />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label asp-for="CategoryId" class="form-label fw-bold">Danh mục <span class="text-danger">*</span></label>
+                    <select asp-for="CategoryId" class="form-select" style="border-radius: 8px;" asp-items="ViewBag.CategoryId">
+                        <option value="">-- Chọn danh mục --</option>
+                    </select>
+                    <span asp-validation-for="CategoryId" class="text-danger small"></span>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Unit" class="form-label fw-bold">Đơn vị tính <span class="text-danger">*</span></label>
+                    <input asp-for="Unit" class="form-control" style="border-radius: 8px;" />
+                    <span asp-validation-for="Unit" class="text-danger small"></span>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <label asp-for="Price" class="form-label fw-bold">Giá bán <span class="text-danger">*</span></label>
+                    <input asp-for="Price" type="number" class="form-control" style="border-radius: 8px;" />
+                    <span asp-validation-for="Price" class="text-danger small"></span>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <label asp-for="Stock" class="form-label fw-bold">Số lượng tồn</label>
+                    <input asp-for="Stock" type="number" class="form-control" style="border-radius: 8px;" />
+                    <span asp-validation-for="Stock" class="text-danger small"></span>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <label asp-for="MinStock" class="form-label fw-bold">Tồn kho tối thiểu</label>
+                    <input asp-for="MinStock" type="number" class="form-control" style="border-radius: 8px;" />
+                    <span asp-validation-for="MinStock" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label asp-for="ShelfLocation" class="form-label fw-bold">Vị trí kệ</label>
+                    <input asp-for="ShelfLocation" class="form-control" style="border-radius: 8px;" />
+                    <span asp-validation-for="ShelfLocation" class="text-danger small"></span>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label asp-for="ExpiryDate" class="form-label fw-bold">Ngày hết hạn</label>
+                    <input asp-for="ExpiryDate" type="date" class="form-control" style="border-radius: 8px;" />
+                    <span asp-validation-for="ExpiryDate" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-12 mb-4">
+                    <label asp-for="ImageUrl" class="form-label fw-bold">Đường dẫn hình ảnh (URL)</label>
+                    <input asp-for="ImageUrl" class="form-control" style="border-radius: 8px;" />
+                    <span asp-validation-for="ImageUrl" class="text-danger small"></span>
+                </div>
+            </div>
+            
+            <div class="text-end">
+                <button type="submit" class="btn btn-primary-custom px-4 py-2">
+                    <i class="fas fa-save"></i> Cập nhật sản phẩm
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

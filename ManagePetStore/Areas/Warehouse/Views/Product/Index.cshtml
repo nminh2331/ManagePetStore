@@ -1,0 +1,69 @@
+@model IEnumerable<ManagePetStore.Models.Product>
+
+@{
+    ViewData["Title"] = "Danh sách Sản phẩm";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold m-0" style="color: #333;"><i class="fas fa-box-open" style="color: #e65c00;"></i> Quản lý danh sách Sản phẩm</h2>
+    <a asp-action="Create" class="btn btn-primary-custom">
+        <i class="fas fa-plus"></i> Thêm sản phẩm
+    </a>
+</div>
+
+<div class="table-custom">
+    <table class="table mb-0">
+        <thead>
+            <tr>
+                <th>Mã SP (SKU)</th>
+                <th>Tên sản phẩm</th>
+                <th>Danh mục</th>
+                <th>Đơn vị</th>
+                <th>Tồn kho</th>
+                <th>Giá bán</th>
+                <th class="text-end">Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model != null && Model.Any())
+            {
+                foreach (var item in Model)
+                {
+                    <tr>
+                        <td class="fw-bold" style="color: #666;">@item.Sku</td>
+                        <td class="fw-bold">@item.Name</td>
+                        <td>@(item.Category?.Name ?? "<Trống>")</td>
+                        <td>@item.Unit</td>
+                        <td>
+                            @if(item.Stock <= item.MinStock)
+                            {
+                                <span class="badge bg-danger rounded-pill">@item.Stock</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success rounded-pill">@item.Stock</span>
+                            }
+                        </td>
+                        <td class="fw-bold text-success">@string.Format("{0:N0} đ", item.Price)</td>
+                        <td class="text-end">
+                            <a asp-action="Edit" asp-route-id="@item.Sku" class="btn btn-sm btn-outline-primary" style="border-radius: 8px;" title="Chỉnh sửa">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form asp-action="Delete" asp-route-id="@item.Sku" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa sản phẩm này?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius: 8px;" title="Xóa">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">Không có sản phẩm nào.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
