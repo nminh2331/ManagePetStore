@@ -443,7 +443,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
             }
             if (User.IsInRole("service"))
             {
-                return RedirectToAction("Index", "Home", new { area = "Service" });
+                return Redirect("/SpaServices");
             }
             if (User.IsInRole("warehouse"))
             {
