@@ -31,7 +31,7 @@ namespace ManagePetStore.Areas.Service.Controllers
                 .OrderBy(b => b.CheckInDate)
                 .ToListAsync();
 
-            // Phân loại: chưa khám SK vs đã khám SK
+            // Phân loại: chưa tiếp nhận vs đã tiếp nhận
             var pendingCheckIn = activeBookings
                 .Where(b => b.Pet != null && !b.Pet.PetBioTimelines.Any(t => t.Type == "CheckIn"))
                 .ToList();
@@ -52,7 +52,7 @@ namespace ManagePetStore.Areas.Service.Controllers
         }
 
         // =========================================================================
-        // 2. FORM TIẾP NHẬN & KHÁM SỨC KHOẺ BAN ĐẦU (GET)
+        // 2. FORM TIẾP NHẬN (GET)
         // =========================================================================
         [HttpGet]
         public async Task<IActionResult> CheckIn(int id)
@@ -75,11 +75,12 @@ namespace ManagePetStore.Areas.Service.Controllers
         }
 
         // =========================================================================
-        // 3. XỬ LÝ SUBMIT KHÁM SỨC KHOẺ (POST)
+        // 3. XỬ LÝ SUBMIT TIẾP NHẬN (POST)
         // =========================================================================
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CheckIn(int hotelBookingId, decimal weight,
+            string? breed, string? age,
             string coatCondition, bool hasInjury, string? injuryNote,
             string? behaviorNote, string? generalNote,
             string? ownerNotes, string? feedingInstructions, string? medications)
@@ -103,9 +104,13 @@ namespace ManagePetStore.Areas.Service.Controllers
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // 1. Cập nhật cân nặng thú cưng
+                // 1. Cập nhật thông tin thú cưng
                 var pet = booking.Pet;
                 pet.Weight = weight;
+                if (!string.IsNullOrWhiteSpace(breed))
+                    pet.Breed = breed.Trim();
+                if (!string.IsNullOrWhiteSpace(age))
+                    pet.Age = age.Trim();
                 _context.Entry(pet).State = EntityState.Modified;
 
                 // 2. Tạo bản ghi PetBioTimeline
@@ -120,7 +125,7 @@ namespace ManagePetStore.Areas.Service.Controllers
                 {
                     PetId = pet.PetId,
                     Date = DateTime.Now,
-                    Title = $"Tiếp nhận KS #{hotelBookingId:D4} — Khám sức khoẻ ban đầu",
+                    Title = $"Tiếp nhận lưu trú #{hotelBookingId:D4}",
                     Description = description,
                     Type = "CheckIn"
                 });
@@ -128,7 +133,7 @@ namespace ManagePetStore.Areas.Service.Controllers
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                TempData["SuccessMessage"] = $"Đã hoàn tất tiếp nhận {pet.Name}! Hồ sơ sức khoẻ đã được lưu.";
+                TempData["SuccessMessage"] = $"Đã hoàn tất tiếp nhận {pet.Name}! Thông tin tình trạng đã được lưu.";
             }
             catch (Exception ex)
             {
@@ -140,7 +145,132 @@ namespace ManagePetStore.Areas.Service.Controllers
         }
 
         // =========================================================================
-        // HELPER: TẠO NỘI DUNG MÔ TẢ KHÁM SỨC KHOẺ
+        // 4. SỬA TIẾP NHẬN — GET (lấy dữ liệu timeline để điền vào modal)
+        // =========================================================================
+        [HttpGet]
+        public async Task<IActionResult> EditCheckIn(int timelineId)
+        {
+            var timeline = await _context.PetBioTimelines
+                .Include(t => t.Pet)
+                .FirstOrDefaultAsync(t => t.TimelineId == timelineId && t.Type == "CheckIn");
+
+            if (timeline == null)
+            {
+                TempData["ErrorMessage"] = "Không tìm thấy bản ghi tiếp nhận.";
+                return RedirectToAction("Index");
+            }
+
+            return Json(new
+            {
+                timelineId = timeline.TimelineId,
+                petId = timeline.Pet.PetId,
+                petName = timeline.Pet.Name,
+                petSpecies = timeline.Pet.Species,
+                petBreed = timeline.Pet.Breed ?? "",
+                petAge = timeline.Pet.Age ?? "",
+                petWeight = timeline.Pet.Weight,
+                petPathology = timeline.Pet.Pathology ?? "",
+                description = timeline.Description,
+                date = timeline.Date.ToString("dd/MM/yyyy HH:mm")
+            });
+        }
+
+        // =========================================================================
+        // 5. SỬA TIẾP NHẬN — POST
+        // =========================================================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditCheckIn(int timelineId, decimal weight,
+            string? breed, string? age,
+            string coatCondition, bool hasInjury, string? injuryNote,
+            string? behaviorNote, string? generalNote,
+            string? ownerNotes, string? feedingInstructions, string? medications)
+        {
+            var timeline = await _context.PetBioTimelines
+                .Include(t => t.Pet)
+                .FirstOrDefaultAsync(t => t.TimelineId == timelineId && t.Type == "CheckIn");
+
+            if (timeline == null)
+            {
+                TempData["ErrorMessage"] = "Không tìm thấy bản ghi tiếp nhận.";
+                return RedirectToAction("Index");
+            }
+
+            if (weight <= 0 || weight > 200)
+            {
+                TempData["ErrorMessage"] = "Cân nặng không hợp lệ.";
+                return RedirectToAction("Index");
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Cập nhật thú cưng
+                var pet = timeline.Pet;
+                pet.Weight = weight;
+                if (!string.IsNullOrWhiteSpace(breed)) pet.Breed = breed.Trim();
+                if (!string.IsNullOrWhiteSpace(age)) pet.Age = age.Trim();
+                _context.Entry(pet).State = EntityState.Modified;
+
+                // Cập nhật timeline
+                var staffName = User.FindFirst("FullName")?.Value ?? "Nhân viên dịch vụ";
+                timeline.Description = BuildCheckInDescription(
+                    weight, coatCondition, hasInjury, injuryNote,
+                    behaviorNote, generalNote,
+                    ownerNotes, feedingInstructions, medications,
+                    staffName);
+                timeline.Date = DateTime.Now;
+                _context.Entry(timeline).State = EntityState.Modified;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                TempData["SuccessMessage"] = $"Đã cập nhật thông tin tiếp nhận của {pet.Name}.";
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                TempData["ErrorMessage"] = "Có lỗi xảy ra: " + ex.Message;
+            }
+
+            return RedirectToAction("Index");
+        }
+
+        // =========================================================================
+        // 6. XÓA TIẾP NHẬN — POST
+        // =========================================================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteCheckIn(int timelineId)
+        {
+            var timeline = await _context.PetBioTimelines
+                .Include(t => t.Pet)
+                .FirstOrDefaultAsync(t => t.TimelineId == timelineId && t.Type == "CheckIn");
+
+            if (timeline == null)
+            {
+                TempData["ErrorMessage"] = "Không tìm thấy bản ghi tiếp nhận.";
+                return RedirectToAction("Index");
+            }
+
+            try
+            {
+                var petName = timeline.Pet?.Name ?? "thú cưng";
+                _context.PetBioTimelines.Remove(timeline);
+                await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] = $"Đã xóa bản ghi tiếp nhận của {petName}. Thú cưng trở về trạng thái chờ tiếp nhận.";
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = "Có lỗi xảy ra khi xóa: " + ex.Message;
+            }
+
+            return RedirectToAction("Index");
+        }
+
+        // =========================================================================
+        // HELPER: TẠO NỘI DUNG MÔ TẢ TÌNH TRẠNG
         // =========================================================================
         private static string BuildCheckInDescription(decimal weight, string coatCondition,
             bool hasInjury, string? injuryNote, string? behaviorNote, string? generalNote,
@@ -156,7 +286,7 @@ namespace ManagePetStore.Areas.Service.Controllers
             if (!string.IsNullOrWhiteSpace(medications))
                 sb.AppendLine($"[Thuốc cần uống] {medications.Trim()}");
 
-            sb.AppendLine("=== KHÁM SỨC KHOẺ ===");
+            sb.AppendLine("=== TÌNH TRẠNG SỨC KHỎE ===");
             sb.AppendLine($"[Cân nặng] {weight:F2} kg");
             sb.AppendLine($"[Tình trạng lông] {coatCondition}");
             sb.AppendLine($"[Vết thương] {(hasInjury ? "CÓ" : "Không có")}");
