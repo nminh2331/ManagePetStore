@@ -1,8 +1,151 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+
+
+﻿@model ManagePetStore.Controllers.HomepageViewModel
+@{
+    Layout = "_PetStoreLayout";
+    ViewData["Title"] = "Trang chủ";
+    ViewBag.HotelPets = Model.Pets;
+    ViewBag.HotelRoomTypes = Model.RoomTypes;
+    ViewBag.SelectedCategorySlug = Model.SelectedCategorySlug;
+
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<!-- Hero Section -->
+<section class="ps-hero">
+    <div class="ps-hero-card">
+        <div class="ps-hero-content">
+            <span class="ps-hero-badge">PET STORE CHÀO BẠN</span>
+            <h1 class="ps-hero-title">Yêu thương <span>hơn mỗi ngày</span></h1>
+            <p class="ps-hero-desc">Cung cấp giải pháp chăm sóc thú cưng toàn diện với hơn 5000+ sản phẩm chính hãng và dịch vụ chuẩn 5 sao.</p>
+            <div class="ps-hero-buttons">
+                <a href="#best-sellers" class="ps-btn-primary">Mua Sắm Ngay</a>
+                <button type="button" class="ps-btn-outline open-hotel-modal" id="btnBookHotel">Đặt lịch Hotel</button>
+            </div>
+        </div>
+        <div class="ps-hero-image">
+            <img src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=700&h=500&fit=crop" alt="Mèo dễ thương" />
+        </div>
+    </div>
+</section>
+
+<!-- Featured Categories -->
+<section class="ps-section" id="categories">
+    <div class="ps-section-header">
+        <h2 class="ps-section-title">Danh mục nổi bật</h2>
+        <a asp-controller="Home" asp-action="Index" class="ps-section-link">Xem tất cả &gt;</a>
+    </div>
+    <div class="ps-categories-grid">
+        @foreach (var cat in Model.Categories)
+        {
+            <a asp-controller="Home"
+               asp-action="Index"
+               asp-route-category="@cat.Slug"
+               asp-route-search="@Model.SearchKeyword"
+               class="ps-category-card @(Model.SelectedCategorySlug == cat.Slug ? "active" : "")">
+                <div class="ps-category-icon"><i class="bi @cat.Icon"></i></div>
+                <div class="ps-category-name">@cat.Name</div>
+            </a>
+        }
+    </div>
+</section>
+
+<!-- Best Selling Products -->
+<section class="ps-section" id="best-sellers">
+    <div class="ps-section-header">
+        <h2 class="ps-section-title">Sản phẩm bán chạy</h2>
+        <a href="#categories" class="ps-filter-btn" aria-label="Lọc theo danh mục"><i class="bi bi-funnel"></i></a>
+    </div>
+    @if (Model.IsFiltered && Model.BestSellers.Count == 0)
+    {
+        <div class="ps-search-empty">
+            <i class="bi bi-search"></i>
+            <p>Không tìm thấy sản phẩm phù hợp.</p>
+            <a asp-controller="Home" asp-action="Index" class="ps-btn-primary">Xem tất cả sản phẩm</a>
+        </div>
+    }
+    else
+    {
+        <div class="ps-products-grid">
+            @foreach (var product in Model.BestSellers)
+            {
+                <a asp-controller="Product" asp-action="Details" asp-route-id="@product.Sku" class="ps-product-card">
+                    @if (!string.IsNullOrEmpty(product.Badge))
+                    {
+                        <span class="ps-product-badge @product.BadgeType">@product.Badge</span>
+                    }
+                    <div class="ps-product-image">
+                        <img src="@product.ImageUrl" alt="@product.Name" loading="lazy" />
+                    </div>
+                    <div class="ps-product-body">
+                        <div class="ps-product-rating">
+                            <i class="bi bi-star-fill"></i> @product.Rating.ToString("0.0") (@product.ReviewCount đánh giá)
+                        </div>
+                        <div class="ps-product-name">@product.Name</div>
+                        <div class="ps-product-price-label">GIÁ ƯU ĐÃI</div>
+                        <div class="ps-product-footer">
+                            <div class="ps-product-price">@product.Price.ToString("N0")đ</div>
+                            @if (product.InStock)
+                            {
+                                <span class="ps-product-stock">SẴN CÓ</span>
+                            }
+                        </div>
+                    </div>
+                </a>
+            }
+        </div>
+    }
+</section>
+
+<!-- Pet Hotel Banner -->
+<section class="ps-section">
+    <div class="ps-hotel-banner open-hotel-modal" role="button" tabindex="0">
+        <div class="ps-hotel-content">
+            <h2 class="ps-hotel-title">Phòng Nghỉ Dưỡng <span>Tiêu Chuẩn 5 Sao</span></h2>
+            <p class="ps-hotel-desc">Dịch vụ Pet Hotel cao cấp với camera giám sát 24/7, chế độ dinh dưỡng cá nhân hóa và khu vui chơi trong nhà cực rộng.</p>
+        </div>
+        <div class="ps-hotel-image">
+            <img src="https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=700&h=400&fit=crop" alt="Pet Hotel" />
+            <div class="ps-hotel-status">
+                <i class="bi bi-check-circle-fill"></i>
+                TRẠNG THÁI: Đang còn phòng trống
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- News & Care Handbook -->
+<section class="ps-section">
+    <div class="ps-section-header">
+        <h2 class="ps-section-title">Tin tức &amp; Cẩm nang chăm sóc</h2>
+        <a href="#" class="ps-section-link">Tất cả bài viết &gt;</a>
+    </div>
+
+    <a href="#" class="ps-featured-blog">
+        <img src="@Model.FeaturedBlog.ImageUrl" alt="@Model.FeaturedBlog.Title" />
+        <div class="ps-featured-overlay">
+            <div class="ps-featured-content">
+                <span class="ps-featured-tag">NỔI BẬT</span>
+                <h3 class="ps-featured-title">@Model.FeaturedBlog.Title</h3>
+                <p class="ps-featured-excerpt">@Model.FeaturedBlog.Excerpt</p>
+                <span class="ps-featured-link">Đọc bài viết ngay &rarr;</span>
+            </div>
+        </div>
+    </a>
+
+    <div class="ps-blog-grid">
+        @foreach (var blog in Model.BlogArticles)
+        {
+            <a href="#" class="ps-blog-card">
+                <div class="ps-blog-image">
+                    <img src="@blog.ImageUrl" alt="@blog.Title" loading="lazy" />
+                    <span class="ps-blog-tag">@blog.Tag</span>
+                </div>
+                <div class="ps-blog-body">
+                    <h4 class="ps-blog-title">@blog.Title</h4>
+                    <p class="ps-blog-excerpt">@blog.Excerpt</p>
+                    <span class="ps-blog-more">Xem thêm &gt;</span>
+                </div>
+            </a>
+        }
+    </div>
+</section>

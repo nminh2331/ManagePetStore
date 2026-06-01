@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Warehouse PetStore AI</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        .admin-sidebar {
+            background-color: #fff;
+            border-right: 1px solid #f0f0f0;
+            width: 250px;
+            display: flex;
+            flex-direction: column;
+        }
+        .admin-logo {
+            color: #e65c00;
+            font-weight: bold;
+            font-size: 1.25rem;
+            text-decoration: none;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .admin-nav-item {
+            color: #666;
+            text-decoration: none;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 500;
+            border-radius: 0 20px 20px 0;
+            margin-right: 1rem;
+            margin-bottom: 0.25rem;
+            transition: all 0.3s ease;
+        }
+        .admin-nav-item:hover, .admin-nav-item.active {
+            background-color: #ff8c00;
+            color: #fff;
+        }
+        .admin-header {
+            display: flex;
+            justify-content: flex-end;
+            padding: 1rem 2rem;
+            background-color: #fff;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .admin-search-input {
+            border: none;
+            background-color: #f8f9fa;
+            border-radius: 20px;
+            padding: 0.5rem 1rem;
+            width: 300px;
+            outline: none;
+        }
+        .admin-user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .admin-avatar {
+            width: 40px;
+            height: 40px;
+            background-color: #ffce00;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: bold;
+        }
+        .admin-body-content {
+            padding: 2rem;
+            background-color: #fbfbfb;
+            min-height: calc(100vh - 75px);
+        }
+        .admin-wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+        .admin-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        /* Custom table styles to match aesthetic */
+        .table-custom {
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .table-custom th {
+            background-color: #fafafa;
+            color: #333;
+            font-weight: 600;
+            border-bottom: 2px solid #eee;
+            padding: 1rem;
+        }
+        .table-custom td {
+            padding: 1rem;
+            vertical-align: middle;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .table-custom tbody tr:hover {
+            background-color: #fafafa;
+        }
+        .btn-custom {
+            border-radius: 20px;
+            padding: 0.4rem 1.2rem;
+            font-weight: 500;
+        }
+        .btn-primary-custom {
+            background: linear-gradient(135deg, #e65c00, #ff8c00);
+            color: white;
+            border: none;
+        }
+        .btn-primary-custom:hover {
+            opacity: 0.9;
+            color: white;
+        }
+    </style>
+</head>
+<body class="admin-body">
+    <div class="admin-wrapper">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <div class="admin-logo" style="cursor:default;font-size:.85rem;letter-spacing:.5px;">
+                <i class="fas fa-paw"></i> PET STORE MANAGEMENT SYSTEM
+            </div>
+            
+            <nav class="admin-nav mt-3">
+                <a asp-area="Warehouse" asp-controller="Product" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Product" ? "active" : "")">
+                    <i class="fas fa-box-open"></i> Danh sách Sản phẩm
+                </a>
+                <a asp-area="Warehouse" asp-controller="ProductCategory" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "ProductCategory" ? "active" : "")">
+                    <i class="fas fa-tags"></i> Danh mục Sản phẩm
+                </a>
+            </nav>
+
+            <div class="mt-auto p-3">
+                <form id="sidebarLogoutForm" asp-area="Customer" asp-controller="Account" asp-action="Logout" method="post" class="d-none">
+                    @Html.AntiForgeryToken()
+                </form>
+                <button onclick="document.getElementById('sidebarLogoutForm').submit();" class="btn btn-outline-danger w-100 btn-custom">
+                    <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Panel -->
+        <main class="admin-content">
+            <!-- Header -->
+            <header class="admin-header">
+
+
+                <div class="admin-user-info">
+                    <button class="btn btn-link text-muted position-relative">
+                        <i class="fas fa-bell"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"></span>
+                    </button>
+                    
+                    <a asp-area="Customer" asp-controller="Account" asp-action="Profile" class="d-flex align-items-center gap-3 text-decoration-none text-dark">
+                        <div class="text-end">
+                            <p class="mb-0 fw-bold">@User.FindFirst("FullName")?.Value</p>
+                            <p class="mb-0 text-muted small">Nhân viên kho</p>
+                        </div>
+                        <div class="admin-avatar">
+                            @(User.FindFirst("FullName")?.Value?.Substring(0, 1).ToUpper() ?? "U")
+                        </div>
+                    </a>
+                </div>
+            </header>
+
+            <!-- Body -->
+            <section class="admin-body-content">
+                @RenderBody()
+            </section>
+        </main>
+    </div>
+    
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

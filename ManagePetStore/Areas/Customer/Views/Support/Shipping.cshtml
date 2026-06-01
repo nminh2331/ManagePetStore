@@ -1,0 +1,56 @@
+@{
+    Layout = "_PetStoreLayout";
+    ViewData["Title"] = "Chính sách vận chuyển";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/customer-support.css" asp-append-version="true" />
+}
+
+<section class="support-page">
+    <div class="support-page-inner">
+        <a asp-area="" asp-controller="Home" asp-action="Index" class="support-back">
+            <i class="bi bi-arrow-left"></i> Về trang chủ
+        </a>
+
+        @await Html.PartialAsync("_SupportNav", "shipping")
+
+        <div class="support-hero">
+            <div class="support-hero-icon"><i class="bi bi-truck"></i></div>
+            <h1>Chính Sách Vận Chuyển</h1>
+            <p>Hệ thống cam kết mang đến dịch vụ giao hàng nhanh chóng và an toàn nhất cho cả vật phẩm và thú cưng của bạn.</p>
+        </div>
+
+        <div class="support-card">
+            <h2>Đối với Hàng hóa (Thức ăn, Phụ kiện, Cát vệ sinh)</h2>
+            <h3>Nội thành</h3>
+            <ul>
+                <li>Giao hàng hỏa tốc trong vòng <strong>2 - 4 tiếng</strong>.</li>
+                <li>Phí ship đồng giá <strong>25.000 VNĐ</strong>.</li>
+                <li>Miễn phí vận chuyển cho đơn hàng từ <strong>500.000 VNĐ</strong>.</li>
+            </ul>
+            <h3>Ngoại thành và Tỉnh/Thành khác</h3>
+            <ul>
+                <li>Giao hàng tiêu chuẩn từ <strong>2 - 4 ngày làm việc</strong>.</li>
+                <li>Phí ship tính theo giá cước của các đơn vị vận chuyển đối tác (Giao Hàng Nhanh, Viettel Post).</li>
+            </ul>
+        </div>
+
+        <div class="support-card">
+            <h2>Đối với Thú cưng (Chó, Mèo)</h2>
+            <ul>
+                <li>Tuyệt đối chỉ áp dụng giao hỏa tốc bằng xe ô tô hoặc xe máy có lồng vận chuyển chuyên dụng (có rèm che) để đảm bảo sức khỏe tinh thần và thể chất cho các bé.</li>
+                <li><strong>Phạm vi:</strong> Hỗ trợ giao thú cưng tận nhà trong bán kính 20km. Khách hàng ở xa vui lòng đến trực tiếp cửa hàng để đón bé hoặc liên hệ Hotline để thỏa thuận phương thức vận chuyển bằng tàu hỏa/máy bay theo đường riêng.</li>
+                <li><strong>Phí vận chuyển:</strong> Báo giá trực tiếp tùy thuộc vào khoảng cách địa lý và thời tiết.</li>
+            </ul>
+        </div>
+
+        <div class="support-card">
+            <h2>Quy định kiểm tra hàng hóa</h2>
+            <p>Khách hàng vui lòng <strong>đồng kiểm cùng shipper</strong> khi nhận hàng. Đặc biệt đối với thú cưng, quý khách cần <strong>quay video toàn bộ quá trình mở lồng</strong> để được cửa hàng hỗ trợ bảo hành tốt nhất nếu có vấn đề phát sinh.</p>
+            <div class="support-highlight">
+                <strong>Lưu ý:</strong> Video kiểm tra hàng là căn cứ quan trọng để PetStore hỗ trợ đổi trả/bảo hành nhanh chóng và chính xác nhất.
+            </div>
+        </div>
+    </div>
+</section>

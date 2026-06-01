@@ -1,0 +1,184 @@
+@model ManagePetStore.Areas.Customer.Models.CheckoutViewModel
+@{
+    Layout = "_PetStoreLayout";
+    ViewData["Title"] = "Thông tin thanh toán";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/customer-cart.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/customer-checkout.css" asp-append-version="true" />
+}
+
+<section class="checkout-page">
+    <div class="container-fluid checkout-page-inner">
+        <div class="checkout-page-header">
+            <a class="checkout-back-btn" asp-controller="Cart" asp-action="Index" aria-label="Quay lại giỏ hàng">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <h1>Thông tin thanh toán</h1>
+        </div>
+
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="checkout-alert checkout-alert-success">@TempData["SuccessMessage"]</div>
+        }
+
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="checkout-alert checkout-alert-danger">@TempData["ErrorMessage"]</div>
+        }
+
+        <div class="checkout-layout">
+            <div class="checkout-main">
+                <form asp-action="Confirm" method="post" id="checkoutForm">
+                    @Html.AntiForgeryToken()
+
+                    <div class="checkout-card">
+                        <h2 class="checkout-card-title">Địa chỉ giao hàng</h2>
+
+                        <div class="checkout-form-grid">
+                            <div class="checkout-field">
+                                <label>Họ và tên</label>
+                                <div class="checkout-input-wrap">
+                                    <i class="bi bi-person"></i>
+                                    <input type="text" name="fullName" value="@Model.FullName" placeholder="Nguyễn Văn A" required />
+                                </div>
+                            </div>
+
+                            <div class="checkout-field">
+                                <label>Số điện thoại</label>
+                                <div class="checkout-input-wrap">
+                                    <i class="bi bi-telephone"></i>
+                                    <input type="tel" name="phone" value="@Model.Phone" placeholder="090 123 4567" required />
+                                </div>
+                            </div>
+
+                            <div class="checkout-field checkout-field-full">
+                                <label>Gmail nhận xác nhận đơn hàng</label>
+                                <div class="checkout-input-wrap">
+                                    <i class="bi bi-envelope"></i>
+                                    <input type="email" name="email" value="@Model.Email" placeholder="example@gmail.com" required autocomplete="email" />
+                                </div>
+                            </div>
+
+                            <div class="checkout-field checkout-field-full">
+                                <label>Địa chỉ giao hàng</label>
+                                <div class="checkout-input-wrap">
+                                    <i class="bi bi-geo-alt"></i>
+                                    <input type="text" name="shippingAddress" value="@Model.ShippingAddress" placeholder="Số nhà, tên đường, phường/xã..." required />
+                                </div>
+                            </div>
+
+                            <div class="checkout-field checkout-field-full">
+                                <label>Ghi chú đơn hàng</label>
+                                <textarea name="orderNote" rows="3" placeholder="Ví dụ: Giao vào giờ hành chính...">@Model.OrderNote</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="checkout-card">
+                        <h2 class="checkout-card-title">Phương thức thanh toán</h2>
+
+                        <div class="checkout-payment-options">
+                            <label class="checkout-payment-card @(Model.PaymentMethod == "Cash" ? "active" : "")">
+                                <input type="radio" name="paymentMethod" value="Cash" @(Model.PaymentMethod == "Cash" ? "checked" : null) />
+                                <span class="checkout-payment-icon cash"><i class="bi bi-cash-stack"></i></span>
+                                <span class="checkout-payment-name">Tiền mặt</span>
+                            </label>
+
+                            <label class="checkout-payment-card @(Model.PaymentMethod == "VNPay" ? "active" : "")">
+                                <input type="radio" name="paymentMethod" value="VNPay" @(Model.PaymentMethod == "VNPay" ? "checked" : null) />
+                                <span class="checkout-payment-icon vnpay">VN</span>
+                                <span class="checkout-payment-name">VNPay</span>
+                            </label>
+
+                            <label class="checkout-payment-card @(Model.PaymentMethod == "MoMo" ? "active" : "")">
+                                <input type="radio" name="paymentMethod" value="MoMo" @(Model.PaymentMethod == "MoMo" ? "checked" : null) />
+                                <span class="checkout-payment-icon momo"><i class="bi bi-wallet2"></i></span>
+                                <span class="checkout-payment-name">MoMo</span>
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <aside class="checkout-summary">
+                <div class="cart-summary-card">
+                    <div class="cart-summary-header">
+                        <i class="bi bi-bag-check-fill"></i>
+                        <h2>Tóm tắt đơn hàng</h2>
+                    </div>
+
+                    <div class="cart-summary-items">
+                        @foreach (var item in Model.Cart.Items)
+                        {
+                            <div class="cart-summary-item">
+                                <img src="@item.ImageUrl" alt="@item.Name" />
+                                <div class="cart-summary-item-info">
+                                    <div class="cart-summary-item-name">@item.Name</div>
+                                    <div class="cart-summary-item-qty">Số lượng: @item.Quantity</div>
+                                </div>
+                                <div class="cart-summary-item-price">@item.LineTotal.ToString("N0")đ</div>
+                            </div>
+                        }
+                    </div>
+
+                    <form asp-action="ApplyVoucher" method="post" class="checkout-voucher-form">
+                        @Html.AntiForgeryToken()
+                        <div class="checkout-voucher-wrap">
+                            <input type="text"
+                                   name="voucherCode"
+                                   placeholder="Mã giảm giá..."
+                                   value="@Model.Cart.AppliedVoucherCode" />
+                            <button type="submit">Áp dụng</button>
+                        </div>
+                    </form>
+
+                    <div class="cart-summary-row">
+                        <span>Tạm tính</span>
+                        <span>@Model.Cart.Subtotal.ToString("N0")đ</span>
+                    </div>
+                    <div class="cart-summary-row">
+                        <span>Phí vận chuyển</span>
+                        <span>@Model.Cart.ShippingFee.ToString("N0")đ</span>
+                    </div>
+                    @if (Model.Cart.VoucherDiscount > 0)
+                    {
+                        <div class="cart-summary-row cart-summary-discount">
+                            <span>Giảm giá voucher</span>
+                            <span>-@Model.Cart.VoucherDiscount.ToString("N0")đ</span>
+                        </div>
+                    }
+
+                    <div class="cart-summary-total">
+                        <span>TỔNG THANH TOÁN</span>
+                        <strong>@Model.Cart.GrandTotal.ToString("N0")đ</strong>
+                    </div>
+
+                    <button type="submit" form="checkoutForm" class="cart-btn-checkout">
+                        Xác nhận đặt hàng 
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+
+                <div class="cart-security-note">
+                    <i class="bi bi-shield-check"></i>
+                    <span>Thanh toán an toàn &amp; bảo mật thông tin khách hàng.</span>
+                </div>
+            </aside>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.checkout-payment-card input[type="radio"]').forEach(function (radio) {
+            radio.addEventListener('change', function () {
+                document.querySelectorAll('.checkout-payment-card').forEach(function (card) {
+                    card.classList.remove('active');
+                });
+                this.closest('.checkout-payment-card').classList.add('active');
+            });
+        });
+    </script>
+}

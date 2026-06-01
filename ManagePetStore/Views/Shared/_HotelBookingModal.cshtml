@@ -1,0 +1,82 @@
+@{
+    var pets = ViewBag.HotelPets as IEnumerable<ManagePetStore.Controllers.PetOptionItem>
+        ?? new List<ManagePetStore.Controllers.PetOptionItem>
+        {
+            new() { Id = 1, Name = "LuLu", Breed = "Poodle" }
+        };
+
+    var roomTypes = ViewBag.HotelRoomTypes as IEnumerable<ManagePetStore.Controllers.RoomTypeOptionItem>
+        ?? new List<ManagePetStore.Controllers.RoomTypeOptionItem>
+        {
+            new() { Id = 1, Name = "Phòng VIP Luxury (500k/n)", DailyPrice = 500000 },
+            new() { Id = 2, Name = "Phòng Tiêu Chuẩn (300k/n)", DailyPrice = 300000 },
+            new() { Id = 3, Name = "Phòng Economy (200k/n)", DailyPrice = 200000 }
+        };
+}
+
+<div class="hotel-modal-overlay" id="hotelModalOverlay">
+    <div class="hotel-modal" role="dialog" aria-labelledby="hotelModalTitle" aria-modal="true">
+        <div class="hotel-modal-header">
+            <div class="hotel-modal-icon">
+                <i class="bi bi-house-heart"></i>
+            </div>
+            <div class="hotel-modal-titles">
+                <h2 id="hotelModalTitle">Đặt phòng Hotel</h2>
+                <p>TIÊU CHUẨN NGHỈ DƯỠNG 5 SAO</p>
+            </div>
+            <button type="button" class="hotel-modal-close" id="closeHotelModal" aria-label="Đóng">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <form class="hotel-modal-form" id="hotelBookingForm">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="hotel-label"><i class="bi bi-heart"></i> CHỌN THÚ CƯNG</label>
+                    <select class="hotel-select" id="hotelPet">
+                        @foreach (var pet in pets)
+                        {
+                            <option value="@pet.Id">@pet.Name (@pet.Breed)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="hotel-label"><i class="bi bi-star"></i> LOẠI PHÒNG</label>
+                    <select class="hotel-select" id="hotelRoomType">
+                        @foreach (var room in roomTypes)
+                        {
+                            <option value="@room.Id" data-price="@room.DailyPrice">@room.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="hotel-label"><i class="bi bi-calendar3"></i> NGÀY CHECK-IN</label>
+                    <div class="hotel-date-wrap">
+                        <input type="date" class="hotel-date" id="hotelCheckIn" />
+                        <i class="bi bi-calendar3"></i>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="hotel-label"><i class="bi bi-calendar-check"></i> NGÀY CHECK-OUT</label>
+                    <div class="hotel-date-wrap">
+                        <input type="date" class="hotel-date" id="hotelCheckOut" />
+                        <i class="bi bi-calendar3"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hotel-summary">
+                <div class="hotel-summary-row">
+                    <span>Ưu đãi thành viên (Vàng)</span>
+                    <span class="hotel-discount">-10%</span>
+                </div>
+                <div class="hotel-summary-row hotel-total-row">
+                    <span>TẠM TÍNH:</span>
+                    <span class="hotel-total" id="hotelTotal">450.000đ</span>
+                </div>
+            </div>
+
+            <button type="submit" class="hotel-submit-btn">Xác Nhận Đặt Phòng</button>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,138 @@
+@model ManagePetStore.Models.Product
+
+@{
+    ViewData["Title"] = "Thêm Sản phẩm";
+}
+
+<div class="mb-4">
+    <a asp-action="Index" class="text-decoration-none text-muted mb-2 d-inline-block">
+        <i class="fas fa-arrow-left"></i> Quay lại danh sách
+    </a>
+    <h2 class="fw-bold m-0" style="color: #333;">Thêm Sản phẩm mới</h2>
+</div>
+
+<div class="card border-0 shadow-sm" style="border-radius: 12px;">
+    <div class="card-body p-4">
+        <form asp-action="Create" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Sku" class="form-label fw-bold">Mã sản phẩm (SKU) <span class="text-danger">*</span></label>
+                    <input asp-for="Sku" class="form-control" style="border-radius: 8px;" placeholder="VD: SP001" />
+                    <span asp-validation-for="Sku" class="text-danger small"></span>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Name" class="form-label fw-bold">Tên sản phẩm <span class="text-danger">*</span></label>
+                    <input asp-for="Name" class="form-control" style="border-radius: 8px;" placeholder="Tên sản phẩm..." />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label asp-for="CategoryId" class="form-label fw-bold">Danh mục <span class="text-danger">*</span></label>
+                    <select asp-for="CategoryId" class="form-select" style="border-radius: 8px;" asp-items="ViewBag.CategoryId">
+                        <option value="">-- Chọn danh mục --</option>
+                    </select>
+                    <span asp-validation-for="CategoryId" class="text-danger small"></span>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Unit" class="form-label fw-bold">Đơn vị tính <span class="text-danger">*</span></label>
+                    <input asp-for="Unit" class="form-control" style="border-radius: 8px;" placeholder="VD: Gói, Lon, Hộp..." />
+                    <span asp-validation-for="Unit" class="text-danger small"></span>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <label asp-for="Price" class="form-label fw-bold">Giá bán <span class="text-danger">*</span></label>
+                    <input asp-for="Price" type="number" class="form-control" style="border-radius: 8px;" />
+                    <span asp-validation-for="Price" class="text-danger small"></span>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <label asp-for="Stock" class="form-label fw-bold">Số lượng tồn</label>
+                    <input asp-for="Stock" type="number" class="form-control" style="border-radius: 8px;" value="0" />
+                    <span asp-validation-for="Stock" class="text-danger small"></span>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <label asp-for="MinStock" class="form-label fw-bold">Tồn kho tối thiểu</label>
+                    <input asp-for="MinStock" type="number" class="form-control" style="border-radius: 8px;" value="5" />
+                    <span asp-validation-for="MinStock" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label asp-for="ShelfLocation" class="form-label fw-bold">Vị trí kệ</label>
+                    <input asp-for="ShelfLocation" class="form-control" style="border-radius: 8px;" placeholder="VD: A1-2" />
+                    <span asp-validation-for="ShelfLocation" class="text-danger small"></span>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label asp-for="ExpiryDate" class="form-label fw-bold">Ngày hết hạn</label>
+                    <input asp-for="ExpiryDate" type="date" class="form-control" style="border-radius: 8px;" />
+                    <span asp-validation-for="ExpiryDate" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-12 mb-4">
+                    <label class="form-label fw-bold">Hình ảnh sản phẩm</label>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted mb-1">Tải ảnh từ máy tính:</label>
+                            <input type="file" name="ImageFile" id="imageFileInput" class="form-control" style="border-radius: 8px;" accept="image/*" onchange="previewLocalImage(this)" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="ImageUrl" class="form-label small text-muted mb-1">Hoặc nhập URL ảnh:</label>
+                            <input asp-for="ImageUrl" id="imgUrlInput" class="form-control" style="border-radius: 8px;" placeholder="https://..." oninput="previewImage(this.value)" />
+                            <span asp-validation-for="ImageUrl" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <div id="imgPreviewBox" class="mt-3" style="display:none;">
+                        <p class="text-muted small mb-1">Xem trước hình ảnh:</p>
+                        <img id="imgPreview" src="" alt="preview"
+                             style="max-height:160px;max-width:100%;border-radius:10px;border:1px solid #eee;object-fit:contain;background:#fafafa;padding:4px;"
+                             onerror="document.getElementById('imgPreviewBox').style.display='none';" />
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-end">
+                <button type="submit" class="btn btn-primary-custom px-4 py-2">
+                    <i class="fas fa-save"></i> Lưu sản phẩm
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        function previewImage(url) {
+            var box = document.getElementById('imgPreviewBox');
+            var img = document.getElementById('imgPreview');
+            var fileInput = document.getElementById('imageFileInput');
+            if (url && url.trim() !== '') {
+                img.src = url.trim();
+                box.style.display = 'block';
+                if (fileInput) fileInput.value = '';
+            } else {
+                box.style.display = 'none';
+            }
+        }
+
+        function previewLocalImage(input) {
+            var box = document.getElementById('imgPreviewBox');
+            var img = document.getElementById('imgPreview');
+            var urlInput = document.getElementById('imgUrlInput');
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    img.src = e.target.result;
+                    box.style.display = 'block';
+                    if (urlInput) urlInput.value = '';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    </script>
+}
