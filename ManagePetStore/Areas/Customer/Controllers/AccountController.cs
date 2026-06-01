@@ -871,6 +871,10 @@ namespace ManagePetStore.Areas.Customer.Controllers
             if (User.IsInRole("cashier"))
                 return RedirectToAction("Index", "Home", new { area = "Cashier" });
             if (User.IsInRole("service"))
+
+            {
+                return Redirect("/SpaServices");
+            }
                 return RedirectToAction("Index", "Home", new { area = "Service" });
             if (User.IsInRole("warehouse"))
                 return RedirectToAction("Index", "Home", new { area = "Warehouse" });
