@@ -17,7 +17,8 @@ public class HomeController : Controller
         ["accessories"] = ["Phụ kiện", "phụ kiện", "accessories"],
         ["cages"] = ["Chuồng", "Đệm", "chuồng", "đệm", "cages"],
         ["hygiene"] = ["Vệ sinh", "vệ sinh", "hygiene"],
-        ["medicine"] = ["Thuốc", "Vitamin", "thuốc", "vitamin", "medicine"]
+        ["medicine"] = ["Thuốc", "Vitamin", "thuốc", "vitamin", "medicine"],
+        ["spa"] = ["Spa", "chăm sóc", "Tắm", "Sấy", "Cắt", "Tỉa", "Massage", "spa"]
     };
 
     public HomeController(ILogger<HomeController> logger, PetStoreManagementContext context)
@@ -77,7 +78,8 @@ public class HomeController : Controller
             return View(model);
         }
 
-        model.BestSellers = GetStaticHomepageData().BestSellers;
+        // Use the full dynamic catalog (including active DB products and Spa Services) instead of static mockup list
+        model.BestSellers = catalog;
         return View(model);
     }
 
@@ -96,9 +98,11 @@ public class HomeController : Controller
     {
         var products = GetStaticProductCatalog();
 
+        // 1. Tải các sản phẩm từ database (cách ly trong try-catch)
         try
         {
             var dbProducts = await _context.Products
+                .Include(p => p.Category)
                 .OrderByDescending(p => p.Stock)
                 .ToListAsync();
 
@@ -112,9 +116,44 @@ public class HomeController : Controller
                 products.Add(MapDbProduct(p));
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Dùng catalog tĩnh khi DB không khả dụng.
+            _logger.LogError(ex, "Lỗi khi tải Products từ Database.");
+        }
+
+        // 2. Tải các dịch vụ Spa từ database (cách ly hoàn toàn trong try-catch và chỉ lấy Active == true)
+        try
+        {
+            var dbSpaServices = await _context.SpaServices
+                .Where(s => s.Active)
+                .ToListAsync();
+
+            foreach (var s in dbSpaServices)
+            {
+                string sku = $"SPA-SVC-{s.ServiceId:D3}";
+                if (products.Any(x => x.Sku.Equals(sku, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                products.Add(new ProductCardItem
+                {
+                    Sku = sku,
+                    Name = s.Name,
+                    Category = "Dịch vụ Spa",
+                    Price = s.Price,
+                    ImageUrl = "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=400&h=400&fit=crop",
+                    Rating = 4.9,
+                    ReviewCount = 35,
+                    Badge = $"{s.DurationMinutes} phút",
+                    BadgeType = "new",
+                    InStock = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi tải SpaServices từ Database.");
         }
 
         return products;
@@ -212,7 +251,8 @@ public class HomeController : Controller
                 new CategoryItem { Name = "Phụ kiện", Icon = "bi-gift", Slug = "accessories" },
                 new CategoryItem { Name = "Chuồng & Đệm", Icon = "bi-house-door", Slug = "cages" },
                 new CategoryItem { Name = "Vệ sinh", Icon = "bi-droplet", Slug = "hygiene" },
-                new CategoryItem { Name = "Thuốc & Vitamin", Icon = "bi-capsule", Slug = "medicine" }
+                new CategoryItem { Name = "Thuốc & Vitamin", Icon = "bi-capsule", Slug = "medicine" },
+                new CategoryItem { Name = "Dịch vụ Spa", Icon = "bi-scissors", Slug = "spa" }
             ],
             BestSellers =
             [

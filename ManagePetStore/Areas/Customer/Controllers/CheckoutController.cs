@@ -137,42 +137,107 @@ public class CheckoutController : Controller
 
             foreach (var item in cart.Items)
             {
-                var product = await _context.Products.FirstOrDefaultAsync(p => p.Sku == item.Sku);
-                if (product == null)
-                {
-                    var onlineCat = await _context.ProductCategories.FirstOrDefaultAsync(c => c.Name == "Online")
-                                    ?? await _context.ProductCategories.FirstOrDefaultAsync()
-                                    ?? new ProductCategory { Name = "Online", Description = "Danh mục mua sắm trực tuyến" };
-                    
-                    if (onlineCat.CategoryId == 0)
-                    {
-                        _context.ProductCategories.Add(onlineCat);
-                        await _context.SaveChangesAsync();
-                    }
+                var isSpa = item.Sku.StartsWith("SPA-SVC-", StringComparison.OrdinalIgnoreCase);
+                int? spaServiceIdVal = null;
 
-                    product = new Product
+                if (isSpa)
+                {
+                    var serviceIdString = item.Sku.Substring(8);
+                    if (int.TryParse(serviceIdString, out int serviceId))
                     {
-                        Sku = item.Sku,
-                        Name = item.Name,
-                        CategoryId = onlineCat.CategoryId,
-                        Unit = "Cái",
-                        Stock = Math.Max(0, item.MaxStock - item.Quantity),
-                        MinStock = 0,
-                        Price = item.UnitPrice,
-                        ImageUrl = item.ImageUrl
-                    };
-                    _context.Products.Add(product);
+                        spaServiceIdVal = serviceId;
+
+                        var pet = await _context.Pets.FirstOrDefaultAsync(p => p.CustomerId == customer.CustomerId);
+                        int petId;
+                        if (pet == null)
+                        {
+                            pet = new Pet
+                            {
+                                CustomerId = customer.CustomerId,
+                                Name = "Pet của " + customer.FullName,
+                                Species = "Chó/Mèo",
+                                Breed = "Chưa xác định",
+                                Age = "1 tuổi",
+                                Weight = 5.0m,
+                                Status = "Active"
+                            };
+                            _context.Pets.Add(pet);
+                            await _context.SaveChangesAsync();
+                        }
+                        petId = pet.PetId;
+
+                        var spaService = await _context.SpaServices.FirstOrDefaultAsync(s => s.ServiceId == serviceId);
+                        if (spaService != null)
+                        {
+                            var defaultGroomer = await _context.Users.FirstOrDefaultAsync(u => u.RoleId == 3 && u.Status == "Active")
+                                                ?? await _context.Users.FirstOrDefaultAsync(u => u.RoleId == 3)
+                                                ?? await _context.Users.FirstOrDefaultAsync();
+                            int groomerId = defaultGroomer?.UserId ?? 3;
+
+                            var bookingTime = DateTime.Today.AddHours(9);
+                            if (DateTime.Now >= bookingTime)
+                            {
+                                bookingTime = DateTime.Today.AddDays(1).AddHours(9);
+                            }
+
+                            var bookingStatus = (normalizedPayment == "Tiền mặt") ? "Chưa thanh toán" : "Đã thanh toán";
+
+                            var spaBooking = new SpaBooking
+                            {
+                                PetId = petId,
+                                CustomerId = customer.CustomerId,
+                                ServiceId = serviceId,
+                                DateTime = bookingTime,
+                                GroomerId = groomerId,
+                                Price = spaService.Price,
+                                Status = bookingStatus,
+                                SpaStatus = "|0",
+                                Notes = string.IsNullOrEmpty(orderNote) ? "Đặt lịch trực tuyến qua đơn hàng " + orderId : orderNote.Trim()
+                            };
+                            _context.SpaBookings.Add(spaBooking);
+                        }
+                    }
                 }
                 else
                 {
-                    product.Stock = Math.Max(0, product.Stock - item.Quantity);
-                    _context.Entry(product).State = EntityState.Modified;
+                    var product = await _context.Products.FirstOrDefaultAsync(p => p.Sku == item.Sku);
+                    if (product == null)
+                    {
+                        var onlineCat = await _context.ProductCategories.FirstOrDefaultAsync(c => c.Name == "Online")
+                                        ?? await _context.ProductCategories.FirstOrDefaultAsync()
+                                        ?? new ProductCategory { Name = "Online", Description = "Danh mục mua sắm trực tuyến" };
+                        
+                        if (onlineCat.CategoryId == 0)
+                        {
+                            _context.ProductCategories.Add(onlineCat);
+                            await _context.SaveChangesAsync();
+                        }
+
+                        product = new Product
+                        {
+                            Sku = item.Sku,
+                            Name = item.Name,
+                            CategoryId = onlineCat.CategoryId,
+                            Unit = "Cái",
+                            Stock = Math.Max(0, item.MaxStock - item.Quantity),
+                            MinStock = 0,
+                            Price = item.UnitPrice,
+                            ImageUrl = item.ImageUrl
+                        };
+                        _context.Products.Add(product);
+                    }
+                    else
+                    {
+                        product.Stock = Math.Max(0, product.Stock - item.Quantity);
+                        _context.Entry(product).State = EntityState.Modified;
+                    }
                 }
 
                 _context.OrderItems.Add(new OrderItem
                 {
                     OrderId = orderId,
-                    ProductSku = item.Sku,
+                    ProductSku = isSpa ? null : item.Sku,
+                    SpaServiceId = spaServiceIdVal,
                     Quantity = item.Quantity,
                     Price = item.UnitPrice,
                     IsCombo = false

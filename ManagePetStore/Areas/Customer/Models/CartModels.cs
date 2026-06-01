@@ -25,7 +25,7 @@ public class CartPageViewModel
 {
     public List<CartLineItemViewModel> Items { get; set; } = [];
     public decimal Subtotal => Items.Sum(i => i.LineTotal);
-    public decimal ShippingFee => Items.Count > 0 ? 30000m : 0m;
+    public decimal ShippingFee => Items.Any(i => !i.Sku.StartsWith("SPA-SVC-", System.StringComparison.OrdinalIgnoreCase)) ? 30000m : 0m;
     public decimal VoucherDiscount { get; set; }
     public string? AppliedVoucherCode { get; set; }
     public decimal GrandTotal => Subtotal + ShippingFee - VoucherDiscount;

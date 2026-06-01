@@ -22,10 +22,21 @@
 
         <div>
             <div class="ps-pd-brand">
-                THƯƠNG HIỆU: @Model.Brand
-                @if (Model.InStock)
+                @if (Model.Sku.StartsWith("SPA-SVC-"))
                 {
-                    <span class="ps-pd-stock-badge"><i class="bi bi-check-circle-fill"></i> Còn hàng</span>
+                    @:DỊCH VỤ: @Model.Brand
+                    @if (Model.InStock)
+                    {
+                        <span class="ps-pd-stock-badge" style="background: rgba(46, 196, 182, 0.1); color: #2ec4b6;"><i class="bi bi-check-circle-fill"></i> Sẵn sàng phục vụ</span>
+                    }
+                }
+                else
+                {
+                    @:THƯƠNG HIỆU: @Model.Brand
+                    @if (Model.InStock)
+                    {
+                        <span class="ps-pd-stock-badge"><i class="bi bi-check-circle-fill"></i> Còn hàng</span>
+                    }
                 }
             </div>
 
@@ -62,15 +73,26 @@
                 }
             </div>
 
-            <div class="ps-pd-qty-row">
-                <span class="ps-pd-qty-label">Số lượng:</span>
-                <div class="ps-pd-qty-control">
-                    <button type="button" class="ps-pd-qty-btn" id="pdQtyMinus">−</button>
-                    <span class="ps-pd-qty-value" id="pdQty" data-max="@Model.Stock">1</span>
-                    <button type="button" class="ps-pd-qty-btn" id="pdQtyPlus">+</button>
+            @if (Model.Sku.StartsWith("SPA-SVC-"))
+            {
+                <div class="ps-pd-qty-row">
+                    <span class="ps-pd-qty-label">Trạng thái:</span>
+                    <span class="ps-pd-stock-text" style="color: #2ec4b6; font-weight: 600; margin-left: 0;">Dịch vụ luôn sẵn sàng phục vụ</span>
+                    <span class="ps-pd-qty-value" id="pdQty" data-max="999" style="display: none;">1</span>
                 </div>
-                <span class="ps-pd-stock-text">@Model.Stock sản phẩm có sẵn</span>
-            </div>
+            }
+            else
+            {
+                <div class="ps-pd-qty-row">
+                    <span class="ps-pd-qty-label">Số lượng:</span>
+                    <div class="ps-pd-qty-control">
+                        <button type="button" class="ps-pd-qty-btn" id="pdQtyMinus">−</button>
+                        <span class="ps-pd-qty-value" id="pdQty" data-max="@Model.Stock">1</span>
+                        <button type="button" class="ps-pd-qty-btn" id="pdQtyPlus">+</button>
+                    </div>
+                    <span class="ps-pd-stock-text">@Model.Stock sản phẩm có sẵn</span>
+                </div>
+            }
 
             <div class="ps-pd-actions">
                 <form asp-area="Customer" asp-controller="Cart" asp-action="Add" method="post" class="ps-pd-add-cart-form" style="width: 100%;">

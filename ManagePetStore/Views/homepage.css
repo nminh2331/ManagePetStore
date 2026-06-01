@@ -330,25 +330,40 @@ body.petstore-body {
 /* ===== CATEGORIES ===== */
 .ps-categories-grid {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 16px;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 12px;
 }
 
 .ps-category-card {
     background: #fff;
     border-radius: var(--ps-radius);
-    padding: 28px 16px;
+    padding: 20px 8px;
     text-align: center;
     box-shadow: var(--ps-shadow);
     text-decoration: none;
     color: var(--ps-brown);
     transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .ps-category-card:hover {
     transform: translateY(-4px);
     box-shadow: 0 8px 32px rgba(61, 35, 20, 0.12);
     color: var(--ps-orange);
+}
+
+.ps-category-card.active {
+    border: 2px solid var(--ps-orange);
+    background: #fff7ed;
+    color: var(--ps-orange);
+}
+
+.ps-category-card.active .ps-category-icon {
+    background: var(--ps-orange);
+    color: #fff;
 }
 
 .ps-category-icon {
@@ -365,8 +380,12 @@ body.petstore-body {
 }
 
 .ps-category-name {
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
 }
 
 /* ===== PRODUCTS ===== */
@@ -1258,16 +1277,30 @@ body.petstore-body {
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1200px) {
-    .ps-categories-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-
     .ps-products-grid {
         grid-template-columns: repeat(2, 1fr);
     }
 }
 
 @media (max-width: 992px) {
+    .ps-categories-grid {
+        display: flex;
+        overflow-x: auto;
+        gap: 12px;
+        padding: 4px 4px 12px;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .ps-categories-grid::-webkit-scrollbar {
+        display: none;
+    }
+
+    .ps-category-card {
+        flex: 0 0 120px;
+        padding: 16px 8px;
+    }
+
     .ps-header-inner {
         flex-wrap: wrap;
     }
@@ -1310,9 +1343,7 @@ body.petstore-body {
         padding: 32px 24px;
     }
 
-    .ps-categories-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
+
 
     .ps-products-grid {
         grid-template-columns: 1fr;
