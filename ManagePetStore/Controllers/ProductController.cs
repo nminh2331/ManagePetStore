@@ -21,25 +21,26 @@ public class ProductController : Controller
             return RedirectToAction("Index", "Home");
         }
 
-        ProductDetailViewModel? model = null;
+        ProductDetailViewModel? model = null;  // Khai báo biến model có kiểu dữ liệu là ProductDetailViewModel
 
         try
         {
             if (id.StartsWith("SPA-SVC-", StringComparison.OrdinalIgnoreCase))
             {
-                var idString = id.Substring(8);
-                if (int.TryParse(idString, out int serviceId))
+                var idString = id.Substring(8); //Cắt bỏ 8 ký tự đầu tiên (SPA-SVC-) để lấy phần số ở đuôi (ví dụ 001).
+                if (int.TryParse(idString, out int serviceId))  // Ép phần đuôi đó thành số nguyên (int).
                 {
                     var spaService = await _context.SpaServices.FirstOrDefaultAsync(s => s.ServiceId == serviceId);
                     if (spaService != null)
                     {
-                        model = MapFromSpaService(spaService);
+                        model = MapFromSpaService(spaService);  // chuyển đổi dữ liệu thô từ DB thành ProductDetailViewModel để UI đọc được.
                     }
                 }
             }
             else
             {
-                var product = await _context.Products.Include(p => p.Category).FirstOrDefaultAsync(p => p.Sku == id);
+                var product = await _context.Products.Include(p => p.Category).FirstOrDefaultAsync(p => p.Sku == id);  
+                //Eager Loading để lấy kèm thông tin Danh mục (tương tự trang chủ).
                 if (product != null)
                 {
                     model = MapFromProduct(product);
