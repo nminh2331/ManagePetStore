@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - PetStore</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/homepage.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="petstore-body">
+    <!-- Header -->
+    <header class="ps-header">
+        <div class="container-fluid ps-header-inner">
+            <a class="ps-logo" asp-area="" asp-controller="Home" asp-action="Index">
+                <span class="ps-logo-icon"><i class="bi bi-cart3"></i></span>
+                <span class="ps-logo-text">PetStore</span>
+            </a>
+
+            <form class="ps-search" asp-area="" asp-controller="Home" asp-action="Index" method="get">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" value="@ViewBag.SearchKeyword" placeholder="Tìm sản phẩm, dịch vụ cho thú cưng..." autocomplete="off" />
+                @if (!string.IsNullOrEmpty(ViewBag.SelectedCategorySlug as string))
+                {
+                    <input type="hidden" name="category" value="@ViewBag.SelectedCategorySlug" />
+                }
+            </form>
+
+            <div class="ps-header-actions">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <a class="ps-admin-link" asp-area="Customer" asp-controller="Pet" asp-action="Index" style="color: #f97316; font-weight: 700; white-space: nowrap;">
+                        <i class="bi bi-heart-fill"></i> Hồ sơ thú cưng
+                    </a>
+                }
+
+                @if (User.IsInRole("admin"))
+                {
+                    <a class="ps-admin-link" asp-area="Admin" asp-controller="Home" asp-action="Index">Quản trị hệ thống</a>
+                }
+                else
+                {
+                    <a class="ps-admin-link" asp-area="Customer" asp-controller="Account" asp-action="Login">Quản trị hệ thống</a>
+                }
+
+                <button class="ps-icon-btn" type="button" aria-label="Yêu thích"><i class="bi bi-heart"></i></button>
+
+                @await Component.InvokeAsync("CartIcon")
+
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <a class="ps-icon-btn" asp-area="Customer" asp-controller="Account" asp-action="Profile" aria-label="Tài khoản">
+                        <i class="bi bi-person-circle"></i>
+                    </a>
+                    <button class="ps-icon-btn" type="button" aria-label="Thông báo">
+                        <i class="bi bi-bell"></i>
+                        <span class="ps-badge ps-badge-red">4</span>
+                    </button>
+                    <span class="ps-greeting">Hi, @(User.FindFirst("FullName")?.Value ?? "Nguyễn Văn A")</span>
+                    <form asp-area="Customer" asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                        <button type="submit" class="ps-logout-btn">Đăng xuất</button>
+                    </form>
+                }
+                else
+                {
+                    <a class="ps-icon-btn" asp-area="Customer" asp-controller="Account" asp-action="Login" aria-label="Tài khoản">
+                        <i class="bi bi-person-circle"></i>
+                    </a>
+                    <button class="ps-icon-btn" type="button" aria-label="Thông báo">
+                        <i class="bi bi-bell"></i>
+                    </button>
+                    <span class="ps-greeting">Hi, Nguyễn Văn A</span>
+                    <a asp-area="Customer" asp-controller="Account" asp-action="Login" class="ps-logout-btn text-decoration-none">Đăng xuất</a>
+                }
+            </div>
+        </div>
+    </header>
+
+    <main>
+        @RenderBody()
+    </main>
+
+    <!-- Footer -->
+    <footer class="ps-footer">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-lg-4 col-md-6">
+                    <div class="ps-footer-brand">
+                        <span class="ps-logo-icon"><i class="bi bi-cart3"></i></span>
+                        <span class="ps-logo-text">PetStore</span>
+                    </div>
+                    <p class="ps-footer-desc">Hệ thống chăm sóc thú cưng toàn diện nhất. Spa, Hotel, Phụ kiện và thức ăn chính hãng.</p>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <h6 class="ps-footer-title">Dịch vụ</h6>
+                    <ul class="ps-footer-links">
+                        <li><a href="#">Spa &amp; Grooming</a></li>
+                        <li><a href="#" class="open-hotel-modal">Pet Hotel</a></li>
+                        <li><a href="#">Phòng khám thú y</a></li>
+                        <li><a href="#">Huấn luyện</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <h6 class="ps-footer-title">Hỗ trợ</h6>
+                    <ul class="ps-footer-links">
+                        <li><a asp-area="Customer" asp-controller="Support" asp-action="Warranty">Chính sách đổi trả</a></li>
+                        <li><a asp-area="Customer" asp-controller="Support" asp-action="Shipping">Vận chuyển</a></li>
+                        <li><a asp-area="Customer" asp-controller="Support" asp-action="Faq">Câu hỏi thường gặp</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <h6 class="ps-footer-title">Liên hệ</h6>
+                    <ul class="ps-footer-contact">
+                        <li>Hotline: <strong>0862735289</strong></li>
+                        <li>Email: <strong>hiephhhe171199@fpt.edu.vn</strong></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="ps-footer-bottom">
+                <p>&copy; 2024 PetStore AI. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    @await Html.PartialAsync("_HotelBookingModal")
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/homepage.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

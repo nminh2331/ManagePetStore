@@ -1,0 +1,120 @@
+@model ManagePetStore.Controllers.ProductDetailViewModel
+@{
+    Layout = "_PetStoreLayout";
+    ViewData["Title"] = Model.Name;
+}
+
+<section class="ps-product-detail">
+    <div class="ps-pd-grid">
+        <div>
+            <div class="ps-pd-main-image">
+                <img id="pdMainImage" src="@Model.Images.FirstOrDefault()" alt="@Model.Name" />
+            </div>
+            <div class="ps-pd-thumbs">
+                @for (var i = 0; i < Model.Images.Count; i++)
+                {
+                    <div class="ps-pd-thumb @(i == 0 ? "active" : "")" data-src="@Model.Images[i]">
+                        <img src="@Model.Images[i]" alt="@Model.Name thumbnail @(i + 1)" />
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div>
+            <div class="ps-pd-brand">
+                THƯƠNG HIỆU: @Model.Brand
+                @if (Model.InStock)
+                {
+                    <span class="ps-pd-stock-badge"><i class="bi bi-check-circle-fill"></i> Còn hàng</span>
+                }
+            </div>
+
+            <h1 class="ps-pd-title">@Model.FullTitle</h1>
+
+            <div class="ps-pd-meta">
+                <i class="bi bi-star-fill"></i> @Model.Rating.ToString("0.0") (@Model.ReviewCount đánh giá) | Đã bán @Model.SoldCount
+            </div>
+
+            <div class="ps-pd-price-box">
+                <div class="ps-pd-price-row">
+                    <span class="ps-pd-price">@Model.Price.ToString("N0")đ</span>
+                    @if (Model.OriginalPrice > Model.Price)
+                    {
+                        <span class="ps-pd-original">@Model.OriginalPrice.ToString("N0")đ</span>
+                        <span class="ps-pd-discount-badge">@Model.DiscountPercent%</span>
+                    }
+                </div>
+                @if (Model.Savings > 0)
+                {
+                    <div class="ps-pd-savings">Tiết kiệm: @Model.Savings.ToString("N0")đ</div>
+                }
+            </div>
+
+            <p class="ps-pd-desc">@Model.Description</p>
+
+            <div class="ps-pd-features">
+                @foreach (var feature in Model.Features)
+                {
+                    <div class="ps-pd-feature">
+                        <span class="ps-pd-feature-icon"><i class="bi bi-check-lg"></i></span>
+                        @feature
+                    </div>
+                }
+            </div>
+
+            <div class="ps-pd-qty-row">
+                <span class="ps-pd-qty-label">Số lượng:</span>
+                <div class="ps-pd-qty-control">
+                    <button type="button" class="ps-pd-qty-btn" id="pdQtyMinus">−</button>
+                    <span class="ps-pd-qty-value" id="pdQty" data-max="@Model.Stock">1</span>
+                    <button type="button" class="ps-pd-qty-btn" id="pdQtyPlus">+</button>
+                </div>
+                <span class="ps-pd-stock-text">@Model.Stock sản phẩm có sẵn</span>
+            </div>
+
+            <div class="ps-pd-actions">
+                <form asp-area="Customer" asp-controller="Cart" asp-action="Add" method="post" class="ps-pd-add-cart-form" style="width: 100%;">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="sku" value="@Model.Sku" />
+                    <input type="hidden" name="quantity" id="pdQtyInput" value="1" />
+                    <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                    <button type="submit" class="ps-pd-add-cart" style="width: 100%;" @(Model.InStock ? null : "disabled")>
+                        <i class="bi bi-cart3"></i> Thêm vào giỏ
+                    </button>
+                </form>
+                <button type="button" class="ps-pd-buy-now">Mua ngay</button>
+            </div>
+
+            <div class="ps-pd-trust">
+                <div class="ps-pd-trust-item"><i class="bi bi-shield-check"></i> CHÍNH HÃNG 100%</div>
+                <div class="ps-pd-trust-item"><i class="bi bi-truck"></i> GIAO NHANH 2H</div>
+                <div class="ps-pd-trust-item"><i class="bi bi-arrow-repeat"></i> ĐỔI TRẢ 7 NGÀY</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        (function () {
+            var qtyEl = document.getElementById('pdQty');
+            var qtyInput = document.getElementById('pdQtyInput');
+            var form = document.querySelector('.ps-pd-add-cart-form');
+
+            function syncQtyInput() {
+                if (qtyEl && qtyInput) {
+                    qtyInput.value = qtyEl.textContent.trim() || '1';
+                }
+            }
+
+            if (form) {
+                form.addEventListener('submit', syncQtyInput);
+            }
+
+            var observer = qtyEl ? new MutationObserver(syncQtyInput) : null;
+            if (observer && qtyEl) {
+                observer.observe(qtyEl, { childList: true, characterData: true, subtree: true });
+            }
+        })();
+    </script>
+}

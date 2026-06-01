@@ -1,0 +1,107 @@
+@model ManagePetStore.Areas.Customer.Models.OrderHistoryPageViewModel
+@{
+    Layout = "/Views/Shared/_PetStoreLayout.cshtml";
+    ViewData["Title"] = "Lịch sử đơn hàng";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/customer-pets.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/customer-orders.css" asp-append-version="true" />
+}
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="cp-toast success" id="cpToast">@TempData["SuccessMessage"]</div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="cp-toast error" id="cpToast">@TempData["ErrorMessage"]</div>
+}
+
+<div class="cp-dashboard">
+    @await Html.PartialAsync("_CustomerSidebar", Model)
+
+    <section class="cp-main">
+        <div class="cp-main-header">
+            <div>
+                <h1 class="cp-main-title">Lịch sử đơn hàng</h1>
+            </div>
+        </div>
+
+        <div class="co-table-card">
+            @if (!Model.Orders.Any())
+            {
+                <div class="co-empty">
+                    <i class="bi bi-bag-x"></i>
+                    <p>Bạn chưa có đơn hàng nào.</p>
+                    <a asp-area="" asp-controller="Home" asp-action="Index" class="co-btn-review">Mua sắm ngay</a>
+                </div>
+            }
+            else
+            {
+                <div class="co-table-wrap">
+                    <table class="co-table">
+                        <thead>
+                            <tr>
+                                <th>ĐƠN HÀNG</th>
+                                <th>THỜI GIAN</th>
+                                <th>TỔNG TIỀN</th>
+                                <th>TRẠNG THÁI</th>
+                                <th>ĐÁNH GIÁ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var order in Model.Orders)
+                            {
+                                <tr class="co-table-row" data-href="@Url.Action("Details", "Order", new { area = "Customer", id = order.OrderId })">
+                                    <td>
+                                        <a asp-action="Details" asp-route-id="@order.OrderId" class="co-order-id">@order.DisplayOrderId</a>
+                                    </td>
+                                    <td>
+                                        <span class="co-order-date">
+                                            <i class="bi bi-clock"></i>
+                                            @order.OrderDate.ToString("yyyy-MM-dd")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <strong class="co-order-total">@order.Total.ToString("N0")đ</strong>
+                                    </td>
+                                    <td>
+                                        <span class="co-status co-status-@order.StatusKey">@order.Status</span>
+                                    </td>
+                                    <td>
+                                        @if (order.CanReview)
+                                        {
+                                            <button type="button"
+                                                    class="co-btn-review js-open-review"
+                                                    data-order-id="@order.OrderId"
+                                                    data-display-id="@order.DisplayOrderId"
+                                                    onclick="event.stopPropagation();">
+                                                Gửi đánh giá
+                                            </button>
+                                        }
+                                        else if (order.HasReviewed)
+                                        {
+                                            <span class="co-reviewed-badge">Đã đánh giá</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="co-review-placeholder">...</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </section>
+</div>
+
+@await Html.PartialAsync("_ReviewModal")
+
+@section Scripts {
+    <script src="~/js/customer-orders.js" asp-append-version="true"></script>
+}
