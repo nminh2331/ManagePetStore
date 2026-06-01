@@ -13,7 +13,7 @@
 
 <div class="card border-0 shadow-sm" style="border-radius: 12px;">
     <div class="card-body p-4">
-        <form asp-action="Edit">
+        <form asp-action="Edit" enctype="multipart/form-data">
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
             <input type="hidden" asp-for="Sku" />
             
@@ -75,11 +75,20 @@
                 </div>
 
                 <div class="col-md-12 mb-4">
-                    <label asp-for="ImageUrl" class="form-label fw-bold">Đường dẫn hình ảnh (URL)</label>
-                    <input asp-for="ImageUrl" id="imgUrlInput" class="form-control" style="border-radius: 8px;" oninput="previewImage(this.value)" />
-                    <span asp-validation-for="ImageUrl" class="text-danger small"></span>
-                    <div id="imgPreviewBox" class="mt-2" style="display:none;">
-                        <p class="text-muted small mb-1">Xem trước:</p>
+                    <label class="form-label fw-bold">Hình ảnh sản phẩm</label>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small text-muted mb-1">Tải ảnh từ máy tính:</label>
+                            <input type="file" name="ImageFile" id="imageFileInput" class="form-control" style="border-radius: 8px;" accept="image/*" onchange="previewLocalImage(this)" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="ImageUrl" class="form-label small text-muted mb-1">Hoặc nhập URL ảnh:</label>
+                            <input asp-for="ImageUrl" id="imgUrlInput" class="form-control" style="border-radius: 8px;" placeholder="https://..." oninput="previewImage(this.value)" />
+                            <span asp-validation-for="ImageUrl" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <div id="imgPreviewBox" class="mt-3" style="display:none;">
+                        <p class="text-muted small mb-1">Xem trước hình ảnh:</p>
                         <img id="imgPreview" src="" alt="preview"
                              style="max-height:160px;max-width:100%;border-radius:10px;border:1px solid #eee;object-fit:contain;background:#fafafa;padding:4px;"
                              onerror="document.getElementById('imgPreviewBox').style.display='none';" />
@@ -102,17 +111,40 @@
         function previewImage(url) {
             var box = document.getElementById('imgPreviewBox');
             var img = document.getElementById('imgPreview');
+            var fileInput = document.getElementById('imageFileInput');
             if (url && url.trim() !== '') {
                 img.src = url.trim();
                 box.style.display = 'block';
+                if (fileInput) fileInput.value = '';
             } else {
                 box.style.display = 'none';
             }
         }
+
+        function previewLocalImage(input) {
+            var box = document.getElementById('imgPreviewBox');
+            var img = document.getElementById('imgPreview');
+            var urlInput = document.getElementById('imgUrlInput');
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    img.src = e.target.result;
+                    box.style.display = 'block';
+                    if (urlInput) urlInput.value = '';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
         // Auto-preview on page load if URL already exists
         document.addEventListener('DOMContentLoaded', function () {
             var existing = document.getElementById('imgUrlInput').value;
-            if (existing) previewImage(existing);
+            if (existing) {
+                var box = document.getElementById('imgPreviewBox');
+                var img = document.getElementById('imgPreview');
+                img.src = existing.trim();
+                box.style.display = 'block';
+            }
         });
     </script>
 }
