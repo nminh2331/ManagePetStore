@@ -140,11 +140,21 @@ public class CheckoutController : Controller
                 var product = await _context.Products.FirstOrDefaultAsync(p => p.Sku == item.Sku);
                 if (product == null)
                 {
+                    var onlineCat = await _context.ProductCategories.FirstOrDefaultAsync(c => c.Name == "Online")
+                                    ?? await _context.ProductCategories.FirstOrDefaultAsync()
+                                    ?? new ProductCategory { Name = "Online", Description = "Danh mục mua sắm trực tuyến" };
+                    
+                    if (onlineCat.CategoryId == 0)
+                    {
+                        _context.ProductCategories.Add(onlineCat);
+                        await _context.SaveChangesAsync();
+                    }
+
                     product = new Product
                     {
                         Sku = item.Sku,
                         Name = item.Name,
-                        Category = "Online",
+                        CategoryId = onlineCat.CategoryId,
                         Unit = "Cái",
                         Stock = Math.Max(0, item.MaxStock - item.Quantity),
                         MinStock = 0,
