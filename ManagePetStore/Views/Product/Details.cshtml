@@ -73,7 +73,7 @@
                 }
             </div>
 
-            @if (Model.Sku.StartsWith("SPA-SVC-"))
+            @if (Model.Sku.StartsWith("SPA-SVC-"))  // xu ly Xử lý Số lượng (Quantity) , nếu là spa / sản phẩm 
             {
                 <div class="ps-pd-qty-row">
                     <span class="ps-pd-qty-label">Trạng thái:</span>
@@ -94,7 +94,9 @@
                 </div>
             }
 
-            <div class="ps-pd-actions">
+
+             
+            <div class="ps-pd-actions"> // them vao gio hang 
                 <form asp-area="Customer" asp-controller="Cart" asp-action="Add" method="post" class="ps-pd-add-cart-form" style="width: 100%;">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="sku" value="@Model.Sku" />

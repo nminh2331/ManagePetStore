@@ -87,7 +87,6 @@ public class OrderController : Controller
 
         var order = await _context.Orders
             .Include(o => o.OrderItems)
-                .ThenInclude(oi => oi.ProductSkuNavigation)
             .FirstOrDefaultAsync(o => o.OrderId == id && o.CustomerId == layout.Customer.CustomerId);
 
         if (order == null)
@@ -96,12 +95,18 @@ public class OrderController : Controller
             return RedirectToAction(nameof(Index));
         }
 
+        var productInfo = await LoadProductInfoBySkusAsync(
+            order.OrderItems
+                .Select(i => i.ProductSku)
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Cast<string>());
+
         var model = new OrderDetailPageViewModel
         {
             User = layout.User,
             Customer = layout.Customer,
             ActiveNav = layout.ActiveNav,
-            Order = MapToDetail(order)
+            Order = MapToDetail(order, productInfo)
         };
 
         return View(model);
@@ -151,7 +156,9 @@ public class OrderController : Controller
         };
     }
 
-    private static OrderDetailViewModel MapToDetail(Order order)
+    private static OrderDetailViewModel MapToDetail(
+        Order order,
+        IReadOnlyDictionary<string, (string Name, string? ImageUrl)> productInfo)
     {
         var statusKey = ResolveStatusKey(order.Status);
 
@@ -166,15 +173,50 @@ public class OrderController : Controller
             PaymentMethod = order.PaymentMethod,
             Status = FormatStatusLabel(statusKey, order.Status),
             StatusKey = statusKey,
-            Items = order.OrderItems.Select(item => new OrderDetailItemViewModel
+            Items = order.OrderItems.Select(item =>
             {
-                ProductSku = item.ProductSku,
-                ProductName = item.ProductSkuNavigation?.Name ?? item.ProductSku ?? "Sản phẩm",
-                ImageUrl = item.ProductSkuNavigation?.ImageUrl,
-                Quantity = item.Quantity,
-                UnitPrice = item.Price
+                var sku = item.ProductSku ?? "";
+                productInfo.TryGetValue(sku, out var info);
+
+                return new OrderDetailItemViewModel
+                {
+                    ProductSku = item.ProductSku,
+                    ProductName = !string.IsNullOrEmpty(info.Name) ? info.Name : (sku.Length > 0 ? sku : "Sản phẩm"),
+                    ImageUrl = info.ImageUrl,
+                    Quantity = item.Quantity,
+                    UnitPrice = item.Price
+                };
             }).ToList()
         };
+    }
+
+    private async Task<Dictionary<string, (string Name, string? ImageUrl)>> LoadProductInfoBySkusAsync(
+        IEnumerable<string> skus)
+    {
+        var result = new Dictionary<string, (string Name, string? ImageUrl)>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var sku in skus.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var row = await _context.Database
+                .SqlQueryRaw<ProductInfoRow>(
+                    "SELECT Sku, Name, ImageUrl FROM Products WHERE Sku = {0}",
+                    sku)
+                .FirstOrDefaultAsync();
+
+            if (row != null)
+            {
+                result[sku] = (row.Name, row.ImageUrl);
+            }
+        }
+
+        return result;
+    }
+
+    private sealed class ProductInfoRow
+    {
+        public string Sku { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string? ImageUrl { get; set; }
     }
 
     private static string FormatDisplayOrderId(string orderId)

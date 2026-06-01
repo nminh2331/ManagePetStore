@@ -21,9 +21,11 @@ public class PetController : Controller
     }
 
     [HttpGet]
+
+    // Trang danh sách & Chuẩn bị Form Sửa
     public async Task<IActionResult> Index(int? editId = null)
     {
-        var page = await BuildPageViewModelAsync();
+        var page = await BuildPageViewModelAsync();   // Gọi hàm hỗ trợ để gom thông tin User, Khách hàng và danh sách Pets của người đó.
         if (page == null)
         {
             return RedirectToAction("Login", "Account", new { area = "Customer" });
@@ -31,14 +33,14 @@ public class PetController : Controller
 
         if (editId.HasValue)
         {
-            var pet = await GetOwnedPetAsync(editId.Value);
+            var pet = await GetOwnedPetAsync(editId.Value);  //  Nó kiểm tra xem thú cưng có ID đó có thực sự thuộc về khách hàng đang đăng nhập hay không.
             if (pet == null)
             {
                 TempData["ErrorMessage"] = "Không tìm thấy thú cưng hoặc bạn không có quyền truy cập.";
                 return RedirectToAction(nameof(Index));
             }
 
-            page.EditPet = MapPetToForm(pet);
+            page.EditPet = MapPetToForm(pet);  // Nếu đúng pet của mình, chuyển data từ DB sang dạng Form.
             page.OpenEditModal = true;
         }
 
@@ -47,6 +49,7 @@ public class PetController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    // hàm thêm thú cưng mới 
     public async Task<IActionResult> Create(
         string name,
         string species,
@@ -80,7 +83,7 @@ public class PetController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        var imageUrl = await SavePetImageAsync(avatarFile);
+        var imageUrl = await SavePetImageAsync(avatarFile);  // Hàm này sẽ lưu ảnh xuống ổ cứng và trả về đường dẫn imageUrl 
         if (avatarFile != null && avatarFile.Length > 0 && imageUrl == null)
         {
             TempData["ErrorMessage"] = "Ảnh không hợp lệ. Chỉ chấp nhận JPG, PNG, GIF, WEBP.";
@@ -110,6 +113,7 @@ public class PetController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    // ham edit 
     public async Task<IActionResult> Edit(
         int petId,
         string name,
@@ -120,7 +124,7 @@ public class PetController : Controller
         string? pathology,
         IFormFile? avatarFile)
     {
-        var pet = await GetOwnedPetAsync(petId);
+        var pet = await GetOwnedPetAsync(petId);  // dam bao quyen so huu 
         if (pet == null)
         {
             TempData["ErrorMessage"] = "Không tìm thấy thú cưng hoặc bạn không có quyền chỉnh sửa.";
@@ -183,9 +187,11 @@ public class PetController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    //Hàm này có nhiệm vụ tổng hợp toàn bộ dữ liệu cần thiết để hiển thị trang hồ sơ thú cưng
     private async Task<PetProfilePageViewModel?> BuildPageViewModelAsync()
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        //Tìm trong các claims của người dùng hiện tại (thường được tạo ra khi đăng nhập) để lấy ID người dùng.
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);  // 
         if (userIdClaim == null)
         {
             return null;
@@ -202,9 +208,9 @@ public class PetController : Controller
             return null;
         }
 
-        var pets = await _context.Pets
+        var pets = await _context.Pets  // lay danh sách thú cưng của khách đó 
             .Where(p => p.CustomerId == user.Customer.CustomerId)
-            .OrderByDescending(p => p.PetId)
+            .OrderByDescending(p => p.PetId)  // ắp xếp giảm dần theo PetId (thú cưng mới thêm sẽ hiện lên đầu).
             .ToListAsync();
 
         return new PetProfilePageViewModel
@@ -215,7 +221,7 @@ public class PetController : Controller
             OpenCreateModal = TempData["OpenCreateModal"] != null
         };
     }
-
+    // hàm chi chỉ tập trung vào việc lấy CustomerId từ phiên đăng nhập.
     private async Task<int?> GetCurrentCustomerIdAsync()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
@@ -226,12 +232,14 @@ public class PetController : Controller
 
         var userId = int.Parse(userIdClaim.Value);
         var customer = await _context.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
-        return customer?.CustomerId;
+        return customer?.CustomerId;  // Lấy UserId từ token -> tìm Customer tương ứng trong DB -> trả về CustomerId.
     }
 
-    private async Task<Pet?> GetOwnedPetAsync(int petId)
+
+    //Đây là hàm bắt buộc phải gọi trước khi Sửa hoặc Xóa để chống lỗi Broken Object Level Authorization
+    private async Task<Pet?> GetOwnedPetAsync(int petId)  
     {
-        var customerId = await GetCurrentCustomerIdAsync();
+        var customerId = await GetCurrentCustomerIdAsync();  // lay customerID hiện tại 
         if (customerId == null)
         {
             return null;
@@ -239,7 +247,8 @@ public class PetController : Controller
 
         return await _context.Pets.FirstOrDefaultAsync(p => p.PetId == petId && p.CustomerId == customerId.Value);
     }
-
+    // chuyển đổi dữ liệu 
+    // Chuyển Entity Pet thành PetFormModel để đổ dữ liệu vào các thẻ input trong Form Edit.
     private static PetFormModel MapPetToForm(Pet pet)
     {
         return new PetFormModel
@@ -268,10 +277,10 @@ public class PetController : Controller
             return null;
         }
 
-        var uploadsFolder = Path.Combine(_env.WebRootPath, "uploads", "pets");
-        Directory.CreateDirectory(uploadsFolder);
+        var uploadsFolder = Path.Combine(_env.WebRootPath, "uploads", "pets"); 
+        Directory.CreateDirectory(uploadsFolder);  // sẽ tạo thư mục nếu nó chưa tồn tại (chạy lần đầu).
 
-        var fileName = $"{Guid.NewGuid():N}{extension}";
+        var fileName = $"{Guid.NewGuid():N}{extension}";  // Tạo tên file ngẫu nhiên bằng Guid để chống trùng lặp tên
         var filePath = Path.Combine(uploadsFolder, fileName);
 
         await using var stream = new FileStream(filePath, FileMode.Create);
@@ -280,6 +289,7 @@ public class PetController : Controller
         return $"/uploads/pets/{fileName}";
     }
 
+    // xóa ảnh cũ 
     private void DeletePetImageIfLocal(string? imageUrl)
     {
         if (string.IsNullOrWhiteSpace(imageUrl) || !imageUrl.StartsWith("/uploads/pets/", StringComparison.OrdinalIgnoreCase))
