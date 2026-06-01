@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using ManagePetStore.Models;
+using ManagePetStore.Repositories;
+using ManagePetStore.Services;
 
 
 var builder = WebApplication.CreateBuilder(args);

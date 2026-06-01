@@ -151,7 +151,7 @@ public class HomeController : Controller
         {
             Sku = product.Sku,
             Name = product.Name,
-            Category = product.Category,
+            Category = product.Category?.Name ?? "PETSTORE",
             Price = product.Price,
             ImageUrl = ResolveProductImageUrl(product),
             Rating = 4.7,
@@ -172,8 +172,8 @@ public class HomeController : Controller
         }
 
         if (product.Sku.Equals("PROD-ROYAL-01", StringComparison.OrdinalIgnoreCase) ||
-            product.Category.Contains("Thức ăn", StringComparison.OrdinalIgnoreCase) ||
-            product.Category.Contains("Thuc an", StringComparison.OrdinalIgnoreCase))
+            (product.Category != null && product.Category.Name.Contains("Thức ăn", StringComparison.OrdinalIgnoreCase)) ||
+            (product.Category != null && product.Category.Name.Contains("Thuc an", StringComparison.OrdinalIgnoreCase)))
         {
             return "https://images.unsplash.com/photo-1589924691995-400dc9ecc119?w=400&h=400&fit=crop";
         }

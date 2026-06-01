@@ -49,7 +49,7 @@ public class ProductController : Controller
         return new ProductDetailViewModel
         {
             Sku = product.Sku,
-            Brand = product.Category.ToUpperInvariant(),
+            Brand = product.Category?.Name.ToUpperInvariant() ?? "PETSTORE",
             Name = product.Name,
             FullTitle = product.Name,
             Price = product.Price,
