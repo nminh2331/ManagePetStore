@@ -653,7 +653,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
         public async Task<IActionResult> Logout()
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return RedirectToAction("Login");
+            return RedirectToAction("Index", "Home", new { area = "" });
         }
 
         // =========================================================================
@@ -856,7 +856,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
             {
                 "admin"     => RedirectToAction("Index", "Home", new { area = "Admin" }),
                 "cashier"   => RedirectToAction("Index", "Home", new { area = "Cashier" }),
-                "service"   => RedirectToAction("Index", "Home", new { area = "Service" }),
+                "service"   => Redirect("/SpaServices"), // Redirect directly to SpaServices operational dashboard
                 "warehouse" => RedirectToAction("Index", "Home", new { area = "Warehouse" }),
                 // customer or any other role → public home
                 _           => RedirectToAction("Index", "Home", new { area = "" })
@@ -871,11 +871,9 @@ namespace ManagePetStore.Areas.Customer.Controllers
             if (User.IsInRole("cashier"))
                 return RedirectToAction("Index", "Home", new { area = "Cashier" });
             if (User.IsInRole("service"))
-
             {
-                return Redirect("/SpaServices");
+                return Redirect("/SpaServices"); // Redirect directly to SpaServices operational dashboard
             }
-                return RedirectToAction("Index", "Home", new { area = "Service" });
             if (User.IsInRole("warehouse"))
                 return RedirectToAction("Index", "Home", new { area = "Warehouse" });
 

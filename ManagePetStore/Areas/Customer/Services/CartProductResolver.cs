@@ -22,10 +22,32 @@ public class CartProductResolver
 
         try
         {
-            var product = await _context.Products.FirstOrDefaultAsync(p => p.Sku == sku);
-            if (product != null)
+            if (sku.StartsWith("SPA-SVC-", StringComparison.OrdinalIgnoreCase))
             {
-                return MapFromProduct(product);
+                var idString = sku.Substring(8);
+                if (int.TryParse(idString, out int serviceId))
+                {
+                    var spaService = await _context.SpaServices.FirstOrDefaultAsync(s => s.ServiceId == serviceId);
+                    if (spaService != null)
+                    {
+                        return new CartProductInfo
+                        {
+                            Sku = sku,
+                            Name = spaService.Name,
+                            Price = spaService.Price,
+                            Stock = 999, // Virtual stock
+                            ImageUrl = "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=200&h=200&fit=crop"
+                        };
+                    }
+                }
+            }
+            else
+            {
+                var product = await _context.Products.FirstOrDefaultAsync(p => p.Sku == sku);
+                if (product != null)
+                {
+                    return MapFromProduct(product);
+                }
             }
         }
         catch
