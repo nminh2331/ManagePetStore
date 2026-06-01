@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
-using ManagePetStore.Models; // CHÚ Ý: Đổi lại tên Namespace này nếu tên Project của mày đặt khác
+using ManagePetStore.Models;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -49,6 +50,23 @@ builder.Services.AddScoped<ManagePetStore.Areas.Customer.Services.ICartService, 
 builder.Services.AddScoped<ManagePetStore.Areas.Customer.Services.IOrderReviewService, ManagePetStore.Areas.Customer.Services.OrderReviewService>();
 builder.Services.AddScoped<ManagePetStore.Areas.Customer.Services.ICheckoutEmailService, ManagePetStore.Areas.Customer.Services.CheckoutEmailService>();
 builder.Services.AddControllersWithViews();
+
+// =========================================================================
+// 4. ĐĂNG KÝ DEPENDENCY INJECTION
+// =========================================================================
+builder.Services.AddScoped<IRoomRepository, RoomRepository>();
+builder.Services.AddScoped<IRoomService, RoomService>();
+
+// Warehouse repositories
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IProductCategoryRepository, ProductCategoryRepository>();
+
+// Warehouse services
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IProductCategoryService, ProductCategoryService>();
+
+
+
 
 var app = builder.Build();
 
