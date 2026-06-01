@@ -1,0 +1,41 @@
+<div class="co-review-overlay" id="reviewModalOverlay" hidden>
+    <div class="co-review-modal" role="dialog" aria-modal="true" aria-labelledby="reviewModalTitle">
+        <div class="co-review-modal-icon">
+            <i class="bi bi-stars"></i>
+        </div>
+
+        <h2 class="co-review-modal-title" id="reviewModalTitle">Đánh giá dịch vụ &amp; sản phẩm</h2>
+        <p class="co-review-modal-subtitle">
+            Ý kiến của bạn là động lực để PetStore ngày càng hoàn thiện hơn.
+            Hãy đánh giá đơn hàng <strong id="reviewModalOrderLabel">#OD-0000</strong> nhé!
+        </p>
+
+        <div class="co-review-stars" id="reviewStars">
+            @for (var i = 1; i <= 5; i++)
+            {
+                <button type="button" class="co-review-star active" data-star="@i" aria-label="@i sao">
+                    <i class="bi bi-star-fill"></i>
+                </button>
+            }
+        </div>
+
+        <form asp-action="SubmitReview" method="post" id="reviewForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="orderId" id="reviewOrderId" value="" />
+            <input type="hidden" name="rating" id="reviewRating" value="5" />
+
+            <label class="co-review-label" for="reviewComment">Ý KIẾN PHẢN HỒI THỰC TẾ</label>
+            <textarea id="reviewComment"
+                      name="comment"
+                      class="co-review-textarea"
+                      rows="4"
+                      placeholder="Dịch vụ chu đáo, bé Lulu rất thích combo tắm thơm, nhân viên tư vấn nhiệt tình..."
+                      required></textarea>
+
+            <div class="co-review-actions">
+                <button type="button" class="co-review-btn-skip" id="reviewSkipBtn">Bỏ qua</button>
+                <button type="submit" class="co-review-btn-submit">Gửi đánh giá</button>
+            </div>
+        </form>
+    </div>
+</div>

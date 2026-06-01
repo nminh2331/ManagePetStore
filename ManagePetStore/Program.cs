@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
-using ManagePetStore.Models; 
-using ManagePetStore.Repositories;
-using ManagePetStore.Services;
+using Microsoft.Extensions.FileProviders;
+using ManagePetStore.Models;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,6 +41,14 @@ builder.Services.AddSession(options =>
 });
 
 // Thêm các dịch vụ hỗ trợ cho kiến trúc MVC
+builder.Services.Configure<ManagePetStore.Services.EmailSettings>(
+    builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddScoped<ManagePetStore.Services.IEmailService, ManagePetStore.Services.EmailService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ManagePetStore.Areas.Customer.Services.CartProductResolver>();
+builder.Services.AddScoped<ManagePetStore.Areas.Customer.Services.ICartService, ManagePetStore.Areas.Customer.Services.CartService>();
+builder.Services.AddScoped<ManagePetStore.Areas.Customer.Services.IOrderReviewService, ManagePetStore.Areas.Customer.Services.OrderReviewService>();
+builder.Services.AddScoped<ManagePetStore.Areas.Customer.Services.ICheckoutEmailService, ManagePetStore.Areas.Customer.Services.CheckoutEmailService>();
 builder.Services.AddControllersWithViews();
 
 // =========================================================================
@@ -72,6 +80,29 @@ if (!app.Environment.IsDevelopment())
 
 // Cho phép truy cập các file tĩnh trong wwwroot (CSS, JS, Images, File upload của chuồng/pet)
 app.UseStaticFiles();
+
+// Phục vụ CSS/JS homepage từ thư mục Views (chỉ cho phép .css và .js)
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/views-assets"))
+    {
+        var path = context.Request.Path.Value ?? string.Empty;
+        if (!path.EndsWith(".css", StringComparison.OrdinalIgnoreCase) &&
+            !path.EndsWith(".js", StringComparison.OrdinalIgnoreCase))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+    }
+
+    await next();
+});
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(Path.Combine(app.Environment.ContentRootPath, "Views")),
+    RequestPath = "/views-assets"
+});
 
 app.UseRouting();
 
