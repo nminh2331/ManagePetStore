@@ -1,27 +1,34 @@
+/**
+ * Project: Pet Store Management System (PSMS)
+ * File: IProductCategoryRepository.cs
+ * Author: Tran Duong
+ * Date: May 31, 2026
+ * Description: Định nghĩa giao diện truy xuất cơ sở dữ liệu cho bảng danh mục sản phẩm (ProductCategory).
+ */
 using ManagePetStore.Models;
 
 namespace ManagePetStore.Repositories;
 
 public interface IProductCategoryRepository
 {
-    /// <summary>Returns all categories with their Products eagerly loaded.</summary>
-    Task<IEnumerable<ProductCategory>> GetAllWithProductsAsync();
+    /// Returns all categories with their Products eagerly loaded.
+    Task<IEnumerable<ProductCategory>> GetAllWithProducts();
 
-    /// <summary>Returns all categories without navigation properties (for dropdowns etc.).</summary>
-    Task<IEnumerable<ProductCategory>> GetAllAsync();
+    /// Returns all categories without navigation properties (for dropdowns etc.).
+    Task<IEnumerable<ProductCategory>> GetAllCategories();
 
-    /// <summary>Returns a single category by ID (without navigation properties).</summary>
-    Task<ProductCategory?> GetByIdAsync(int id);
+    /// Returns a single category by ID (without navigation properties).
+    Task<ProductCategory?> GetCategoryById(int id);
 
-    /// <summary>Adds a new category and persists the change.</summary>
-    Task AddAsync(ProductCategory category);
+    /// Adds a new category and persists the change.
+    Task AddCategory(ProductCategory category);
 
-    /// <summary>Updates an existing category and persists the change.</summary>
-    Task UpdateAsync(ProductCategory category);
+    /// Updates an existing category and persists the change.
+    Task UpdateCategory(ProductCategory category);
 
-    /// <summary>Deletes a category by ID and persists the change.</summary>
-    Task DeleteAsync(int id);
+    /// Deletes a category by ID and persists the change.
+    Task DeleteCategory(int id);
 
-    /// <summary>Returns true if a category with the given ID exists.</summary>
-    Task<bool> ExistsAsync(int id);
+    /// Returns true if a category with the given ID exists.
+    Task<bool> CategoryExists(int id);
 }

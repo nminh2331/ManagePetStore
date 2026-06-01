@@ -1,3 +1,10 @@
+/**
+ * Project: Pet Store Management System (PSMS)
+ * File: ProductRepository.cs
+ * Author: Tran Duong
+ * Date: May 31, 2026
+ * Description: Các thao tác CRUD cho bảng sản phẩm.
+ */
 using ManagePetStore.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,8 +19,7 @@ public class ProductRepository : IProductRepository
         _context = context;
     }
 
-    /// <inheritdoc/>
-    public async Task<IEnumerable<Product>> GetAllWithCategoryAsync()
+    public async Task<IEnumerable<Product>> GetAllWithCategory()
     {
         return await _context.Products
             .Include(p => p.Category)
@@ -21,34 +27,29 @@ public class ProductRepository : IProductRepository
             .ToListAsync();
     }
 
-    /// <inheritdoc/>
-    public async Task<Product?> GetBySkuAsync(string sku)
+    public async Task<Product?> GetProductBySku(string sku)
     {
         return await _context.Products.FindAsync(sku);
     }
 
-    /// <inheritdoc/>
-    public async Task<int> GetCategoryCountAsync()
+    public async Task<int> GetCategoryCount()
     {
         return await _context.ProductCategories.CountAsync();
     }
 
-    /// <inheritdoc/>
-    public async Task AddAsync(Product product)
+    public async Task AddProduct(Product product)
     {
         _context.Products.Add(product);
         await _context.SaveChangesAsync();
     }
 
-    /// <inheritdoc/>
-    public async Task UpdateAsync(Product product)
+    public async Task UpdateProduct(Product product)
     {
         _context.Products.Update(product);
         await _context.SaveChangesAsync();
     }
 
-    /// <inheritdoc/>
-    public async Task DeleteAsync(string sku)
+    public async Task DeleteProduct(string sku)
     {
         var product = await _context.Products.FindAsync(sku);
         if (product is not null)
@@ -58,8 +59,7 @@ public class ProductRepository : IProductRepository
         }
     }
 
-    /// <inheritdoc/>
-    public async Task<bool> ExistsAsync(string sku)
+    public async Task<bool> ProductExists(string sku)
     {
         return await _context.Products.AnyAsync(p => p.Sku == sku);
     }

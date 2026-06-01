@@ -1,3 +1,10 @@
+/**
+ * Project: Pet Store Management System (PSMS)
+ * File: ProductCategoryRepository.cs
+ * Author: Tran Duong
+ * Date: May 31, 2026
+ * Description: Các thao tác CRUD cho danh mục sản phẩm.
+ */
 using ManagePetStore.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,8 +19,7 @@ public class ProductCategoryRepository : IProductCategoryRepository
         _context = context;
     }
 
-    /// <inheritdoc/>
-    public async Task<IEnumerable<ProductCategory>> GetAllWithProductsAsync()
+    public async Task<IEnumerable<ProductCategory>> GetAllWithProducts()
     {
         return await _context.ProductCategories
             .Include(c => c.Products)
@@ -21,36 +27,32 @@ public class ProductCategoryRepository : IProductCategoryRepository
             .ToListAsync();
     }
 
-    /// <inheritdoc/>
-    public async Task<IEnumerable<ProductCategory>> GetAllAsync()
+    public async Task<IEnumerable<ProductCategory>> GetAllCategories()
     {
         return await _context.ProductCategories
             .OrderBy(c => c.Name)
             .ToListAsync();
     }
 
-    /// <inheritdoc/>
-    public async Task<ProductCategory?> GetByIdAsync(int id)
+    public async Task<ProductCategory?> GetCategoryById(int id)
     {
         return await _context.ProductCategories.FindAsync(id);
     }
 
-    /// <inheritdoc/>
-    public async Task AddAsync(ProductCategory category)
+    public async Task AddCategory(ProductCategory category)
     {
         _context.ProductCategories.Add(category);
         await _context.SaveChangesAsync();
     }
 
     /// <inheritdoc/>
-    public async Task UpdateAsync(ProductCategory category)
+    public async Task UpdateCategory(ProductCategory category)
     {
         _context.ProductCategories.Update(category);
         await _context.SaveChangesAsync();
     }
 
-    /// <inheritdoc/>
-    public async Task DeleteAsync(int id)
+    public async Task DeleteCategory(int id)
     {
         var category = await _context.ProductCategories.FindAsync(id);
         if (category is not null)
@@ -60,8 +62,7 @@ public class ProductCategoryRepository : IProductCategoryRepository
         }
     }
 
-    /// <inheritdoc/>
-    public async Task<bool> ExistsAsync(int id)
+    public async Task<bool> CategoryExists(int id)
     {
         return await _context.ProductCategories.AnyAsync(c => c.CategoryId == id);
     }

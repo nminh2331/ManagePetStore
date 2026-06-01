@@ -1,27 +1,34 @@
+/**
+ * Project: Pet Store Management System (PSMS)
+ * File: IProductRepository.cs
+ * Author: Tran Duong
+ * Date: May 31, 2026
+ * Description: Định nghĩa giao diện truy xuất cơ sở dữ liệu cho bảng sản phẩm (Product) trong kho.
+ */
 using ManagePetStore.Models;
 
 namespace ManagePetStore.Repositories;
 
 public interface IProductRepository
 {
-    /// <summary>Returns all products with their Category eagerly loaded.</summary>
-    Task<IEnumerable<Product>> GetAllWithCategoryAsync();
+    /// Returns all products with their Category eagerly loaded.
+    Task<IEnumerable<Product>> GetAllWithCategory();
 
-    /// <summary>Returns a single product by SKU (without navigation properties).</summary>
-    Task<Product?> GetBySkuAsync(string sku);
+    /// Returns a single product by SKU (without navigation properties).
+    Task<Product?> GetProductBySku(string sku);
 
-    /// <summary>Returns the total number of distinct product categories.</summary>
-    Task<int> GetCategoryCountAsync();
+    /// Returns the total number of distinct product categories.
+    Task<int> GetCategoryCount();
 
-    /// <summary>Adds a new product and persists the change.</summary>
-    Task AddAsync(Product product);
+    /// Adds a new product and persists the change.
+    Task AddProduct(Product product);
 
-    /// <summary>Updates an existing product and persists the change.</summary>
-    Task UpdateAsync(Product product);
+    /// Updates an existing product and persists the change.
+    Task UpdateProduct(Product product);
 
-    /// <summary>Deletes a product by SKU and persists the change.</summary>
-    Task DeleteAsync(string sku);
+    /// Deletes a product by SKU and persists the change.
+    Task DeleteProduct(string sku);
 
-    /// <summary>Returns true if a product with the given SKU exists.</summary>
-    Task<bool> ExistsAsync(string sku);
+    /// Returns true if a product with the given SKU exists.
+    Task<bool> ProductExists(string sku);
 }

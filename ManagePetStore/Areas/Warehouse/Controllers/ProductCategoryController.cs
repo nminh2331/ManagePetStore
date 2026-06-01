@@ -1,3 +1,10 @@
+/**
+ * Project: Pet Store Management System (PSMS)
+ * File: ProductCategoryController.cs
+ * Author: Tran Duong
+ * Date: May 31, 2026
+ * Description: Xử lý các yêu cầu HTTP cho chức năng quản lý danh mục sản phẩm trong khu vực Warehouse (thêm, sửa, xóa danh mục).
+ */
 using ManagePetStore.Exceptions;
 using ManagePetStore.Models;
 using ManagePetStore.Services;
@@ -20,7 +27,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         // GET: Warehouse/ProductCategory
         public async Task<IActionResult> Index()
         {
-            var summary = await _categoryService.GetSummaryAsync();
+            var summary = await _categoryService.GetCategorySummary();
 
             ViewBag.TotalCategories = summary.TotalCategories;
             ViewBag.TotalProducts   = summary.TotalProducts;
@@ -45,7 +52,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
 
             try
             {
-                await _categoryService.CreateAsync(category);
+                await _categoryService.CreateCategory(category);
                 return RedirectToAction(nameof(Index));
             }
             catch (ServiceException ex)
@@ -60,7 +67,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         {
             if (id == null) return NotFound();
 
-            var category = await _categoryService.GetByIdAsync(id.Value);
+            var category = await _categoryService.GetCategoryById(id.Value);
             if (category == null) return NotFound();
 
             return View(category);
@@ -77,7 +84,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
 
             try
             {
-                await _categoryService.UpdateAsync(id, category);
+                await _categoryService.UpdateCategory(id, category);
                 return RedirectToAction(nameof(Index));
             }
             catch (ServiceException ex)
@@ -92,7 +99,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            await _categoryService.DeleteAsync(id);
+            await _categoryService.DeleteCategory(id);
             return RedirectToAction(nameof(Index));
         }
     }

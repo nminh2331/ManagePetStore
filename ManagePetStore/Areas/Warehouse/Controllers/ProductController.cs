@@ -1,3 +1,10 @@
+/**
+ * Project: Pet Store Management System (PSMS)
+ * File: ProductController.cs
+ * Author: Tran Duong
+ * Date: May 31, 2026
+ * Description: Xử lý các yêu cầu HTTP cho chức năng quản lý sản phẩm trong kho hàng (thêm, sửa, xóa sản phẩm và theo dõi tình trạng tồn kho).
+ */
 using ManagePetStore.Exceptions;
 using ManagePetStore.Models;
 using ManagePetStore.Services;
@@ -21,7 +28,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         // GET: Warehouse/Product
         public async Task<IActionResult> Index()
         {
-            var summary = await _productService.GetSummaryAsync();
+            var summary = await _productService.GetProductSummary();
 
             ViewBag.TotalProducts   = summary.TotalProducts;
             ViewBag.LowStockCount   = summary.LowStockCount;
@@ -35,7 +42,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         // GET: Warehouse/Product/Create
         public async Task<IActionResult> Create()
         {
-            ViewData["CategoryId"] = await _productService.GetCategorySelectListAsync();
+            ViewData["CategoryId"] = await _productService.GetCategorySelectList();
             return View();
         }
 
@@ -48,19 +55,19 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         {
             if (!ModelState.IsValid)
             {
-                ViewData["CategoryId"] = await _productService.GetCategorySelectListAsync(product.CategoryId);
+                ViewData["CategoryId"] = await _productService.GetCategorySelectList(product.CategoryId);
                 return View(product);
             }
 
             try
             {
-                await _productService.CreateAsync(product);
+                await _productService.CreateProduct(product);
                 return RedirectToAction(nameof(Index));
             }
             catch (ServiceException ex)
             {
                 ModelState.AddModelError(string.Empty, ex.Message);
-                ViewData["CategoryId"] = await _productService.GetCategorySelectListAsync(product.CategoryId);
+                ViewData["CategoryId"] = await _productService.GetCategorySelectList(product.CategoryId);
                 return View(product);
             }
         }
@@ -70,10 +77,10 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         {
             if (id == null) return NotFound();
 
-            var product = await _productService.GetBySkuAsync(id);
+            var product = await _productService.GetProductBySku(id);
             if (product == null) return NotFound();
 
-            ViewData["CategoryId"] = await _productService.GetCategorySelectListAsync(product.CategoryId);
+            ViewData["CategoryId"] = await _productService.GetCategorySelectList(product.CategoryId);
             return View(product);
         }
 
@@ -87,19 +94,19 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         {
             if (!ModelState.IsValid)
             {
-                ViewData["CategoryId"] = await _productService.GetCategorySelectListAsync(product.CategoryId);
+                ViewData["CategoryId"] = await _productService.GetCategorySelectList(product.CategoryId);
                 return View(product);
             }
 
             try
             {
-                await _productService.UpdateAsync(id, product);
+                await _productService.UpdateProduct(id, product);
                 return RedirectToAction(nameof(Index));
             }
             catch (ServiceException ex)
             {
                 ModelState.AddModelError(string.Empty, ex.Message);
-                ViewData["CategoryId"] = await _productService.GetCategorySelectListAsync(product.CategoryId);
+                ViewData["CategoryId"] = await _productService.GetCategorySelectList(product.CategoryId);
                 return View(product);
             }
         }
@@ -109,7 +116,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(string id)
         {
-            await _productService.DeleteAsync(id);
+            await _productService.DeleteProduct(id);
             return RedirectToAction(nameof(Index));
         }
     }

@@ -1,33 +1,28 @@
+/**
+ * Project: Pet Store Management System (PSMS)
+ * File: IProductCategoryService.cs
+ * Author: Tran Duong
+ * Date: May 31, 2026
+ * Description: Định nghĩa giao diện cho dịch vụ quản lý danh mục sản phẩm (CRUD và thống kê danh mục).
+ */
 using ManagePetStore.Models;
 
 namespace ManagePetStore.Services;
 
 public interface IProductCategoryService
 {
-    /// <summary>
     /// Returns the full category list together with pre-calculated stats.
-    /// </summary>
-    Task<CategorySummaryViewModel> GetSummaryAsync();
+    Task<CategorySummaryViewModel> GetCategorySummary();
 
-    /// <summary>
     /// Returns a single category by ID, or null if not found.
-    /// </summary>
-    Task<ProductCategory?> GetByIdAsync(int id);
+    Task<ProductCategory?> GetCategoryById(int id);
 
-    /// <summary>
     /// Validates and creates a new category.
-    /// Throws <see cref="ManagePetStore.Exceptions.ServiceException"/> on business-rule violations.
-    /// </summary>
-    Task CreateAsync(ProductCategory category);
+    Task CreateCategory(ProductCategory category);
 
-    /// <summary>
     /// Validates and updates an existing category.
-    /// Throws <see cref="ManagePetStore.Exceptions.ServiceException"/> if not found or ID mismatch.
-    /// </summary>
-    Task UpdateAsync(int routeId, ProductCategory category);
+    Task UpdateCategory(int routeId, ProductCategory category);
 
-    /// <summary>
     /// Deletes a category by ID. No-op if not found.
-    /// </summary>
-    Task DeleteAsync(int id);
+    Task DeleteCategory(int id);
 }
