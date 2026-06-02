@@ -852,5 +852,459 @@ namespace ManagePetStore.SpaServices.Controllers
 
             return RedirectToAction(nameof(Index), new { date = queueItem.ArrivalTime.ToString("yyyy-MM-dd") });
         }
+        // =========================================================================
+        // 6. TRANG QUẢN LÝ CHUỒNG & TIẾP NHẬN THÚ CƯNG (HOTEL)
+        // =========================================================================
+
+        [HttpGet("Hotel")]
+        public async Task<IActionResult> Hotel(int roomTypePage = 1, int cagePage = 1)
+        {
+            // Danh sách RoomTypes có phân trang
+            int rtPageSize = 6;
+            int totalRoomTypes = await _context.RoomTypes.CountAsync();
+            int totalRtPages = (int)Math.Ceiling((double)totalRoomTypes / rtPageSize);
+            int currentRtPage = roomTypePage < 1 ? 1 : (roomTypePage > totalRtPages ? totalRtPages : roomTypePage);
+            if (currentRtPage < 1) currentRtPage = 1;
+
+            var roomTypes = await _context.RoomTypes
+                .OrderBy(r => r.RoomTypeId)
+                .Skip((currentRtPage - 1) * rtPageSize)
+                .Take(rtPageSize)
+                .ToListAsync();
+
+            ViewBag.RoomTypes = roomTypes;
+            ViewBag.RoomTypePage = currentRtPage;
+            ViewBag.TotalRoomTypePages = totalRtPages;
+            ViewBag.TotalRoomTypes = totalRoomTypes;
+
+            // Tất cả RoomTypes đang active cho dropdown
+            var activeRoomTypes = await _context.RoomTypes
+                .Where(r => r.Status)
+                .OrderBy(r => r.Type)
+                .ToListAsync();
+            ViewBag.ActiveRoomTypes = activeRoomTypes;
+
+            // Danh sách Cages có phân trang
+            int cagePageSize = 8;
+            int totalCages = await _context.Cages.CountAsync();
+            int totalCagePages = (int)Math.Ceiling((double)totalCages / cagePageSize);
+            int currentCagePage = cagePage < 1 ? 1 : (cagePage > totalCagePages ? totalCagePages : cagePage);
+            if (currentCagePage < 1) currentCagePage = 1;
+
+            var cages = await _context.Cages
+                .Include(c => c.RoomType)
+                .OrderBy(c => c.CageId)
+                .Skip((currentCagePage - 1) * cagePageSize)
+                .Take(cagePageSize)
+                .ToListAsync();
+
+            ViewBag.Cages = cages;
+            ViewBag.CagePage = currentCagePage;
+            ViewBag.TotalCagePages = totalCagePages;
+            ViewBag.TotalCages = totalCages;
+
+            // Thống kê tổng quan
+            ViewBag.TotalCageCount = await _context.Cages.CountAsync();
+            ViewBag.EmptyCageCount = await _context.Cages.CountAsync(c => c.Status == "Trống");
+            ViewBag.OccupiedCageCount = await _context.Cages.CountAsync(c => c.Status != "Trống");
+
+            // Danh sách HotelBookings đang active
+            var activeBookings = await _context.HotelBookings
+                .Include(b => b.Pet)
+                .Include(b => b.Customer)
+                .Include(b => b.Cage)
+                    .ThenInclude(c => c.RoomType)
+                .Where(b => b.Status == "Active" || b.Status == "Đang ở")
+                .OrderBy(b => b.CheckInDate)
+                .ToListAsync();
+            ViewBag.ActiveBookings = activeBookings;
+
+            // Danh sách Customers cho dropdown
+            var customers = await _context.Customers
+                .Include(c => c.Pets)
+                .OrderBy(c => c.FullName)
+                .ToListAsync();
+            ViewBag.Customers = customers;
+
+            return View("~/SpaServices/Views/SpaService/Hotel.cshtml");
+        }
+
+        // =========================================================================
+        // 6.1. TIẾP NHẬN THÚ CƯNG VÀO CHUỒNG (CHECK-IN)
+        // =========================================================================
+
+        [HttpGet("GetAvailableCages")]
+        public async Task<IActionResult> GetAvailableCages(int roomTypeId)
+        {
+            var cages = await _context.Cages
+                .Where(c => c.RoomTypeId == roomTypeId && c.Status == "Trống")
+                .Select(c => new { cageId = c.CageId, status = c.Status })
+                .ToListAsync();
+            return Json(cages);
+        }
+
+        [HttpGet("GetHotelPetsByCustomer")]
+        public async Task<IActionResult> GetHotelPetsByCustomer(int customerId)
+        {
+            var pets = await _context.Pets
+                .Where(p => p.CustomerId == customerId && p.Status == "Active")
+                .Select(p => new
+                {
+                    petId = p.PetId,
+                    name = p.Name,
+                    species = p.Species,
+                    breed = p.Breed ?? "Chưa rõ",
+                    age = p.Age ?? "Chưa rõ",
+                    weight = p.Weight,
+                    pathology = p.Pathology ?? ""
+                })
+                .ToListAsync();
+            return Json(pets);
+        }
+
+        [HttpPost("CheckIn")]
+        public async Task<IActionResult> CheckIn(
+            string customerPhone, string customerName,
+            string petName, string species, string breed, string age, decimal weight,
+            string pathology, string healthNote,
+            string cageId, DateTime checkInDate, DateTime? checkOutDate,
+            int? existingPetId)
+        {
+            if (string.IsNullOrWhiteSpace(customerPhone) || string.IsNullOrWhiteSpace(petName) || string.IsNullOrWhiteSpace(cageId))
+            {
+                TempData["HotelError"] = "Vui lòng nhập đầy đủ thông tin bắt buộc.";
+                return RedirectToAction(nameof(Hotel));
+            }
+
+            var cage = await _context.Cages.Include(c => c.RoomType).FirstOrDefaultAsync(c => c.CageId == cageId);
+            if (cage == null)
+            {
+                TempData["HotelError"] = "Không tìm thấy chuồng đã chọn.";
+                return RedirectToAction(nameof(Hotel));
+            }
+            if (cage.Status != "Trống")
+            {
+                TempData["HotelError"] = $"Chuồng {cageId} hiện không còn trống.";
+                return RedirectToAction(nameof(Hotel));
+            }
+
+            using (var transaction = await _context.Database.BeginTransactionAsync())
+            {
+                try
+                {
+                    // Tìm hoặc tạo Customer
+                    var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Phone == customerPhone.Trim());
+                    if (customer == null)
+                    {
+                        customer = new Models.Customer
+                        {
+                            FullName = customerName?.Trim() ?? "Khách hàng",
+                            Phone = customerPhone.Trim(),
+                            CreatedAt = DateTime.Now,
+                            MembershipTier = "Bronze"
+                        };
+                        _context.Customers.Add(customer);
+                        await _context.SaveChangesAsync();
+                    }
+
+                    // Tìm hoặc tạo Pet
+                    Pet pet;
+                    if (existingPetId.HasValue && existingPetId > 0)
+                    {
+                        pet = await _context.Pets.FindAsync(existingPetId.Value)
+                              ?? throw new Exception("Không tìm thấy thú cưng đã chọn.");
+                        // Cập nhật tình trạng sức khỏe
+                        pet.Pathology = pathology?.Trim();
+                        pet.Weight = weight > 0 ? weight : pet.Weight;
+                    }
+                    else
+                    {
+                        pet = new Pet
+                        {
+                            CustomerId = customer.CustomerId,
+                            Name = petName.Trim(),
+                            Species = species ?? "Chó",
+                            Breed = breed?.Trim() ?? "Không rõ",
+                            Age = age?.Trim() ?? "Chưa rõ",
+                            Weight = weight > 0 ? weight : 4.5m,
+                            Pathology = pathology?.Trim(),
+                            Status = "Active"
+                        };
+                        _context.Pets.Add(pet);
+                        await _context.SaveChangesAsync();
+                    }
+
+                    // Tính giá
+                    decimal dailyPrice = cage.RoomType?.DailyPrice ?? 0;
+                    int stayDays = checkOutDate.HasValue
+                        ? Math.Max(1, (checkOutDate.Value - checkInDate).Days)
+                        : 1;
+                    decimal subtotal = dailyPrice * stayDays;
+
+                    var booking = new HotelBooking
+                    {
+                        CageId = cageId,
+                        PetId = pet.PetId,
+                        CustomerId = customer.CustomerId,
+                        CheckInDate = checkInDate,
+                        CheckOutDate = checkOutDate,
+                        StayDays = stayDays,
+                        BaseDailyPrice = dailyPrice,
+                        Subtotal = subtotal,
+                        Discount = 0,
+                        FinalAmount = subtotal,
+                        EarnedPoints = 0,
+                        Status = "Đang ở"
+                    };
+
+                    _context.HotelBookings.Add(booking);
+
+                    // Đổi trạng thái chuồng
+                    cage.Status = "Đang dùng";
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    TempData["HotelSuccess"] = $"Đã tiếp nhận {pet.Name} vào chuồng {cageId} thành công!";
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    TempData["HotelError"] = $"Lỗi hệ thống: {ex.Message}";
+                }
+            }
+
+            return RedirectToAction(nameof(Hotel));
+        }
+
+        [HttpPost("CheckOut")]
+        public async Task<IActionResult> CheckOut(int bookingId)
+        {
+            var booking = await _context.HotelBookings
+                .Include(b => b.Cage)
+                .Include(b => b.Pet)
+                .FirstOrDefaultAsync(b => b.HotelBookingId == bookingId);
+
+            if (booking == null)
+            {
+                return Json(new { success = false, message = "Không tìm thấy booking." });
+            }
+
+            booking.Status = "Đã trả";
+            booking.CheckOutDate = DateTime.Now;
+
+            if (booking.Cage != null)
+            {
+                booking.Cage.Status = "Trống";
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, message = $"Đã trả chuồng cho {booking.Pet?.Name ?? "thú cưng"}!" });
+        }
+
+        // =========================================================================
+        // 6.2. CRUD LOẠI CHUỒNG (ROOM TYPE)
+        // =========================================================================
+
+        [HttpPost("AddRoomType")]
+        public async Task<IActionResult> AddRoomType(
+            string type, string size, int capacity,
+            decimal hourlyPrice, decimal dailyPrice,
+            bool hasAc, bool hasCamera, bool hasPremiumFood)
+        {
+            if (string.IsNullOrWhiteSpace(type) || capacity <= 0 || dailyPrice < 0)
+            {
+                TempData["HotelError"] = "Thông tin loại chuồng không hợp lệ.";
+                return RedirectToAction(nameof(Hotel));
+            }
+
+            if (await _context.RoomTypes.AnyAsync(r => r.Type.ToLower() == type.Trim().ToLower()))
+            {
+                TempData["HotelError"] = "Tên loại chuồng này đã tồn tại.";
+                return RedirectToAction(nameof(Hotel));
+            }
+
+            var roomType = new RoomType
+            {
+                Type = type.Trim(),
+                Size = size?.Trim() ?? "Tiêu chuẩn",
+                Capacity = capacity,
+                HourlyPrice = hourlyPrice,
+                DailyPrice = dailyPrice,
+                HasAc = hasAc,
+                HasCamera = hasCamera,
+                HasPremiumFood = hasPremiumFood,
+                Status = true
+            };
+
+            _context.RoomTypes.Add(roomType);
+            await _context.SaveChangesAsync();
+
+            TempData["HotelSuccess"] = $"Thêm loại chuồng '{type}' thành công!";
+            return RedirectToAction(nameof(Hotel));
+        }
+
+        [HttpPost("EditRoomType")]
+        public async Task<IActionResult> EditRoomType(
+            int id, string type, string size, int capacity,
+            decimal hourlyPrice, decimal dailyPrice,
+            bool hasAc, bool hasCamera, bool hasPremiumFood)
+        {
+            var roomType = await _context.RoomTypes.FindAsync(id);
+            if (roomType == null)
+            {
+                TempData["HotelError"] = "Không tìm thấy loại chuồng.";
+                return RedirectToAction(nameof(Hotel));
+            }
+
+            if (string.IsNullOrWhiteSpace(type) || capacity <= 0 || dailyPrice < 0)
+            {
+                TempData["HotelError"] = "Thông tin không hợp lệ.";
+                return RedirectToAction(nameof(Hotel));
+            }
+
+            if (await _context.RoomTypes.AnyAsync(r => r.Type.ToLower() == type.Trim().ToLower() && r.RoomTypeId != id))
+            {
+                TempData["HotelError"] = "Tên loại chuồng này đã tồn tại.";
+                return RedirectToAction(nameof(Hotel));
+            }
+
+            roomType.Type = type.Trim();
+            roomType.Size = size?.Trim() ?? "Tiêu chuẩn";
+            roomType.Capacity = capacity;
+            roomType.HourlyPrice = hourlyPrice;
+            roomType.DailyPrice = dailyPrice;
+            roomType.HasAc = hasAc;
+            roomType.HasCamera = hasCamera;
+            roomType.HasPremiumFood = hasPremiumFood;
+
+            await _context.SaveChangesAsync();
+            TempData["HotelSuccess"] = "Cập nhật loại chuồng thành công!";
+            return RedirectToAction(nameof(Hotel));
+        }
+
+        [HttpPost("DeleteRoomType")]
+        public async Task<IActionResult> DeleteRoomType(int id)
+        {
+            var roomType = await _context.RoomTypes.FindAsync(id);
+            if (roomType == null)
+                return Json(new { success = false, message = "Không tìm thấy loại chuồng." });
+
+            bool hasCages = await _context.Cages.AnyAsync(c => c.RoomTypeId == id);
+            bool hasOrders = await _context.OrderItems.AnyAsync(o => o.RoomTypeId == id);
+
+            if (hasCages || hasOrders)
+            {
+                roomType.Status = false;
+                await _context.SaveChangesAsync();
+                return Json(new { success = true, isSoftDeleted = true, message = "Loại chuồng đang được sử dụng, đã tự động chuyển sang trạng thái Ngưng hoạt động!" });
+            }
+
+            _context.RoomTypes.Remove(roomType);
+            await _context.SaveChangesAsync();
+            return Json(new { success = true, isSoftDeleted = false, message = "Xóa loại chuồng thành công!" });
+        }
+
+        [HttpPost("ToggleRoomType")]
+        public async Task<IActionResult> ToggleRoomType(int id)
+        {
+            var roomType = await _context.RoomTypes.FindAsync(id);
+            if (roomType == null)
+                return Json(new { success = false, message = "Không tìm thấy loại chuồng." });
+
+            roomType.Status = !roomType.Status;
+            await _context.SaveChangesAsync();
+            return Json(new { success = true, status = roomType.Status });
+        }
+
+        // =========================================================================
+        // 6.3. CRUD CHUỒNG (CAGE)
+        // =========================================================================
+
+        [HttpPost("AddCage")]
+        public async Task<IActionResult> AddCage(
+            string cageId, int roomTypeId, string feedSchedule, int portion)
+        {
+            if (string.IsNullOrWhiteSpace(cageId) || roomTypeId <= 0)
+            {
+                TempData["HotelError"] = "Thông tin chuồng không hợp lệ.";
+                return RedirectToAction(nameof(Hotel));
+            }
+
+            if (await _context.Cages.AnyAsync(c => c.CageId == cageId.Trim().ToUpper()))
+            {
+                TempData["HotelError"] = $"Mã chuồng '{cageId}' đã tồn tại.";
+                return RedirectToAction(nameof(Hotel));
+            }
+
+            var roomType = await _context.RoomTypes.FindAsync(roomTypeId);
+            if (roomType == null)
+            {
+                TempData["HotelError"] = "Loại chuồng không tồn tại.";
+                return RedirectToAction(nameof(Hotel));
+            }
+
+            var cage = new Cage
+            {
+                CageId = cageId.Trim().ToUpper(),
+                RoomTypeId = roomTypeId,
+                Status = "Trống",
+                FeedSchedule = feedSchedule?.Trim() ?? "08:00, 12:00, 18:00",
+                Portion = portion > 0 ? portion : 60
+            };
+
+            _context.Cages.Add(cage);
+            await _context.SaveChangesAsync();
+
+            TempData["HotelSuccess"] = $"Thêm chuồng {cage.CageId} thành công!";
+            return RedirectToAction(nameof(Hotel));
+        }
+
+        [HttpPost("EditCage")]
+        public async Task<IActionResult> EditCage(
+            string cageId, int roomTypeId, string feedSchedule, int portion)
+        {
+            var cage = await _context.Cages.FindAsync(cageId);
+            if (cage == null)
+            {
+                TempData["HotelError"] = "Không tìm thấy chuồng.";
+                return RedirectToAction(nameof(Hotel));
+            }
+
+            var roomType = await _context.RoomTypes.FindAsync(roomTypeId);
+            if (roomType == null)
+            {
+                TempData["HotelError"] = "Loại chuồng không tồn tại.";
+                return RedirectToAction(nameof(Hotel));
+            }
+
+            cage.RoomTypeId = roomTypeId;
+            cage.FeedSchedule = feedSchedule?.Trim() ?? cage.FeedSchedule;
+            cage.Portion = portion > 0 ? portion : cage.Portion;
+
+            await _context.SaveChangesAsync();
+            TempData["HotelSuccess"] = $"Cập nhật chuồng {cageId} thành công!";
+            return RedirectToAction(nameof(Hotel));
+        }
+
+        [HttpPost("DeleteCage")]
+        public async Task<IActionResult> DeleteCage(string cageId)
+        {
+            var cage = await _context.Cages.FindAsync(cageId);
+            if (cage == null)
+                return Json(new { success = false, message = "Không tìm thấy chuồng." });
+
+            if (cage.Status != "Trống")
+                return Json(new { success = false, message = "Không thể xóa chuồng đang có thú cưng." });
+
+            bool hasBookings = await _context.HotelBookings.AnyAsync(b => b.CageId == cageId);
+            if (hasBookings)
+                return Json(new { success = false, message = "Chuồng này có lịch sử booking, không thể xóa." });
+
+            _context.Cages.Remove(cage);
+            await _context.SaveChangesAsync();
+            return Json(new { success = true, message = $"Xóa chuồng {cageId} thành công!" });
+        }
     }
 }

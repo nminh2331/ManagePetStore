@@ -16,6 +16,4 @@ public partial class Room
     public string? Status { get; set; }
 
     public string? Dimensions { get; set; }
-
-    public virtual ICollection<HotelBooking> HotelBookings { get; set; } = new List<HotelBooking>();
 }
