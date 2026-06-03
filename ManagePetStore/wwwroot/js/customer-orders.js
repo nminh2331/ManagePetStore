@@ -63,12 +63,6 @@
         }
     });
 
-    document.querySelectorAll('.co-table-row[data-href]').forEach(function (row) {
-        row.addEventListener('click', function () {
-            window.location.href = row.getAttribute('data-href');
-        });
-    });
-
     var toast = document.getElementById('cpToast');
     if (toast) {
         setTimeout(function () {

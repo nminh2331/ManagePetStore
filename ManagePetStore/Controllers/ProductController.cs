@@ -21,14 +21,30 @@ public class ProductController : Controller
             return RedirectToAction("Index", "Home");
         }
 
-        ProductDetailViewModel? model = null;
+        ProductDetailViewModel? model = null;  // Khai báo biến model có kiểu dữ liệu là ProductDetailViewModel
 
         try
         {
-            var product = await _context.Products.FirstOrDefaultAsync(p => p.Sku == id);
-            if (product != null)
+            if (id.StartsWith("SPA-SVC-", StringComparison.OrdinalIgnoreCase))
             {
-                model = MapFromProduct(product);
+                var idString = id.Substring(8); //Cắt bỏ 8 ký tự đầu tiên (SPA-SVC-) để lấy phần số ở đuôi (ví dụ 001).
+                if (int.TryParse(idString, out int serviceId))  // Ép phần đuôi đó thành số nguyên (int).
+                {
+                    var spaService = await _context.SpaServices.FirstOrDefaultAsync(s => s.ServiceId == serviceId);
+                    if (spaService != null)
+                    {
+                        model = MapFromSpaService(spaService);  // chuyển đổi dữ liệu thô từ DB thành ProductDetailViewModel để UI đọc được.
+                    }
+                }
+            }
+            else
+            {
+                var product = await _context.Products.Include(p => p.Category).FirstOrDefaultAsync(p => p.Sku == id);  
+                //Eager Loading để lấy kèm thông tin Danh mục (tương tự trang chủ).
+                if (product != null)
+                {
+                    model = MapFromProduct(product);
+                }
             }
         }
         catch
@@ -40,6 +56,44 @@ public class ProductController : Controller
 
         return View(model);
     }
+
+    private static ProductDetailViewModel MapFromSpaService(SpaService service)
+    {
+        var originalPrice = Math.Round(service.Price * 1.11m, 0);
+        var discount = (int)Math.Round((1 - service.Price / originalPrice) * 100);
+
+        return new ProductDetailViewModel
+        {
+            Sku = $"SPA-SVC-{service.ServiceId:D3}",
+            Brand = "DỊCH VỤ SPA",
+            Name = service.Name,
+            FullTitle = $"{service.Name} - Liệu trình chăm sóc chuyên nghiệp",
+            Price = service.Price,
+            OriginalPrice = originalPrice,
+            DiscountPercent = discount,
+            Savings = originalPrice - service.Price,
+            Rating = 4.9,
+            ReviewCount = 35,
+            SoldCount = "100+",
+            Description = $"Dịch vụ {service.Name} chất lượng cao giúp thú cưng sạch sẽ, khỏe mạnh và thoải mái. Liệu trình thực hiện trong {service.DurationMinutes} phút bởi các chuyên viên spa tay nghề cao.",
+            Stock = 999, // Spa services always have virtual stock
+            InStock = true,
+            Images =
+            [
+                "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=600&h=600&fit=crop",
+                "https://images.unsplash.com/photo-1558788353-f76d92427f16?w=600&h=600&fit=crop",
+                "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=600&fit=crop"
+            ],
+            Features =
+            [
+                $"Thời gian thực hiện: {service.DurationMinutes} phút",
+                "Chăm sóc tận tình chuẩn 5 sao",
+                "Chuyên viên giàu kinh nghiệm",
+                "Sử dụng sữa tắm, mỹ phẩm cao cấp an toàn"
+            ]
+        };
+    }
+
 
     private static ProductDetailViewModel MapFromProduct(Product product)
     {

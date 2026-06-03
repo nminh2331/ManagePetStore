@@ -17,7 +17,8 @@ public class HomeController : Controller
         ["accessories"] = ["Phụ kiện", "phụ kiện", "accessories"],
         ["cages"] = ["Chuồng", "Đệm", "chuồng", "đệm", "cages"],
         ["hygiene"] = ["Vệ sinh", "vệ sinh", "hygiene"],
-        ["medicine"] = ["Thuốc", "Vitamin", "thuốc", "vitamin", "medicine"]
+        ["medicine"] = ["Thuốc", "Vitamin", "thuốc", "vitamin", "medicine"],
+        ["spa"] = ["Spa", "chăm sóc", "Tắm", "Sấy", "Cắt", "Tỉa", "Massage", "spa"]
     };
 
     public HomeController(ILogger<HomeController> logger, PetStoreManagementContext context)
@@ -39,9 +40,10 @@ public class HomeController : Controller
 
         var catalog = await GetSearchableProductsAsync();
         model.BestSellers = ApplyProductFilters(catalog, model.SearchKeyword, model.SelectedCategorySlug);
-
+               
         try
         {
+            //  Logic xác thực & Trích xuất dữ liệu Cá nhân (Form Đặt Khách sạn)
             if (User.Identity?.IsAuthenticated == true)
             {
                 var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
@@ -77,7 +79,8 @@ public class HomeController : Controller
             return View(model);
         }
 
-        model.BestSellers = GetStaticHomepageData().BestSellers;
+        // Use the full dynamic catalog (including active DB products and Spa Services) instead of static mockup list
+        model.BestSellers = catalog;
         return View(model);
     }
 
@@ -94,13 +97,15 @@ public class HomeController : Controller
 
     private async Task<List<ProductCardItem>> GetSearchableProductsAsync()
     {
-        var products = GetStaticProductCatalog();
+        var products = GetStaticProductCatalog();   // khoi tao danh sach product 
 
+        // 1. Tải các sản phẩm từ database (cách ly trong try-catch)
         try
         {
-            var dbProducts = await _context.Products
-                .OrderByDescending(p => p.Stock)
-                .ToListAsync();
+            var dbProducts = await _context.Products  //Bắt đầu truy vấn vào bảng Products trong Database. Chờ (await) đến khi lấy xong dữ liệu.
+                .Include(p => p.Category)
+                .OrderByDescending(p => p.Stock)   // Sắp xếp danh sách giảm dần theo số lượng tồn kho
+                .ToListAsync();  // Thực thi câu lệnh SQL và ép kết quả ra thành một List trong C#.
 
             foreach (var p in dbProducts)
             {
@@ -112,9 +117,53 @@ public class HomeController : Controller
                 products.Add(MapDbProduct(p));
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Dùng catalog tĩnh khi DB không khả dụng.
+            _logger.LogError(ex, "Lỗi khi tải Products từ Database.");
+        }
+
+        // 2. Tải các dịch vụ Spa từ database (cách ly hoàn toàn trong try-catch và chỉ lấy Active == true)
+        try
+        {
+            var dbSpaServices = await _context.SpaServices   // Truy vấn vào bảng SpaServices.
+                .Where(s => s.Active)   // filter san pham , chỉ lấy các dịch vụ đang ở trạng thái hoạt động (Active == true).
+                .OrderBy(s => s.ServiceId)  //Sắp xếp tăng dần theo ID dịch vụ và đẩy ra thành List.
+                .ToListAsync();
+
+            var seenSpaNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var s in dbSpaServices)
+            {
+                var normalizedName = s.Name.Trim();
+                if (!seenSpaNames.Add(normalizedName))  // trung dich vu , bo qua 
+                {
+                    continue;
+                }
+
+                var sku = $"SPA-SVC-{s.ServiceId:D3}";   // sku ảo 
+                if (products.Any(x => x.Sku.Equals(sku, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                products.Add(new ProductCardItem
+                {
+                    Sku = sku,
+                    Name = s.Name,
+                    Category = "Dịch vụ Spa",
+                    Price = s.Price,
+                    ImageUrl = ResolveSpaServiceImageUrl(s.Name),
+                    Rating = 4.9,
+                    ReviewCount = 35,
+                    Badge = $"{s.DurationMinutes} phút",
+                    BadgeType = "new",
+                    InStock = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi tải SpaServices từ Database.");
         }
 
         return products;
@@ -136,7 +185,7 @@ public class HomeController : Controller
         }
 
         if (!string.IsNullOrWhiteSpace(categorySlug) &&
-            CategoryKeywordMap.TryGetValue(categorySlug, out var keywords))
+            CategoryKeywordMap.TryGetValue(categorySlug, out var keywords))  // tra cuu du lieu trong dictionary 
         {
             result = result.Where(p =>
                 keywords.Any(k => p.Category.Contains(k, StringComparison.OrdinalIgnoreCase)));
@@ -160,6 +209,33 @@ public class HomeController : Controller
         };
     }
 
+    private static string ResolveSpaServiceImageUrl(string serviceName)
+    {
+        var name = serviceName.ToLowerInvariant();
+
+        if (name.Contains("tắm") || name.Contains("tam") || name.Contains("sấy") || name.Contains("say") || name.Contains("chải"))
+        {
+            return "/images/spa-bath-dry.png";
+        }
+
+        if (name.Contains("cắt") || name.Contains("cat") || name.Contains("tỉa") || name.Contains("tia") || name.Contains("grooming") || name.Contains("kiểu"))
+        {
+            return "/images/spa-grooming.png";
+        }
+
+        if (name.Contains("răng") || name.Contains("rang") || name.Contains("cao") || name.Contains("miệng") || name.Contains("mieng"))
+        {
+            return "/images/spa-dental.png";
+        }
+
+        if (name.Contains("combo") || name.Contains("vip") || name.Contains("toàn diện") || name.Contains("toan dien"))
+        {
+            return "/images/spa-vip.png";
+        }
+
+        return "/images/spa-bath-dry.png";
+    }
+
     private static string ResolveProductImageUrl(Product product)
     {
         var url = product.ImageUrl?.Trim();
@@ -170,7 +246,7 @@ public class HomeController : Controller
         {
             return url;
         }
-
+        //Nếu sản phẩm không có ảnh hợp lệ, hệ thống sẽ "đoán" xem nó thuộc loại gì để gán ảnh.
         if (product.Sku.Equals("PROD-ROYAL-01", StringComparison.OrdinalIgnoreCase) ||
             (product.Category != null && product.Category.Name.Contains("Thức ăn", StringComparison.OrdinalIgnoreCase)) ||
             (product.Category != null && product.Category.Name.Contains("Thuc an", StringComparison.OrdinalIgnoreCase)))
@@ -181,10 +257,12 @@ public class HomeController : Controller
         return "https://images.unsplash.com/photo-1589924691995-400dc9ecc119?w=400&h=400&fit=crop";
     }
 
+
+    //Khi Database trống rỗng hoặc bị lỗi kết nối, hàm này sẽ tung ra một danh sách sản phẩm mẫu để giao diện luôn có nội dung.
     private static List<ProductCardItem> GetStaticProductCatalog()
     {
         return GetStaticHomepageData().BestSellers
-            .Select(p => new ProductCardItem
+            .Select(p => new ProductCardItem  // Sử dụng LINQ Select để duyệt qua từng phần tử p trong mảng dữ liệu gốc.
             {
                 Sku = p.Sku,
                 Name = p.Name,
@@ -212,7 +290,8 @@ public class HomeController : Controller
                 new CategoryItem { Name = "Phụ kiện", Icon = "bi-gift", Slug = "accessories" },
                 new CategoryItem { Name = "Chuồng & Đệm", Icon = "bi-house-door", Slug = "cages" },
                 new CategoryItem { Name = "Vệ sinh", Icon = "bi-droplet", Slug = "hygiene" },
-                new CategoryItem { Name = "Thuốc & Vitamin", Icon = "bi-capsule", Slug = "medicine" }
+                new CategoryItem { Name = "Thuốc & Vitamin", Icon = "bi-capsule", Slug = "medicine" },
+                new CategoryItem { Name = "Dịch vụ Spa", Icon = "bi-scissors", Slug = "spa" }
             ],
             BestSellers =
             [
