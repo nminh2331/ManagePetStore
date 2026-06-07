@@ -319,9 +319,13 @@
             </a>
             
             <nav class="service-nav">
-                <a href="/SpaServices" class="service-nav-item active">
+                <a href="/SpaServices" class="service-nav-item @(Context.Request.Path.Value?.StartsWith("/SpaServices/Hotel") == true ? "" : (Context.Request.Path.Value == "/SpaServices" || Context.Request.Path.Value == "/SpaServices/Index" || Context.Request.Path.Value == "/SpaServices/" ? "active" : ""))">
                     <i class="fa-solid fa-scissors"></i>
                     Dịch vụ Spa
+                </a>
+                <a href="/SpaServices/Hotel" class="service-nav-item @(Context.Request.Path.Value?.StartsWith("/SpaServices/Hotel") == true ? "active" : "")">
+                    <i class="fa-solid fa-house-chimney-medical"></i>
+                    Quản lý Chuồng
                 </a>
             </nav>
 
