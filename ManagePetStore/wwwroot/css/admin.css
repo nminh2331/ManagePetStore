@@ -482,6 +482,11 @@ body.admin-body {
     color: #FF9900;
 }
 
+.badge-role-manager {
+    background-color: #F3E8FF;
+    color: #7C3AED;
+}
+
 .badge-status {
     font-weight: 600;
     font-size: 0.8rem;

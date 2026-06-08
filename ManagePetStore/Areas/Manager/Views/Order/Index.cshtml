@@ -1,0 +1,146 @@
+@model IEnumerable<ManagePetStore.Models.Order>
+@{
+    Layout = "_ManagerLayout";
+    ViewData["Title"] = "Quản lý đơn hàng";
+}
+
+<div class="admin-title-row">
+    <div>
+        <h1>Quản lý Đơn hàng</h1>
+        <p>Xem danh sách, kiểm tra thông tin, duyệt và cập nhật tiến độ giao hàng của các đơn hàng trong hệ thống.</p>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: 12px; font-family: 'Outfit';">
+        <strong>Thành công!</strong> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="admin-table-filters" style="margin-bottom: 20px;">
+    <div></div>
+    <!-- Simple count pill -->
+    <div class="admin-filter-pills">
+        <span class="admin-filter-pill active">Tất cả đơn hàng (@Model.Count())</span>
+    </div>
+</div>
+
+<div class="admin-table-container">
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Mã Đơn</th>
+                <th>Khách hàng</th>
+                <th>Thời gian đặt</th>
+                <th>Tổng tiền</th>
+                <th>Thanh toán</th>
+                <th>Trạng thái</th>
+                <th>Thao tác quản lý</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Any())
+            {
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">Chưa có đơn hàng nào trong hệ thống.</td>
+                </tr>
+            }
+            @foreach (var order in Model)
+            {
+                var displayId = $"#OD-{order.OrderId.Split('-')[^1]}";
+                var statusNorm = order.Status?.Trim().ToLowerInvariant() ?? "";
+
+                <tr>
+                    <td>
+                        <strong style="color: var(--admin-primary);">@displayId</strong>
+                    </td>
+                    <td>
+                        <div style="font-weight: 600;">@order.Customer?.FullName</div>
+                        <div style="font-size: 0.75rem; color: var(--admin-text-muted);">SĐT: @order.Customer?.Phone</div>
+                    </td>
+                    <td>
+                        <span style="color: var(--admin-text-muted);">@order.Date.ToString("dd/MM/yyyy HH:mm")</span>
+                    </td>
+                    <td>
+                        <strong style="color: var(--admin-text-dark);">@order.Total.ToString("N0")đ</strong>
+                    </td>
+                    <td>
+                        <span style="font-size: 0.85rem; color: var(--admin-text-muted);">@order.PaymentMethod</span>
+                    </td>
+                    <td>
+                        @if (statusNorm == "pending" || statusNorm == "đã thanh toán" || statusNorm == "da thanh toan")
+                        {
+                            <span class="badge-status" style="color: #F2780C;">
+                                <span style="width: 8px; height: 8px; border-radius: 50%; background-color: #F2780C; display: inline-block;"></span>
+                                CHỜ DUYỆT
+                            </span>
+                        }
+                        else if (statusNorm == "approved")
+                        {
+                            <span class="badge-status" style="color: #0066FF;">
+                                <span style="width: 8px; height: 8px; border-radius: 50%; background-color: #0066FF; display: inline-block;"></span>
+                                ĐÃ DUYỆT (APPROVED)
+                            </span>
+                        }
+                        else if (statusNorm == "delivering")
+                        {
+                            <span class="badge-status" style="color: #FF9900;">
+                                <span style="width: 8px; height: 8px; border-radius: 50%; background-color: #FF9900; display: inline-block;"></span>
+                                ĐANG GIAO (DELIVERING)
+                            </span>
+                        }
+                        else if (statusNorm == "completed" || statusNorm == "hoàn thành" || statusNorm == "hoan thanh")
+                        {
+                            <span class="badge-status badge-status-active">
+                                <span style="width: 8px; height: 8px; border-radius: 50%; background-color: #2F9E58; display: inline-block;"></span>
+                                HOÀN THÀNH
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge-status" style="color: var(--admin-text-muted);">
+                                <span style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--admin-text-muted); display: inline-block;"></span>
+                                @order.Status?.ToUpperInvariant()
+                            </span>
+                        }
+                    </td>
+                    <td>
+                        @if (statusNorm == "pending" || statusNorm == "đã thanh toán" || statusNorm == "da thanh toan")
+                        {
+                            <form asp-action="Approve" method="post" style="display:inline;">
+                                <input type="hidden" name="orderId" value="@order.OrderId" />
+                                <button type="submit" class="admin-btn-primary" style="padding: 6px 16px; font-size: 0.8rem; border-radius: 8px; display:inline-flex;">
+                                    Duyệt đơn
+                                </button>
+                            </form>
+                        }
+                        else if (statusNorm == "approved")
+                        {
+                            <form asp-action="Ship" method="post" style="display:inline;">
+                                <input type="hidden" name="orderId" value="@order.OrderId" />
+                                <button type="submit" class="admin-btn-primary" style="padding: 6px 16px; font-size: 0.8rem; border-radius: 8px; background-color: #FF9900; display:inline-flex;">
+                                    Giao hàng
+                                </button>
+                            </form>
+                        }
+                        else if (statusNorm == "delivering")
+                        {
+                            <form asp-action="Complete" method="post" style="display:inline;">
+                                <input type="hidden" name="orderId" value="@order.OrderId" />
+                                <button type="submit" class="admin-btn-primary" style="padding: 6px 16px; font-size: 0.8rem; border-radius: 8px; background-color: #2F9E58; display:inline-flex;">
+                                    Giả lập Khách nhận
+                                </button>
+                            </form>
+                        }
+                        else
+                        {
+                            <span style="font-size: 0.85rem; color: var(--admin-text-muted); font-style: italic;">Không có thao tác</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

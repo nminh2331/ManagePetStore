@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace ManagePetStore.Models;
@@ -9,9 +9,7 @@ public partial class Product
 
     public string Name { get; set; } = null!;
 
-    public int? CategoryId { get; set; }
-
-    public virtual ProductCategory? Category { get; set; }
+    public string Category { get; set; } = null!;
 
     public string Unit { get; set; } = null!;
 
