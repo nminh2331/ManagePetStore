@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -41,11 +41,7 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<Product> Products { get; set; }
 
-    public virtual DbSet<ProductCategory> ProductCategories { get; set; }
-
     public virtual DbSet<Role> Roles { get; set; }
-
-    public virtual DbSet<Room> Rooms { get; set; }
 
     public virtual DbSet<RoomType> RoomTypes { get; set; }
 
@@ -70,15 +66,8 @@ public partial class PetStoreManagementContext : DbContext
     public virtual DbSet<Voucher> Vouchers { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        var builder = new ConfigurationBuilder()
-        .SetBasePath(Directory.GetCurrentDirectory())
-        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-        IConfigurationRoot configuration = builder.Build();
-        optionsBuilder.UseSqlServer(configuration.GetConnectionString("DefaultConnection"));
-    }
-
-     //   => optionsBuilder.UseSqlServer("Server=DESKTOP-0NF6T35;database=PetStoreManagement;uid=sa;pwd=123;Encrypt=false;");
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("Server=DESKTOP-0NF6T35;database=PetStoreManagement;uid=sa;pwd=123;Encrypt=false;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -317,6 +306,7 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasKey(e => e.Sku);
 
             entity.Property(e => e.Sku).HasMaxLength(50);
+            entity.Property(e => e.Category).HasMaxLength(50);
             entity.Property(e => e.ExpiryDate).HasColumnType("datetime");
             entity.Property(e => e.ImageUrl)
                 .HasMaxLength(500)
@@ -325,18 +315,6 @@ public partial class PetStoreManagementContext : DbContext
             entity.Property(e => e.Price).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.ShelfLocation).HasMaxLength(50);
             entity.Property(e => e.Unit).HasMaxLength(30);
-
-            entity.HasOne(d => d.Category).WithMany(p => p.Products)
-                .HasForeignKey(d => d.CategoryId)
-                .HasConstraintName("FK_Products_ProductCategories");
-        });
-
-        modelBuilder.Entity<ProductCategory>(entity =>
-        {
-            entity.HasKey(e => e.CategoryId);
-
-            entity.Property(e => e.Name).HasMaxLength(150);
-            entity.Property(e => e.Description).HasMaxLength(500);
         });
 
         modelBuilder.Entity<Role>(entity =>
@@ -503,8 +481,7 @@ public partial class PetStoreManagementContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasIndex(e => e.Username, "UQ_Users_Username").IsUnique();
-
+            entity.Property(e => e.AvatarPath).HasMaxLength(255);
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
@@ -522,9 +499,6 @@ public partial class PetStoreManagementContext : DbContext
                 .HasMaxLength(20)
                 .IsUnicode(false)
                 .HasDefaultValue("Active");
-            entity.Property(e => e.Username)
-                .HasMaxLength(50)
-                .IsUnicode(false);
 
             entity.HasOne(d => d.Role).WithMany(p => p.Users)
                 .HasForeignKey(d => d.RoleId)
