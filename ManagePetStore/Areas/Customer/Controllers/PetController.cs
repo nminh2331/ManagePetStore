@@ -1,4 +1,7 @@
+using System.Globalization;
 using System.Security.Claims;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using ManagePetStore.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +15,9 @@ public class PetController : Controller
 {
     private readonly PetStoreManagementContext _context;
     private readonly IWebHostEnvironment _env;
-    private static readonly string[] AllowedImageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+    private static readonly string[] AllowedImageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".tiff", ".tif", ".svg"];
+    private const long MaxImageBytes = 20L * 1024 * 1024;
+    private static readonly Regex WeightPattern = new(@"^\d+(\.\d+)?$", RegexOptions.CultureInvariant);
 
     public PetController(PetStoreManagementContext context, IWebHostEnvironment env)
     {
@@ -65,28 +70,21 @@ public class PetController : Controller
             return RedirectToAction("Login", "Account", new { area = "Customer" });
         }
 
-        if (string.IsNullOrWhiteSpace(name) ||
-            string.IsNullOrWhiteSpace(species) ||
-            string.IsNullOrWhiteSpace(breed) ||
-            !dateOfBirth.HasValue ||
-            weight <= 0)
+        var fieldErrors = CollectPetFormErrors(name, species, breed, dateOfBirth, weight, avatarFile);
+        if (fieldErrors.Count > 0)
         {
-            TempData["ErrorMessage"] = "Vui lòng điền đầy đủ các trường bắt buộc (*).";
+            TempData["PetFieldErrors"] = JsonSerializer.Serialize(fieldErrors);
             TempData["OpenCreateModal"] = true;
             return RedirectToAction(nameof(Index));
         }
 
-        if (dateOfBirth.Value.Date > DateTime.Today)
-        {
-            TempData["ErrorMessage"] = "Ngày sinh không hợp lệ.";
-            TempData["OpenCreateModal"] = true;
-            return RedirectToAction(nameof(Index));
-        }
-
-        var imageUrl = await SavePetImageAsync(avatarFile);  // Hàm này sẽ lưu ảnh xuống ổ cứng và trả về đường dẫn imageUrl 
+        var imageUrl = await SavePetImageAsync(avatarFile);
         if (avatarFile != null && avatarFile.Length > 0 && imageUrl == null)
         {
-            TempData["ErrorMessage"] = "Ảnh không hợp lệ. Chỉ chấp nhận JPG, PNG, GIF, WEBP.";
+            TempData["PetFieldErrors"] = JsonSerializer.Serialize(new Dictionary<string, string>
+            {
+                ["avatarFile"] = "Ảnh không hợp lệ. Chỉ chấp nhận JPG, JPEG, PNG, GIF, TIFF, SVG và tối đa 20MB."
+            });
             TempData["OpenCreateModal"] = true;
             return RedirectToAction(nameof(Index));
         }
@@ -98,7 +96,7 @@ public class PetController : Controller
             Species = species.Trim(),
             Breed = breed.Trim(),
             Weight = weight,
-            Age = FormatAge(dateOfBirth.Value),
+            Age = FormatAge(dateOfBirth!.Value),
             Pathology = string.IsNullOrWhiteSpace(pathology) ? "Khỏe mạnh" : pathology.Trim(),
             ImageUrl = imageUrl ?? GetDefaultPetImage(species),
             Status = "Active"
@@ -119,7 +117,7 @@ public class PetController : Controller
         string name,
         string species,
         string breed,
-        string age,
+        DateTime? dateOfBirth,
         decimal weight,
         string? pathology,
         IFormFile? avatarFile)
@@ -131,13 +129,10 @@ public class PetController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        if (string.IsNullOrWhiteSpace(name) ||
-            string.IsNullOrWhiteSpace(species) ||
-            string.IsNullOrWhiteSpace(breed) ||
-            string.IsNullOrWhiteSpace(age) ||
-            weight <= 0)
+        var fieldErrors = CollectPetFormErrors(name, species, breed, dateOfBirth, weight, avatarFile);
+        if (fieldErrors.Count > 0)
         {
-            TempData["ErrorMessage"] = "Vui lòng điền đầy đủ các trường bắt buộc (*).";
+            TempData["PetFieldErrors"] = JsonSerializer.Serialize(fieldErrors);
             return RedirectToAction(nameof(Index), new { editId = petId });
         }
 
@@ -146,7 +141,10 @@ public class PetController : Controller
             var newImageUrl = await SavePetImageAsync(avatarFile);
             if (newImageUrl == null)
             {
-                TempData["ErrorMessage"] = "Ảnh không hợp lệ. Chỉ chấp nhận JPG, PNG, GIF, WEBP.";
+                TempData["PetFieldErrors"] = JsonSerializer.Serialize(new Dictionary<string, string>
+                {
+                    ["avatarFile"] = "Ảnh không hợp lệ. Chỉ chấp nhận JPG, JPEG, PNG, GIF, TIFF, SVG và tối đa 20MB."
+                });
                 return RedirectToAction(nameof(Index), new { editId = petId });
             }
 
@@ -157,7 +155,7 @@ public class PetController : Controller
         pet.Name = name.Trim();
         pet.Species = species.Trim();
         pet.Breed = breed.Trim();
-        pet.Age = age.Trim();
+        pet.Age = FormatAge(dateOfBirth!.Value);
         pet.Weight = weight;
         pet.Pathology = string.IsNullOrWhiteSpace(pathology) ? "Khỏe mạnh" : pathology.Trim();
 
@@ -264,6 +262,124 @@ public class PetController : Controller
         };
     }
 
+    private static Dictionary<string, string> CollectPetFormErrors(
+        string name,
+        string species,
+        string breed,
+        DateTime? dateOfBirth,
+        decimal weight,
+        IFormFile? avatarFile)
+    {
+        var errors = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        if (!IsLettersOnly(name))
+        {
+            errors["name"] = "Tên thú cưng phải có ít nhất 1 ký tự, chỉ được chứa chữ cái.";
+        }
+
+        if (!IsLettersOnly(species))
+        {
+            errors["species"] = "Giống loài phải có ít nhất 1 ký tự, chỉ được chứa chữ cái.";
+        }
+
+        if (!IsLettersOnly(breed))
+        {
+            errors["breed"] = "Giống (breed) phải có ít nhất 1 ký tự, chỉ được chứa chữ cái.";
+        }
+
+        if (!ValidateDateOfBirth(dateOfBirth, out var dobError))
+        {
+            errors["dateOfBirth"] = dobError;
+        }
+
+        if (!ValidateWeight(weight, out var weightError))
+        {
+            errors["weight"] = weightError;
+        }
+
+        if (!ValidatePetImage(avatarFile, out var imageError))
+        {
+            errors["avatarFile"] = imageError;
+        }
+
+        return errors;
+    }
+
+    private static bool IsLettersOnly(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        return value.Trim().All(c => char.IsLetter(c) || char.IsWhiteSpace(c));
+    }
+
+    private static bool ValidateDateOfBirth(DateTime? dateOfBirth, out string errorMessage)
+    {
+        errorMessage = "";
+
+        if (!dateOfBirth.HasValue)
+        {
+            errorMessage = "Vui lòng chọn ngày sinh.";
+            return false;
+        }
+
+        var birthDate = dateOfBirth.Value.Date;
+        if (birthDate > DateTime.Today)
+        {
+            errorMessage = "Ngày sinh phải nhỏ hơn thời gian hiện tại.";
+            return false;
+        }
+
+        if (birthDate.Year < 2000)
+        {
+            errorMessage = "Ngày sinh phải từ năm 2000 đến nay.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool ValidateWeight(decimal weight, out string errorMessage)
+    {
+        errorMessage = "";
+
+        var weightText = weight.ToString(CultureInfo.InvariantCulture);
+        if (!WeightPattern.IsMatch(weightText) || weight <= 0)
+        {
+            errorMessage = "Cân nặng phải là số lớn hơn 0, không chứa chữ cái hoặc ký tự đặc biệt.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool ValidatePetImage(IFormFile? file, out string errorMessage)
+    {
+        errorMessage = "";
+
+        if (file == null || file.Length == 0)
+        {
+            return true;
+        }
+
+        if (file.Length > MaxImageBytes)
+        {
+            errorMessage = "Ảnh avatar không được vượt quá 20MB.";
+            return false;
+        }
+
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!AllowedImageExtensions.Contains(extension))
+        {
+            errorMessage = "Ảnh chỉ được phép định dạng JPG, JPEG, PNG, GIF, TIFF, SVG.";
+            return false;
+        }
+
+        return true;
+    }
+
     private async Task<string?> SavePetImageAsync(IFormFile? file)
     {
         if (file == null || file.Length == 0)
@@ -271,10 +387,15 @@ public class PetController : Controller
             return null;
         }
 
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (!AllowedImageExtensions.Contains(extension))
+        if (!ValidatePetImage(file, out _))
         {
             return null;
+        }
+
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (extension == ".tif")
+        {
+            extension = ".tiff";
         }
 
         var uploadsFolder = Path.Combine(_env.WebRootPath, "uploads", "pets"); 
