@@ -6,6 +6,7 @@
     var activeRoomTypes = ViewBag.ActiveRoomTypes as List<RoomType> ?? new List<RoomType>();
     var cages = ViewBag.Cages as List<Cage> ?? new List<Cage>();
     var activeBookings = ViewBag.ActiveBookings as List<HotelBooking> ?? new List<HotelBooking>();
+    var onlineBookings = ViewBag.OnlineBookings as List<HotelBooking> ?? new List<HotelBooking>();
     var customers = ViewBag.Customers as List<Customer> ?? new List<Customer>();
 
     int totalCageCount = ViewBag.TotalCageCount ?? 0;
@@ -830,6 +831,62 @@
 
     <!-- LEFT: Bookings + Management Tabs -->
     <div>
+        <!-- Online Reservations -->
+        <div class="hotel-card">
+            <div class="hotel-card-header">
+                <h5 class="hotel-card-title">
+                    <i class="fa-solid fa-calendar-check"></i>
+                    Đặt trước online
+                    <span style="background:#EFF6FF; color:#2563EB; font-size:0.68rem; padding:3px 8px; border-radius:6px; margin-left:4px;">
+                        @onlineBookings.Count lịch
+                    </span>
+                </h5>
+            </div>
+
+            @if (!onlineBookings.Any())
+            {
+                <div class="empty-state">
+                    <i class="fa-solid fa-calendar-day"></i>
+                    <p>Hiện chưa có lịch Hotel online sắp tới.</p>
+                </div>
+            }
+            else
+            {
+                @foreach (var b in onlineBookings)
+                {
+                    <div class="booking-item">
+                        <div class="booking-cage-badge">
+                            @b.CageId
+                            <span>@(b.Cage?.RoomType?.Type ?? "Chuồng")</span>
+                        </div>
+                        <div class="booking-info">
+                            <p class="booking-pet-name">
+                                <i class="fa-solid fa-calendar-check" style="font-size:0.75rem; color:#2563EB; margin-right:4px;"></i>
+                                @b.Pet?.Name
+                                <span style="font-size:0.72rem; color:#9E918B; font-weight:500;"> · @b.Pet?.Species</span>
+                            </p>
+                            <p class="booking-pet-meta">
+                                Chủ: @b.Customer?.FullName · Nhận: @b.CheckInDate.ToString("dd/MM/yyyy")
+                            </p>
+                            <span class="booking-health-tag" style="background:#EFF6FF; color:#2563EB;">
+                                ĐÃ ĐẶT ONLINE
+                            </span>
+                        </div>
+                        <div class="booking-dates">
+                            @if (b.CheckOutDate.HasValue)
+                            {
+                                <strong>Trả @b.CheckOutDate.Value.ToString("dd/MM")</strong>
+                                <span>@b.StayDays đêm · @b.FinalAmount.ToString("N0")đ</span>
+                            }
+                        </div>
+                        <span style="font-size:0.72rem; color:#2563EB; font-weight:700; white-space:nowrap;">
+                            Chờ tiếp nhận
+                        </span>
+                    </div>
+                }
+            }
+        </div>
+
         <!-- Active Bookings -->
         <div class="hotel-card">
             <div class="hotel-card-header">

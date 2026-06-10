@@ -923,6 +923,17 @@ namespace ManagePetStore.SpaServices.Controllers
                 .ToListAsync();
             ViewBag.ActiveBookings = activeBookings;
 
+            var onlineBookings = await _context.HotelBookings
+                .Include(b => b.Pet)
+                .Include(b => b.Customer)
+                .Include(b => b.Cage)
+                    .ThenInclude(c => c.RoomType)
+                .Where(b => b.Status == "Đã đặt" &&
+                            (!b.CheckOutDate.HasValue || b.CheckOutDate.Value >= DateTime.Today))
+                .OrderBy(b => b.CheckInDate)
+                .ToListAsync();
+            ViewBag.OnlineBookings = onlineBookings;
+
             // Danh sách Customers cho dropdown
             var customers = await _context.Customers
                 .Include(c => c.Pets)
@@ -1077,6 +1088,48 @@ namespace ManagePetStore.SpaServices.Controllers
                     return HotelValidationError($"{pet.Name} đang có một lượt lưu trú chưa hoàn tất.");
                 }
 
+                var onlineReservation = await _context.HotelBookings.FirstOrDefaultAsync(b =>
+                    b.PetId == pet.PetId &&
+                    b.CustomerId == customer.CustomerId &&
+                    b.Status == "Đã đặt" &&
+                    b.CheckInDate.Date == checkInDate.Date);
+
+                if (onlineReservation != null &&
+                    !string.Equals(onlineReservation.CageId, cageId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return HotelValidationError(
+                        $"{pet.Name} đã đặt online chuồng {onlineReservation.CageId} trong ngày nhận này. Vui lòng chọn đúng chuồng đã giữ.");
+                }
+
+                if (onlineReservation?.CheckOutDate != null)
+                {
+                    checkOutDate = onlineReservation.CheckOutDate;
+                }
+
+                bool petHasScheduleConflict = await _context.HotelBookings.AnyAsync(b =>
+                    b.PetId == pet.PetId &&
+                    b.HotelBookingId != (onlineReservation != null ? onlineReservation.HotelBookingId : 0) &&
+                    (b.Status == "Đã đặt" || b.Status == "Active" || b.Status == "Đang ở") &&
+                    (!checkOutDate.HasValue || b.CheckInDate < checkOutDate.Value) &&
+                    (!b.CheckOutDate.HasValue || b.CheckOutDate.Value > checkInDate));
+
+                if (petHasScheduleConflict)
+                {
+                    return HotelValidationError($"{pet.Name} có lịch lưu trú khác trùng với khoảng thời gian tiếp nhận.");
+                }
+
+                bool cageHasScheduleConflict = await _context.HotelBookings.AnyAsync(b =>
+                    b.CageId == cageId &&
+                    b.HotelBookingId != (onlineReservation != null ? onlineReservation.HotelBookingId : 0) &&
+                    (b.Status == "Đã đặt" || b.Status == "Active" || b.Status == "Đang ở") &&
+                    (!checkOutDate.HasValue || b.CheckInDate < checkOutDate.Value) &&
+                    (!b.CheckOutDate.HasValue || b.CheckOutDate.Value > checkInDate));
+
+                if (cageHasScheduleConflict)
+                {
+                    return HotelValidationError($"Chuồng {cageId} đã được giữ cho một lịch lưu trú khác trong khoảng thời gian này.");
+                }
+
                 // Ghi nhận sức khỏe trước khi tạo booking và đổi trạng thái chuồng.
                 _context.PetBioTimelines.Add(new PetBioTimeline
                 {
@@ -1093,21 +1146,29 @@ namespace ManagePetStore.SpaServices.Controllers
                     : 1;
                 decimal subtotal = dailyPrice * stayDays;
 
-                _context.HotelBookings.Add(new HotelBooking
+                if (onlineReservation != null)
                 {
-                    CageId = cageId,
-                    PetId = pet.PetId,
-                    CustomerId = customer.CustomerId,
-                    CheckInDate = checkInDate,
-                    CheckOutDate = checkOutDate,
-                    StayDays = stayDays,
-                    BaseDailyPrice = dailyPrice,
-                    Subtotal = subtotal,
-                    Discount = 0,
-                    FinalAmount = subtotal,
-                    EarnedPoints = 0,
-                    Status = "Đang ở"
-                });
+                    onlineReservation.CheckInDate = checkInDate;
+                    onlineReservation.Status = "Đang ở";
+                }
+                else
+                {
+                    _context.HotelBookings.Add(new HotelBooking
+                    {
+                        CageId = cageId,
+                        PetId = pet.PetId,
+                        CustomerId = customer.CustomerId,
+                        CheckInDate = checkInDate,
+                        CheckOutDate = checkOutDate,
+                        StayDays = stayDays,
+                        BaseDailyPrice = dailyPrice,
+                        Subtotal = subtotal,
+                        Discount = 0,
+                        FinalAmount = subtotal,
+                        EarnedPoints = 0,
+                        Status = "Đang ở"
+                    });
+                }
 
                 cage.Status = "Đang dùng";
 
