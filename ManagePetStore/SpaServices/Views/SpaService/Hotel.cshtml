@@ -1221,12 +1221,14 @@
                         <div class="hform-group">
                             <label class="hform-label">Số điện thoại <span class="req">*</span></label>
                             <input type="tel" name="customerPhone" id="ci-phone" class="hform-control"
-                                placeholder="0912345678" required oninput="lookupCustomer(this.value)">
+                                placeholder="0912345678" required maxlength="15" pattern="0(?:[\s.-]?\d){9,10}"
+                                title="Số điện thoại phải bắt đầu bằng 0 và gồm 10-11 chữ số."
+                                oninput="lookupCustomer(this.value)">
                         </div>
                         <div class="hform-group">
                             <label class="hform-label">Họ tên chủ thú cưng <span class="req">*</span></label>
                             <input type="text" name="customerName" id="ci-customerName" class="hform-control"
-                                placeholder="Nhập họ tên..." required>
+                                placeholder="Nhập họ tên..." required maxlength="100">
                         </div>
                     </div>
 
@@ -1236,7 +1238,7 @@
                     <!-- Dropdown chọn pet có sẵn hoặc tạo mới -->
                     <div class="hform-group" id="existingPetGroup" style="display:none;">
                         <label class="hform-label">Chọn thú cưng đã có hồ sơ</label>
-                        <select name="existingPetId" id="ci-existingPet" class="hform-control" onchange="fillExistingPet(this)">
+                        <select id="ci-existingPet" class="hform-control" onchange="fillExistingPet(this)">
                             <option value="">— Tạo mới —</option>
                         </select>
                     </div>
@@ -1246,7 +1248,7 @@
                         <div class="grid-3">
                             <div class="hform-group">
                                 <label class="hform-label">Tên thú cưng <span class="req">*</span></label>
-                                <input type="text" name="petName" id="ci-petName" class="hform-control" placeholder="VD: Mochi" required>
+                                <input type="text" name="petName" id="ci-petName" class="hform-control" placeholder="VD: Mochi" required maxlength="50">
                             </div>
                             <div class="hform-group">
                                 <label class="hform-label">Loài <span class="req">*</span></label>
@@ -1260,17 +1262,18 @@
                             </div>
                             <div class="hform-group">
                                 <label class="hform-label">Giống</label>
-                                <input type="text" name="breed" id="ci-breed" class="hform-control" placeholder="VD: Poodle">
+                                <input type="text" name="breed" id="ci-breed" class="hform-control" placeholder="VD: Poodle" maxlength="50">
                             </div>
                         </div>
                         <div class="grid-2">
                             <div class="hform-group">
                                 <label class="hform-label">Tuổi</label>
-                                <input type="text" name="age" id="ci-age" class="hform-control" placeholder="VD: 2 tuổi">
+                                <input type="text" name="age" id="ci-age" class="hform-control" placeholder="VD: 2 tuổi" maxlength="30">
                             </div>
                             <div class="hform-group">
                                 <label class="hform-label">Cân nặng (kg) <span class="req">*</span></label>
-                                <input type="number" name="weight" id="ci-weight" class="hform-control" placeholder="4.5" step="0.1" min="0.1">
+                                <input type="number" name="weight" id="ci-weight" class="hform-control" placeholder="4.5"
+                                    step="0.01" min="0.1" max="200" required>
                             </div>
                         </div>
                     </div>
@@ -1280,18 +1283,44 @@
 
                     <div class="health-warning-strip">
                         <i class="fa-solid fa-triangle-exclamation"></i>
-                        Vui lòng ghi rõ nếu thú cưng có bệnh lý hoặc đang dùng thuốc để đảm bảo an toàn.
+                        Phải hoàn tất và xác nhận kiểm tra sức khỏe trước khi hệ thống nhận thú cưng vào chuồng.
                     </div>
 
+                    <div class="grid-2">
+                        <div class="hform-group">
+                            <label class="hform-label">Kết luận kiểm tra <span class="req">*</span></label>
+                            <select name="healthStatus" id="ci-healthStatus" class="hform-control" required onchange="updateHealthStatus()">
+                                <option value="">— Chọn kết luận —</option>
+                                <option value="Fit">Đủ điều kiện lưu trú</option>
+                                <option value="Monitor">Đủ điều kiện, cần theo dõi</option>
+                                <option value="Rejected">Không đủ điều kiện lưu trú</option>
+                            </select>
+                        </div>
+                        <div class="hform-group">
+                            <label class="hform-label">Nhiệt độ cơ thể (°C) <span class="req">*</span></label>
+                            <input type="number" name="bodyTemperature" id="ci-temperature" class="hform-control"
+                                placeholder="VD: 38.5" step="0.1" min="30" max="45" required>
+                        </div>
+                    </div>
                     <div class="hform-group">
                         <label class="hform-label">Bệnh lý / Tình trạng đặc biệt</label>
                         <input type="text" name="pathology" id="ci-pathology" class="hform-control health-input"
+                            maxlength="1000"
                             placeholder="VD: Bị dị ứng thức ăn hải sản, đang dùng thuốc tim... (để trống nếu khỏe mạnh)">
                     </div>
                     <div class="hform-group">
-                        <label class="hform-label">Ghi chú thêm từ chủ</label>
+                        <label class="hform-label">Kết quả quan sát / Ghi chú kiểm tra <span class="req">*</span></label>
                         <textarea name="healthNote" id="ci-healthNote" class="hform-control" rows="2"
-                            placeholder="VD: Không cho tiếp xúc chó khác, thích ngủ nhiều..."></textarea>
+                            required minlength="5" maxlength="1000"
+                            placeholder="VD: Tỉnh táo, ăn uống bình thường, không có vết thương ngoài da..."></textarea>
+                    </div>
+                    <div id="healthStatusMessage" class="health-warning-strip" style="display:none;"></div>
+                    <div class="hform-group" style="display:flex; gap:9px; align-items:flex-start;">
+                        <input type="checkbox" name="healthCheckConfirmed" id="ci-healthConfirmed" value="true" required style="margin-top:3px;">
+                        <label for="ci-healthConfirmed" class="hform-label" style="text-transform:none; line-height:1.45; cursor:pointer;">
+                            Tôi xác nhận đã trực tiếp kiểm tra và ghi nhận đúng tình trạng sức khỏe của thú cưng.
+                            <span class="req">*</span>
+                        </label>
                     </div>
 
                     <!-- CHỌN CHUỒNG -->
@@ -1300,7 +1329,7 @@
                     <div class="grid-2">
                         <div class="hform-group">
                             <label class="hform-label">Loại chuồng <span class="req">*</span></label>
-                            <select name="_roomTypeId" id="ci-roomType" class="hform-control" onchange="loadAvailableCages(this.value)" required>
+                            <select name="roomTypeId" id="ci-roomType" class="hform-control" onchange="loadAvailableCages(this.value)" required>
                                 <option value="">— Chọn loại chuồng —</option>
                                 @foreach (var rt in activeRoomTypes)
                                 {
@@ -1340,7 +1369,7 @@
 
                     <div class="modal-btn-row">
                         <button type="button" class="btn-modal-cancel" data-bs-dismiss="modal">Hủy</button>
-                        <button type="submit" class="btn-modal-submit">
+                        <button type="submit" class="btn-modal-submit" id="checkInSubmitBtn">
                             <i class="fa-solid fa-clipboard-check" style="margin-right:6px;"></i>
                             Xác nhận tiếp nhận
                         </button>
@@ -1655,15 +1684,17 @@ function switchTab(tabName, btn) {
 let lookupTimer;
 function lookupCustomer(phone) {
     clearTimeout(lookupTimer);
-    if (phone.length < 9) {
+    const normalizedPhone = phone.replace(/\D/g, '');
+    if (normalizedPhone.length < 10) {
         document.getElementById('existingPetGroup').style.display = 'none';
         document.getElementById('ci-customerName').value = '';
+        document.getElementById('ci-existingPetHidden').value = '';
         return;
     }
     lookupTimer = setTimeout(() => {
         // Find from server-side customers list
         const customers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(customers.Select(c => new { c.CustomerId, c.FullName, c.Phone })));
-        const found = customers.find(c => c.phone === phone);
+        const found = customers.find(c => c.phone === normalizedPhone);
         if (found) {
             document.getElementById('ci-customerName').value = found.fullName;
             // Load their pets
@@ -1673,12 +1704,22 @@ function lookupCustomer(phone) {
                     const sel = document.getElementById('ci-existingPet');
                     sel.innerHTML = '<option value="">— Tạo mới —</option>';
                     pets.forEach(p => {
-                        sel.innerHTML += `<option value="${p.petId}" data-name="${p.name}" data-species="${p.species}" data-breed="${p.breed}" data-age="${p.age}" data-weight="${p.weight}" data-pathology="${p.pathology}">${p.name} (${p.species})</option>`;
+                        const option = document.createElement('option');
+                        option.value = p.petId;
+                        option.textContent = `${p.name} (${p.species})`;
+                        option.dataset.name = p.name;
+                        option.dataset.species = p.species;
+                        option.dataset.breed = p.breed;
+                        option.dataset.age = p.age;
+                        option.dataset.weight = p.weight;
+                        option.dataset.pathology = p.pathology;
+                        sel.appendChild(option);
                     });
                     document.getElementById('existingPetGroup').style.display = pets.length > 0 ? 'block' : 'none';
                 });
         } else {
             document.getElementById('existingPetGroup').style.display = 'none';
+            document.getElementById('ci-existingPetHidden').value = '';
         }
     }, 400);
 }
@@ -1703,6 +1744,70 @@ function fillExistingPet(select) {
     document.getElementById('petNewForm').style.opacity = '0.7';
     document.getElementById('petNewForm').style.pointerEvents = 'none';
 }
+
+// ===== HEALTH CHECK VALIDATION =====
+function updateHealthStatus() {
+    const status = document.getElementById('ci-healthStatus').value;
+    const pathology = document.getElementById('ci-pathology');
+    const message = document.getElementById('healthStatusMessage');
+
+    pathology.setCustomValidity('');
+    if (status === 'Monitor' && !pathology.value.trim()) {
+        pathology.setCustomValidity('Vui lòng ghi rõ tình trạng cần theo dõi.');
+    }
+
+    if (status === 'Rejected') {
+        message.style.display = 'flex';
+        message.innerHTML = '<i class="fa-solid fa-ban"></i> Kết luận này sẽ bị hệ thống chặn, không thể nhận thú cưng vào chuồng.';
+    } else {
+        message.style.display = 'none';
+        message.innerHTML = '';
+    }
+}
+
+document.getElementById('ci-pathology').addEventListener('input', updateHealthStatus);
+document.getElementById('checkInForm').addEventListener('submit', event => {
+    updateHealthStatus();
+
+    const healthStatus = document.getElementById('ci-healthStatus').value;
+    const checkIn = document.getElementById('ci-checkIn').value;
+    const checkOut = document.getElementById('ci-checkOut').value;
+    const checkOutInput = document.getElementById('ci-checkOut');
+    checkOutInput.setCustomValidity('');
+
+    if (checkIn && checkOut) {
+        const checkInDate = new Date(checkIn);
+        const checkOutDate = new Date(checkOut);
+        const stayDays = (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24);
+        if (checkOutDate <= checkInDate) {
+            checkOutInput.setCustomValidity('Ngày trả dự kiến phải sau ngày nhận.');
+        } else if (stayDays > 365) {
+            checkOutInput.setCustomValidity('Thời gian lưu trú dự kiến không được vượt quá 365 ngày.');
+        }
+    }
+
+    if (checkIn) {
+        const checkInInput = document.getElementById('ci-checkIn');
+        const checkInDate = new Date(checkIn);
+        const now = new Date();
+        checkInInput.setCustomValidity('');
+        if (checkInDate < new Date(now.getTime() - 24 * 60 * 60 * 1000) ||
+            checkInDate > new Date(now.getTime() + 24 * 60 * 60 * 1000)) {
+            checkInInput.setCustomValidity('Ngày nhận phải nằm trong vòng 24 giờ so với thời điểm hiện tại.');
+        }
+    }
+
+    if (healthStatus === 'Rejected') {
+        event.preventDefault();
+        alert('Thú cưng không đủ điều kiện lưu trú nên không thể nhận vào chuồng.');
+        return;
+    }
+
+    if (!event.currentTarget.checkValidity()) {
+        event.preventDefault();
+        event.currentTarget.reportValidity();
+    }
+});
 
 // ===== LOAD AVAILABLE CAGES =====
 function loadAvailableCages(roomTypeId) {
