@@ -1354,7 +1354,7 @@
                         </div>
                         <div class="hform-group">
                             <label class="hform-label">Ngày trả dự kiến</label>
-                            <input type="datetime-local" name="checkOutDate" id="ci-checkOut" class="hform-control" oninput="calcStay()">
+                            <input type="datetime-local" name="checkOutDate" id="ci-checkOut" class="hform-control">
                         </div>
                     </div>
 
@@ -1766,19 +1766,30 @@ function updateHealthStatus() {
 }
 
 document.getElementById('ci-pathology').addEventListener('input', updateHealthStatus);
-document.getElementById('checkInForm').addEventListener('submit', event => {
-    updateHealthStatus();
 
-    const healthStatus = document.getElementById('ci-healthStatus').value;
-    const checkIn = document.getElementById('ci-checkIn').value;
-    const checkOut = document.getElementById('ci-checkOut').value;
+function validateStayDates() {
+    const checkInInput = document.getElementById('ci-checkIn');
     const checkOutInput = document.getElementById('ci-checkOut');
+    const checkIn = checkInInput.value;
+    const checkOut = checkOutInput.value;
+
+    checkInInput.setCustomValidity('');
     checkOutInput.setCustomValidity('');
+
+    if (checkIn) {
+        const checkInDate = new Date(checkIn);
+        const now = new Date();
+        if (checkInDate < new Date(now.getTime() - 24 * 60 * 60 * 1000) ||
+            checkInDate > new Date(now.getTime() + 24 * 60 * 60 * 1000)) {
+            checkInInput.setCustomValidity('Ngày nhận phải nằm trong vòng 24 giờ so với thời điểm hiện tại.');
+        }
+    }
 
     if (checkIn && checkOut) {
         const checkInDate = new Date(checkIn);
         const checkOutDate = new Date(checkOut);
         const stayDays = (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24);
+
         if (checkOutDate <= checkInDate) {
             checkOutInput.setCustomValidity('Ngày trả dự kiến phải sau ngày nhận.');
         } else if (stayDays > 365) {
@@ -1786,16 +1797,14 @@ document.getElementById('checkInForm').addEventListener('submit', event => {
         }
     }
 
-    if (checkIn) {
-        const checkInInput = document.getElementById('ci-checkIn');
-        const checkInDate = new Date(checkIn);
-        const now = new Date();
-        checkInInput.setCustomValidity('');
-        if (checkInDate < new Date(now.getTime() - 24 * 60 * 60 * 1000) ||
-            checkInDate > new Date(now.getTime() + 24 * 60 * 60 * 1000)) {
-            checkInInput.setCustomValidity('Ngày nhận phải nằm trong vòng 24 giờ so với thời điểm hiện tại.');
-        }
-    }
+    return checkInInput.validity.valid && checkOutInput.validity.valid;
+}
+
+document.getElementById('checkInForm').addEventListener('submit', event => {
+    updateHealthStatus();
+    validateStayDates();
+
+    const healthStatus = document.getElementById('ci-healthStatus').value;
 
     if (healthStatus === 'Rejected') {
         event.preventDefault();
@@ -1850,6 +1859,11 @@ function calcStay() {
     const dailyPrice = parseFloat(opt?.dataset?.price || '0');
     const d1 = new Date(checkIn);
     const d2 = new Date(checkOut);
+    if (!validateStayDates() || d2 <= d1) {
+        pricePreview.style.display = 'none';
+        return;
+    }
+
     const diffDays = Math.max(1, Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24)));
 
     const total = dailyPrice * diffDays;
@@ -1863,7 +1877,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     document.getElementById('ci-checkIn').value = now.toISOString().slice(0, 16);
-    document.getElementById('ci-checkIn').addEventListener('change', calcStay);
+    document.getElementById('ci-checkIn').addEventListener('input', calcStay);
+    document.getElementById('ci-checkOut').addEventListener('input', calcStay);
+    validateStayDates();
 });
 
 // ===== TOGGLE ROOM TYPE =====
