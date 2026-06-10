@@ -9,7 +9,7 @@ public partial class Product
 
     public string Name { get; set; } = null!;
 
-    public string Category { get; set; } = null!;
+    public int CategoryId { get; set; }
 
     public string Unit { get; set; } = null!;
 
@@ -24,6 +24,8 @@ public partial class Product
     public decimal Price { get; set; }
 
     public string? ImageUrl { get; set; }
+
+    public virtual ProductCategory Category { get; set; } = null!;
 
     public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 

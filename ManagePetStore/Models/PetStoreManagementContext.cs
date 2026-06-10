@@ -41,7 +41,11 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<Product> Products { get; set; }
 
+    public virtual DbSet<ProductCategory> ProductCategories { get; set; }
+
     public virtual DbSet<Role> Roles { get; set; }
+
+    public virtual DbSet<Room> Rooms { get; set; }
 
     public virtual DbSet<RoomType> RoomTypes { get; set; }
 
@@ -66,8 +70,14 @@ public partial class PetStoreManagementContext : DbContext
     public virtual DbSet<Voucher> Vouchers { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=DESKTOP-0NF6T35;database=PetStoreManagement;uid=sa;pwd=123;Encrypt=false;");
+    {
+        var builder = new ConfigurationBuilder()
+        .SetBasePath(Directory.GetCurrentDirectory())
+        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+        IConfigurationRoot configuration = builder.Build();
+        optionsBuilder.UseSqlServer(configuration.GetConnectionString("DefaultConnection"));
+
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -306,7 +316,6 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasKey(e => e.Sku);
 
             entity.Property(e => e.Sku).HasMaxLength(50);
-            entity.Property(e => e.Category).HasMaxLength(50);
             entity.Property(e => e.ExpiryDate).HasColumnType("datetime");
             entity.Property(e => e.ImageUrl)
                 .HasMaxLength(500)
@@ -315,6 +324,28 @@ public partial class PetStoreManagementContext : DbContext
             entity.Property(e => e.Price).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.ShelfLocation).HasMaxLength(50);
             entity.Property(e => e.Unit).HasMaxLength(30);
+
+            entity.HasOne(d => d.Category).WithMany(p => p.Products)
+                .HasForeignKey(d => d.CategoryId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Products_ProductCategories");
+        });
+
+        modelBuilder.Entity<ProductCategory>(entity =>
+        {
+            entity.HasKey(e => e.CategoryId);
+
+            entity.Property(e => e.Name).HasMaxLength(150);
+            entity.Property(e => e.Description).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<Room>(entity =>
+        {
+            entity.Property(e => e.RoomCode).HasMaxLength(50);
+            entity.Property(e => e.RoomType).HasMaxLength(50);
+            entity.Property(e => e.Status).HasMaxLength(30);
+            entity.Property(e => e.Dimensions).HasMaxLength(100);
+            entity.Property(e => e.DailyRate).HasColumnType("decimal(18, 2)");
         });
 
         modelBuilder.Entity<Role>(entity =>

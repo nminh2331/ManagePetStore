@@ -429,6 +429,38 @@ namespace ManagePetStore.Areas.Customer.Controllers
             return true;
         }
 
+        private static bool ValidateProfilePhone(string phone, out string errorMessage)
+        {
+            errorMessage = "";
+
+            if (string.IsNullOrWhiteSpace(phone))
+            {
+                errorMessage = "Số điện thoại không được để trống.";
+                return false;
+            }
+
+            var digitsOnly = phone.Trim();
+            if (!digitsOnly.All(char.IsDigit))
+            {
+                errorMessage = "Số điện thoại chỉ được chứa chữ số, không được có chữ cái.";
+                return false;
+            }
+
+            if (digitsOnly.Length < 10)
+            {
+                errorMessage = "Số điện thoại phải có ít nhất 10 chữ số.";
+                return false;
+            }
+
+            if (!long.TryParse(digitsOnly, out var numericValue) || numericValue <= 0)
+            {
+                errorMessage = "Số điện thoại phải là số lớn hơn 0.";
+                return false;
+            }
+
+            return true;
+        }
+
         private static string GenerateOtpCode()
         {
             return Random.Shared.Next(100000, 999999).ToString();
@@ -789,6 +821,14 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 return View(user);
             }
 
+            phone = phone.Trim();
+            if (!ValidateProfilePhone(phone, out var phoneError))
+            {
+                TempData["ErrorMessage"] = phoneError;
+                user.Phone = phone;
+                return View(user);
+            }
+
             // Kiểm tra trùng email với tài khoản khác
             if (await _context.Users.AnyAsync(u => u.Email == email && u.UserId != userId))
             {
@@ -862,6 +902,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
 
         [Authorize]
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> UploadAvatar(IFormFile avatarFile)
         {
             if (avatarFile == null || avatarFile.Length == 0)

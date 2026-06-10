@@ -365,6 +365,26 @@
     box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.25);
 }
 
+.cp-form-input.is-invalid,
+.cp-form-select.is-invalid,
+.cp-upload-input.is-invalid {
+    background: #fef2f2;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.35);
+}
+
+.cp-field-error {
+    display: none;
+    color: #dc2626;
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: 6px;
+    line-height: 1.4;
+}
+
+.cp-field-error.visible {
+    display: block;
+}
+
 .cp-form-textarea {
     min-height: 90px;
     resize: vertical;
