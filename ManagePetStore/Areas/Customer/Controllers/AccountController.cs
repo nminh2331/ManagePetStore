@@ -49,19 +49,19 @@ namespace ManagePetStore.Areas.Customer.Controllers
 
             if (string.IsNullOrEmpty(usernameOrEmail) || string.IsNullOrEmpty(password))
             {
-                ModelState.AddModelError("", "Vui lòng nhập đầy đủ tên đăng nhập/email và mật khẩu.");
+                ModelState.AddModelError("", "Vui lòng nhập đầy đủ email và mật khẩu.");
                 return View();
             }
 
-            // Tìm user bằng username hoặc email
+            // Tìm user bằng email (email làm tên đăng nhập thay thế)
             var user = await _context.Users
                 .Include(u => u.Role)
                 .Include(u => u.Customer)
-                .FirstOrDefaultAsync(u => u.Username == usernameOrEmail || u.Email == usernameOrEmail);
+                .FirstOrDefaultAsync(u => u.Email == usernameOrEmail);
 
             if (user == null || user.Password != password) // Plain-text password check
             {
-                ModelState.AddModelError("", "Tên đăng nhập hoặc mật khẩu không chính xác.");
+                ModelState.AddModelError("", "Email hoặc mật khẩu không chính xác.");
                 return View();
             }
 
@@ -74,7 +74,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
             // Cấu hình Cookie Claims
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(ClaimTypes.Name, user.Email ?? ""),
                 new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
                 new Claim(ClaimTypes.Role, user.Role.RoleName),
                 new Claim("FullName", user.FullName),
@@ -100,9 +100,6 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 return Redirect(returnUrl);
             }
 
-            // Pass the role name directly — User.IsInRole() is unreliable on the same
-            // request immediately after SignInAsync() because the principal hasn't been
-            // refreshed yet from the new cookie.
             return RedirectToDashboard(user.Role.RoleName);
         }
 
@@ -121,37 +118,86 @@ namespace ManagePetStore.Areas.Customer.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Register(string username, string fullName, string email, string phone, string password, string confirmPassword)
+        public async Task<IActionResult> Register(string fullName, string email, string phone, string password, string confirmPassword)
         {
-            if (!ValidateRegistrationInput(username, fullName, email, phone, password, confirmPassword))
+            // Validate fullName
+            if (string.IsNullOrWhiteSpace(fullName))
             {
+                ModelState.AddModelError("fullName", "Họ và tên không được để trống.");
+            }
+            else if (fullName.Any(char.IsDigit))
+            {
+                ModelState.AddModelError("fullName", "Họ và tên không được chứa chữ số.");
+            }
+
+            // Validate email
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                ModelState.AddModelError("email", "Email không được để trống.");
+            }
+            else
+            {
+                var emailRegex = new System.Text.RegularExpressions.Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+                if (!emailRegex.IsMatch(email))
+                {
+                    ModelState.AddModelError("email", "Email không đúng định dạng.");
+                }
+                else if (await _context.Users.AnyAsync(u => u.Email == email) || await _context.Customers.AnyAsync(c => c.Email == email))
+                {
+                    ModelState.AddModelError("email", "Email đã được sử dụng bởi tài khoản khác.");
+                }
+            }
+
+            // Validate phone
+            if (string.IsNullOrWhiteSpace(phone))
+            {
+                ModelState.AddModelError("phone", "Số điện thoại không được để trống.");
+            }
+            else
+            {
+                if (!ValidatePhone(phone, out var phoneErr))
+                {
+                    ModelState.AddModelError("phone", phoneErr);
+                }
+                else if (await _context.Users.AnyAsync(u => u.Phone == phone) || await _context.Customers.AnyAsync(c => c.Phone == phone))
+                {
+                    ModelState.AddModelError("phone", "Số điện thoại đã được sử dụng bởi tài khoản khác.");
+                }
+            }
+
+            // Validate password
+            if (string.IsNullOrEmpty(password))
+            {
+                ModelState.AddModelError("password", "Mật khẩu không được để trống.");
+            }
+            else if (!ValidatePasswordStrength(password, out var passErr))
+            {
+                ModelState.AddModelError("password", passErr);
+            }
+
+            // Validate confirm password
+            if (string.IsNullOrEmpty(confirmPassword))
+            {
+                ModelState.AddModelError("confirmPassword", "Xác nhận mật khẩu không được để trống.");
+            }
+            else if (password != confirmPassword)
+            {
+                ModelState.AddModelError("confirmPassword", "Mật khẩu và xác nhận mật khẩu không khớp.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                ViewBag.FullName = (ModelState["fullName"]?.Errors == null || ModelState["fullName"]?.Errors.Count == 0) ? fullName : "";
+                ViewBag.Email = (ModelState["email"]?.Errors == null || ModelState["email"]?.Errors.Count == 0) ? email : "";
+                ViewBag.Phone = (ModelState["phone"]?.Errors == null || ModelState["phone"]?.Errors.Count == 0) ? phone : "";
                 return View();
             }
 
             try
             {
-                if (await _context.Users.AnyAsync(u => u.Username == username))
-                {
-                    ModelState.AddModelError("", "Tên đăng nhập đã tồn tại trong hệ thống.");
-                    return View();
-                }
-
-                if (await _context.Users.AnyAsync(u => u.Email == email) || await _context.Customers.AnyAsync(c => c.Email == email))
-                {
-                    ModelState.AddModelError("", "Email đã được sử dụng bởi tài khoản khác.");
-                    return View();
-                }
-
-                if (await _context.Users.AnyAsync(u => u.Phone == phone) || await _context.Customers.AnyAsync(c => c.Phone == phone))
-                {
-                    ModelState.AddModelError("", "Số điện thoại đã được sử dụng bởi tài khoản khác.");
-                    return View();
-                }
-
                 var otpCode = GenerateOtpCode();
                 var pending = new PendingRegistration
                 {
-                    Username = username.Trim(),
                     FullName = fullName.Trim(),
                     Email = email.Trim(),
                     Phone = phone.Trim(),
@@ -169,11 +215,17 @@ namespace ManagePetStore.Areas.Customer.Controllers
             catch (Exception ex) when (ex is Microsoft.Data.SqlClient.SqlException or InvalidOperationException)
             {
                 ModelState.AddModelError("", "Không thể kết nối cơ sở dữ liệu. Vui lòng kiểm tra SQL Server và thử lại sau.");
+                ViewBag.FullName = fullName;
+                ViewBag.Email = email;
+                ViewBag.Phone = phone;
                 return View();
             }
             catch (Exception)
             {
                 ModelState.AddModelError("", "Không thể gửi email OTP. Vui lòng kiểm tra cấu hình Gmail trong appsettings.json và thử lại.");
+                ViewBag.FullName = fullName;
+                ViewBag.Email = email;
+                ViewBag.Phone = phone;
                 return View();
             }
         }
@@ -222,13 +274,6 @@ namespace ManagePetStore.Areas.Customer.Controllers
 
             try
             {
-                if (await _context.Users.AnyAsync(u => u.Username == pending.Username))
-                {
-                    HttpContext.Session.Remove(PendingRegistrationSessionKey);
-                    TempData["ErrorMessage"] = "Tên đăng nhập đã tồn tại. Vui lòng đăng ký lại.";
-                    return RedirectToAction(nameof(Register));
-                }
-
                 if (await _context.Users.AnyAsync(u => u.Email == pending.Email))
                 {
                     HttpContext.Session.Remove(PendingRegistrationSessionKey);
@@ -240,7 +285,6 @@ namespace ManagePetStore.Areas.Customer.Controllers
 
                 var newUser = new User
                 {
-                    Username = pending.Username,
                     Password = pending.Password,
                     FullName = pending.FullName,
                     Email = pending.Email,
@@ -313,42 +357,108 @@ namespace ManagePetStore.Areas.Customer.Controllers
             }
         }
 
-        private bool ValidateRegistrationInput(string username, string fullName, string email, string phone, string password, string confirmPassword)
+        // Removed ValidateRegistrationInput as validation is now inlined in the POST Register action.
+
+        private bool ValidatePasswordStrength(string password, out string errorMessage)
         {
-            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(fullName) || string.IsNullOrEmpty(email) || string.IsNullOrEmpty(phone) || string.IsNullOrEmpty(password))
+            errorMessage = "";
+            if (string.IsNullOrEmpty(password))
             {
-                ModelState.AddModelError("", "Vui lòng nhập đầy đủ các trường thông tin bắt buộc.");
+                errorMessage = "Mật khẩu không được để trống.";
+                return false;
+            }
+            if (password.Length < 8 || password.Length > 25)
+            {
+                errorMessage = "Mật khẩu phải từ 8 đến 25 ký tự.";
+                return false;
+            }
+            if (!password.Any(char.IsUpper))
+            {
+                errorMessage = "Mật khẩu phải chứa ít nhất 1 chữ cái in hoa.";
+                return false;
+            }
+            if (!password.Any(char.IsDigit))
+            {
+                errorMessage = "Mật khẩu phải chứa ít nhất 1 chữ số.";
+                return false;
+            }
+            string specialCh = @"%!@#$%^&*()_+{}|[]\:";
+            bool hasSpecial = password.Any(c => specialCh.Contains(c) || char.IsSymbol(c) || char.IsPunctuation(c));
+            if (!hasSpecial)
+            {
+                errorMessage = "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt.";
+                return false;
+            }
+            // Check consecutive repeating (e.g. aaa)
+            for (int i = 0; i < password.Length - 2; i++)
+            {
+                if (password[i] == password[i + 1] && password[i] == password[i + 2])
+                {
+                    errorMessage = "Mật khẩu không được chứa ký tự lặp lại liên tiếp (ví dụ: aaa).";
+                    return false;
+                }
+            }
+            // Check consecutive sequential (e.g. abc, 123)
+            for (int i = 0; i < password.Length - 2; i++)
+            {
+                char c1 = password[i];
+                char c2 = password[i + 1];
+                char c3 = password[i + 2];
+                if (c2 == c1 + 1 && c3 == c2 + 1)
+                {
+                    errorMessage = "Mật khẩu không được chứa chuỗi ký tự liên tiếp tăng dần (ví dụ: 123, abc).";
+                    return false;
+                }
+                if (c2 == c1 - 1 && c3 == c2 - 1)
+                {
+                    errorMessage = "Mật khẩu không được chứa chuỗi ký tự liên tiếp giảm dần (ví dụ: 321, cba).";
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private bool ValidatePhone(string phone, out string errorMessage)
+        {
+            errorMessage = "";
+            if (string.IsNullOrEmpty(phone) || phone.Length != 10 || !phone.StartsWith("0") || !phone.All(char.IsDigit))
+            {
+                errorMessage = "Số điện thoại phải bắt đầu bằng số 0 và có đúng 10 chữ số.";
+                return false;
+            }
+            return true;
+        }
+
+        private static bool ValidateProfilePhone(string phone, out string errorMessage)
+        {
+            errorMessage = "";
+
+            if (string.IsNullOrWhiteSpace(phone))
+            {
+                errorMessage = "Số điện thoại không được để trống.";
                 return false;
             }
 
-            if (password != confirmPassword)
+            var digitsOnly = phone.Trim();
+            if (!digitsOnly.All(char.IsDigit))
             {
-                ModelState.AddModelError("", "Mật khẩu và xác nhận mật khẩu không khớp.");
+                errorMessage = "Số điện thoại chỉ được chứa chữ số, không được có chữ cái.";
                 return false;
             }
 
-            if (username.Length < 1 || username.Length >= 20)
+            if (digitsOnly.Length < 10)
             {
-                ModelState.AddModelError("", "Tên đăng nhập phải từ 1 đến 19 ký tự.");
+                errorMessage = "Số điện thoại phải có ít nhất 10 chữ số.";
+                return false;
             }
 
-            if (fullName.Any(char.IsDigit))
+            if (!long.TryParse(digitsOnly, out var numericValue) || numericValue <= 0)
             {
-                ModelState.AddModelError("", "Họ và tên không được chứa chữ số.");
+                errorMessage = "Số điện thoại phải là số lớn hơn 0.";
+                return false;
             }
 
-            var emailRegex = new System.Text.RegularExpressions.Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$");
-            if (!emailRegex.IsMatch(email))
-            {
-                ModelState.AddModelError("", "Email không đúng định dạng.");
-            }
-
-            if (password.Length < 1 || password.Length >= 20)
-            {
-                ModelState.AddModelError("", "Mật khẩu phải từ 1 đến 19 ký tự.");
-            }
-
-            return ModelState.IsValid;
+            return true;
         }
 
         private static string GenerateOtpCode()
@@ -576,9 +686,9 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 return View(new ResetPasswordViewModel { Email = pending.Email });
             }
 
-            if (newPassword.Length < 1 || newPassword.Length >= 20)
+            if (!ValidatePasswordStrength(newPassword, out var passErr))
             {
-                ModelState.AddModelError("", "Mật khẩu phải từ 1 đến 19 ký tự.");
+                ModelState.AddModelError("", passErr);
                 return View(new ResetPasswordViewModel { Email = pending.Email });
             }
 
@@ -696,6 +806,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
 
             int userId = int.Parse(userIdClaim.Value);
             var user = await _context.Users
+                .Include(u => u.Role)
                 .Include(u => u.Customer)
                 .FirstOrDefaultAsync(u => u.UserId == userId);
 
@@ -707,6 +818,14 @@ namespace ManagePetStore.Areas.Customer.Controllers
             if (string.IsNullOrEmpty(fullName) || string.IsNullOrEmpty(email) || string.IsNullOrEmpty(phone))
             {
                 TempData["ErrorMessage"] = "Họ tên, email và số điện thoại không được để trống.";
+                return View(user);
+            }
+
+            phone = phone.Trim();
+            if (!ValidateProfilePhone(phone, out var phoneError))
+            {
+                TempData["ErrorMessage"] = phoneError;
+                user.Phone = phone;
                 return View(user);
             }
 
@@ -781,6 +900,83 @@ namespace ManagePetStore.Areas.Customer.Controllers
             return View(user);
         }
 
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UploadAvatar(IFormFile avatarFile)
+        {
+            if (avatarFile == null || avatarFile.Length == 0)
+            {
+                return Json(new { success = false, message = "Không tìm thấy file ảnh tải lên." });
+            }
+
+            // 1. Validate File Size: max 10MB
+            long maxBytes = 10 * 1024 * 1024; // 10MB
+            if (avatarFile.Length > maxBytes)
+            {
+                return Json(new { success = false, message = "Dung lượng ảnh vượt quá giới hạn cho phép (tối đa 10MB)." });
+            }
+
+            // 2. Validate MIME Type & Magic Bytes
+            var contentType = avatarFile.ContentType.ToLower();
+            if (contentType != "image/jpeg" && contentType != "image/png")
+            {
+                return Json(new { success = false, message = "Định dạng file không được hỗ trợ. Chỉ chấp nhận ảnh JPG hoặc PNG." });
+            }
+
+            // Verify Magic Bytes to prevent extension renaming attacks
+            byte[] header = new byte[4];
+            using (var stream = avatarFile.OpenReadStream())
+            {
+                await stream.ReadAsync(header, 0, 4);
+            }
+
+            bool isPng = header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47;
+            bool isJpeg = header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF;
+
+            if (!isPng && !isJpeg)
+            {
+                return Json(new { success = false, message = "Định dạng ảnh không hợp lệ (không khớp signature JPG/PNG)." });
+            }
+
+            // 3. Save File
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+            {
+                return Json(new { success = false, message = "Phiên đăng nhập không hợp lệ." });
+            }
+            int userId = int.Parse(userIdClaim.Value);
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+            if (user == null)
+            {
+                return Json(new { success = false, message = "Người dùng không tồn tại." });
+            }
+
+            var extension = isPng ? ".png" : ".jpg";
+            var fileName = $"{userId}_{DateTime.UtcNow.Ticks}{extension}";
+            
+            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "avatars");
+            if (!Directory.Exists(uploadsDir))
+            {
+                Directory.CreateDirectory(uploadsDir);
+            }
+
+            var filePath = Path.Combine(uploadsDir, fileName);
+            using (var fileStream = new FileStream(filePath, FileMode.Create))
+            {
+                await avatarFile.CopyToAsync(fileStream);
+            }
+
+            // 4. Update Database
+            var dbPath = $"/uploads/avatars/{fileName}";
+            user.AvatarPath = dbPath;
+            _context.Entry(user).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, avatarPath = dbPath });
+        }
+
         // =========================================================================
         // 6. ĐỔI MẬT KHẨU (CHANGE PASSWORD)
         // =========================================================================
@@ -821,6 +1017,12 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 return RedirectToAction("Profile");
             }
 
+            if (!ValidatePasswordStrength(newPassword, out var passErr))
+            {
+                TempData["PasswordError"] = passErr;
+                return RedirectToAction("Profile");
+            }
+
             try
             {
                 user.Password = newPassword;
@@ -858,6 +1060,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 "cashier"   => RedirectToAction("Index", "Home", new { area = "Cashier" }),
                 "service"   => Redirect("/SpaServices"), // Redirect directly to SpaServices operational dashboard
                 "warehouse" => RedirectToAction("Index", "Home", new { area = "Warehouse" }),
+                "manager"   => RedirectToAction("Index", "Order", new { area = "Manager" }),
                 // customer or any other role → public home
                 _           => RedirectToAction("Index", "Home", new { area = "" })
             };
@@ -876,6 +1079,8 @@ namespace ManagePetStore.Areas.Customer.Controllers
             }
             if (User.IsInRole("warehouse"))
                 return RedirectToAction("Index", "Home", new { area = "Warehouse" });
+            if (User.IsInRole("manager"))
+                return RedirectToAction("Index", "Order", new { area = "Manager" });
 
             // Mặc định là customer hoặc vai trò khác -> về Trang chủ của Home ngoài Area
             return RedirectToAction("Index", "Home", new { area = "" });
