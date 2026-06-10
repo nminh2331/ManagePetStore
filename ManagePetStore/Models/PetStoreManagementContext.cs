@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -76,9 +76,8 @@ public partial class PetStoreManagementContext : DbContext
         .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
         IConfigurationRoot configuration = builder.Build();
         optionsBuilder.UseSqlServer(configuration.GetConnectionString("DefaultConnection"));
-    }
 
-     //   => optionsBuilder.UseSqlServer("Server=DESKTOP-0NF6T35;database=PetStoreManagement;uid=sa;pwd=123;Encrypt=false;");
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -328,6 +327,7 @@ public partial class PetStoreManagementContext : DbContext
 
             entity.HasOne(d => d.Category).WithMany(p => p.Products)
                 .HasForeignKey(d => d.CategoryId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Products_ProductCategories");
         });
 
@@ -337,6 +337,15 @@ public partial class PetStoreManagementContext : DbContext
 
             entity.Property(e => e.Name).HasMaxLength(150);
             entity.Property(e => e.Description).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<Room>(entity =>
+        {
+            entity.Property(e => e.RoomCode).HasMaxLength(50);
+            entity.Property(e => e.RoomType).HasMaxLength(50);
+            entity.Property(e => e.Status).HasMaxLength(30);
+            entity.Property(e => e.Dimensions).HasMaxLength(100);
+            entity.Property(e => e.DailyRate).HasColumnType("decimal(18, 2)");
         });
 
         modelBuilder.Entity<Role>(entity =>
@@ -503,8 +512,7 @@ public partial class PetStoreManagementContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasIndex(e => e.Username, "UQ_Users_Username").IsUnique();
-
+            entity.Property(e => e.AvatarPath).HasMaxLength(255);
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
@@ -522,9 +530,6 @@ public partial class PetStoreManagementContext : DbContext
                 .HasMaxLength(20)
                 .IsUnicode(false)
                 .HasDefaultValue("Active");
-            entity.Property(e => e.Username)
-                .HasMaxLength(50)
-                .IsUnicode(false);
 
             entity.HasOne(d => d.Role).WithMany(p => p.Users)
                 .HasForeignKey(d => d.RoleId)

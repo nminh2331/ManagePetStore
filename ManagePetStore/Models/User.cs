@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace ManagePetStore.Models;
@@ -6,8 +6,6 @@ namespace ManagePetStore.Models;
 public partial class User
 {
     public int UserId { get; set; }
-
-    public string Username { get; set; } = null!;
 
     public string Password { get; set; } = null!;
 
@@ -22,6 +20,8 @@ public partial class User
     public string Status { get; set; } = null!;
 
     public DateTime CreatedAt { get; set; }
+
+    public string? AvatarPath { get; set; }
 
     public virtual ICollection<Blog> Blogs { get; set; } = new List<Blog>();
 

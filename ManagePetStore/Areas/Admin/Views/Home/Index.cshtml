@@ -145,6 +145,7 @@
             <a href="@Url.Action("Index", new { activeTab = "staff", searchStaff = searchStaff, roleFilter = "2", statusFilter = statusFilter })" class="admin-filter-pill @(roleFilter == "2" ? "active" : "")">Thu ngân</a>
             <a href="@Url.Action("Index", new { activeTab = "staff", searchStaff = searchStaff, roleFilter = "3", statusFilter = statusFilter })" class="admin-filter-pill @(roleFilter == "3" ? "active" : "")">Chăm sóc</a>
             <a href="@Url.Action("Index", new { activeTab = "staff", searchStaff = searchStaff, roleFilter = "4", statusFilter = statusFilter })" class="admin-filter-pill @(roleFilter == "4" ? "active" : "")">Thủ kho</a>
+            <a href="@Url.Action("Index", new { activeTab = "staff", searchStaff = searchStaff, roleFilter = "6", statusFilter = statusFilter })" class="admin-filter-pill @(roleFilter == "6" ? "active" : "")">Quản lý</a>
         }
         else
         {
@@ -216,6 +217,10 @@
                             {
                                 <span class="badge-role badge-role-warehouse">Nhân viên Kho</span>
                             }
+                            else if (user.RoleId == 6)
+                            {
+                                <span class="badge-role badge-role-manager">Quản lý</span>
+                            }
                         </td>
                         <td>
                             <span style="font-family: monospace; font-weight: 500;">@user.Password</span>
@@ -240,7 +245,7 @@
                             }
                         </td>
                         <td>
-                            @if (user.Username != User.Identity?.Name)
+                            @if (user.Email != User.Identity?.Name)
                             {
                                 <button type="button" class="admin-action-btn btn-edit-staff" title="Sửa tài khoản"
                                         data-userid="@user.UserId"
@@ -391,7 +396,7 @@
             <button class="admin-modal-close" onclick="closeModal()">&times;</button>
         </div>
         
-        <form asp-action="CreateStaff" method="post">
+        <form id="createStaffForm">
             @Html.AntiForgeryToken()
 
             <div class="admin-form-group">
@@ -434,9 +439,19 @@
                 </div>
             </div>
 
+            <!-- OTP Input Group (hidden initially) -->
+            <div class="admin-form-group" id="staff-otp-group" style="display: none; margin-top: 10px;">
+                <label style="color: var(--admin-primary); font-weight: 700;">Nhập mã xác thực OTP gửi qua Email *</label>
+                <input type="text" id="staff-otp-code" class="admin-form-input" placeholder="Mã OTP 6 số" style="border-color: var(--admin-primary); font-weight: 700; text-align: center; letter-spacing: 4px;" />
+            </div>
+
+            <!-- Modal Alerts -->
+            <div id="staff-modal-alert" class="alert alert-danger" style="display: none; border-radius: 12px; font-size: 0.85rem; margin-top: 15px;"></div>
+            <div id="staff-modal-success" class="alert alert-success" style="display: none; border-radius: 12px; font-size: 0.85rem; margin-top: 15px;"></div>
+
             <div class="admin-modal-footer">
                 <button type="button" class="admin-btn-secondary" onclick="closeModal()">Hủy</button>
-                <button type="submit" class="admin-btn-primary" style="box-shadow: none;">Lưu & Cấp tài khoản</button>
+                <button type="button" id="btn-submit-staff" class="admin-btn-primary" style="box-shadow: none;">Gửi mã OTP xác nhận</button>
             </div>
         </form>
     </div>
@@ -507,12 +522,104 @@
 
 @section Scripts {
     <script>
+        var isOtpSent = false;
+
         function openModal() {
+            // Reset form
+            $('#createStaffForm')[0].reset();
+            $('#createStaffForm input[name="password"]').val('123456');
+            $('#staff-otp-group').hide();
+            $('#staff-otp-code').val('');
+            $('#staff-modal-alert').hide().text('');
+            $('#staff-modal-success').hide().text('');
+            $('#btn-submit-staff').text('Gửi mã OTP xác nhận').prop('disabled', false);
+            isOtpSent = false;
             document.getElementById('createStaffModal').style.display = 'flex';
         }
+
         function closeModal() {
             document.getElementById('createStaffModal').style.display = 'none';
         }
+
+        $('#btn-submit-staff').click(function() {
+            var $btn = $(this);
+            $('#staff-modal-alert').hide().text('');
+            $('#staff-modal-success').hide().text('');
+
+            if (!isOtpSent) {
+                // Gửi OTP
+                var fullName = $('#createStaffForm input[name="fullName"]').val();
+                var email = $('#createStaffForm input[name="email"]').val();
+                var phone = $('#createStaffForm input[name="phone"]').val();
+                var roleId = $('#createStaffForm select[name="roleId"]').val();
+                var password = $('#createStaffForm input[name="password"]').val();
+
+                if (!fullName || !email || !phone || !password || !roleId) {
+                    $('#staff-modal-alert').text('Vui lòng điền đầy đủ các thông tin bắt buộc.').show();
+                    return;
+                }
+
+                $btn.text('Đang gửi OTP...').prop('disabled', true);
+
+                $.ajax({
+                    url: '@Url.Action("SendStaffOtp", "Home", new { area = "Admin" })',
+                    type: 'POST',
+                    data: {
+                        fullName: fullName,
+                        email: email,
+                        phone: phone,
+                        roleId: roleId,
+                        password: password,
+                        __RequestVerificationToken: $('#createStaffForm input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            isOtpSent = true;
+                            $('#staff-otp-group').slideDown();
+                            $('#staff-modal-success').text(res.message).show();
+                            $btn.text('Xác thực & Cấp tài khoản').prop('disabled', false);
+                        } else {
+                            $('#staff-modal-alert').text(res.message).show();
+                            $btn.text('Gửi mã OTP xác nhận').prop('disabled', false);
+                        }
+                    },
+                    error: function() {
+                        $('#staff-modal-alert').text('Đã xảy ra lỗi hệ thống khi gửi OTP.').show();
+                        $btn.text('Gửi mã OTP xác nhận').prop('disabled', false);
+                    }
+                });
+            } else {
+                // Xác thực OTP và Tạo tài khoản
+                var otpCode = $('#staff-otp-code').val();
+                if (!otpCode) {
+                    $('#staff-modal-alert').text('Vui lòng nhập mã OTP.').show();
+                    return;
+                }
+
+                $btn.text('Đang xác thực...').prop('disabled', true);
+
+                $.ajax({
+                    url: '@Url.Action("VerifyStaffOtpAndCreate", "Home", new { area = "Admin" })',
+                    type: 'POST',
+                    data: {
+                        otpCode: otpCode,
+                        __RequestVerificationToken: $('#createStaffForm input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            window.location.reload();
+                        } else {
+                            $('#staff-modal-alert').text(res.message).show();
+                            $btn.text('Xác thực & Cấp tài khoản').prop('disabled', false);
+                        }
+                    },
+                    error: function() {
+                        $('#staff-modal-alert').text('Đã xảy ra lỗi hệ thống khi xác thực.').show();
+                        $btn.text('Xác thực & Cấp tài khoản').prop('disabled', false);
+                    }
+                });
+            }
+        });
         
         // Mở và đóng Edit Modal dùng JQuery
         $(document).on('click', '.btn-edit-staff', function() {
