@@ -66,6 +66,8 @@ builder.Services.AddScoped<IProductCategoryRepository, ProductCategoryRepository
 // Warehouse services
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IProductCategoryService, ProductCategoryService>();
+builder.Services.AddScoped<ManagePetStore.Areas.Warehouse.Repositories.IInventoryBatchRepository, ManagePetStore.Areas.Warehouse.Repositories.InventoryBatchRepository>();
+builder.Services.AddScoped<ManagePetStore.Areas.Warehouse.Services.IInventoryBatchService, ManagePetStore.Areas.Warehouse.Services.InventoryBatchService>();
 
 
 

@@ -13,7 +13,7 @@ namespace ManagePetStore.Services;
 public interface IProductService
 {
     /// Returns the full product list together with pre-calculated warehouse stats.
-    Task<ProductSummaryViewModel> GetProductSummary();
+    Task<ProductSummaryViewModel> GetProductSummary(string? search = null, string filter = "active");
 
     /// Returns a single product by SKU, or null if not found.
     Task<Product?> GetProductBySku(string sku);
@@ -31,4 +31,7 @@ public interface IProductService
 
     /// Deletes a product by SKU. No-op if not found.
     Task DeleteProduct(string sku);
+
+    /// Restores a soft-deleted product by SKU.
+    Task RestoreProduct(string sku);
 }

@@ -25,13 +25,14 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         }
 
         // GET: Warehouse/ProductCategory
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(bool showDeleted = false)
         {
-            var summary = await _categoryService.GetCategorySummary();
+            var summary = await _categoryService.GetCategorySummary(showDeleted);
 
             ViewBag.TotalCategories = summary.TotalCategories;
             ViewBag.TotalProducts   = summary.TotalProducts;
             ViewBag.EmptyCategories = summary.EmptyCategories;
+            ViewBag.ShowDeleted     = showDeleted;
 
             return View(summary.Categories);
         }
@@ -101,6 +102,15 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         {
             await _categoryService.DeleteCategory(id);
             return RedirectToAction(nameof(Index));
+        }
+
+        // POST: Warehouse/ProductCategory/Restore/{id}
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Restore(int id)
+        {
+            await _categoryService.RestoreCategory(id);
+            return RedirectToAction(nameof(Index), new { showDeleted = true });
         }
     }
 }

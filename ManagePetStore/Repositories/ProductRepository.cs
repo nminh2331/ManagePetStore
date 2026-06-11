@@ -19,12 +19,17 @@ public class ProductRepository : IProductRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<Product>> GetAllWithCategory()
+    public async Task<IEnumerable<Product>> GetAllWithCategory(string filter = "active")
     {
-        return await _context.Products
-            .Include(p => p.Category)
-            .OrderBy(p => p.Name)
-            .ToListAsync();
+        var query = _context.Products.Include(p => p.Category).AsQueryable();
+
+        if (filter == "active")
+            query = query.Where(p => p.IsDeleted == false);
+        else if (filter == "deleted")
+            query = query.Where(p => p.IsDeleted == true);
+        // "all" → không lọc, lấy toàn bộ
+
+        return await query.OrderBy(p => p.Name).ToListAsync();
     }
 
     public async Task<Product?> GetProductBySku(string sku)
@@ -34,7 +39,7 @@ public class ProductRepository : IProductRepository
 
     public async Task<int> GetCategoryCount()
     {
-        return await _context.ProductCategories.CountAsync();
+        return await _context.ProductCategories.CountAsync(c => !c.IsDeleted);
     }
 
     public async Task AddProduct(Product product)
@@ -54,7 +59,19 @@ public class ProductRepository : IProductRepository
         var product = await _context.Products.FindAsync(sku);
         if (product is not null)
         {
-            _context.Products.Remove(product);
+            product.IsDeleted = true;
+            _context.Products.Update(product);
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    public async Task RestoreProduct(string sku)
+    {
+        var product = await _context.Products.FindAsync(sku);
+        if (product is not null)
+        {
+            product.IsDeleted = false;
+            _context.Products.Update(product);
             await _context.SaveChangesAsync();
         }
     }

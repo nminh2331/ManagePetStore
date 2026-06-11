@@ -11,13 +11,14 @@ namespace ManagePetStore.Repositories;
 
 public interface IProductRepository
 {
-    /// Returns all products with their Category eagerly loaded.
-    Task<IEnumerable<Product>> GetAllWithCategory();
+    /// Returns products with their Category eagerly loaded.
+    /// filter: "active" (default) = only active, "deleted" = only deleted, "all" = both.
+    Task<IEnumerable<Product>> GetAllWithCategory(string filter = "active");
 
     /// Returns a single product by SKU (without navigation properties).
     Task<Product?> GetProductBySku(string sku);
 
-    /// Returns the total number of distinct product categories.
+    /// Returns the total number of distinct active product categories.
     Task<int> GetCategoryCount();
 
     /// Adds a new product and persists the change.
@@ -26,8 +27,11 @@ public interface IProductRepository
     /// Updates an existing product and persists the change.
     Task UpdateProduct(Product product);
 
-    /// Deletes a product by SKU and persists the change.
+    /// Soft deletes a product by SKU (sets IsDeleted = true).
     Task DeleteProduct(string sku);
+
+    /// Restores a soft-deleted product by SKU (sets IsDeleted = false).
+    Task RestoreProduct(string sku);
 
     /// Returns true if a product with the given SKU exists.
     Task<bool> ProductExists(string sku);

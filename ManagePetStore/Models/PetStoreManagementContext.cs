@@ -31,6 +31,8 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<HotelBooking> HotelBookings { get; set; }
 
+    public virtual DbSet<InventoryBatch> InventoryBatchs { get; set; }
+
     public virtual DbSet<Order> Orders { get; set; }
 
     public virtual DbSet<OrderItem> OrderItems { get; set; }
@@ -44,8 +46,6 @@ public partial class PetStoreManagementContext : DbContext
     public virtual DbSet<ProductCategory> ProductCategories { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
-
-    public virtual DbSet<Room> Rooms { get; set; }
 
     public virtual DbSet<RoomType> RoomTypes { get; set; }
 
@@ -70,14 +70,8 @@ public partial class PetStoreManagementContext : DbContext
     public virtual DbSet<Voucher> Vouchers { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        var builder = new ConfigurationBuilder()
-        .SetBasePath(Directory.GetCurrentDirectory())
-        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-        IConfigurationRoot configuration = builder.Build();
-        optionsBuilder.UseSqlServer(configuration.GetConnectionString("DefaultConnection"));
-
-    }
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("Server=DESKTOP-Q2GI1JB;Database=PetStoreManagement;uid = sa;pwd = 123;Trusted_Connection=True;TrustServerCertificate=True;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -230,6 +224,21 @@ public partial class PetStoreManagementContext : DbContext
                 .HasConstraintName("FK_HotelBookings_Pets");
         });
 
+        modelBuilder.Entity<InventoryBatch>(entity =>
+        {
+            entity.HasKey(e => e.BatchId).HasName("PK__Inventor__5D55CE58BACC1E47");
+
+            entity.Property(e => e.ExpiryDate).HasColumnType("datetime");
+            entity.Property(e => e.ProductSku).HasMaxLength(50);
+            entity.Property(e => e.ReceivedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.ProductSkuNavigation).WithMany(p => p.InventoryBatches)
+                .HasForeignKey(d => d.ProductSku)
+                .HasConstraintName("FK_InventoryBatch_Product");
+        });
+
         modelBuilder.Entity<Order>(entity =>
         {
             entity.HasIndex(e => e.Date, "IX_Orders_Date");
@@ -327,7 +336,6 @@ public partial class PetStoreManagementContext : DbContext
 
             entity.HasOne(d => d.Category).WithMany(p => p.Products)
                 .HasForeignKey(d => d.CategoryId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Products_ProductCategories");
         });
 
@@ -335,17 +343,8 @@ public partial class PetStoreManagementContext : DbContext
         {
             entity.HasKey(e => e.CategoryId);
 
-            entity.Property(e => e.Name).HasMaxLength(150);
             entity.Property(e => e.Description).HasMaxLength(500);
-        });
-
-        modelBuilder.Entity<Room>(entity =>
-        {
-            entity.Property(e => e.RoomCode).HasMaxLength(50);
-            entity.Property(e => e.RoomType).HasMaxLength(50);
-            entity.Property(e => e.Status).HasMaxLength(30);
-            entity.Property(e => e.Dimensions).HasMaxLength(100);
-            entity.Property(e => e.DailyRate).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Name).HasMaxLength(150);
         });
 
         modelBuilder.Entity<Role>(entity =>

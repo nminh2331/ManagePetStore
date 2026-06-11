@@ -45,13 +45,21 @@
 </div>
 
 <!-- ── Header ─────────────────────────────────────────────── -->
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div>
         <h2 class="fw-bold m-0" style="color:#333;">
             <i class="fas fa-tags" style="color:#e65c00;"></i> Danh mục Sản phẩm
         </h2>
         <p class="text-muted small mb-0">@totalCategories danh mục · @totalProducts sản phẩm</p>
     </div>
+
+    <form method="get" class="d-flex gap-2 align-items-center" style="background:#fff; padding:6px 12px; border-radius:8px; border:1px solid #ddd;">
+        <div class="form-check form-switch m-0" title="Hiển thị cả các danh mục đã xóa">
+            <input class="form-check-input" type="checkbox" name="showDeleted" value="true" id="showDeletedCheck" @(ViewBag.ShowDeleted == true ? "checked" : "") onchange="this.form.submit()" style="cursor:pointer;" />
+            <label class="form-check-label small text-muted" for="showDeletedCheck" style="cursor:pointer;">Hiện danh mục đã xóa</label>
+        </div>
+    </form>
+
     <a asp-action="Create" class="btn btn-primary-custom btn-custom">
         <i class="fas fa-plus"></i> Thêm danh mục
     </a>
@@ -75,12 +83,17 @@
                 int idx = 1;
                 foreach (var item in Model)
                 {
+                    var isDeletedRowStyle = item.IsDeleted ? "opacity: 0.6; background-color: #f9f9f9;" : "";
                     int productCount = item.Products?.Count ?? 0;
-                    <tr>
+                    <tr style="@isDeletedRowStyle">
                         <td class="text-muted">@(idx++)</td>
                         <td class="fw-bold">
                             <i class="fas fa-tag me-1" style="color:#e65c00;font-size:.85rem;"></i>
                             @item.Name
+                            @if (item.IsDeleted)
+                            {
+                                <span class="badge bg-secondary ms-2" style="font-size:0.7rem;">Đã xóa</span>
+                            }
                         </td>
                         <td class="text-muted">
                             @(string.IsNullOrEmpty(item.Description) ? "—" : item.Description)
@@ -104,13 +117,26 @@
                                class="btn btn-sm btn-outline-primary" style="border-radius:8px;" title="Chỉnh sửa">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <form asp-action="Delete" asp-route-id="@item.CategoryId" method="post"
-                                  class="d-inline" onsubmit="return confirm('Xóa danh mục \'@item.Name\'? Các sản phẩm sẽ mất danh mục!');">
-                                <button type="submit" class="btn btn-sm btn-outline-danger"
-                                        style="border-radius:8px;" title="Xóa">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </form>
+                            @if (!item.IsDeleted)
+                            {
+                                <form asp-action="Delete" asp-route-id="@item.CategoryId" method="post"
+                                      class="d-inline" onsubmit="return confirm('Xóa danh mục \'@item.Name\'? Các sản phẩm sẽ mất danh mục!');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            style="border-radius:8px;" title="Xóa">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <form asp-action="Restore" asp-route-id="@item.CategoryId" method="post"
+                                      class="d-inline" onsubmit="return confirm('Bạn có chắc muốn khôi phục danh mục này?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-success"
+                                            style="border-radius:8px;" title="Khôi phục">
+                                        <i class="fas fa-undo"></i>
+                                    </button>
+                                </form>
+                            }
                         </td>
                     </tr>
                 }

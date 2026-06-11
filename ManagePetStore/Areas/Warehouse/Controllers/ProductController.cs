@@ -35,15 +35,18 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         }
 
         // GET: Warehouse/Product
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string search, string filter = "active")
         {
-            var summary = await _productService.GetProductSummary();
+            var summary = await _productService.GetProductSummary(search, filter);
 
             ViewBag.TotalProducts   = summary.TotalProducts;
             ViewBag.LowStockCount   = summary.LowStockCount;
             ViewBag.OutOfStockCount = summary.OutOfStockCount;
             ViewBag.TotalValue      = summary.TotalValue;
             ViewBag.CategoryCount   = summary.CategoryCount;
+            
+            ViewBag.Search          = search;
+            ViewBag.Filter          = filter;
 
             return View(summary.Products);
         }
@@ -195,19 +198,17 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(string id)
         {
-            // Get product to check if it has a local image to delete
-            var product = await _productService.GetProductBySku(id);
-            if (product != null && !string.IsNullOrEmpty(product.ImageUrl) && product.ImageUrl.StartsWith("/images/products/"))
-            {
-                var filePath = Path.Combine(_webHostEnvironment.WebRootPath, product.ImageUrl.TrimStart('/'));
-                if (System.IO.File.Exists(filePath))
-                {
-                    System.IO.File.Delete(filePath);
-                }
-            }
-
             await _productService.DeleteProduct(id);
             return RedirectToAction(nameof(Index));
+        }
+
+        // POST: Warehouse/Product/Restore/{sku}
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Restore(string id)
+        {
+            await _productService.RestoreProduct(id);
+            return RedirectToAction(nameof(Index), new { filter = "deleted" });
         }
     }
 }

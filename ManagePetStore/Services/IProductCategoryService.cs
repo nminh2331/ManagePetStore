@@ -12,7 +12,7 @@ namespace ManagePetStore.Services;
 public interface IProductCategoryService
 {
     /// Returns the full category list together with pre-calculated stats.
-    Task<CategorySummaryViewModel> GetCategorySummary();
+    Task<CategorySummaryViewModel> GetCategorySummary(bool showDeleted = false);
 
     /// Returns a single category by ID, or null if not found.
     Task<ProductCategory?> GetCategoryById(int id);
@@ -25,4 +25,7 @@ public interface IProductCategoryService
 
     /// Deletes a category by ID. No-op if not found.
     Task DeleteCategory(int id);
+
+    /// Restores a soft-deleted category by ID.
+    Task RestoreCategory(int id);
 }

@@ -1,0 +1,52 @@
+@model ManagePetStore.Models.InventoryBatch
+
+@{
+    var product = ViewBag.Product as ManagePetStore.Models.Product;
+    ViewData["Title"] = "Cập nhật Lô hàng - " + product?.Name;
+}
+
+<div class="mb-4">
+    <a asp-action="Index" asp-route-id="@product?.Sku" class="text-decoration-none text-muted mb-2 d-inline-block">
+        <i class="fas fa-arrow-left"></i> Quay lại danh sách lô hàng
+    </a>
+    <h2 class="fw-bold m-0" style="color: #333;">Cập nhật lô hàng #@Model.BatchId</h2>
+    <p class="text-muted small mt-1 mb-0">Sản phẩm: <span class="fw-bold text-dark">@product?.Name (@product?.Sku)</span></p>
+</div>
+
+<div class="card border-0 shadow-sm" style="border-radius: 12px; max-width: 600px;">
+    <div class="card-body p-4">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <input type="hidden" asp-for="BatchId" />
+            <input type="hidden" asp-for="ProductSku" />
+            
+            <div class="mb-3">
+                <label class="form-label fw-bold text-muted">Số lượng nhập ban đầu</label>
+                <input type="text" class="form-control bg-light" style="border-radius: 8px;" value="@Model.Quantity" disabled />
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="CurrentQuantity" class="form-label fw-bold">Số lượng tồn kho hiện tại <span class="text-danger">*</span></label>
+                <input asp-for="CurrentQuantity" type="number" min="0" class="form-control" style="border-radius: 8px;" required />
+                <span asp-validation-for="CurrentQuantity" class="text-danger small"></span>
+                <div class="form-text text-muted">Số lượng tổng của sản phẩm sẽ được đồng bộ theo mức thay đổi này.</div>
+            </div>
+            
+            <div class="mb-4">
+                <label asp-for="ExpiryDate" class="form-label fw-bold">Hạn sử dụng <span class="text-danger">*</span></label>
+                <input asp-for="ExpiryDate" type="date" class="form-control" style="border-radius: 8px;" required />
+                <span asp-validation-for="ExpiryDate" class="text-danger small"></span>
+            </div>
+            
+            <div class="text-end">
+                <button type="submit" class="btn btn-warning text-white fw-bold px-4 py-2">
+                    <i class="fas fa-edit"></i> Cập nhật lô hàng
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
