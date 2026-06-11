@@ -2146,13 +2146,14 @@
             $('#btnConfirmStartQueue').click(function () {
                 var queueId = $('#queueIdInput').val();
                 var groomerId = $('#queueGroomerSelect').val();
+                var selectedDate = $('#datePicker').val();
 
                 if (!groomerId) {
                     alert('Vui lòng chọn Kỹ thuật viên (Groomer) thực hiện.');
                     return;
                 }
 
-                $.post('/SpaServices/StartQueue', { queueId: queueId, groomerId: groomerId }, function (response) {
+                $.post('/SpaServices/StartQueue', { queueId: queueId, groomerId: groomerId, date: selectedDate }, function (response) {
                     if (response.success) {
                         showToast(response.message, 'success');
                         $('#startQueueModal').modal('hide');
