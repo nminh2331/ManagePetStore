@@ -5,6 +5,18 @@
 }
 
 <section class="ps-product-detail">
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: 12px; margin-bottom: 24px; border: none; background-color: #d1e7dd; color: #0f5132; padding: 16px; font-weight: 500;">
+            <i class="bi bi-check-circle-fill me-2"></i> @TempData["SuccessMessage"]
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: 12px; margin-bottom: 24px; border: none; background-color: #f8d7da; color: #842029; padding: 16px; font-weight: 500;">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["ErrorMessage"]
+        </div>
+    }
     <div class="ps-pd-grid">
         <div>
             <div class="ps-pd-main-image">
@@ -73,13 +85,172 @@
                 }
             </div>
 
-            @if (Model.Sku.StartsWith("SPA-SVC-"))  // xu ly Xử lý Số lượng (Quantity) , nếu là spa / sản phẩm 
+            @if (Model.Sku.StartsWith("SPA-SVC-"))
             {
-                <div class="ps-pd-qty-row">
+                <div class="ps-pd-qty-row" style="margin-bottom: 16px;">
                     <span class="ps-pd-qty-label">Trạng thái:</span>
                     <span class="ps-pd-stock-text" style="color: #2ec4b6; font-weight: 600; margin-left: 0;">Dịch vụ luôn sẵn sàng phục vụ</span>
                     <span class="ps-pd-qty-value" id="pdQty" data-max="999" style="display: none;">1</span>
                 </div>
+
+                <div class="ps-pd-actions">
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <button type="button" class="ps-pd-buy-now w-100" id="btnOpenBookingModal" style="background: #ff7815; color: #fff; border: none; border-radius: 12px; font-weight: 600; height: 48px; font-size: 1rem;">
+                            Đặt dịch vụ
+                        </button>
+                    }
+                    else
+                    {
+                        <a href="/Customer/Account/Login?returnUrl=@(Context.Request.Path + Context.Request.QueryString)" class="ps-pd-buy-now w-100 d-block text-center" style="border-radius: 12px; font-weight: 600; text-decoration: none; padding: 12px; background: #ff7815; color: #fff; line-height: 24px;">
+                            Đặt dịch vụ
+                        </a>
+                    }
+                </div>
+
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <!-- BOOKING MODAL FOR SPA SERVICES -->
+                    <div id="spaBookingModal" class="ps-booking-modal-overlay" style="display: none;">
+                        <div class="ps-booking-modal-content">
+                            <button type="button" class="ps-booking-modal-close" id="btnCloseBookingModal">&times;</button>
+                            
+                            <h3 style="font-size: 1.25rem; font-weight: 700; color: #ff7815; margin-bottom: 24px; display: flex; align-items: center; gap: 8px; text-transform: uppercase;">
+                                <i class="bi bi-calendar3" style="color: #ffaa00; font-size: 1.35rem;"></i> ĐẶT LỊCH HẸN SPA TRỰC TUYẾN
+                            </h3>
+                            
+                            <form asp-controller="Product" asp-action="BookSpaService" method="post" id="spaBookingForm">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="sku" value="@Model.Sku" />
+                                
+                                <!-- Customer Info Grid -->
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Họ và tên khách hàng</label>
+                                        <input type="text" class="form-control" value="@ViewBag.LoggedInCustomer?.FullName" disabled />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Số điện thoại</label>
+                                        <input type="text" class="form-control" value="@ViewBag.LoggedInCustomer?.Phone" disabled />
+                                    </div>
+                                </div>
+                                
+                                <!-- Pet Selection -->
+                                <div class="mb-3 text-start">
+                                    <label class="form-label">Chọn thú cưng của bạn *</label>
+                                    <select name="petId" id="petSelect" class="form-select" required>
+                                        <option value="" disabled selected>-- Chọn thú cưng --</option>
+                                        @foreach (var pet in ViewBag.CustomerPets as List<Pet> ?? new List<Pet>())
+                                        {
+                                            <option value="@pet.PetId">@pet.Name (@pet.Species)</option>
+                                        }
+                                        <option value="0">+ Thêm thú cưng mới</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Dynamic Pet Info Preview Box -->
+                                <div id="petInfoPreview" class="p-3 mb-3 text-start" style="display: none;">
+                                    <h4 style="font-size: 0.85rem; font-weight: 700; color: #ff7815; margin-bottom: 8px;">Thông tin thú cưng:</h4>
+                                    <div class="row g-2" style="font-size: 0.8rem;">
+                                        <div class="col-6">Loài: <strong id="previewSpecies"></strong></div>
+                                        <div class="col-6">Giống: <strong id="previewBreed"></strong></div>
+                                        <div class="col-6">Tuổi: <strong id="previewAge"></strong></div>
+                                        <div class="col-6">Cân nặng: <strong id="previewWeight"></strong> kg</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- New Pet Registration Fields (hidden by default) -->
+                                <div id="newPetFields" class="p-3 mb-3 text-start" style="display: none; background: #fdfdfd; border: 1px solid #ddd; border-radius: 10px;">
+                                    <h4 style="font-size: 0.85rem; font-weight: 700; color: #555; margin-bottom: 12px;">Đăng ký thú cưng mới</h4>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Tên thú cưng *</label>
+                                            <input type="text" name="newPetName" id="newPetName" class="form-control form-control-sm" placeholder="Nhập tên" />
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Loài *</label>
+                                            <select name="newPetSpecies" id="newPetSpecies" class="form-select form-select-sm">
+                                                <option value="Chó">Chó</option>
+                                                <option value="Mèo">Mèo</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Giống loại</label>
+                                            <input type="text" name="newPetBreed" id="newPetBreed" class="form-control form-control-sm" placeholder="Ví dụ: Poodle, Ba Tư" />
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Tuổi</label>
+                                            <input type="text" name="newPetAge" id="newPetAge" class="form-control form-control-sm" placeholder="Ví dụ: 1 tuổi" />
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Cân nặng (kg)</label>
+                                            <input type="number" step="0.1" name="newPetWeight" id="newPetWeight" class="form-control form-control-sm" value="4.0" />
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Groomer Selection -->
+                                <div class="mb-3 text-start">
+                                    <label class="form-label">Chọn nhân viên grooming *</label>
+                                    <select name="groomerId" id="groomerSelect" class="form-select" required>
+                                        <option value="" disabled selected>-- Chọn nhân viên --</option>
+                                        @foreach (var gr in ViewBag.ActiveGroomers as List<User> ?? new List<User>())
+                                        {
+                                            <option value="@gr.UserId">@gr.FullName (Groomer Master)</option>
+                                        }
+                                    </select>
+                                </div>
+                                
+                                <!-- Date Selection -->
+                                <div class="mb-3 text-start">
+                                    <label class="form-label">Chọn ngày đặt lịch *</label>
+                                    <input type="date" name="bookingDate" id="bookingDate" class="form-control" min="@DateTime.Today.ToString("yyyy-MM-dd")" value="@DateTime.Today.ToString("yyyy-MM-dd")" required />
+                                </div>
+                                
+                                <!-- Time Slot Selection Grid -->
+                                <div class="mb-3 text-start">
+                                    <label class="form-label">Chọn khung giờ làm việc *</label>
+                                    <input type="hidden" name="bookingTime" id="selectedTimeSlot" required />
+                                    
+                                    <div class="ps-slot-grid-wrapper">
+                                        <div class="ps-slot-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                                            @{
+                                                var defaultTimeSlots = new string[] { "08:00", "09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00" };
+                                                foreach (var slot in defaultTimeSlots)
+                                                {
+                                                    <button type="button" class="ps-slot-btn" data-time="@slot">
+                                                        @slot
+                                                    </button>
+                                                }
+                                            }
+                                        </div>
+                                        <p class="text-muted mt-2 mb-0" style="font-size: 0.72rem; text-align: center;">
+                                            ⓘ Khung giờ mờ là nhân viên đã bận. Vui lòng đổi nhân viên hoặc ngày khác.
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Note -->
+                                <div class="mb-4 text-start">
+                                    <label class="form-label">Ghi chú yêu cầu thêm</label>
+                                    <textarea name="note" class="form-control" rows="2" placeholder="Ví dụ: Thú cưng sợ nước, muốn cạo lông ngắn..."></textarea>
+                                </div>
+                                
+                                <!-- Submit Button -->
+                                <button type="submit" class="w-100" id="btnSubmitBooking">
+                                    <i class="bi bi-calendar3"></i> XÁC NHẬN ĐẶT DỊCH VỤ
+                                </button>
+ 
+                                <!-- Trust Badges under button -->
+                                <div class="ps-pd-trust">
+                                    <div class="ps-pd-trust-item"><i class="bi bi-shield-check"></i> CHÍNH HÃNG 100%</div>
+                                    <div class="ps-pd-trust-item"><i class="bi bi-truck"></i> GIAO NHANH 2H</div>
+                                    <div class="ps-pd-trust-item"><i class="bi bi-arrow-repeat"></i> ĐỔI TRẢ 7 NGÀY</div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                }
             }
             else
             {
@@ -92,22 +263,20 @@
                     </div>
                     <span class="ps-pd-stock-text">@Model.Stock sản phẩm có sẵn</span>
                 </div>
+
+                <div class="ps-pd-actions">
+                    <form asp-area="Customer" asp-controller="Cart" asp-action="Add" method="post" class="ps-pd-add-cart-form" style="width: 100%;">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="sku" value="@Model.Sku" />
+                        <input type="hidden" name="quantity" id="pdQtyInput" value="1" />
+                        <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+                        <button type="submit" class="ps-pd-add-cart" style="width: 100%;" @(Model.InStock ? null : "disabled")>
+                            <i class="bi bi-cart3"></i> Thêm vào giỏ
+                        </button>
+                    </form>
+                    <button type="button" class="ps-pd-buy-now">Mua ngay</button>
+                </div>
             }
-
-
-             
-            <div class="ps-pd-actions"> // them vao gio hang 
-                <form asp-area="Customer" asp-controller="Cart" asp-action="Add" method="post" class="ps-pd-add-cart-form" style="width: 100%;">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="sku" value="@Model.Sku" />
-                    <input type="hidden" name="quantity" id="pdQtyInput" value="1" />
-                    <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
-                    <button type="submit" class="ps-pd-add-cart" style="width: 100%;" @(Model.InStock ? null : "disabled")>
-                        <i class="bi bi-cart3"></i> Thêm vào giỏ
-                    </button>
-                </form>
-                <button type="button" class="ps-pd-buy-now">Mua ngay</button>
-            </div>
 
             <div class="ps-pd-trust">
                 <div class="ps-pd-trust-item"><i class="bi bi-shield-check"></i> CHÍNH HÃNG 100%</div>
@@ -119,25 +288,217 @@
 </section>
 
 @section Scripts {
+    @{
+        var serializedPets = "[]";
+        if (ViewBag.CustomerPets != null)
+        {
+            var petListData = (ViewBag.CustomerPets as List<Pet> ?? new List<Pet>())
+                .Select(p => new { p.PetId, p.Name, Species = p.Species ?? "Chó", Breed = p.Breed ?? "Không rõ", Age = p.Age ?? "Chưa rõ", Weight = p.Weight });
+            serializedPets = System.Text.Json.JsonSerializer.Serialize(petListData);
+        }
+    }
+    
     <script>
         (function () {
-            var qtyEl = document.getElementById('pdQty');
-            var qtyInput = document.getElementById('pdQtyInput');
-            var form = document.querySelector('.ps-pd-add-cart-form');
+            // 1. Swapping product images on thumbnail click
+            var mainImage = document.getElementById('pdMainImage');
+            var thumbs = document.querySelectorAll('.ps-pd-thumb');
+            thumbs.forEach(function (thumb) {
+                thumb.addEventListener('click', function () {
+                    thumbs.forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    if (mainImage) {
+                        mainImage.src = this.getAttribute('data-src');
+                    }
+                });
+            });
 
-            function syncQtyInput() {
-                if (qtyEl && qtyInput) {
-                    qtyInput.value = qtyEl.textContent.trim() || '1';
+            // 2. Quantity selector logic (for normal products)
+            var qtyMinus = document.getElementById('pdQtyMinus');
+            var qtyPlus = document.getElementById('pdQtyPlus');
+            var qtyValue = document.getElementById('pdQty');
+            var qtyInput = document.getElementById('pdQtyInput');
+
+            if (qtyValue) {
+                var maxVal = parseInt(qtyValue.getAttribute('data-max')) || 99;
+                
+                if (qtyMinus) {
+                    qtyMinus.addEventListener('click', function () {
+                        var val = parseInt(qtyValue.textContent) || 1;
+                        if (val > 1) {
+                            val--;
+                            qtyValue.textContent = val;
+                            if (qtyInput) qtyInput.value = val;
+                        }
+                    });
+                }
+
+                if (qtyPlus) {
+                    qtyPlus.addEventListener('click', function () {
+                        var val = parseInt(qtyValue.textContent) || 1;
+                        if (val < maxVal) {
+                            val++;
+                            qtyValue.textContent = val;
+                            if (qtyInput) qtyInput.value = val;
+                        }
+                    });
                 }
             }
 
-            if (form) {
-                form.addEventListener('submit', syncQtyInput);
+            // 3. Spa service booking form interactive logic
+            var customerPets = @Html.Raw(serializedPets);
+            var petSelect = document.getElementById('petSelect');
+            var petInfoPreview = document.getElementById('petInfoPreview');
+            var newPetFields = document.getElementById('newPetFields');
+
+            // Fields to toggle required status
+            var newPetName = document.getElementById('newPetName');
+
+            if (petSelect) {
+                petSelect.addEventListener('change', function () {
+                    var val = this.value;
+                    if (val === "0") {
+                        // Show new pet fields and require them
+                        newPetFields.style.display = 'block';
+                        if (newPetName) newPetName.setAttribute('required', 'required');
+                        petInfoPreview.style.display = 'none';
+                    } else if (val && val !== "") {
+                        // Find the selected pet details in our serialized list
+                        var selectedId = parseInt(val);
+                        var pet = customerPets.find(p => p.PetId === selectedId);
+                        
+                        if (pet) {
+                            document.getElementById('previewSpecies').textContent = pet.Species;
+                            document.getElementById('previewBreed').textContent = pet.Breed;
+                            document.getElementById('previewAge').textContent = pet.Age;
+                            document.getElementById('previewWeight').textContent = pet.Weight;
+
+                            petInfoPreview.style.display = 'block';
+                        } else {
+                            petInfoPreview.style.display = 'none';
+                        }
+                        newPetFields.style.display = 'none';
+                        if (newPetName) newPetName.removeAttribute('required');
+                    } else {
+                        petInfoPreview.style.display = 'none';
+                        newPetFields.style.display = 'none';
+                        if (newPetName) newPetName.removeAttribute('required');
+                    }
+                });
             }
 
-            var observer = qtyEl ? new MutationObserver(syncQtyInput) : null;
-            if (observer && qtyEl) {
-                observer.observe(qtyEl, { childList: true, characterData: true, subtree: true });
+            // Time Slot grid selection
+            var slotButtons = document.querySelectorAll('.ps-slot-btn');
+            var selectedTimeInput = document.getElementById('selectedTimeSlot');
+
+            slotButtons.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    if (this.classList.contains('disabled') || this.disabled) {
+                        return;
+                    }
+                    slotButtons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    if (selectedTimeInput) {
+                        selectedTimeInput.value = this.getAttribute('data-time');
+                    }
+                });
+            });
+
+            // Dynamic busy slots querying
+            var groomerSelect = document.getElementById('groomerSelect');
+            var bookingDateInput = document.getElementById('bookingDate');
+
+            function updateAvailableTimeSlots() {
+                var groomerId = groomerSelect ? groomerSelect.value : "";
+                var bookingDate = bookingDateInput ? bookingDateInput.value : "";
+
+                if (!groomerId || !bookingDate) {
+                    // Reset slots if inputs are incomplete
+                    slotButtons.forEach(function (btn) {
+                        btn.disabled = false;
+                        btn.classList.remove('disabled', 'busy', 'free', 'active');
+                        var originalTime = btn.getAttribute('data-time');
+                        btn.textContent = originalTime;
+                    });
+                    return;
+                }
+
+                // Fetch occupied slots from server
+                fetch('/Product/GetGroomerBookedSlots?groomerId=' + groomerId + '&date=' + bookingDate)
+                    .then(response => response.json())
+                    .then(busySlots => {
+                        slotButtons.forEach(function (btn) {
+                            var timeStr = btn.getAttribute('data-time');
+                            if (busySlots.includes(timeStr)) {
+                                btn.disabled = true;
+                                btn.classList.add('disabled', 'busy');
+                                btn.classList.remove('free', 'active');
+                                btn.textContent = timeStr + ' (Bận)';
+                                if (selectedTimeInput && selectedTimeInput.value === timeStr) {
+                                    selectedTimeInput.value = '';
+                                }
+                            } else {
+                                btn.disabled = false;
+                                btn.classList.remove('disabled', 'busy');
+                                btn.classList.add('free');
+                                btn.textContent = timeStr;
+                            }
+                        });
+                    })
+                    .catch(err => {
+                        console.error('Error fetching booked slots:', err);
+                    });
+            }
+
+            if (groomerSelect) {
+                groomerSelect.addEventListener('change', updateAvailableTimeSlots);
+            }
+            if (bookingDateInput) {
+                bookingDateInput.addEventListener('change', updateAvailableTimeSlots);
+            }
+
+            // Initial slot state loading
+            if (groomerSelect && bookingDateInput) {
+                updateAvailableTimeSlots();
+            }
+
+            // Form validation before submit
+            var formEl = document.getElementById('spaBookingForm');
+            if (formEl) {
+                formEl.addEventListener('submit', function (e) {
+                    if (selectedTimeInput && !selectedTimeInput.value) {
+                        e.preventDefault();
+                        alert('Vui lòng chọn khung giờ làm việc của nhân viên.');
+                    }
+                });
+            }
+
+            // 4. Modal popup controls
+            var modalOverlay = document.getElementById('spaBookingModal');
+            var btnOpenModal = document.getElementById('btnOpenBookingModal');
+            var btnCloseModal = document.getElementById('btnCloseBookingModal');
+
+            if (btnOpenModal && modalOverlay) {
+                btnOpenModal.addEventListener('click', function () {
+                    modalOverlay.style.display = 'flex';
+                    slotButtons.forEach(b => b.classList.remove('active'));
+                    if (selectedTimeInput) selectedTimeInput.value = '';
+                    updateAvailableTimeSlots();
+                });
+            }
+
+            if (btnCloseModal && modalOverlay) {
+                btnCloseModal.addEventListener('click', function () {
+                    modalOverlay.style.display = 'none';
+                });
+            }
+
+            if (modalOverlay) {
+                modalOverlay.addEventListener('click', function (e) {
+                    if (e.target === modalOverlay) {
+                        modalOverlay.style.display = 'none';
+                    }
+                });
             }
         })();
     </script>

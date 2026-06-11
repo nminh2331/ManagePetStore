@@ -34,6 +34,33 @@ public class ProductController : Controller
                     if (spaService != null)
                     {
                         model = MapFromSpaService(spaService);  // chuyển đổi dữ liệu thô từ DB thành ProductDetailViewModel để UI đọc được.
+                        
+                        // Query extra info for Spa service booking form
+                        Customer? customerObj = null;
+                        List<Pet> petsList = new List<Pet>();
+                        if (User.Identity?.IsAuthenticated == true)
+                        {
+                            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+                            if (userIdClaim != null && int.TryParse(userIdClaim.Value, out var userId))
+                            {
+                                customerObj = await _context.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
+                                if (customerObj != null)
+                                {
+                                    petsList = await _context.Pets
+                                        .Where(p => p.CustomerId == customerObj.CustomerId && p.Status == "Active")
+                                        .ToListAsync();
+                                }
+                            }
+                        }
+                        
+                        var groomersList = await _context.Users
+                            .Include(u => u.Role)
+                            .Where(u => u.Role.RoleName == "service" && u.Status == "Active")
+                            .ToListAsync();
+                            
+                        ViewBag.LoggedInCustomer = customerObj;
+                        ViewBag.CustomerPets = petsList;
+                        ViewBag.ActiveGroomers = groomersList;
                     }
                 }
             }
@@ -239,5 +266,192 @@ public class ProductController : Controller
         };
 
         return products.GetValueOrDefault(sku);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetGroomerBookedSlots(int groomerId, string date)
+    {
+        if (!DateTime.TryParse(date, out DateTime parsedDate))
+        {
+            parsedDate = DateTime.Today;
+        }
+
+        var bookedSlots = await _context.SpaBookings
+            .Where(b => b.GroomerId == groomerId && b.DateTime.Date == parsedDate.Date && b.SpaStatus != "Cancelled")
+            .Select(b => b.DateTime.ToString("HH:mm"))
+            .ToListAsync();
+
+        return Json(bookedSlots);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> BookSpaService(
+        string sku,
+        int? petId,
+        string? newPetName,
+        string? newPetSpecies,
+        string? newPetBreed,
+        string? newPetAge,
+        decimal? newPetWeight,
+        int groomerId,
+        string bookingDate,
+        string bookingTime,
+        string? note)
+    {
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            TempData["ErrorMessage"] = "Bạn phải đăng nhập tài khoản mới có thể đặt lịch dịch vụ.";
+            return RedirectToAction("Login", "Account", new { area = "Customer", returnUrl = Url.Action("Details", "Product", new { id = sku }) });
+        }
+
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var userId))
+        {
+            TempData["ErrorMessage"] = "Không tìm thấy thông tin đăng nhập.";
+            return RedirectToAction("Index", "Home");
+        }
+
+        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
+        if (customer == null)
+        {
+            TempData["ErrorMessage"] = "Không tìm thấy thông tin khách hàng.";
+            return RedirectToAction("Index", "Home");
+        }
+
+        // 1. Resolve Pet
+        Pet? pet = null;
+        if (petId.HasValue && petId.Value > 0)
+        {
+            pet = await _context.Pets.FirstOrDefaultAsync(p => p.PetId == petId.Value && p.CustomerId == customer.CustomerId);
+            if (pet == null)
+            {
+                TempData["ErrorMessage"] = "Thú cưng được chọn không hợp lệ.";
+                return RedirectToAction("Details", new { id = sku });
+            }
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(newPetName))
+            {
+                TempData["ErrorMessage"] = "Vui lòng nhập tên thú cưng mới.";
+                return RedirectToAction("Details", new { id = sku });
+            }
+
+            pet = new Pet
+            {
+                CustomerId = customer.CustomerId,
+                Name = newPetName.Trim(),
+                Species = newPetSpecies ?? "Chó",
+                Breed = newPetBreed?.Trim() ?? "Không rõ",
+                Age = newPetAge?.Trim() ?? "Chưa rõ",
+                Weight = newPetWeight.HasValue && newPetWeight.Value > 0 ? newPetWeight.Value : 4.5m,
+                Status = "Active"
+            };
+            _context.Pets.Add(pet);
+            await _context.SaveChangesAsync();
+        }
+
+        // 2. Resolve Service
+        if (string.IsNullOrWhiteSpace(sku) || !sku.StartsWith("SPA-SVC-", StringComparison.OrdinalIgnoreCase))
+        {
+            TempData["ErrorMessage"] = "Mã dịch vụ không hợp lệ.";
+            return RedirectToAction("Index", "Home");
+        }
+
+        var idString = sku.Substring(8);
+        if (!int.TryParse(idString, out int serviceId))
+        {
+            TempData["ErrorMessage"] = "Mã dịch vụ không hợp lệ.";
+            return RedirectToAction("Index", "Home");
+        }
+
+        var service = await _context.SpaServices.FirstOrDefaultAsync(s => s.ServiceId == serviceId);
+        if (service == null || !service.Active)
+        {
+            TempData["ErrorMessage"] = "Dịch vụ đã chọn không tồn tại hoặc ngừng hoạt động.";
+            return RedirectToAction("Index", "Home");
+        }
+
+        // 3. Resolve Groomer
+        var groomer = await _context.Users.FindAsync(groomerId);
+        if (groomer == null || groomer.Status != "Active")
+        {
+            TempData["ErrorMessage"] = "Kỹ thuật viên được chọn không tồn tại hoặc không hoạt động.";
+            return RedirectToAction("Details", new { id = sku });
+        }
+
+        // 4. Resolve Date and Time
+        if (!DateTime.TryParse($"{bookingDate} {bookingTime}", out DateTime bookingDateTime))
+        {
+            TempData["ErrorMessage"] = "Ngày hoặc giờ đặt lịch không hợp lệ.";
+            return RedirectToAction("Details", new { id = sku });
+        }
+
+        // Check if date is in the past
+        if (bookingDateTime.Date < DateTime.Today)
+        {
+            TempData["ErrorMessage"] = "Không thể đặt lịch cho ngày trong quá khứ.";
+            return RedirectToAction("Details", new { id = sku });
+        }
+
+        // 5. Check overlapping bookings for Groomer
+        bool isOverlap = await _context.SpaBookings
+            .AnyAsync(b => b.GroomerId == groomerId && b.DateTime == bookingDateTime && b.SpaStatus != "Cancelled");
+
+        if (isOverlap)
+        {
+            TempData["ErrorMessage"] = $"Kỹ thuật viên {groomer.FullName} đã có ca làm việc vào lúc {bookingTime} ngày {bookingDate}.";
+            return RedirectToAction("Details", new { id = sku });
+        }
+
+        // 6. Create Booking & Queue Item
+        using (var transaction = await _context.Database.BeginTransactionAsync())
+        {
+            try
+            {
+                var booking = new SpaBooking
+                {
+                    CustomerId = customer.CustomerId,
+                    PetId = pet.PetId,
+                    ServiceId = service.ServiceId,
+                    GroomerId = groomerId,
+                    DateTime = bookingDateTime,
+                    Price = service.Price,
+                    Status = "Chưa thanh toán",
+                    SpaStatus = "|0",
+                    Notes = note?.Trim()
+                };
+                _context.SpaBookings.Add(booking);
+                await _context.SaveChangesAsync();
+
+                int countToday = await _context.SpaQueues.CountAsync(q => q.QueueNumber.StartsWith("OL-"));
+                string queueNumber = $"OL-{(100 + countToday + 1)}";
+
+                var queueItem = new SpaQueue
+                {
+                    QueueNumber = queueNumber,
+                    PetName = pet.Name,
+                    OwnerName = $"{customer.FullName} ({customer.Phone})",
+                    ArrivalTime = bookingDateTime,
+                    ServiceDescription = service.Name,
+                    Note = $"[Lịch trực tuyến - Groomer: {groomer.FullName}] " + note?.Trim()
+                };
+                _context.SpaQueues.Add(queueItem);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+
+                TempData["SuccessMessage"] = $"Đặt lịch dịch vụ thành công! Lịch hẹn của bạn vào lúc {bookingTime} ngày {bookingDate} đã được ghi nhận.";
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                TempData["ErrorMessage"] = "Có lỗi xảy ra trong quá trình đặt lịch. Vui lòng thử lại.";
+                return RedirectToAction("Details", new { id = sku });
+            }
+        }
+
+        return RedirectToAction("Details", new { id = sku });
     }
 }

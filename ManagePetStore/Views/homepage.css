@@ -1353,3 +1353,224 @@ body.petstore-body {
         grid-template-columns: 1fr;
     }
 }
+
+/* ===== SPA SERVICE BOOKING FORM ===== */
+.ps-slot-btn {
+    border: 1px solid #dee2e6 !important;
+    background-color: #ffffff !important;
+    color: #495057 !important;
+    cursor: pointer;
+    box-shadow: none !important;
+}
+
+.ps-slot-btn:hover {
+    border-color: #ff7815 !important;
+    color: #ff7815 !important;
+    background-color: #fffaf5 !important;
+}
+
+.ps-slot-btn.disabled,
+.ps-slot-btn[disabled] {
+    background-color: #e9ecef !important;
+    border-color: #dee2e6 !important;
+    color: #adb5bd !important;
+    text-decoration: line-through;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+    opacity: 0.6;
+}
+
+.ps-slot-btn.active {
+    background-color: #ff7815 !important;
+    border-color: #ff7815 !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(255, 120, 21, 0.25) !important;
+}
+
+/* ===== SPA SERVICE BOOKING MODAL ===== */
+.ps-booking-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ps-booking-modal-content {
+    background: #FFFBF7 !important;
+    border-radius: 20px;
+    padding: 30px;
+    width: 95%;
+    max-width: 680px;
+    max-height: 92vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 15px 50px rgba(139, 69, 19, 0.15);
+    border: 1px solid #FFEAD2;
+}
+
+.ps-booking-modal-close {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 30px;
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.ps-booking-modal-close:hover {
+    color: #333;
+}
+
+.ps-booking-modal-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #ff7815 !important;
+    margin-bottom: 24px;
+    text-transform: uppercase;
+}
+
+.ps-booking-modal-content label {
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    color: #4a2c11 !important;
+    margin-bottom: 6px;
+    display: block;
+    text-align: left;
+}
+
+.ps-booking-modal-content .form-control,
+.ps-booking-modal-content .form-select {
+    background-color: #ffffff !important;
+    border-radius: 8px !important;
+    font-size: 0.875rem !important;
+    border: 1px solid #ced4da !important;
+    color: #333 !important;
+    padding: 10px 12px !important;
+    height: auto !important;
+}
+
+.ps-booking-modal-content .form-control:disabled {
+    background-color: #f8f9fa !important;
+    color: #495057 !important;
+    border-color: #ced4da !important;
+    opacity: 1;
+}
+
+#petInfoPreview {
+    background: #FFFBF7 !important;
+    border: 1px dashed #ff7815 !important;
+    border-radius: 10px !important;
+    padding: 16px !important;
+}
+
+#petInfoPreview h4 {
+    font-size: 0.85rem !important;
+    font-weight: 700 !important;
+    color: #ff7815 !important;
+    margin-top: 0;
+    margin-bottom: 8px !important;
+}
+
+#petInfoPreview .row > div {
+    color: #333 !important;
+    font-size: 0.8rem !important;
+}
+
+#petInfoPreview strong {
+    color: #000 !important;
+    font-weight: 700 !important;
+}
+
+.ps-slot-grid-wrapper {
+    background: #ffffff !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: 12px !important;
+    padding: 16px !important;
+}
+
+.ps-slot-btn {
+    background-color: #ffffff !important;
+    border: 1px solid #ced4da !important;
+    color: #000000 !important;
+    border-radius: 8px !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    padding: 10px 4px !important;
+    transition: all 0.2s !important;
+}
+
+.ps-slot-btn:hover {
+    border-color: #ff7815 !important;
+    color: #ff7815 !important;
+    background-color: #fffaf5 !important;
+}
+
+.ps-slot-btn.active {
+    background-color: #ff7815 !important;
+    border-color: #ff7815 !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(255, 120, 21, 0.25) !important;
+}
+
+.ps-slot-btn.disabled,
+.ps-slot-btn[disabled] {
+    background-color: #e9ecef !important;
+    border-color: #dee2e6 !important;
+    color: #adb5bd !important;
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+    text-decoration: line-through !important;
+}
+
+.ps-slot-btn.free {
+    background-color: #e8f5e9 !important;
+    border-color: #a5d6a7 !important;
+    color: #2e7d32 !important;
+}
+
+.ps-slot-btn.busy {
+    background-color: #ffebee !important;
+    border-color: #e57373 !important;
+    color: #c62828 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+    opacity: 0.8 !important;
+}
+
+#btnSubmitBooking {
+    border-radius: 12px !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    text-transform: uppercase !important;
+    height: 48px !important;
+    border: none !important;
+    background: #ff7815 !important;
+    color: #fff !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    width: 100% !important;
+    margin-top: 15px !important;
+}
+
+#btnSubmitBooking:hover {
+    background: #e0650d !important;
+    box-shadow: 0 4px 12px rgba(224, 101, 13, 0.25) !important;
+}
+
+

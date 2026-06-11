@@ -38,6 +38,12 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 return RedirectToDashboard();
             }
             ViewData["ReturnUrl"] = returnUrl;
+
+            if (returnUrl != null && returnUrl.Contains("SPA-SVC", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["ErrorMessage"] = "Bạn phải đăng nhập tài khoản mới có thể đặt lịch dịch vụ.";
+            }
+
             return View();
         }
 

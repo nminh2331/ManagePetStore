@@ -357,7 +357,7 @@ namespace ManagePetStore.SpaServices.Controllers
         }
 
         [HttpPost("StartQueue")]
-        public async Task<IActionResult> StartQueue(int queueId, int groomerId)
+        public async Task<IActionResult> StartQueue(int queueId, int groomerId, string? date)
         {
             var queueItem = await _context.SpaQueues.FindAsync(queueId);
             if (queueItem == null)
@@ -407,13 +407,36 @@ namespace ManagePetStore.SpaServices.Controllers
                 return Json(new { success = false, message = "Không có dịch vụ Spa khả dụng." });
             }
 
+            // Determine target booking datetime based on date parameter and ArrivalTime's time of day
+            DateTime targetDate = queueItem.ArrivalTime.Date;
+            if (!string.IsNullOrEmpty(date) && DateTime.TryParse(date, out var parsedDate))
+            {
+                targetDate = parsedDate.Date;
+            }
+            DateTime targetBookingDateTime = targetDate.Add(queueItem.ArrivalTime.TimeOfDay);
+
+            // Check if there is already a booking created online for this slot/pet/service
+            var existingBooking = await _context.SpaBookings
+                .FirstOrDefaultAsync(b => b.CustomerId == customer.CustomerId && b.PetId == pet.PetId && b.ServiceId == service.ServiceId && b.DateTime == targetBookingDateTime && b.SpaStatus != "Cancelled");
+
+            if (existingBooking != null)
+            {
+                // If it already exists, associate it with the groomer starting it and activate progress
+                existingBooking.GroomerId = groomerId;
+                existingBooking.SpaStatus = "|0"; // Ensure it starts progress
+                
+                _context.SpaQueues.Remove(queueItem);
+                await _context.SaveChangesAsync();
+                return Json(new { success = true, message = $"Bắt đầu thực hiện dịch vụ cho thú cưng {pet.Name}!" });
+            }
+
             // Kiểm tra trùng lịch của Groomer tại khung giờ này
             bool isOverlap = await _context.SpaBookings
-                .AnyAsync(b => b.GroomerId == groomerId && b.DateTime == queueItem.ArrivalTime && b.SpaStatus != "Cancelled");
+                .AnyAsync(b => b.GroomerId == groomerId && b.DateTime == targetBookingDateTime && b.SpaStatus != "Cancelled");
 
             if (isOverlap)
             {
-                return Json(new { success = false, message = $"Kỹ thuật viên {groomer.FullName} đã có ca làm việc vào lúc {queueItem.ArrivalTime:HH:mm}. Vui lòng chọn ca hoặc Kỹ thuật viên khác!" });
+                return Json(new { success = false, message = $"Kỹ thuật viên {groomer.FullName} đã có ca làm việc vào lúc {targetBookingDateTime:HH:mm}. Vui lòng chọn ca hoặc Kỹ thuật viên khác!" });
             }
 
             var booking = new SpaBooking
@@ -422,7 +445,7 @@ namespace ManagePetStore.SpaServices.Controllers
                 PetId = pet.PetId,
                 ServiceId = service.ServiceId,
                 GroomerId = groomer.UserId,
-                DateTime = queueItem.ArrivalTime, // Dùng đúng khung giờ đã chọn từ trước
+                DateTime = targetBookingDateTime, // Dùng đúng khung giờ kết hợp với ngày được chọn
                 Price = service.Price,
                 Status = "Chưa thanh toán",
                 SpaStatus = "|0", // Khởi tạo index 0 (Tiếp nhận) làm active status ban đầu
