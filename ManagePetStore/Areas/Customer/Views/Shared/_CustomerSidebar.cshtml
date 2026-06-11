@@ -31,8 +31,12 @@
         <a asp-area="Customer" asp-controller="Pet" asp-action="Index" class="@NavClass("pets")">
             <i class="bi bi-heart"></i> Hồ sơ thú cưng
         </a>
-        <a href="#" class="@NavClass("appointments")">
+        <a asp-area="Customer" asp-controller="HotelBooking" asp-action="Index" class="@NavClass("appointments")">
             <i class="bi bi-calendar-event"></i> Lịch hẹn &amp; Khách sạn
+            @if (Model.ActiveNav == "appointments")
+            {
+                <i class="bi bi-chevron-right ms-auto"></i>
+            }
         </a>
         <a asp-area="Customer" asp-controller="Order" asp-action="Index" class="@NavClass("orders")">
             <i class="bi bi-bag"></i> Lịch sử đơn hàng

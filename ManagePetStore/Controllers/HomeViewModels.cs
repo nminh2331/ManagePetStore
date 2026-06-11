@@ -8,6 +8,8 @@ public class HomepageViewModel
     public FeaturedBlogItem FeaturedBlog { get; set; } = new();
     public List<PetOptionItem> Pets { get; set; } = [];
     public List<RoomTypeOptionItem> RoomTypes { get; set; } = [];
+    public int HotelDiscountPercent { get; set; }
+    public string HotelMembershipTier { get; set; } = "Thành viên";
     public string? SearchKeyword { get; set; }
     public string? SelectedCategorySlug { get; set; }
     public bool IsFiltered { get; set; }
