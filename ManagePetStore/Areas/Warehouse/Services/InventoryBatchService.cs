@@ -97,4 +97,43 @@ public class InventoryBatchService : IInventoryBatchService
             await _batchRepo.DeleteBatch(batchId);
         }
     }
+
+    public async Task DeductStockFIFO(string productSku, int quantityToDeduct)
+    {
+        var product = await _productRepo.GetProductBySku(productSku);
+        if (product == null) throw new ServiceException("Sản phẩm không tồn tại.");
+
+        if (product.Stock < quantityToDeduct)
+            throw new ServiceException($"Số lượng tồn kho không đủ để xuất ({product.Stock} < {quantityToDeduct}).");
+
+        var batches = (await _batchRepo.GetBatchesByProductSku(productSku))
+            .Where(b => b.CurrentQuantity > 0)
+            .OrderBy(b => b.ReceivedDate) // Cũ nhất xuất trước
+            .ToList();
+
+        int remainingToDeduct = quantityToDeduct;
+
+        foreach (var batch in batches)
+        {
+            if (remainingToDeduct <= 0) break;
+
+            if (batch.CurrentQuantity <= remainingToDeduct)
+            {
+                // Trừ sạch lô này
+                remainingToDeduct -= batch.CurrentQuantity;
+                batch.CurrentQuantity = 0;
+            }
+            else
+            {
+                // Trừ một phần lô này
+                batch.CurrentQuantity -= remainingToDeduct;
+                remainingToDeduct = 0;
+            }
+            await _batchRepo.UpdateBatch(batch);
+        }
+
+        // Cập nhật tổng tồn kho
+        product.Stock -= quantityToDeduct;
+        await _productRepo.UpdateProduct(product);
+    }
 }

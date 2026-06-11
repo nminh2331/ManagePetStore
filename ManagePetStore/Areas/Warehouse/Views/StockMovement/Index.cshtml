@@ -1,0 +1,93 @@
+@model IEnumerable<ManagePetStore.Models.StockMovement>
+
+@{
+    ViewData["Title"] = "Lịch sử Xuất/Nhập Kho";
+}
+
+<div class="mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="fw-bold m-0" style="color: #333;">Lịch sử Xuất/Nhập Kho</h2>
+        <p class="text-muted small mt-1 mb-0">Quản lý các Phiếu nhập hàng và Phiếu xuất nội bộ</p>
+    </div>
+    
+    <div>
+        <a asp-action="CreateExport" class="btn btn-outline-primary btn-custom me-2">
+            <i class="fas fa-arrow-up"></i> Tạo Phiếu Xuất
+        </a>
+        <a asp-action="CreateImport" class="btn btn-primary-custom btn-custom">
+            <i class="fas fa-arrow-down"></i> Tạo Đơn Nhập
+        </a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm" style="border-radius:16px;">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mb-0 table-hover align-middle">
+                <thead style="background-color: #fafafa;">
+                    <tr>
+                        <th class="border-0 px-4 py-3">Mã phiếu</th>
+                        <th class="border-0 px-4 py-3">Ngày tạo</th>
+                        <th class="border-0 px-4 py-3">Loại</th>
+                        <th class="border-0 px-4 py-3">Nhà CC / Ghi chú</th>
+                        <th class="border-0 px-4 py-3 text-end">Tổng giá trị</th>
+                        <th class="border-0 px-4 py-3 text-center">Trạng thái</th>
+                        <th class="border-0 px-4 py-3 text-end">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var item in Model)
+                        {
+                            <tr>
+                                <td class="px-4 py-3 fw-bold text-muted">#@item.MovementId</td>
+                                <td class="px-4 py-3">@item.Date.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="px-4 py-3">
+                                    @if (item.Type == "Nhập hàng")
+                                    {
+                                        <span class="text-success fw-bold"><i class="fas fa-arrow-down"></i> Nhập hàng</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-danger fw-bold"><i class="fas fa-arrow-up"></i> Xuất nội bộ</span>
+                                    }
+                                </td>
+                                <td class="px-4 py-3">@item.Supplier</td>
+                                <td class="px-4 py-3 text-end fw-bold">@string.Format("{0:N0} đ", item.TotalValue)</td>
+                                <td class="px-4 py-3 text-center">
+                                    @if (item.Status == "Hoàn thành")
+                                    {
+                                        <span class="badge bg-success rounded-pill px-3 py-2">Hoàn thành</span>
+                                    }
+                                    else if (item.Status == "Chờ duyệt")
+                                    {
+                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-2">Chờ duyệt</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger rounded-pill px-3 py-2">Đã hủy</span>
+                                    }
+                                </td>
+                                <td class="px-4 py-3 text-end">
+                                    <a asp-action="Details" asp-route-id="@item.MovementId" class="btn btn-sm btn-outline-primary" style="border-radius:8px;">
+                                        <i class="fas fa-eye"></i> Chi tiết
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted">
+                                <i class="fas fa-file-invoice" style="font-size:2rem;opacity:.3;"></i>
+                                <p class="mt-2 mb-0">Chưa có giao dịch xuất/nhập nào.</p>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

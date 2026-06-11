@@ -184,6 +184,9 @@
 
                         <!-- Footer Actions -->
                         <div class="text-end pt-2">
+                            <a asp-controller="StockMovement" asp-action="CreateImport" asp-route-productSku="@item.Sku" class="btn text-primary fw-bold me-2" style="border-radius:20px; padding:8px 20px; border:1px solid #007bff;">
+                                <i class="fas fa-file-import me-1"></i> Tạo đơn nhập
+                            </a>
                             <a asp-controller="InventoryBatch" asp-action="Index" asp-route-id="@item.Sku" class="btn text-dark fw-bold me-2" style="border-radius:20px; padding:8px 20px; background-color:#f8f9fa; border:1px solid #ddd;">
                                 <i class="fas fa-boxes me-1"></i> Quản lý lô hàng
                             </a>

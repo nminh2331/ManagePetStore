@@ -16,4 +16,7 @@ public interface IInventoryBatchService
     Task CreateBatch(InventoryBatch batch);
     Task UpdateBatch(int batchId, int newQuantity, DateTime newExpiryDate);
     Task DeleteBatch(int batchId);
+    
+    // Thuật toán trừ tồn kho theo nguyên tắc FIFO (vào trước ra trước)
+    Task DeductStockFIFO(string productSku, int quantityToDeduct);
 }

@@ -62,12 +62,17 @@ builder.Services.AddScoped<IRoomService, RoomService>();
 // Warehouse repositories
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductCategoryRepository, ProductCategoryRepository>();
+builder.Services.AddScoped<ManagePetStore.Areas.Warehouse.Repositories.IInventoryBatchRepository, ManagePetStore.Areas.Warehouse.Repositories.InventoryBatchRepository>();
+builder.Services.AddScoped<ManagePetStore.Areas.Warehouse.Repositories.IStockMovementRepository, ManagePetStore.Areas.Warehouse.Repositories.StockMovementRepository>();
 
 // Warehouse services
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IProductCategoryService, ProductCategoryService>();
-builder.Services.AddScoped<ManagePetStore.Areas.Warehouse.Repositories.IInventoryBatchRepository, ManagePetStore.Areas.Warehouse.Repositories.InventoryBatchRepository>();
 builder.Services.AddScoped<ManagePetStore.Areas.Warehouse.Services.IInventoryBatchService, ManagePetStore.Areas.Warehouse.Services.InventoryBatchService>();
+builder.Services.AddScoped<ManagePetStore.Areas.Warehouse.Services.IStockMovementService, ManagePetStore.Areas.Warehouse.Services.StockMovementService>();
+
+// Background Services
+builder.Services.AddHostedService<ManagePetStore.BackgroundServices.ExpiryDateScannerService>();
 
 
 

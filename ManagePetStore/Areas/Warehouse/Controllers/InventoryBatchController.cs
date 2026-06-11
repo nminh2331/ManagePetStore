@@ -126,5 +126,41 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             
             return RedirectToAction(nameof(Index), new { id = sku });
         }
+
+        // POST: Warehouse/InventoryBatch/SyncStock/{productSku}
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SyncStock(string productSku)
+        {
+            var product = await _productService.GetProductBySku(productSku);
+            if (product == null) return NotFound();
+
+            var batches = await _batchService.GetBatchesByProductSku(productSku);
+            int totalBatchStock = batches.Sum(b => b.CurrentQuantity);
+            
+            if (product.Stock > totalBatchStock)
+            {
+                int diff = product.Stock - totalBatchStock;
+                var adjustmentBatch = new InventoryBatch
+                {
+                    ProductSku = productSku,
+                    Quantity = diff,
+                    CurrentQuantity = diff,
+                    ReceivedDate = DateTime.Now,
+                    ExpiryDate = DateTime.Now.AddYears(1) // Mặc định 1 năm
+                };
+                
+                // Trực tiếp dùng Repo hoặc gán qua Service.
+                // Vì CreateBatch trong Service có cộng thêm Stock, mà ta chỉ muốn điều chỉnh Batch nên phải lưu ý.
+                // Ở đây ta có thể tạm giảm Stock của Product đi (để CreateBatch cộng lại là vừa), 
+                // hoặc tạo batch mà bỏ qua cộng Stock. Ta sẽ trừ đi trước.
+                product.Stock -= diff;
+                await _productService.UpdateProduct(productSku, product);
+                
+                await _batchService.CreateBatch(adjustmentBatch);
+            }
+            
+            return RedirectToAction(nameof(Index), new { id = productSku });
+        }
     }
 }

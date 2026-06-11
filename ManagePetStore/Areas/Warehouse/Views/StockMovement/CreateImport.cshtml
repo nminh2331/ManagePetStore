@@ -1,0 +1,70 @@
+@{
+    ViewData["Title"] = "Tạo Đơn Nhập Hàng";
+    var products = ViewBag.Products as ManagePetStore.Models.ProductSummaryViewModel;
+    var prefillProduct = ViewBag.PrefillProduct as ManagePetStore.Models.Product;
+}
+
+<div class="mb-4">
+    <a asp-action="Index" class="text-decoration-none text-muted mb-2 d-inline-block">
+        <i class="fas fa-arrow-left"></i> Quay lại lịch sử
+    </a>
+    <h2 class="fw-bold m-0" style="color: #333;">Tạo Đơn Nhập Hàng (Purchase Order)</h2>
+    <p class="text-muted small mt-1 mb-0">Tạo phiếu yêu cầu nhập hàng mới. Phiếu sẽ ở trạng thái Chờ duyệt.</p>
+</div>
+
+<div class="card border-0 shadow-sm" style="border-radius: 12px; max-width: 600px;">
+    <div class="card-body p-4">
+        <form asp-action="CreateImport" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            
+            <div class="mb-3">
+                <label for="Supplier" class="form-label fw-bold">Nhà cung cấp <span class="text-danger">*</span></label>
+                <input type="text" id="Supplier" name="Supplier" class="form-control" style="border-radius: 8px;" placeholder="Nhập tên nhà cung cấp..." required autocomplete="off" list="supplierList" />
+                <datalist id="supplierList">
+                    <option value="Công ty TNHH Pet Cưng"></option>
+                    <option value="Nhà phân phối Royal Canin"></option>
+                    <option value="Đại lý phụ kiện thú cưng Toàn Quốc"></option>
+                </datalist>
+                <div class="form-text text-muted">Hệ thống sẽ lưu tên để gợi ý cho lần sau.</div>
+            </div>
+
+            <div class="mb-3">
+                <label for="ProductSku" class="form-label fw-bold">Sản phẩm <span class="text-danger">*</span></label>
+                <select id="ProductSku" name="ProductSku" class="form-select" style="border-radius: 8px;" required>
+                    <option value="">-- Chọn sản phẩm --</option>
+                    @if (products != null && products.Products != null)
+                    {
+                        foreach (var p in products.Products)
+                        {
+                            if (prefillProduct != null && p.Sku == prefillProduct.Sku)
+                            {
+                                <option value="@p.Sku" selected>@p.Name (Tồn: @p.Stock)</option>
+                            }
+                            else
+                            {
+                                <option value="@p.Sku">@p.Name (Tồn: @p.Stock)</option>
+                            }
+                        }
+                    }
+                </select>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="Quantity" class="form-label fw-bold">Số lượng nhập <span class="text-danger">*</span></label>
+                    <input type="number" id="Quantity" name="Quantity" min="1" class="form-control" style="border-radius: 8px;" required />
+                </div>
+                <div class="col-md-6 mb-4">
+                    <label for="CostPrice" class="form-label fw-bold">Đơn giá nhập dự kiến (đ) <span class="text-danger">*</span></label>
+                    <input type="number" id="CostPrice" name="CostPrice" min="0" class="form-control" style="border-radius: 8px;" required />
+                </div>
+            </div>
+            
+            <div class="text-end">
+                <button type="submit" class="btn btn-primary-custom px-4 py-2">
+                    <i class="fas fa-paper-plane"></i> Gửi Yêu Cầu Nhập Hàng
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

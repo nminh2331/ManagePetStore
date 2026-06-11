@@ -138,6 +138,9 @@
                 <a asp-area="Warehouse" asp-controller="Product" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Product" ? "active" : "")">
                     <i class="fas fa-box-open"></i> Danh sách Sản phẩm
                 </a>
+                <a asp-area="Warehouse" asp-controller="StockMovement" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "StockMovement" ? "active" : "")">
+                    <i class="fas fa-exchange-alt"></i> Lịch sử Nhập/Xuất
+                </a>
                 <a asp-area="Warehouse" asp-controller="ProductCategory" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "ProductCategory" ? "active" : "")">
                     <i class="fas fa-tags"></i> Danh mục Sản phẩm
                 </a>
