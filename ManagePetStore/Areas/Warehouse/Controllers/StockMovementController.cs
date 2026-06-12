@@ -28,14 +28,17 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             _productService = productService;
         }
 
-        // GET: Warehouse/StockMovement
-        public async Task<IActionResult> Index()
+        // Hiển thị danh sách các phiếu xuất/nhập kho
+        public async Task<IActionResult> Index(DateTime? fromDate, DateTime? toDate, string tab = "all")
         {
-            var movements = await _movementService.GetAllMovements();
+            ViewBag.FromDate = fromDate?.ToString("yyyy-MM-dd");
+            ViewBag.ToDate = toDate?.ToString("yyyy-MM-dd");
+            ViewBag.Tab = tab;
+            var movements = await _movementService.GetAllMovements(fromDate, toDate);
             return View(movements);
         }
 
-        // GET: Warehouse/StockMovement/Details/5
+        // Hiển thị chi tiết một phiếu xuất/nhập kho
         public async Task<IActionResult> Details(int id)
         {
             var movement = await _movementService.GetMovementById(id);
@@ -43,7 +46,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return View(movement);
         }
 
-        // GET: Warehouse/StockMovement/CreateImport
+        // Hiển thị form tạo phiếu nhập kho (Purchase Order)
         public async Task<IActionResult> CreateImport(string? productSku)
         {
             if (!string.IsNullOrEmpty(productSku))
@@ -55,7 +58,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return View();
         }
 
-        // POST: Warehouse/StockMovement/CreateImport
+        // Xử lý tạo phiếu nhập kho
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateImport(string Supplier, string ProductSku, int Quantity, decimal CostPrice)
@@ -84,14 +87,14 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             }
         }
 
-        // GET: Warehouse/StockMovement/CreateExport
+        // Hiển thị form tạo phiếu xuất kho nội bộ
         public async Task<IActionResult> CreateExport()
         {
             ViewBag.Products = await _productService.GetProductSummary("", "active");
             return View();
         }
 
-        // POST: Warehouse/StockMovement/CreateExport
+        // Xử lý tạo phiếu xuất kho nội bộ
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateExport(string Note, string ProductSku, int Quantity)
@@ -120,24 +123,43 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             }
         }
 
-        // POST: Warehouse/StockMovement/Approve/5
+        // Hiển thị màn hình kiểm hàng (GET)
+        public async Task<IActionResult> Approve(int id)
+        {
+            var movement = await _movementService.GetMovementById(id);
+            if (movement == null) return NotFound();
+            if (movement.Type != "Nhập hàng" || movement.Status != "Chờ duyệt")
+                return RedirectToAction(nameof(Details), new { id });
+            return View(movement);
+        }
+
+        // Xử lý duyệt phiếu sau khi nhân viên kiểm hàng và điền HSD (POST)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Approve(int id)
+        public async Task<IActionResult> Approve(int id, List<string> expiryDateInputs, List<int> detailIds)
         {
             try
             {
                 int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "1");
-                await _movementService.ApproveMovement(id, userId);
+
+                var expiryDates = new Dictionary<int, DateTime>();
+                for (int i = 0; i < detailIds.Count; i++)
+                {
+                    if (i < expiryDateInputs.Count && DateTime.TryParse(expiryDateInputs[i], out var dt))
+                        expiryDates[detailIds[i]] = dt;
+                }
+
+                await _movementService.ApproveMovement(id, userId, expiryDates);
             }
             catch (ServiceException ex)
             {
                 TempData["ErrorMessage"] = ex.Message;
+                return RedirectToAction(nameof(Approve), new { id });
             }
-            return RedirectToAction(nameof(Details), new { id = id });
+            return RedirectToAction(nameof(Details), new { id });
         }
 
-        // POST: Warehouse/StockMovement/Cancel/5
+        // Xử lý hủy phiếu xuất/nhập kho
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Cancel(int id)

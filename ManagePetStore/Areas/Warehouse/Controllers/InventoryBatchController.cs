@@ -6,6 +6,7 @@
  * Description: Controller xử lý lô hàng.
  */
 using ManagePetStore.Areas.Warehouse.Services;
+using ManagePetStore.Areas.Warehouse.Repositories;
 using ManagePetStore.Exceptions;
 using ManagePetStore.Models;
 using ManagePetStore.Services;
@@ -20,14 +21,19 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
     {
         private readonly IInventoryBatchService _batchService;
         private readonly IProductService _productService;
+        private readonly IStockMovementRepository _movementRepo;
 
-        public InventoryBatchController(IInventoryBatchService batchService, IProductService productService)
+        public InventoryBatchController(
+            IInventoryBatchService batchService, 
+            IProductService productService,
+            IStockMovementRepository movementRepo)
         {
             _batchService = batchService;
             _productService = productService;
+            _movementRepo = movementRepo;
         }
 
-        // GET: Warehouse/InventoryBatch/Index/{productSku}
+        // Hiển thị danh sách lô hàng của một sản phẩm
         public async Task<IActionResult> Index(string id)
         {
             if (string.IsNullOrEmpty(id)) return NotFound();
@@ -41,7 +47,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return View(batches);
         }
 
-        // GET: Warehouse/InventoryBatch/Create?productSku={sku}
+        // Hiển thị form thêm mới lô hàng cho một sản phẩm
         public async Task<IActionResult> Create(string productSku)
         {
             if (string.IsNullOrEmpty(productSku)) return NotFound();
@@ -53,7 +59,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return View(new InventoryBatch { ProductSku = productSku, ReceivedDate = DateTime.Now });
         }
 
-        // POST: Warehouse/InventoryBatch/Create
+        // Xử lý thêm mới lô hàng
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("ProductSku,Quantity,ExpiryDate")] InventoryBatch batch)
@@ -80,7 +86,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             }
         }
 
-        // GET: Warehouse/InventoryBatch/Edit/{id}
+        // Hiển thị form chỉnh sửa thông tin lô hàng
         public async Task<IActionResult> Edit(int id)
         {
             var batch = await _batchService.GetBatchById(id);
@@ -92,7 +98,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return View(batch);
         }
 
-        // POST: Warehouse/InventoryBatch/Edit/{id}
+        // Xử lý cập nhật thông tin lô hàng
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("BatchId,ProductSku,CurrentQuantity,ExpiryDate")] InventoryBatch batchUpdate)
@@ -113,7 +119,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             }
         }
 
-        // POST: Warehouse/InventoryBatch/Delete/{id}
+        // Xử lý xóa lô hàng
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
@@ -127,7 +133,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return RedirectToAction(nameof(Index), new { id = sku });
         }
 
-        // POST: Warehouse/InventoryBatch/SyncStock/{productSku}
+        // Xử lý đồng bộ số lượng tồn kho ban đầu (tạo lô hàng điều chỉnh)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SyncStock(string productSku)
@@ -158,6 +164,33 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
                 await _productService.UpdateProduct(productSku, product);
                 
                 await _batchService.CreateBatch(adjustmentBatch);
+
+                // Ghi lại lịch sử (StockMovement)
+                int userId = 1; 
+                try {
+                    var userClaim = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier);
+                    if (userClaim != null && int.TryParse(userClaim.Value, out int uid)) userId = uid;
+                } catch { }
+
+                var movement = new StockMovement
+                {
+                    Type = "Nhập hàng", 
+                    Status = "Hoàn thành", 
+                    Supplier = "Đồng bộ số lượng tồn kho (Tự động)",
+                    CreatedById = userId,
+                    Date = DateTime.Now,
+                    TotalValue = 0,
+                    StockMovementDetails = new List<StockMovementDetail>
+                    {
+                        new StockMovementDetail
+                        {
+                            ProductSku = productSku,
+                            Quantity = diff,
+                            CostPrice = 0
+                        }
+                    }
+                };
+                await _movementRepo.AddMovement(movement);
             }
             
             return RedirectToAction(nameof(Index), new { id = productSku });

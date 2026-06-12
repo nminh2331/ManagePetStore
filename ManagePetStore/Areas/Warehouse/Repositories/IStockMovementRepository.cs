@@ -11,7 +11,7 @@ namespace ManagePetStore.Areas.Warehouse.Repositories;
 
 public interface IStockMovementRepository
 {
-    Task<IEnumerable<StockMovement>> GetAllMovements();
+    Task<IEnumerable<StockMovement>> GetAllMovements(DateTime? fromDate = null, DateTime? toDate = null);
     Task<StockMovement?> GetMovementById(int id);
     Task AddMovement(StockMovement movement);
     Task UpdateMovement(StockMovement movement);

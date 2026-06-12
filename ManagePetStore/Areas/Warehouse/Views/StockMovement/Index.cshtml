@@ -12,11 +12,66 @@
     
     <div>
         <a asp-action="CreateExport" class="btn btn-outline-primary btn-custom me-2">
-            <i class="fas fa-arrow-up"></i> Tạo Phiếu Xuất
+            <i class="fas fa-arrow-up"></i> Tạo Phiếu Xuất Nội Bộ
         </a>
         <a asp-action="CreateImport" class="btn btn-primary-custom btn-custom">
             <i class="fas fa-arrow-down"></i> Tạo Đơn Nhập
         </a>
+    </div>
+</div>
+
+@{
+    var currentTab = (string)(ViewBag.Tab ?? "all");
+    var allMovements = Model?.ToList() ?? new List<ManagePetStore.Models.StockMovement>();
+    var pendingImports = allMovements.Where(m => m.Type == "Nhập hàng" && m.Status == "Chờ duyệt").ToList();
+    var displayList = currentTab == "pending" ? pendingImports : allMovements;
+}
+
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <a class="nav-link @(currentTab == "all" ? "active fw-bold" : "")" 
+           asp-action="Index" asp-route-tab="all" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate">
+            <i class="fas fa-list me-1"></i> Tất cả phiếu
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(currentTab == "pending" ? "active fw-bold" : "")" 
+           asp-action="Index" asp-route-tab="pending" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate">
+            <i class="fas fa-clock me-1"></i> Chờ kiểm hàng
+            @if (pendingImports.Count > 0)
+            {
+                <span class="badge bg-warning text-dark ms-1">@pendingImports.Count</span>
+            }
+        </a>
+    </li>
+</ul>
+
+<div class="card border-0 shadow-sm mb-4" style="border-radius:12px;">
+    <div class="card-body p-3">
+        <form asp-action="Index" method="get" class="row g-3 align-items-end">
+            <input type="hidden" name="tab" value="@currentTab" />
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-muted mb-1">Từ ngày</label>
+                <input type="date" name="fromDate" class="form-control form-control-sm" value="@ViewBag.FromDate" style="border-radius: 6px;" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold small text-muted mb-1">Đến ngày</label>
+                <input type="date" name="toDate" class="form-control form-control-sm" value="@ViewBag.ToDate" style="border-radius: 6px;" />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-sm btn-primary w-100" style="border-radius: 6px;">
+                    <i class="fas fa-filter"></i> Lọc dữ liệu
+                </button>
+            </div>
+            @if (!string.IsNullOrEmpty(ViewBag.FromDate) || !string.IsNullOrEmpty(ViewBag.ToDate))
+            {
+                <div class="col-md-2">
+                    <a asp-action="Index" class="btn btn-sm btn-outline-secondary w-100" style="border-radius: 6px;">
+                        Xóa lọc
+                    </a>
+                </div>
+            }
+        </form>
     </div>
 </div>
 
@@ -36,9 +91,9 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @if (Model != null && Model.Any())
+                    @if (displayList != null && displayList.Any())
                     {
-                        foreach (var item in Model)
+                        foreach (var item in displayList)
                         {
                             <tr>
                                 <td class="px-4 py-3 fw-bold text-muted">#@item.MovementId</td>
@@ -70,9 +125,18 @@
                                     }
                                 </td>
                                 <td class="px-4 py-3 text-end">
-                                    <a asp-action="Details" asp-route-id="@item.MovementId" class="btn btn-sm btn-outline-primary" style="border-radius:8px;">
-                                        <i class="fas fa-eye"></i> Chi tiết
-                                    </a>
+                                    @if (item.Type == "Nhập hàng" && item.Status == "Chờ duyệt")
+                                    {
+                                        <a asp-action="Approve" asp-route-id="@item.MovementId" class="btn btn-sm btn-warning fw-bold" style="border-radius:8px;">
+                                            <i class="fas fa-clipboard-check"></i> Kiểm hàng
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <a asp-action="Details" asp-route-id="@item.MovementId" class="btn btn-sm btn-outline-primary" style="border-radius:8px;">
+                                            <i class="fas fa-eye"></i> Chi tiết
+                                        </a>
+                                    }
                                 </td>
                             </tr>
                         }
@@ -82,7 +146,7 @@
                         <tr>
                             <td colspan="7" class="text-center py-5 text-muted">
                                 <i class="fas fa-file-invoice" style="font-size:2rem;opacity:.3;"></i>
-                                <p class="mt-2 mb-0">Chưa có giao dịch xuất/nhập nào.</p>
+                                <p class="mt-2 mb-0">@(currentTab == "pending" ? "Không có đơn nào đang chờ kiểm hàng." : "Chưa có giao dịch xuất/nhập nào.")</p>
                             </td>
                         </tr>
                     }

@@ -31,9 +31,9 @@ public class StockMovementService : IStockMovementService
         _context = context;
     }
 
-    public async Task<IEnumerable<StockMovement>> GetAllMovements()
+    public async Task<IEnumerable<StockMovement>> GetAllMovements(DateTime? fromDate = null, DateTime? toDate = null)
     {
-        return await _movementRepo.GetAllMovements();
+        return await _movementRepo.GetAllMovements(fromDate, toDate);
     }
 
     public async Task<StockMovement?> GetMovementById(int id)
@@ -89,7 +89,7 @@ public class StockMovementService : IStockMovementService
         await _movementRepo.AddMovement(movement);
     }
 
-    public async Task ApproveMovement(int movementId, int approvedById)
+    public async Task ApproveMovement(int movementId, int approvedById, Dictionary<int, DateTime>? expiryDates = null)
     {
         var movement = await _movementRepo.GetMovementById(movementId);
         if (movement == null) throw new ServiceException("Không tìm thấy phiếu.");
@@ -100,19 +100,40 @@ public class StockMovementService : IStockMovementService
 
         if (movement.Type == "Nhập hàng")
         {
-            // Tạo batch và cộng tồn kho cho từng chi tiết
+            // Tạo batch, cộng tồn kho và cập nhật giá bình quân gia quyền cho từng chi tiết
             foreach (var detail in movement.StockMovementDetails)
             {
+                // Lấy sản phẩm và tồn kho TRƯỚC khi tạo batch để tính giá bình quân chính xác
+                var product = await _productRepo.GetProductBySku(detail.ProductSku);
+
+                // Lấy HSD do nhân viên kiểm hàng đã điền, nếu không có thì mặc định 1 năm
+                DateTime expiryDate = expiryDates != null && expiryDates.TryGetValue(detail.DetailId, out var d)
+                    ? d
+                    : DateTime.Now.AddYears(1);
+
                 var batch = new InventoryBatch
                 {
                     ProductSku = detail.ProductSku,
                     Quantity = detail.Quantity,
                     CurrentQuantity = detail.Quantity,
-                    // Mặc định HSD 1 năm nếu không có thông tin (thủ kho có thể sửa sau trong quản lý lô)
-                    ExpiryDate = DateTime.Now.AddYears(1), 
+                    ExpiryDate = expiryDate,
                     ReceivedDate = DateTime.Now
                 };
-                await _batchService.CreateBatch(batch);
+                await _batchService.CreateBatch(batch); // Stock tăng lên sau bước này
+
+                // Cập nhật giá bình quân gia quyền (Weighted Average Cost)
+                // Công thức: (Tồn cũ × Giá cũ + SL mới × Giá mới) / (Tồn cũ + SL mới)
+                if (product != null)
+                {
+                    int stockBefore = product.Stock; // Tồn kho trước khi nhập lô này
+                    decimal newAvgCost = stockBefore > 0
+                        ? (stockBefore * product.CostPrice + detail.Quantity * detail.CostPrice)
+                          / (stockBefore + detail.Quantity)
+                        : detail.CostPrice; // Nếu kho trống thì giá mới = giá lô vừa nhập
+
+                    product.CostPrice = Math.Round(newAvgCost, 0); // Làm tròn đến đồng
+                    await _productRepo.UpdateProduct(product);
+                }
             }
         }
         else if (movement.Type == "Xuất nội bộ")
@@ -121,9 +142,7 @@ public class StockMovementService : IStockMovementService
             foreach (var detail in movement.StockMovementDetails)
             {
                 await _batchService.DeductStockFIFO(detail.ProductSku, detail.Quantity);
-                
-                // Kiểm tra auto-reorder sau khi trừ
-                await TriggerAutoReorderCheck(detail.ProductSku);
+                // TODO: Tính năng tự động tạo đơn nhập khi sắp hết hàng sẽ được triển khai trong tương lai
             }
         }
     }
@@ -138,37 +157,10 @@ public class StockMovementService : IStockMovementService
         await _movementRepo.UpdateMovement(movement);
     }
 
-    public async Task TriggerAutoReorderCheck(string productSku)
+    // TODO: Tính năng tự động tạo đơn nhập khi tồn kho xuống dưới MinStock
+    // Sẽ được triển khai trong tương lai với cấu hình per-product (bật/tắt, SL đặt, nhà cung cấp)
+    public Task TriggerAutoReorderCheck(string productSku)
     {
-        var product = await _productRepo.GetProductBySku(productSku);
-        if (product == null) return;
-
-        // Nếu dưới ngưỡng MinStock
-        if (product.Stock < product.MinStock)
-        {
-            // Kiểm tra xem đã có đơn nhập nào đang chờ duyệt cho sản phẩm này chưa
-            var pendingOrder = await _movementRepo.GetPendingImportByProduct(productSku);
-            if (pendingOrder == null)
-            {
-                // Chưa có -> Tạo đơn tự động
-                int quantityToOrder = product.MinStock > 0 ? product.MinStock * 2 : 10;
-                
-                var details = new List<StockMovementDetail>
-                {
-                    new StockMovementDetail
-                    {
-                        ProductSku = productSku,
-                        Quantity = quantityToOrder,
-                        CostPrice = product.Price * 0.7m // Tạm ước tính giá nhập = 70% giá bán
-                    }
-                };
-
-                // Lấy ID của tài khoản Admin đầu tiên để làm CreatedById
-                var adminUser = _context.Users.FirstOrDefault(u => u.RoleId == 1);
-                int sysUserId = adminUser?.UserId ?? 1;
-
-                await CreateImportOrder(sysUserId, "Auto Reorder - Tự động tạo", details);
-            }
-        }
+        return Task.CompletedTask;
     }
 }

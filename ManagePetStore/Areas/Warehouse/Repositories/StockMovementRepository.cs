@@ -19,14 +19,24 @@ public class StockMovementRepository : IStockMovementRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<StockMovement>> GetAllMovements()
+    public async Task<IEnumerable<StockMovement>> GetAllMovements(DateTime? fromDate = null, DateTime? toDate = null)
     {
-        return await _context.StockMovements
+        var query = _context.StockMovements
             .Include(m => m.CreatedBy)
             .Include(m => m.StockMovementDetails)
                 .ThenInclude(d => d.ProductSkuNavigation)
-            .OrderByDescending(m => m.Date)
-            .ToListAsync();
+            .AsQueryable();
+
+        if (fromDate.HasValue)
+            query = query.Where(m => m.Date >= fromDate.Value);
+        
+        if (toDate.HasValue)
+        {
+            var toDateEnd = toDate.Value.Date.AddDays(1).AddTicks(-1);
+            query = query.Where(m => m.Date <= toDateEnd);
+        }
+
+        return await query.OrderByDescending(m => m.Date).ToListAsync();
     }
 
     public async Task<StockMovement?> GetMovementById(int id)

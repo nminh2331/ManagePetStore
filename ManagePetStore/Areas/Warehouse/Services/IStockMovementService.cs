@@ -11,7 +11,7 @@ namespace ManagePetStore.Areas.Warehouse.Services;
 
 public interface IStockMovementService
 {
-    Task<IEnumerable<StockMovement>> GetAllMovements();
+    Task<IEnumerable<StockMovement>> GetAllMovements(DateTime? fromDate = null, DateTime? toDate = null);
     Task<StockMovement?> GetMovementById(int id);
     
     // Tạo đơn nhập hàng (Purchase Order)
@@ -21,7 +21,7 @@ public interface IStockMovementService
     Task CreateInternalExport(int userId, string note, List<StockMovementDetail> details);
     
     // Duyệt đơn
-    Task ApproveMovement(int movementId, int approvedById);
+    Task ApproveMovement(int movementId, int approvedById, Dictionary<int, DateTime>? expiryDates = null);
 
     // Hủy đơn
     Task CancelMovement(int movementId);

@@ -53,11 +53,12 @@
                 @if (Model.Status == "Chờ duyệt")
                 {
                     <div class="mt-4 pt-3 border-top d-grid gap-2">
-                        <form asp-action="Approve" asp-route-id="@Model.MovementId" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn duyệt phiếu này? Số lượng tồn kho sẽ được cập nhật ngay lập tức.');">
-                            <button type="submit" class="btn btn-success w-100 fw-bold shadow-sm mb-2" style="border-radius:10px;">
-                                <i class="fas fa-check-circle"></i> Duyệt phiếu
-                            </button>
-                        </form>
+                        @if (Model.Type == "Nhập hàng")
+                        {
+                            <a asp-action="Approve" asp-route-id="@Model.MovementId" class="btn btn-warning w-100 fw-bold shadow-sm mb-2" style="border-radius:10px;">
+                                <i class="fas fa-clipboard-check"></i> Kiểm hàng
+                            </a>
+                        }
                         
                         <form asp-action="Cancel" asp-route-id="@Model.MovementId" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn hủy phiếu này?');">
                             <button type="submit" class="btn btn-outline-danger w-100 fw-bold" style="border-radius:10px;">
