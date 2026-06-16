@@ -5,13 +5,18 @@
     var roomTypes = ViewBag.RoomTypes as List<RoomType> ?? new List<RoomType>();
     var activeRoomTypes = ViewBag.ActiveRoomTypes as List<RoomType> ?? new List<RoomType>();
     var cages = ViewBag.Cages as List<Cage> ?? new List<Cage>();
+    var cageMapCages = ViewBag.CageMapCages as List<Cage> ?? new List<Cage>();
     var activeBookings = ViewBag.ActiveBookings as List<HotelBooking> ?? new List<HotelBooking>();
     var onlineBookings = ViewBag.OnlineBookings as List<HotelBooking> ?? new List<HotelBooking>();
     var customers = ViewBag.Customers as List<Customer> ?? new List<Customer>();
+    var activeBookingByCage = activeBookings
+        .GroupBy(b => b.CageId, StringComparer.OrdinalIgnoreCase)
+        .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
 
     int totalCageCount = ViewBag.TotalCageCount ?? 0;
     int emptyCageCount = ViewBag.EmptyCageCount ?? 0;
     int occupiedCageCount = ViewBag.OccupiedCageCount ?? 0;
+    int maintenanceCageCount = ViewBag.MaintenanceCageCount ?? 0;
 }
 
 <style>
@@ -152,6 +157,220 @@
     }
 
     .hotel-card-title i { color: #FF7815; }
+
+    /* ===== INTERACTIVE CAGE MAP ===== */
+    .cage-map-dashboard {
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .cage-map-toolbar {
+        padding: 22px 24px 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 18px;
+        border-bottom: 1px solid #F0EDE9;
+    }
+
+    .cage-map-subtitle {
+        color: #9E918B;
+        font-size: 0.76rem;
+        margin: 5px 0 0;
+    }
+
+    .cage-map-filters {
+        display: flex;
+        gap: 7px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .cage-map-filter {
+        border: 1px solid #ECE9E5;
+        background: #FFFFFF;
+        color: #6F625C;
+        border-radius: 999px;
+        padding: 7px 11px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .cage-map-filter.active,
+    .cage-map-filter:hover {
+        background: #FFF1E6;
+        border-color: #FFD0AF;
+        color: #E0630D;
+    }
+
+    .cage-map-board {
+        padding: 22px 24px 24px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 14px;
+        background:
+            linear-gradient(rgba(255,255,255,.88), rgba(255,255,255,.88)),
+            repeating-linear-gradient(0deg, #E9E3DE 0, #E9E3DE 1px, transparent 1px, transparent 28px),
+            repeating-linear-gradient(90deg, #E9E3DE 0, #E9E3DE 1px, transparent 1px, transparent 28px);
+    }
+
+    .cage-map-room {
+        min-height: 142px;
+        border: 2px solid #E7E2DE;
+        background: #FFFFFF;
+        border-radius: 16px;
+        padding: 13px;
+        text-align: left;
+        cursor: pointer;
+        transition: transform .2s, box-shadow .2s, border-color .2s;
+        position: relative;
+    }
+
+    .cage-map-room:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 24px rgba(45,37,33,.1);
+    }
+
+    .cage-map-room.status-empty { border-color: #9DE1B8; background: #F4FCF7; }
+    .cage-map-room.status-occupied { border-color: #FFB4BA; background: #FFF7F7; cursor: grab; }
+    .cage-map-room.status-maintenance { border-color: #FFD28A; background: #FFFAEF; }
+    .cage-map-room.status-cleaning { border-color: #A9D5FF; background: #F4F9FF; }
+    .cage-map-room.drag-target { outline: 3px solid rgba(255,120,21,.35); border-color: #FF7815; }
+    .cage-map-room.map-hidden { display: none; }
+
+    .cage-map-room-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: flex-start;
+    }
+
+    .cage-map-room-id {
+        color: #2D2521;
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .cage-map-status {
+        border-radius: 999px;
+        padding: 3px 7px;
+        font-size: .57rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .status-empty .cage-map-status { background: #DDF7E7; color: #14733B; }
+    .status-occupied .cage-map-status { background: #FFE0E2; color: #B42332; }
+    .status-maintenance .cage-map-status { background: #FFF0C9; color: #9A5B00; }
+    .status-cleaning .cage-map-status { background: #DCEEFF; color: #1769AA; }
+
+    .cage-map-room-type {
+        color: #7D706A;
+        font-size: .68rem;
+        font-weight: 600;
+        margin-top: 3px;
+    }
+
+    .cage-map-pet {
+        margin-top: 13px;
+        color: #2D2521;
+        font-size: .78rem;
+        font-weight: 800;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+    }
+
+    .cage-map-room-hint {
+        margin-top: 13px;
+        color: #9E918B;
+        font-size: .65rem;
+        line-height: 1.4;
+    }
+
+    .cage-map-amenities {
+        display: flex;
+        gap: 5px;
+        position: absolute;
+        left: 13px;
+        bottom: 12px;
+    }
+
+    .cage-map-amenities span {
+        width: 21px;
+        height: 21px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        background: rgba(255,255,255,.82);
+        color: #806F66;
+        font-size: .62rem;
+    }
+
+    .map-legend-row {
+        padding: 0 24px 18px;
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        color: #766A64;
+        font-size: .68rem;
+        font-weight: 600;
+    }
+
+    .map-legend-row span { display: inline-flex; align-items: center; gap: 5px; }
+    .map-legend-row i { font-size: .55rem; }
+
+    .cage-detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+    }
+
+    .cage-detail-panel {
+        border: 1px solid #EEE9E5;
+        border-radius: 14px;
+        padding: 15px;
+        background: #FDFCFB;
+    }
+
+    .cage-detail-panel h6 {
+        font-size: .75rem;
+        font-weight: 800;
+        color: #2D2521;
+        margin: 0 0 11px;
+    }
+
+    .cage-detail-line {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: .72rem;
+        color: #8C7E77;
+        margin-bottom: 7px;
+    }
+
+    .cage-detail-line strong { color: #3E332E; text-align: right; }
+    .cage-detail-full { grid-column: 1 / -1; }
+    .cage-detail-actions { display: flex; gap: 8px; align-items: end; }
+    .cage-detail-actions .hform-group { flex: 1; margin-bottom: 0; }
+
+    .map-list {
+        padding: 0;
+        margin: 0;
+        list-style: none;
+    }
+
+    .map-list li {
+        padding: 8px 0;
+        border-bottom: 1px solid #EEE9E5;
+        color: #6F625C;
+        font-size: .7rem;
+    }
+
+    .map-list li:last-child { border-bottom: none; }
 
     /* ===== BOOKING ITEMS ===== */
     .booking-item {
@@ -761,6 +980,20 @@
         transform: translateY(-1px);
         box-shadow: 0 6px 18px rgba(255, 120, 21, 0.35);
     }
+
+    @@media (max-width: 1100px) {
+        .hotel-main-layout { grid-template-columns: 1fr; }
+        .cage-map-toolbar { flex-direction: column; }
+        .cage-map-filters { justify-content: flex-start; }
+    }
+
+    @@media (max-width: 760px) {
+        .stat-cards-row { grid-template-columns: 1fr; }
+        .cage-map-board { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px; }
+        .cage-detail-grid { grid-template-columns: 1fr; }
+        .cage-detail-full { grid-column: auto; }
+        .cage-detail-actions { align-items: stretch; flex-direction: column; }
+    }
 </style>
 
 <!-- ===== TOAST MESSAGES ===== -->
@@ -824,6 +1057,95 @@
             <p class="stat-label">Đang có thú cưng</p>
         </div>
     </div>
+</div>
+
+<!-- ===== INTERACTIVE CAGE MAP DASHBOARD ===== -->
+<div class="hotel-card cage-map-dashboard">
+    <div class="cage-map-toolbar">
+        <div>
+            <h5 class="hotel-card-title">
+                <i class="fa-solid fa-map-location-dot"></i>
+                Sơ đồ chuồng trực quan
+            </h5>
+            <p class="cage-map-subtitle">Chọn một phòng để xem chi tiết. Kéo thú cưng từ phòng đang ở sang phòng trống để chuyển chuồng.</p>
+        </div>
+        <div class="cage-map-filters" aria-label="Lọc trạng thái chuồng">
+            <button type="button" class="cage-map-filter active" data-map-filter="all">Tất cả (@totalCageCount)</button>
+            <button type="button" class="cage-map-filter" data-map-filter="empty">Trống (@emptyCageCount)</button>
+            <button type="button" class="cage-map-filter" data-map-filter="occupied">Có thú cưng (@occupiedCageCount)</button>
+            <button type="button" class="cage-map-filter" data-map-filter="operational">Bảo trì / dọn dẹp (@maintenanceCageCount)</button>
+        </div>
+    </div>
+
+    @if (!cageMapCages.Any())
+    {
+        <div class="empty-state">
+            <i class="fa-solid fa-border-all"></i>
+            <p>Chưa có chuồng nào để hiển thị trên sơ đồ.</p>
+        </div>
+    }
+    else
+    {
+        <div class="cage-map-board" id="cageMapBoard">
+            @foreach (var cage in cageMapCages)
+            {
+                activeBookingByCage.TryGetValue(cage.CageId, out var currentBooking);
+                string statusKey = currentBooking != null
+                    ? "occupied"
+                    : cage.Status == "Trống"
+                        ? "empty"
+                        : cage.Status == "Bảo trì"
+                            ? "maintenance"
+                            : cage.Status == "Đang dọn dẹp"
+                                ? "cleaning"
+                                : "occupied";
+                string filterKey = statusKey is "maintenance" or "cleaning" ? "operational" : statusKey;
+
+                <button type="button"
+                        class="cage-map-room status-@statusKey"
+                        data-cage-id="@cage.CageId"
+                        data-booking-id="@(currentBooking?.HotelBookingId.ToString() ?? "")"
+                        data-map-status="@filterKey"
+                        draggable="@(currentBooking != null ? "true" : "false")"
+                        onclick="openCageMapDetail('@cage.CageId')">
+                    <span class="cage-map-room-top">
+                        <span>
+                            <span class="cage-map-room-id">@cage.CageId</span>
+                            <span class="cage-map-room-type">@(cage.RoomType?.Type ?? "Chưa phân loại")</span>
+                        </span>
+                        <span class="cage-map-status">@(currentBooking != null ? "Đang dùng" : cage.Status)</span>
+                    </span>
+
+                    @if (currentBooking != null)
+                    {
+                        <span class="cage-map-pet">
+                            <i class="fa-solid fa-paw" style="color:#DC3545;"></i>
+                            @currentBooking.Pet?.Name
+                        </span>
+                        <span class="cage-map-room-hint">Kéo thẻ này sang một chuồng trống để chuyển phòng.</span>
+                    }
+                    else
+                    {
+                        <span class="cage-map-room-hint">
+                            @(statusKey == "empty" ? "Sẵn sàng tiếp nhận thú cưng." : statusKey == "maintenance" ? "Tạm khóa do đang bảo trì." : statusKey == "cleaning" ? "Đang vệ sinh, chưa thể tiếp nhận." : "Trạng thái cần được kiểm tra.")
+                        </span>
+                    }
+
+                    <span class="cage-map-amenities" aria-label="Trang thiết bị">
+                        @if (cage.RoomType?.HasAc == true) { <span title="Điều hòa"><i class="fa-solid fa-wind"></i></span> }
+                        @if (cage.RoomType?.HasCamera == true) { <span title="Camera"><i class="fa-solid fa-camera"></i></span> }
+                        @if (cage.RoomType?.HasPremiumFood == true) { <span title="Thức ăn cao cấp"><i class="fa-solid fa-bowl-food"></i></span> }
+                    </span>
+                </button>
+            }
+        </div>
+        <div class="map-legend-row">
+            <span><i class="fa-solid fa-circle" style="color:#36B36A;"></i>Trống</span>
+            <span><i class="fa-solid fa-circle" style="color:#E05260;"></i>Đang có thú cưng</span>
+            <span><i class="fa-solid fa-circle" style="color:#E8A122;"></i>Bảo trì</span>
+            <span><i class="fa-solid fa-circle" style="color:#4C9DDF;"></i>Đang dọn dẹp</span>
+        </div>
+    }
 </div>
 
 <!-- ===== MAIN LAYOUT ===== -->
@@ -1191,46 +1513,19 @@
     <!-- RIGHT SIDEBAR -->
     <div>
         <div class="hotel-sidebar-card">
-            <p class="sidebar-section-title"><i class="fa-solid fa-map" style="color:#FF7815;"></i> Sơ đồ chuồng</p>
-
-            @if (!cages.Any())
-            {
-                <div style="text-align:center; color:rgba(255,255,255,0.3); font-size:0.8rem; padding:20px 0;">
-                    Chưa có chuồng nào
+            <p class="sidebar-section-title"><i class="fa-solid fa-compass" style="color:#FF7815;"></i> Vận hành sơ đồ</p>
+            <div style="display:grid; gap:10px;">
+                <div style="background:rgba(255,255,255,.05); border-radius:12px; padding:12px;">
+                    <p style="font-size:.75rem; font-weight:700; margin:0 0 4px;">Xem thông tin phòng</p>
+                    <p style="font-size:.68rem; color:rgba(255,255,255,.48); margin:0;">Chọn một ô trên sơ đồ để xem pet, chủ nuôi, thiết bị và lịch chăm sóc.</p>
                 </div>
-            }
-            else
-            {
-                <div class="cage-grid">
-                    @foreach (var c in cages.Take(18))
-                    {
-                        string cellClass = c.Status == "Trống" ? "empty" : "occupied";
-                        <div class="cage-cell @cellClass">
-                            <p class="cage-cell-id">@c.CageId</p>
-                            <p class="cage-cell-status">@(c.Status == "Trống" ? "Trống" : "Bận")</p>
-                            <div class="cage-cell-dot"></div>
-                        </div>
-                    }
+                <div style="background:rgba(255,255,255,.05); border-radius:12px; padding:12px;">
+                    <p style="font-size:.75rem; font-weight:700; margin:0 0 4px;">Chuyển chuồng</p>
+                    <p style="font-size:.68rem; color:rgba(255,255,255,.48); margin:0;">Kéo phòng có thú cưng sang phòng trống, hoặc chọn phòng đích trong cửa sổ chi tiết.</p>
                 </div>
-                @if (cages.Count > 18)
-                {
-                    <p style="font-size:0.68rem; color:rgba(255,255,255,0.3); text-align:center; margin-top:8px;">
-                        +@(cages.Count - 18) chuồng khác...
-                    </p>
-                }
-            }
-
-            <div class="sidebar-divider"></div>
-
-            <p class="sidebar-section-title"><i class="fa-solid fa-circle-info" style="color:#FF7815;"></i> Chú thích</p>
-            <div style="display:flex; gap:16px;">
-                <div style="display:flex; align-items:center; gap:6px; font-size:0.75rem; color:rgba(255,255,255,0.6);">
-                    <div style="width:10px; height:10px; border-radius:50%; background:#4ADE80;"></div>
-                    Trống
-                </div>
-                <div style="display:flex; align-items:center; gap:6px; font-size:0.75rem; color:rgba(255,255,255,0.6);">
-                    <div style="width:10px; height:10px; border-radius:50%; background:#F87171;"></div>
-                    Đang có thú cưng
+                <div style="display:flex; justify-content:space-between; gap:10px;">
+                    <span style="font-size:.7rem; color:#FFD28A;"><i class="fa-solid fa-screwdriver-wrench"></i> @maintenanceCageCount cần vận hành</span>
+                    <span style="font-size:.7rem; color:#9DE1B8;"><i class="fa-solid fa-door-open"></i> @emptyCageCount trống</span>
                 </div>
             </div>
 
@@ -1250,6 +1545,98 @@
                     </div>
                 </div>
             }
+        </div>
+    </div>
+</div>
+
+<!-- =============================================================== -->
+<!-- MODAL: CHI TIẾT & VẬN HÀNH CHUỒNG                              -->
+<!-- =============================================================== -->
+<div class="modal fade" id="cageMapDetailModal" tabindex="-1">
+    <div class="modal-dialog hotel-modal-dialog modal-lg" style="max-width:900px;">
+        <div class="modal-content">
+            <div class="hotel-modal-header">
+                <h5 class="hotel-modal-title">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                    <span id="mapDetailTitle">Chi tiết chuồng</span>
+                </h5>
+                <button class="hotel-modal-close" data-bs-dismiss="modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="hotel-modal-body">
+                <input type="hidden" id="mapCurrentCageId">
+                <input type="hidden" id="mapCurrentBookingId">
+
+                <div class="cage-detail-grid">
+                    <section class="cage-detail-panel">
+                        <h6><i class="fa-solid fa-house" style="color:#FF7815; margin-right:5px;"></i>Thông tin phòng</h6>
+                        <div class="cage-detail-line"><span>Trạng thái</span><strong id="mapRoomStatus">—</strong></div>
+                        <div class="cage-detail-line"><span>Loại phòng</span><strong id="mapRoomType">—</strong></div>
+                        <div class="cage-detail-line"><span>Kích thước / sức chứa</span><strong id="mapRoomSize">—</strong></div>
+                        <div class="cage-detail-line"><span>Lịch cho ăn</span><strong id="mapFeedSchedule">—</strong></div>
+                        <div class="cage-detail-line"><span>Khẩu phần</span><strong id="mapPortion">—</strong></div>
+                    </section>
+
+                    <section class="cage-detail-panel">
+                        <h6><i class="fa-solid fa-plug-circle-check" style="color:#FF7815; margin-right:5px;"></i>Trang thiết bị</h6>
+                        <div class="amenity-tags" id="mapRoomAmenities"></div>
+                        <p style="font-size:.68rem; color:#9E918B; margin:12px 0 0;">Thiết bị hiện được cấu hình theo loại phòng.</p>
+                    </section>
+
+                    <section class="cage-detail-panel cage-detail-full" id="mapPetPanel">
+                        <h6><i class="fa-solid fa-paw" style="color:#FF7815; margin-right:5px;"></i>Thú cưng đang lưu trú</h6>
+                        <div class="cage-detail-grid">
+                            <div>
+                                <div class="cage-detail-line"><span>Tên / loài</span><strong id="mapPetName">—</strong></div>
+                                <div class="cage-detail-line"><span>Giống / tuổi</span><strong id="mapPetBreedAge">—</strong></div>
+                                <div class="cage-detail-line"><span>Cân nặng</span><strong id="mapPetWeight">—</strong></div>
+                                <div class="cage-detail-line"><span>Sức khỏe lưu ý</span><strong id="mapPetPathology">—</strong></div>
+                            </div>
+                            <div>
+                                <div class="cage-detail-line"><span>Chủ nuôi</span><strong id="mapCustomerName">—</strong></div>
+                                <div class="cage-detail-line"><span>Liên hệ</span><strong id="mapCustomerContact">—</strong></div>
+                                <div class="cage-detail-line"><span>Ngày nhận</span><strong id="mapCheckInDate">—</strong></div>
+                                <div class="cage-detail-line"><span>Ngày trả dự kiến</span><strong id="mapCheckOutDate">—</strong></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="cage-detail-panel">
+                        <h6><i class="fa-solid fa-list-check" style="color:#FF7815; margin-right:5px;"></i>Chăm sóc gần đây</h6>
+                        <ul class="map-list" id="mapCareLogs"><li>Chưa có ghi nhận.</li></ul>
+                    </section>
+
+                    <section class="cage-detail-panel">
+                        <h6><i class="fa-solid fa-star" style="color:#FF7815; margin-right:5px;"></i>Dịch vụ bổ sung</h6>
+                        <ul class="map-list" id="mapAddons"><li>Không có dịch vụ bổ sung.</li></ul>
+                    </section>
+
+                    <section class="cage-detail-panel cage-detail-full" id="mapMovePanel">
+                        <h6><i class="fa-solid fa-right-left" style="color:#FF7815; margin-right:5px;"></i>Chuyển thú cưng sang chuồng khác</h6>
+                        <div class="cage-detail-actions">
+                            <div class="hform-group">
+                                <label class="hform-label" for="mapTargetCage">Chuồng trống phù hợp, không trùng lịch</label>
+                                <select class="hform-control" id="mapTargetCage"></select>
+                            </div>
+                            <button type="button" class="btn-modal-submit" id="mapMoveButton" style="flex:0 0 auto; padding:11px 18px;">Chuyển chuồng</button>
+                        </div>
+                    </section>
+
+                    <section class="cage-detail-panel cage-detail-full" id="mapStatusPanel">
+                        <h6><i class="fa-solid fa-screwdriver-wrench" style="color:#FF7815; margin-right:5px;"></i>Trạng thái vận hành</h6>
+                        <div class="cage-detail-actions">
+                            <div class="hform-group">
+                                <label class="hform-label" for="mapOperationalStatus">Chỉ áp dụng khi chuồng không có thú cưng</label>
+                                <select class="hform-control" id="mapOperationalStatus">
+                                    <option value="Trống">Trống, sẵn sàng tiếp nhận</option>
+                                    <option value="Bảo trì">Bảo trì</option>
+                                    <option value="Đang dọn dẹp">Đang dọn dẹp</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn-modal-submit" id="mapStatusButton" style="flex:0 0 auto; padding:11px 18px;">Cập nhật trạng thái</button>
+                        </div>
+                    </section>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -1728,6 +2115,198 @@ setTimeout(() => {
         setTimeout(() => el.closest('.toast-hotel')?.remove(), 500);
     });
 }, 3500);
+
+// ===== INTERACTIVE CAGE MAP =====
+function escapeMapHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    })[char]);
+}
+
+function formatMapDate(value) {
+    if (!value) return 'Chưa xác định';
+    return new Intl.DateTimeFormat('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    }).format(new Date(value));
+}
+
+function setMapText(id, value) {
+    document.getElementById(id).textContent = value ?? '—';
+}
+
+function openCageMapDetail(cageId) {
+    fetch('/SpaServices/GetCageMapDetail?cageId=' + encodeURIComponent(cageId))
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                alert('Lỗi: ' + data.message);
+                return;
+            }
+
+            const cage = data.cage;
+            const room = cage.roomType;
+            const booking = data.booking;
+
+            document.getElementById('mapCurrentCageId').value = cage.cageId;
+            document.getElementById('mapCurrentBookingId').value = booking?.hotelBookingId ?? '';
+            setMapText('mapDetailTitle', 'Chi tiết chuồng ' + cage.cageId);
+            setMapText('mapRoomStatus', booking ? 'Đang dùng' : cage.status);
+            setMapText('mapRoomType', room.type);
+            setMapText('mapRoomSize', `${room.size} · tối đa ${room.capacity} thú`);
+            setMapText('mapFeedSchedule', cage.feedSchedule || 'Chưa thiết lập');
+            setMapText('mapPortion', `${cage.portion || 0} g`);
+
+            const amenities = [];
+            if (room.hasAc) amenities.push('<span class="amenity-tag amenity-ac"><i class="fa-solid fa-wind"></i>A/C</span>');
+            if (room.hasCamera) amenities.push('<span class="amenity-tag amenity-cam"><i class="fa-solid fa-camera"></i>Camera</span>');
+            if (room.hasPremiumFood) amenities.push('<span class="amenity-tag amenity-food"><i class="fa-solid fa-star"></i>Thức ăn VIP</span>');
+            document.getElementById('mapRoomAmenities').innerHTML = amenities.length
+                ? amenities.join('')
+                : '<span style="font-size:.72rem;color:#9E918B;">Không có thiết bị bổ sung.</span>';
+
+            document.getElementById('mapPetPanel').style.display = booking ? 'block' : 'none';
+            document.getElementById('mapMovePanel').style.display = booking ? 'block' : 'none';
+            document.getElementById('mapStatusPanel').style.display = booking ? 'none' : 'block';
+
+            if (booking) {
+                setMapText('mapPetName', `${booking.pet.name} · ${booking.pet.species}`);
+                setMapText('mapPetBreedAge', `${booking.pet.breed || 'Chưa rõ'} · ${booking.pet.age || 'Chưa rõ'}`);
+                setMapText('mapPetWeight', `${booking.pet.weight} kg`);
+                setMapText('mapPetPathology', booking.pet.pathology || 'Không ghi nhận');
+                setMapText('mapCustomerName', booking.customer.fullName);
+                setMapText('mapCustomerContact', [booking.customer.phone, booking.customer.email].filter(Boolean).join(' · '));
+                setMapText('mapCheckInDate', formatMapDate(booking.checkInDate));
+                setMapText('mapCheckOutDate', formatMapDate(booking.checkOutDate));
+
+                const targetSelect = document.getElementById('mapTargetCage');
+                targetSelect.innerHTML = '<option value="">— Chọn chuồng đích —</option>';
+                data.availableDestinations.forEach(target => {
+                    const option = document.createElement('option');
+                    option.value = target.cageId;
+                    option.textContent = `${target.cageId} · ${target.roomType} (${target.size})`;
+                    targetSelect.appendChild(option);
+                });
+                document.getElementById('mapMoveButton').disabled = data.availableDestinations.length === 0;
+            } else {
+                document.getElementById('mapOperationalStatus').value =
+                    ['Trống', 'Bảo trì', 'Đang dọn dẹp'].includes(cage.status) ? cage.status : 'Trống';
+            }
+
+            const careLogs = data.careLogs || [];
+            document.getElementById('mapCareLogs').innerHTML = careLogs.length
+                ? careLogs.map(log =>
+                    `<li><strong>${escapeMapHtml(log.status)}</strong> · ${escapeMapHtml(log.foodType)} ${escapeMapHtml(log.amount)}<br>` +
+                    `<span style="color:#A0938C;">${escapeMapHtml(log.time)} · ${escapeMapHtml(log.staffName)}${log.note ? ' · ' + escapeMapHtml(log.note) : ''}</span></li>`
+                ).join('')
+                : '<li>Chưa có ghi nhận chăm sóc tại chuồng này.</li>';
+
+            const addons = booking?.addons || [];
+            document.getElementById('mapAddons').innerHTML = addons.length
+                ? addons.map(addon =>
+                    `<li><strong>${escapeMapHtml(addon.name)}</strong><span style="float:right;">${Number(addon.price).toLocaleString('vi-VN')}đ</span></li>`
+                ).join('')
+                : '<li>Không có dịch vụ bổ sung.</li>';
+
+            new bootstrap.Modal(document.getElementById('cageMapDetailModal')).show();
+        })
+        .catch(() => alert('Không thể tải chi tiết chuồng. Vui lòng thử lại.'));
+}
+
+function movePetCage(bookingId, targetCageId) {
+    if (!bookingId || !targetCageId) {
+        alert('Vui lòng chọn chuồng đích.');
+        return;
+    }
+
+    if (!confirm(`Chuyển thú cưng sang chuồng ${targetCageId}?`)) return;
+
+    fetch('/SpaServices/MovePetCage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': getAntiForgeryToken() },
+        body: 'bookingId=' + encodeURIComponent(bookingId) + '&targetCageId=' + encodeURIComponent(targetCageId)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Lỗi: ' + data.message);
+        }
+    })
+    .catch(() => alert('Không thể chuyển chuồng. Vui lòng thử lại.'));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.cage-map-filter').forEach(button => {
+        button.addEventListener('click', () => {
+            document.querySelectorAll('.cage-map-filter').forEach(item => item.classList.remove('active'));
+            button.classList.add('active');
+            const filter = button.dataset.mapFilter;
+            document.querySelectorAll('.cage-map-room').forEach(room => {
+                room.classList.toggle('map-hidden', filter !== 'all' && room.dataset.mapStatus !== filter);
+            });
+        });
+    });
+
+    document.querySelectorAll('.cage-map-room[data-booking-id]:not([data-booking-id=""])').forEach(room => {
+        room.addEventListener('dragstart', event => {
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', room.dataset.bookingId);
+        });
+    });
+
+    document.querySelectorAll('.cage-map-room.status-empty').forEach(room => {
+        room.addEventListener('dragover', event => {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            room.classList.add('drag-target');
+        });
+        room.addEventListener('dragleave', () => room.classList.remove('drag-target'));
+        room.addEventListener('drop', event => {
+            event.preventDefault();
+            room.classList.remove('drag-target');
+            movePetCage(event.dataTransfer.getData('text/plain'), room.dataset.cageId);
+        });
+    });
+
+    document.getElementById('mapMoveButton').addEventListener('click', () => {
+        movePetCage(
+            document.getElementById('mapCurrentBookingId').value,
+            document.getElementById('mapTargetCage').value
+        );
+    });
+
+    document.getElementById('mapStatusButton').addEventListener('click', () => {
+        const cageId = document.getElementById('mapCurrentCageId').value;
+        const status = document.getElementById('mapOperationalStatus').value;
+        if (!confirm(`Cập nhật chuồng ${cageId} sang trạng thái "${status}"?`)) return;
+
+        fetch('/SpaServices/UpdateCageOperationalStatus', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': getAntiForgeryToken() },
+            body: 'cageId=' + encodeURIComponent(cageId) + '&status=' + encodeURIComponent(status)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Lỗi: ' + data.message);
+            }
+        })
+        .catch(() => alert('Không thể cập nhật trạng thái chuồng. Vui lòng thử lại.'));
+    });
+});
 
 // ===== TAB SWITCHING =====
 function switchTab(tabName, btn) {
