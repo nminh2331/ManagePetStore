@@ -442,70 +442,7 @@ namespace ManagePetStore.Areas.Admin.Controllers
             }
         }
 
-        // =========================================================================
-        // 5. CHỈNH SỬA TÀI KHOẢN NHÂN VIÊN
-        // =========================================================================
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditStaff(int userId, string fullName, string phone, string password)
-        {
-            if (string.IsNullOrEmpty(fullName) || string.IsNullOrEmpty(phone) || string.IsNullOrEmpty(password) || userId <= 0)
-            {
-                TempData["ErrorMessage"] = "Vui lòng nhập đầy đủ thông tin bắt buộc.";
-                return RedirectToAction("Index", new { activeTab = "staff" });
-            }
 
-            if (fullName.Any(char.IsDigit))
-            {
-                TempData["ErrorMessage"] = "Họ và tên không được chứa chữ số.";
-                return RedirectToAction("Index", new { activeTab = "staff" });
-            }
-
-            if (!ValidatePhone(phone, out var phoneErr))
-            {
-                TempData["ErrorMessage"] = phoneErr;
-                return RedirectToAction("Index", new { activeTab = "staff" });
-            }
-
-            if (!ValidatePasswordStrength(password, out var passErr))
-            {
-                TempData["ErrorMessage"] = passErr;
-                return RedirectToAction("Index", new { activeTab = "staff" });
-            }
-
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
-            if (user == null || user.RoleId == 5)
-            {
-                TempData["ErrorMessage"] = "Tài khoản nhân viên không tồn tại.";
-                return RedirectToAction("Index", new { activeTab = "staff" });
-            }
-
-            // Check duplicate phone with other users
-            if (await _context.Users.AnyAsync(u => u.Phone == phone && u.UserId != userId) || 
-                await _context.Customers.AnyAsync(c => c.Phone == phone && c.UserId != userId))
-            {
-                TempData["ErrorMessage"] = "Số điện thoại đã được sử dụng bởi tài khoản khác.";
-                return RedirectToAction("Index", new { activeTab = "staff" });
-            }
-
-            try
-            {
-                user.FullName = fullName;
-                user.Phone = phone;
-                user.Password = password;
-
-                _context.Entry(user).State = EntityState.Modified;
-                await _context.SaveChangesAsync();
-
-                TempData["SuccessMessage"] = $"Đã cập nhật tài khoản nhân viên {user.Email} thành công.";
-            }
-            catch (Exception ex)
-            {
-                TempData["ErrorMessage"] = "Có lỗi xảy ra khi cập nhật nhân viên: " + ex.Message;
-            }
-
-            return RedirectToAction("Index", new { activeTab = "staff" });
-        }
 
         private bool ValidatePasswordStrength(string password, out string errorMessage)
         {
