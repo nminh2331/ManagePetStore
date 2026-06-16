@@ -35,6 +35,8 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<OrderItem> OrderItems { get; set; }
 
+    public virtual DbSet<OrderTracking> OrderTrackings { get; set; }
+
     public virtual DbSet<Pet> Pets { get; set; }
 
     public virtual DbSet<PetBioTimeline> PetBioTimelines { get; set; }
@@ -71,13 +73,16 @@ public partial class PetStoreManagementContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
+
         var builder = new ConfigurationBuilder()
-        .SetBasePath(Directory.GetCurrentDirectory())
-        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
         IConfigurationRoot configuration = builder.Build();
         optionsBuilder.UseSqlServer(configuration.GetConnectionString("DefaultConnection"));
 
     }
+    //#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+    //        => optionsBuilder.UseSqlServer("Server= DESKTOP-S7IL3CT\\SQLEXPRESS;Database= PetStoreManagement;Trusted_Connection=True; TrustServerCertificate=True;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -235,10 +240,14 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasIndex(e => e.Date, "IX_Orders_Date");
 
             entity.Property(e => e.OrderId).HasMaxLength(50);
+            entity.Property(e => e.CancelReason).HasMaxLength(500);
+            entity.Property(e => e.CanceledAt).HasColumnType("datetime");
+            entity.Property(e => e.CanceledBy).HasMaxLength(255);
             entity.Property(e => e.Date)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
             entity.Property(e => e.Discount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.OrderStatus).HasDefaultValue(0);
             entity.Property(e => e.PaymentMethod).HasMaxLength(30);
             entity.Property(e => e.Status)
                 .HasMaxLength(30)
@@ -277,6 +286,24 @@ public partial class PetStoreManagementContext : DbContext
                 .HasForeignKey(d => d.SpaServiceId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("FK_OrderItems_SpaServices");
+        });
+
+        modelBuilder.Entity<OrderTracking>(entity =>
+        {
+            entity.HasKey(e => e.TrackingId);
+
+            entity.ToTable("OrderTracking");
+
+            entity.Property(e => e.ChangedBy).HasMaxLength(255);
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.Note).HasMaxLength(1000);
+            entity.Property(e => e.OrderId).HasMaxLength(50);
+
+            entity.HasOne(d => d.Order).WithMany(p => p.OrderTrackings)
+                .HasForeignKey(d => d.OrderId)
+                .HasConstraintName("FK_OrderTracking_Orders");
         });
 
         modelBuilder.Entity<Pet>(entity =>
@@ -327,7 +354,6 @@ public partial class PetStoreManagementContext : DbContext
 
             entity.HasOne(d => d.Category).WithMany(p => p.Products)
                 .HasForeignKey(d => d.CategoryId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Products_ProductCategories");
         });
 
@@ -335,17 +361,8 @@ public partial class PetStoreManagementContext : DbContext
         {
             entity.HasKey(e => e.CategoryId);
 
-            entity.Property(e => e.Name).HasMaxLength(150);
             entity.Property(e => e.Description).HasMaxLength(500);
-        });
-
-        modelBuilder.Entity<Room>(entity =>
-        {
-            entity.Property(e => e.RoomCode).HasMaxLength(50);
-            entity.Property(e => e.RoomType).HasMaxLength(50);
-            entity.Property(e => e.Status).HasMaxLength(30);
-            entity.Property(e => e.Dimensions).HasMaxLength(100);
-            entity.Property(e => e.DailyRate).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Name).HasMaxLength(150);
         });
 
         modelBuilder.Entity<Role>(entity =>
@@ -364,6 +381,17 @@ public partial class PetStoreManagementContext : DbContext
             entity.Property(e => e.Size).HasMaxLength(50);
             entity.Property(e => e.Status).HasDefaultValue(true);
             entity.Property(e => e.Type).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<Room>(entity =>
+        {
+            entity.HasKey(e => e.RoomId);
+
+            entity.Property(e => e.DailyRate).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Dimensions).HasMaxLength(100);
+            entity.Property(e => e.RoomCode).HasMaxLength(50);
+            entity.Property(e => e.RoomType).HasMaxLength(50);
+            entity.Property(e => e.Status).HasMaxLength(30);
         });
 
         modelBuilder.Entity<SpaBooking>(entity =>
