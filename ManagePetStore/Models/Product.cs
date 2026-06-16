@@ -9,6 +9,8 @@ public partial class Product
 
     public string Name { get; set; } = null!;
 
+    public int CategoryId { get; set; }
+
     public string Unit { get; set; } = null!;
 
     public int Stock { get; set; }
@@ -23,9 +25,7 @@ public partial class Product
 
     public string? ImageUrl { get; set; }
 
-    public int? CategoryId { get; set; }
-
-    public virtual ProductCategory? Category { get; set; }
+    public virtual ProductCategory Category { get; set; } = null!;
 
     public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 
