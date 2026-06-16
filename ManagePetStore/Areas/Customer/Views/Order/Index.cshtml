@@ -1,230 +1,288 @@
 @model ManagePetStore.Areas.Customer.Models.OrderHistoryPageViewModel
 
 @{
-
     Layout = "/Views/Shared/_PetStoreLayout.cshtml";
-
     ViewData["Title"] = "Lịch sử đơn hàng";
 
+    var showingFrom = Model.TotalFilteredItems == 0 ? 0 : ((Model.Page - 1) * Model.PageSize) + 1;
+    var showingTo = Math.Min(Model.Page * Model.PageSize, Model.TotalFilteredItems);
 }
 
 
 
 @section Styles {
-
     <link rel="stylesheet" href="~/css/customer-pets.css" asp-append-version="true" />
-
     <link rel="stylesheet" href="~/css/customer-orders.css" asp-append-version="true" />
-
 }
 
 
 
 @if (TempData["SuccessMessage"] != null)
-
 {
-
     <div class="cp-toast success" id="cpToast">@TempData["SuccessMessage"]</div>
-
 }
 
 
 
 @if (TempData["ErrorMessage"] != null)
-
 {
-
     <div class="cp-toast error" id="cpToast">@TempData["ErrorMessage"]</div>
-
 }
 
 
 
 <div class="cp-dashboard">
-
     @await Html.PartialAsync("_CustomerSidebar", Model)
 
-
-
     <section class="cp-main">
-
         <div class="cp-main-header">
-
             <div>
-
                 <h1 class="cp-main-title">Lịch sử đơn hàng</h1>
-
+                <p class="cp-main-subtitle">Theo dõi tiến trình đơn hàng từ lúc chờ xử lý đến khi bạn xác nhận đã nhận hàng và gửi đánh giá.</p>
             </div>
-
         </div>
-
-
 
         <div class="co-table-card">
-
             @if (!Model.Orders.Any())
-
             {
-
                 <div class="co-empty">
-
                     <i class="bi bi-bag-x"></i>
-
                     <p>Bạn chưa có đơn hàng nào.</p>
-
                     <a asp-area="" asp-controller="Home" asp-action="Index" class="co-btn-review">Mua sắm ngay</a>
+                </div>
+            }
+            else
+            {
+                <div class="co-filter-bar">
+                    <form asp-action="Index" method="get" class="co-filter-form">
+                        <div class="co-filter-field co-filter-search">
+                            <label class="co-filter-label" for="searchTerm">Tìm đơn hàng</label>
+                            <input type="text"
+                                   id="searchTerm"
+                                   name="searchTerm"
+                                   value="@Model.SearchTerm"
+                                   class="co-filter-input"
+                                   placeholder="Nhập mã đơn hoặc trạng thái" />
+                        </div>
 
+                        <div class="co-filter-field co-filter-status">
+                            <label class="co-filter-label" for="statusFilter">Trạng thái</label>
+                            <select id="statusFilter" name="statusFilter" class="co-filter-select">
+                                @if (Model.StatusFilter == "all")
+                                {
+                                    <option value="all" selected>Tất cả</option>
+                                }
+                                else
+                                {
+                                    <option value="all">Tất cả</option>
+                                }
+
+                                @if (Model.StatusFilter == "pending")
+                                {
+                                    <option value="pending" selected>Chờ xử lý</option>
+                                }
+                                else
+                                {
+                                    <option value="pending">Chờ xử lý</option>
+                                }
+
+                                @if (Model.StatusFilter == "approved")
+                                {
+                                    <option value="approved" selected>Đã xác nhận</option>
+                                }
+                                else
+                                {
+                                    <option value="approved">Đã xác nhận</option>
+                                }
+
+                                @if (Model.StatusFilter == "delivering")
+                                {
+                                    <option value="delivering" selected>Đang giao</option>
+                                }
+                                else
+                                {
+                                    <option value="delivering">Đang giao</option>
+                                }
+
+                                @if (Model.StatusFilter == "completed")
+                                {
+                                    <option value="completed" selected>Hoàn thành</option>
+                                }
+                                else
+                                {
+                                    <option value="completed">Hoàn thành</option>
+                                }
+
+                                @if (Model.StatusFilter == "cancelled")
+                                {
+                                    <option value="cancelled" selected>Đã hủy / Từ chối</option>
+                                }
+                                else
+                                {
+                                    <option value="cancelled">Đã hủy / Từ chối</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="co-filter-actions">
+                            <button type="submit" class="co-btn-review">Lọc đơn hàng</button>
+                            @if (!string.IsNullOrWhiteSpace(Model.SearchTerm) || Model.StatusFilter != "all")
+                            {
+                                <a asp-action="Index" class="co-btn-reset">Xóa lọc</a>
+                            }
+                        </div>
+                    </form>
+
+                    <div class="co-filter-summary">
+                        @if (Model.TotalFilteredItems > 0)
+                        {
+                            <span>Hiển thị @showingFrom-@showingTo trên @Model.TotalFilteredItems đơn hàng</span>
+                        }
+                        else
+                        {
+                            <span>Không có đơn hàng phù hợp với bộ lọc.</span>
+                        }
+                    </div>
                 </div>
 
-            }
-
-            else
-
-            {
-
-                <div class="co-table-wrap">
-
-                    <table class="co-table">
-
-                        <thead>
-
-                            <tr>
-
-                                <th>ĐƠN HÀNG</th>
-
-                                <th>THỜI GIAN</th>
-
-                                <th>TỔNG TIỀN</th>
-
-                                <th>TRẠNG THÁI</th>
-
-                                <th>ĐÁNH GIÁ</th>
-
-                                <th>THAO TÁC</th>
-
-                            </tr>
-
-                        </thead>
-
-                        <tbody>
-
-                            @foreach (var order in Model.Orders)
-
-                            {
-
-                                <tr class="co-table-row">
-
-                                    <td>
-
-                                        <span class="co-order-id">@order.DisplayOrderId</span>
-
-                                    </td>
-
-                                    <td>
-
-                                        <span class="co-order-date">
-
-                                            <i class="bi bi-clock"></i>
-
-                                            @order.OrderDate.ToString("yyyy-MM-dd")
-
-                                        </span>
-
-                                    </td>
-
-                                    <td>
-
-                                        <strong class="co-order-total">@order.Total.ToString("N0")đ</strong>
-
-                                    </td>
-
-                                    <td>
-
-                                        <span class="co-status co-status-@order.StatusKey">@order.Status</span>
-
-                                    </td>
-
-                                    <td>
-
-                                        @if (order.CanReview)
-
-                                        {
-
-                                            <button type="button"
-
-                                                    class="co-btn-review js-open-review"
-
-                                                    data-order-id="@order.OrderId"
-
-                                                    data-display-id="@order.DisplayOrderId"
-
-                                                    onclick="event.stopPropagation();">
-
-                                                Gửi đánh giá
-
-                                            </button>
-
-                                        }
-
-                                        else if (order.HasReviewed)
-
-                                        {
-
-                                            <span class="co-reviewed-badge">Đã đánh giá</span>
-
-                                        }
-
-                                        else
-
-                                        {
-
-                                            <span class="co-review-placeholder">...</span>
-
-                                        }
-
-                                    </td>
-
-                                    <td>
-
-                                        <a asp-action="Details"
-
-                                           asp-route-id="@order.OrderId"
-
-                                           class="co-btn-detail">
-
-                                            Xem chi tiết đơn hàng
-
-                                        </a>
-
-                                    </td>
-
+                @if (Model.VisibleOrders.Any())
+                {
+                    <div class="co-table-wrap">
+                        <table class="co-table">
+                            <thead>
+                                <tr>
+                                    <th>ĐƠN HÀNG</th>
+                                    <th>THỜI GIAN</th>
+                                    <th>TỔNG TIỀN</th>
+                                    <th>TRẠNG THÁI</th>
+                                    <th>ĐÁNH GIÁ</th>
+                                    <th>THAO TÁC</th>
                                 </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var order in Model.VisibleOrders)
+                                {
+                                    <tr class="co-table-row">
+                                        <td>
+                                            <span class="co-order-id">@order.DisplayOrderId</span>
+                                        </td>
+                                        <td>
+                                            <span class="co-order-date">
+                                                <i class="bi bi-clock"></i>
+                                                @order.OrderDate.ToString("yyyy-MM-dd")
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <strong class="co-order-total">@order.Total.ToString("N0")đ</strong>
+                                        </td>
+                                        <td>
+                                            <span class="co-status co-status-@order.StatusKey">@order.Status</span>
+                                            @if ((order.StatusKey == "cancelled" || order.StatusKey == "rejected") && !string.IsNullOrWhiteSpace(order.CancelReason))
+                                            {
+                                                <div class="co-cancel-reason">Lý do: @order.CancelReason</div>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (order.CanReview)
+                                            {
+                                                <button type="button"
+                                                        class="co-btn-review js-open-review"
+                                                        data-order-id="@order.OrderId"
+                                                        data-display-id="@order.DisplayOrderId"
+                                                        onclick="event.stopPropagation();">
+                                                    Gửi đánh giá
+                                                </button>
+                                            }
+                                            else if (order.HasReviewed)
+                                            {
+                                                <span class="co-reviewed-badge">Đã đánh giá</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="co-review-placeholder @(order.CanConfirmReceived ? "co-review-note" : "")">
+                                                    @(order.CanConfirmReceived ? "Xác nhận đã nhận hàng để mở đánh giá" : "Chưa khả dụng")
+                                                </span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <div class="co-action-group">
+                                                @if (order.CanConfirmReceived)
+                                                {
+                                                    <form asp-action="ConfirmReceived" method="post" class="co-action-form">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="orderId" value="@order.OrderId" />
+                                                        <input type="hidden" name="returnAction" value="Index" />
+                                                        <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+                                                        <input type="hidden" name="statusFilter" value="@Model.StatusFilter" />
+                                                        <input type="hidden" name="page" value="@Model.Page" />
+                                                        <button type="submit" class="co-btn-received">Đã nhận hàng</button>
+                                                    </form>
+                                                }
 
+                                                <a asp-action="Details"
+                                                   asp-route-id="@order.OrderId"
+                                                   class="co-btn-detail">
+                                                    Xem chi tiết đơn hàng
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @if (Model.TotalPages > 1)
+                    {
+                        <div class="co-pagination">
+                            <a asp-action="Index"
+                               asp-route-searchTerm="@Model.SearchTerm"
+                               asp-route-statusFilter="@Model.StatusFilter"
+                               asp-route-page="@(Model.Page - 1)"
+                               class="co-page-link @(Model.HasPreviousPage ? "" : "disabled")"
+                               aria-disabled="@(!Model.HasPreviousPage)"
+                               tabindex="@(Model.HasPreviousPage ? "0" : "-1")">
+                                Trước
+                            </a>
+
+                            @for (var pageNumber = 1; pageNumber <= Model.TotalPages; pageNumber++)
+                            {
+                                <a asp-action="Index"
+                                   asp-route-searchTerm="@Model.SearchTerm"
+                                   asp-route-statusFilter="@Model.StatusFilter"
+                                   asp-route-page="@pageNumber"
+                                   class="co-page-link @(pageNumber == Model.Page ? "active" : "")">
+                                    @pageNumber
+                                </a>
                             }
 
-                        </tbody>
-
-                    </table>
-
-                </div>
-
+                            <a asp-action="Index"
+                               asp-route-searchTerm="@Model.SearchTerm"
+                               asp-route-statusFilter="@Model.StatusFilter"
+                               asp-route-page="@(Model.Page + 1)"
+                               class="co-page-link @(Model.HasNextPage ? "" : "disabled")"
+                               aria-disabled="@(!Model.HasNextPage)"
+                               tabindex="@(Model.HasNextPage ? "0" : "-1")">
+                                Sau
+                            </a>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="co-empty co-empty-filtered">
+                        <i class="bi bi-funnel"></i>
+                        <p>Không tìm thấy đơn hàng nào khớp với bộ lọc hiện tại.</p>
+                        <a asp-action="Index" class="co-btn-review">Xem toàn bộ đơn hàng</a>
+                    </div>
+                }
             }
-
         </div>
-
     </section>
-
 </div>
 
-
-
-@await Html.PartialAsync("_ReviewModal")
-
-
+@await Html.PartialAsync("_ReviewModal", Model)
 
 @section Scripts {
-
     <script src="~/js/customer-orders.js" asp-append-version="true"></script>
-
 }
-

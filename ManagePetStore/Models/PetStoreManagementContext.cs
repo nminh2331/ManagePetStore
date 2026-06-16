@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -46,6 +46,8 @@ public partial class PetStoreManagementContext : DbContext
     public virtual DbSet<ProductCategory> ProductCategories { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
+
+    public virtual DbSet<Room> Rooms { get; set; }
 
     public virtual DbSet<RoomType> RoomTypes { get; set; }
 
@@ -374,6 +376,16 @@ public partial class PetStoreManagementContext : DbContext
             entity.Property(e => e.Size).HasMaxLength(50);
             entity.Property(e => e.Status).HasDefaultValue(true);
             entity.Property(e => e.Type).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<Room>(entity =>
+        {
+            entity.HasKey(e => e.RoomId);
+            entity.Property(e => e.DailyRate).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Dimensions).HasMaxLength(100);
+            entity.Property(e => e.RoomCode).HasMaxLength(50);
+            entity.Property(e => e.RoomType).HasMaxLength(50);
+            entity.Property(e => e.Status).HasMaxLength(30);
         });
 
         modelBuilder.Entity<SpaBooking>(entity =>

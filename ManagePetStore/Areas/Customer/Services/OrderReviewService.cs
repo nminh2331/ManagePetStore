@@ -54,7 +54,7 @@ public class OrderReviewService : IOrderReviewService
             return (false, "Không tìm thấy đơn hàng hoặc bạn không có quyền đánh giá.");
         }
 
-        var statusKey = ResolveStatusKey(order.Status);
+        var statusKey = OrderStatusHelper.ResolveStatusKey(order.Status);
         if (statusKey != "completed")
         {
             return (false, "Chỉ có thể đánh giá đơn hàng đã hoàn thành.");
@@ -105,28 +105,5 @@ public class OrderReviewService : IOrderReviewService
         }
 
         session.SetString($"{SessionKeyPrefix}{customerId}", JsonSerializer.Serialize(reviews));
-    }
-
-    private static string ResolveStatusKey(string? status)
-    {
-        var normalized = status?.Trim().ToLowerInvariant() ?? "";
-
-        if (normalized.Contains("giao") && !normalized.Contains("hoàn"))
-        {
-            return "delivering";
-        }
-
-        if (normalized.Contains("chờ") ||
-            normalized.Contains("cho") ||
-            normalized.Contains("duyệt") ||
-            normalized.Contains("duyet") ||
-            normalized.Contains("xử lý") ||
-            normalized.Contains("xu ly") ||
-            normalized.Contains("pending"))
-        {
-            return "pending";
-        }
-
-        return "completed";
     }
 }
