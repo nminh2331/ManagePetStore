@@ -1,0 +1,375 @@
+@model ManagePetStore.Models.User
+@{
+    Layout = null;
+    var returnUrl = ViewData["ReturnUrl"] as string;
+}
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Đăng nhập Nhân viên - Pet Store</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #f97316;
+            --primary-hover: #ea580c;
+            --bg-dark: #090d16;
+            --card-bg: rgba(17, 24, 39, 0.75);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-dark);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Ambient Glow Blobs */
+        .glow-blob {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(249, 115, 22, 0.15) 0%, rgba(249, 115, 22, 0) 70%);
+            filter: blur(50px);
+            z-index: 0;
+            pointer-events: none;
+        }
+        .glow-blob-1 {
+            top: -10%;
+            left: -10%;
+        }
+        .glow-blob-2 {
+            bottom: -10%;
+            right: -10%;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 460px;
+            padding: 20px;
+            z-index: 10;
+        }
+
+        .login-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo-icon {
+            background: linear-gradient(135deg, var(--primary), #fb923c);
+            width: 54px;
+            height: 54px;
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 20px rgba(249, 115, 22, 0.3);
+        }
+
+        .logo-text {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin: 0;
+            letter-spacing: -0.5px;
+        }
+        .logo-text span {
+            color: var(--primary);
+        }
+
+        .portal-badge {
+            display: inline-block;
+            background: rgba(249, 115, 22, 0.1);
+            color: var(--primary);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: 4px 12px;
+            border-radius: 30px;
+            margin-top: 8px;
+        }
+
+        .form-title {
+            color: var(--text-main);
+            font-size: 20px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .form-subtitle {
+            color: var(--text-muted);
+            font-size: 13px;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            color: var(--text-main);
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+            width: 18px;
+            height: 18px;
+        }
+
+        .form-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 12px 16px 12px 48px;
+            color: var(--text-main);
+            font-size: 14px;
+            transition: all 0.25s ease;
+        }
+        .form-input:focus {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.15);
+            outline: none;
+        }
+        .form-input::placeholder {
+            color: #4b5563;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0;
+            display: flex;
+            align-items: center;
+        }
+        .password-toggle:hover {
+            color: var(--text-main);
+        }
+
+        .options-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            font-size: 13px;
+        }
+
+        .remember-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+        .remember-checkbox input {
+            accent-color: var(--primary);
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .btn-submit {
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 10px 20px -8px rgba(249, 115, 22, 0.4);
+        }
+        .btn-submit:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 24px -6px rgba(249, 115, 22, 0.5);
+        }
+        .btn-submit:active {
+            transform: translateY(1px);
+        }
+
+        .alert-custom {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .alert-custom svg {
+            flex-shrink: 0;
+            width: 18px;
+            height: 18px;
+            margin-top: 1px;
+        }
+    </style>
+</head>
+<body>
+    <div class="glow-blob glow-blob-1"></div>
+    <div class="glow-blob glow-blob-2"></div>
+
+    <div class="login-container">
+        <div class="login-card">
+            <div class="logo-section">
+                <div class="logo-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 12c-2.9 0-3-1.6-3-3 0-1.8 1-3 3-3s3 1.2 3 3c0 1.4-.1 3-3 3z"/>
+                        <path d="M19 10c.8 0 1.5-.2 2.1-.6.7-.5.9-1.4.5-2.1l-.8-1.4c-.4-.7-1.3-1-2-.6L18 5.7c-.5.3-1.2.2-1.7-.2-.6-.5-1.5-.5-2.1 0L12 7l-2.2-1.5c-.6-.5-1.5-.5-2.1 0-.5.4-1.2.5-1.7.2L5.2 5.3c-.7-.4-1.6-.1-2 .6l-.8 1.4c-.4.7-.2 1.6.5 2.1.6.4 1.3.6 2.1.6"/>
+                        <path d="M4 14c0 3.3 2.7 6 6 6h4c3.3 0 6-2.7 6-6V10H4v4z"/>
+                    </svg>
+                </div>
+                <h1 class="logo-text">PetStore <span>AI</span></h1>
+                <span class="portal-badge">Cổng Nhân Viên</span>
+            </div>
+
+            <h2 class="form-title">Đăng nhập hệ thống</h2>
+            <p class="form-subtitle">Nhập thông tin tài khoản làm việc của bạn</p>
+
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert-custom">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div>@TempData["ErrorMessage"]</div>
+                </div>
+            }
+
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <div class="alert-custom">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div asp-validation-summary="All" style="list-style-type: none; padding: 0; margin: 0;"></div>
+                </div>
+            }
+
+            <form asp-action="Login" method="post" asp-route-returnUrl="@returnUrl">
+                @Html.AntiForgeryToken()
+
+                <div class="form-group">
+                    <label class="form-label">Email tài khoản</label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <input type="text" name="usernameOrEmail" class="form-input" placeholder="nhanvien@petstore.com" required autocomplete="email" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Mật khẩu bảo mật</label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        <input type="password" name="password" id="staff-password" class="form-input" placeholder="••••••••" required autocomplete="current-password" />
+                        <button type="button" class="password-toggle" onclick="togglePassword()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" id="password-eye-icon">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="options-row">
+                    <label class="remember-checkbox">
+                        <input type="checkbox" name="rememberMe" value="true" />
+                        Duy trì đăng nhập
+                    </label>
+                    <a asp-action="ForgotPassword" style="color: var(--primary); text-decoration: none; font-weight: 500;">Quên mật khẩu?</a>
+                </div>
+
+                <button type="submit" class="btn-submit">
+                    Đăng nhập hệ thống
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function togglePassword() {
+            var passwordField = document.getElementById("staff-password");
+            var eyeIcon = document.getElementById("password-eye-icon");
+            if (passwordField.type === "password") {
+                passwordField.type = "text";
+                eyeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />';
+            } else {
+                passwordField.type = "password";
+                eyeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />';
+            }
+        }
+    </script>
+</body>
+</html>

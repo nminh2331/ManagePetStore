@@ -29,6 +29,28 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         // Thời gian duy trì đăng nhập (7 ngày)
         options.ExpireTimeSpan = TimeSpan.FromDays(7);
         options.SlidingExpiration = true;
+
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnRedirectToLogin = context =>
+            {
+                var path = context.Request.Path.Value ?? "";
+                if (path.StartsWith("/Admin", StringComparison.OrdinalIgnoreCase) ||
+                    path.StartsWith("/Cashier", StringComparison.OrdinalIgnoreCase) ||
+                    path.StartsWith("/Warehouse", StringComparison.OrdinalIgnoreCase) ||
+                    path.StartsWith("/Manager", StringComparison.OrdinalIgnoreCase) ||
+                    path.StartsWith("/SpaServices", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.RedirectUri = "/Staff/Login";
+                }
+                else
+                {
+                    context.RedirectUri = "/Customer/Account/Login";
+                }
+                context.Response.Redirect(context.RedirectUri);
+                return Task.CompletedTask;
+            }
+        };
     });
 
 // =========================================================================
