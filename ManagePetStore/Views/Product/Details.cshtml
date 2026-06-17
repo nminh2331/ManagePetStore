@@ -191,9 +191,9 @@
                                 
                                 <!-- Groomer Selection -->
                                 <div class="mb-3 text-start">
-                                    <label class="form-label">Chọn nhân viên grooming *</label>
-                                    <select name="groomerId" id="groomerSelect" class="form-select" required>
-                                        <option value="" disabled selected>-- Chọn nhân viên --</option>
+                                    <label class="form-label">Chọn nhân viên mong muốn (Không bắt buộc)</label>
+                                    <select name="groomerId" id="groomerSelect" class="form-select">
+                                        <option value="0" selected>-- Hệ thống tự phân bổ (Hoặc chọn nhân viên mong muốn) --</option>
                                         @foreach (var gr in ViewBag.ActiveGroomers as List<User> ?? new List<User>())
                                         {
                                             <option value="@gr.UserId">@gr.FullName (Groomer Master)</option>
@@ -409,44 +409,49 @@
             var bookingDateInput = document.getElementById('bookingDate');
 
             function updateAvailableTimeSlots() {
-                var groomerId = groomerSelect ? groomerSelect.value : "";
-                var bookingDate = bookingDateInput ? bookingDateInput.value : "";
+                var groomerId = groomerSelect ? groomerSelect.value : "0";
+                var date = bookingDateInput ? bookingDateInput.value : "";
 
-                if (!groomerId || !bookingDate) {
-                    // Reset slots if inputs are incomplete
+                if (!date) {
                     slotButtons.forEach(function (btn) {
                         btn.disabled = false;
-                        btn.classList.remove('disabled', 'busy', 'free', 'active');
-                        var originalTime = btn.getAttribute('data-time');
-                        btn.textContent = originalTime;
+                        btn.classList.remove('disabled', 'busy');
+                        btn.classList.add('free');
                     });
                     return;
                 }
 
-                // Fetch occupied slots from server
-                fetch('/Product/GetGroomerBookedSlots?groomerId=' + groomerId + '&date=' + bookingDate)
+                if (groomerId === "0" || !groomerId) {
+                    // No preferred groomer, all slots free
+                    slotButtons.forEach(function (btn) {
+                        btn.disabled = false;
+                        btn.classList.remove('disabled', 'busy');
+                        btn.classList.add('free');
+                    });
+                    return;
+                }
+
+                fetch(`/Product/GetGroomerBookedSlots?groomerId=${groomerId}&date=${date}`)
                     .then(response => response.json())
                     .then(busySlots => {
                         slotButtons.forEach(function (btn) {
-                            var timeStr = btn.getAttribute('data-time');
-                            if (busySlots.includes(timeStr)) {
-                                btn.disabled = true;
-                                btn.classList.add('disabled', 'busy');
-                                btn.classList.remove('free', 'active');
-                                btn.textContent = timeStr + ' (Bận)';
-                                if (selectedTimeInput && selectedTimeInput.value === timeStr) {
-                                    selectedTimeInput.value = '';
-                                }
+                            var time = btn.getAttribute('data-time');
+                            btn.disabled = false; // Always clickable
+                            btn.classList.remove('disabled', 'busy', 'free');
+                            if (busySlots.includes(time)) {
+                                btn.classList.add('busy');
                             } else {
-                                btn.disabled = false;
-                                btn.classList.remove('disabled', 'busy');
                                 btn.classList.add('free');
-                                btn.textContent = timeStr;
                             }
                         });
                     })
                     .catch(err => {
-                        console.error('Error fetching booked slots:', err);
+                        console.error("Error fetching groomer booked slots:", err);
+                        slotButtons.forEach(function (btn) {
+                            btn.disabled = false;
+                            btn.classList.remove('disabled', 'busy');
+                            btn.classList.add('free');
+                        });
                     });
             }
 
