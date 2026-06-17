@@ -77,6 +77,13 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 return View();
             }
 
+            // Chặn nhân viên đăng nhập ở trang khách hàng
+            if (user.RoleId != 5)
+            {
+                ModelState.AddModelError("", "Tài khoản nhân viên không được phép đăng nhập tại trang dành cho khách hàng.");
+                return View();
+            }
+
             // Cấu hình Cookie Claims
             var claims = new List<Claim>
             {
@@ -768,7 +775,12 @@ namespace ManagePetStore.Areas.Customer.Controllers
         [HttpGet]
         public async Task<IActionResult> Logout()
         {
+            bool isStaff = User.Identity != null && User.Identity.IsAuthenticated && !User.IsInRole("customer");
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            if (isStaff)
+            {
+                return Redirect("/Staff/Login");
+            }
             return RedirectToAction("Index", "Home", new { area = "" });
         }
 
