@@ -78,7 +78,14 @@ namespace ManagePetStore.SpaServices.Controllers
                 .Take(groomerPageSize)
                 .ToListAsync();
 
+            var allGroomers = await _context.Users
+                .Include(u => u.Role)
+                .Where(u => u.Role.RoleName == "service" && u.Status == "Active")
+                .OrderBy(u => u.UserId)
+                .ToListAsync();
+
             ViewBag.Groomers = groomers;
+            ViewBag.AllGroomers = allGroomers;
             ViewBag.GroomerPage = currentGroomerPage;
             ViewBag.TotalGroomerPages = totalGroomerPages;
 
@@ -92,12 +99,13 @@ namespace ManagePetStore.SpaServices.Controllers
 
             // Phân hệ 4.3: Hàng đợi Spa Real-time có PHÂN TRANG (PageSize = 4)
             int queuePageSize = 4;
-            int totalQueueItems = await _context.SpaQueues.CountAsync();
+            int totalQueueItems = await _context.SpaQueues.CountAsync(q => !q.QueueNumber.StartsWith("PEND-WI-"));
             int totalQueuePages = (int)Math.Ceiling((double)totalQueueItems / queuePageSize);
             int currentQueuePage = queuePage < 1 ? 1 : (queuePage > totalQueuePages ? totalQueuePages : queuePage);
             if (currentQueuePage < 1) currentQueuePage = 1;
 
             var queue = await _context.SpaQueues
+                .Where(q => !q.QueueNumber.StartsWith("PEND-WI-"))
                 .OrderBy(q => q.ArrivalTime)
                 .Skip((currentQueuePage - 1) * queuePageSize)
                 .Take(queuePageSize)
@@ -108,9 +116,9 @@ namespace ManagePetStore.SpaServices.Controllers
             ViewBag.TotalQueuePages = totalQueuePages;
             ViewBag.TotalQueueItems = totalQueueItems;
 
-            // Khách vãng lai chờ (bắt đầu bằng WI-) có PHÂN TRANG (PageSize = 1)
+            // Khách vãng lai chờ (bắt đầu bằng PEND-WI-) có PHÂN TRANG (PageSize = 1)
             var walkInItems = await _context.SpaQueues
-                .Where(q => q.QueueNumber.StartsWith("WI-"))
+                .Where(q => q.QueueNumber.StartsWith("PEND-WI-"))
                 .OrderBy(q => q.ArrivalTime)
                 .ToListAsync();
 
@@ -323,8 +331,8 @@ namespace ManagePetStore.SpaServices.Controllers
                     _context.Pets.Add(pet);
                     await _context.SaveChangesAsync();
 
-                    int countToday = await _context.SpaQueues.CountAsync(q => q.QueueNumber.StartsWith("WI-"));
-                    string queueNumber = $"WI-{(700 + countToday + 1)}";
+                    int countToday = await _context.SpaQueues.CountAsync(q => q.QueueNumber.StartsWith("WI-") || q.QueueNumber.StartsWith("PEND-WI-"));
+                    string queueNumber = $"PEND-WI-{(700 + countToday + 1)}";
 
                     DateTime arrivalTime = DateTime.Now;
                     if (!string.IsNullOrEmpty(timeSlot) && TimeSpan.TryParse(timeSlot, out TimeSpan ts))
@@ -419,6 +427,15 @@ namespace ManagePetStore.SpaServices.Controllers
             }
             DateTime targetBookingDateTime = targetDate.Add(queueItem.ArrivalTime.TimeOfDay);
 
+            // Kiểm tra trùng lịch của Groomer tại khung giờ này (áp dụng cho cả online và offline)
+            bool isOverlap = await _context.SpaBookings
+                .AnyAsync(b => b.GroomerId == groomerId && b.DateTime == targetBookingDateTime && b.SpaStatus != "Cancelled");
+
+            if (isOverlap)
+            {
+                return Json(new { success = false, message = $"Kỹ thuật viên {groomer.FullName} đã có ca làm việc vào lúc {targetBookingDateTime:HH:mm}. Vui lòng chọn Kỹ thuật viên khác!" });
+            }
+
             // Check if there is already a booking created online for this slot/pet/service
             var existingBooking = await _context.SpaBookings
                 .FirstOrDefaultAsync(b => b.CustomerId == customer.CustomerId && b.PetId == pet.PetId && b.ServiceId == service.ServiceId && b.DateTime == targetBookingDateTime && b.SpaStatus != "Cancelled");
@@ -432,15 +449,6 @@ namespace ManagePetStore.SpaServices.Controllers
                 _context.SpaQueues.Remove(queueItem);
                 await _context.SaveChangesAsync();
                 return Json(new { success = true, message = $"Bắt đầu thực hiện dịch vụ cho thú cưng {pet.Name}!" });
-            }
-
-            // Kiểm tra trùng lịch của Groomer tại khung giờ này
-            bool isOverlap = await _context.SpaBookings
-                .AnyAsync(b => b.GroomerId == groomerId && b.DateTime == targetBookingDateTime && b.SpaStatus != "Cancelled");
-
-            if (isOverlap)
-            {
-                return Json(new { success = false, message = $"Kỹ thuật viên {groomer.FullName} đã có ca làm việc vào lúc {targetBookingDateTime:HH:mm}. Vui lòng chọn ca hoặc Kỹ thuật viên khác!" });
             }
 
             var booking = new SpaBooking
@@ -722,12 +730,13 @@ namespace ManagePetStore.SpaServices.Controllers
         public async Task<IActionResult> GetRealtimeQueue(int page = 1)
         {
             int pageSize = 4;
-            int total = await _context.SpaQueues.CountAsync();
+            int total = await _context.SpaQueues.CountAsync(q => !q.QueueNumber.StartsWith("PEND-WI-"));
             int totalPages = (int)Math.Ceiling((double)total / pageSize);
             int currentPage = page < 1 ? 1 : (page > totalPages ? totalPages : page);
             if (currentPage < 1) currentPage = 1;
 
             var queue = await _context.SpaQueues
+                .Where(q => !q.QueueNumber.StartsWith("PEND-WI-"))
                 .OrderBy(q => q.ArrivalTime)
                 .Skip((currentPage - 1) * pageSize)
                 .Take(pageSize)
@@ -779,17 +788,41 @@ namespace ManagePetStore.SpaServices.Controllers
 
             return Json(new {
                 queueId = queueItem.QueueId,
+                queueNumber = queueItem.QueueNumber,
                 petName = queueItem.PetName,
                 species = pet?.Species ?? "Chó",
                 breed = pet?.Breed ?? "Không rõ",
                 age = pet?.Age ?? "Chưa rõ",
                 weight = pet?.Weight ?? 4.5m,
+                pathology = pet?.Pathology ?? "Khỏe mạnh, bình thường",
                 customerName = customerName,
                 phone = phone,
                 serviceId = service?.ServiceId ?? 0,
+                serviceName = queueItem.ServiceDescription ?? service?.Name ?? "Dịch vụ Spa",
                 timeSlot = queueItem.ArrivalTime.ToString("HH:mm"),
                 note = queueItem.Note
             });
+        }
+
+        [HttpGet("GetGroomersBusyStatus")]
+        public async Task<IActionResult> GetGroomersBusyStatus(string date, string time)
+        {
+            if (!DateTime.TryParse(date, out DateTime parsedDate))
+            {
+                parsedDate = DateTime.Today;
+            }
+            if (!TimeSpan.TryParse(time, out TimeSpan parsedTime))
+            {
+                parsedTime = new TimeSpan(9, 0, 0);
+            }
+            DateTime targetDateTime = parsedDate.Date.Add(parsedTime);
+
+            var busyGroomerIds = await _context.SpaBookings
+                .Where(b => b.DateTime == targetDateTime && b.SpaStatus != "Cancelled")
+                .Select(b => b.GroomerId)
+                .ToListAsync();
+
+            return Json(busyGroomerIds);
         }
 
         [HttpPost("EditWalkIn")]
@@ -879,6 +912,93 @@ namespace ManagePetStore.SpaServices.Controllers
 
             return RedirectToAction(nameof(Index), new { date = queueItem.ArrivalTime.ToString("yyyy-MM-dd") });
         }
+
+        [HttpPost("AcceptWalkIn")]
+        public async Task<IActionResult> AcceptWalkIn(int queueId)
+        {
+            var queueItem = await _context.SpaQueues.FindAsync(queueId);
+            if (queueItem == null)
+            {
+                return Json(new { success = false, message = "Không tìm thấy thông tin chờ." });
+            }
+
+            if (queueItem.QueueNumber.StartsWith("PEND-WI-"))
+            {
+                queueItem.QueueNumber = queueItem.QueueNumber.Replace("PEND-WI-", "WI-");
+                await _context.SaveChangesAsync();
+                return Json(new { success = true, message = "Đã nhận pet vào hàng đợi thành công!" });
+            }
+
+            return Json(new { success = false, message = "Pet đã ở trong hàng đợi." });
+        }
+
+        [HttpPost("CancelQueueItem")]
+        public async Task<IActionResult> CancelQueueItem(int queueId, string reason)
+        {
+            if (string.IsNullOrWhiteSpace(reason))
+            {
+                return Json(new { success = false, message = "Vui lòng cung cấp lý do hủy lịch hẹn." });
+            }
+
+            var queueItem = await _context.SpaQueues.FindAsync(queueId);
+            if (queueItem == null)
+            {
+                return Json(new { success = false, message = "Không tìm thấy hàng đợi." });
+            }
+
+            using (var transaction = await _context.Database.BeginTransactionAsync())
+            {
+                try
+                {
+                    if (queueItem.QueueNumber.StartsWith("OL-"))
+                    {
+                        string phone = "";
+                        string ownerName = queueItem.OwnerName;
+                        if (ownerName.Contains("(") && ownerName.Contains(")"))
+                        {
+                            int startIndex = ownerName.LastIndexOf("(") + 1;
+                            int endIndex = ownerName.LastIndexOf(")");
+                            if (startIndex > 0 && endIndex > startIndex)
+                            {
+                                phone = ownerName.Substring(startIndex, endIndex - startIndex).Trim();
+                            }
+                        }
+
+                        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Phone == phone);
+                        if (customer != null)
+                        {
+                            var pet = await _context.Pets.FirstOrDefaultAsync(p => p.CustomerId == customer.CustomerId && p.Name == queueItem.PetName);
+                            var service = await _context.SpaServices.FirstOrDefaultAsync(s => s.Name == queueItem.ServiceDescription);
+                            
+                            if (pet != null && service != null)
+                            {
+                                DateTime targetBookingDateTime = queueItem.ArrivalTime;
+                                var booking = await _context.SpaBookings
+                                    .FirstOrDefaultAsync(b => b.CustomerId == customer.CustomerId && b.PetId == pet.PetId && b.ServiceId == service.ServiceId && b.DateTime == targetBookingDateTime && b.SpaStatus != "Cancelled");
+                                
+                                if (booking != null)
+                                {
+                                    booking.SpaStatus = "Cancelled";
+                                    booking.Notes = $"[Lý do hủy: {reason}] " + (booking.Notes ?? "");
+                                }
+                            }
+                        }
+                    }
+
+                    _context.SpaQueues.Remove(queueItem);
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    return Json(new { success = true, message = "Đã hủy lịch hẹn và xóa khỏi hàng đợi thành công!" });
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    return Json(new { success = false, message = $"Lỗi hệ thống khi hủy: {ex.Message}" });
+                }
+            }
+        }
+
         // =========================================================================
         // 6. TRANG QUẢN LÝ CHUỒNG & TIẾP NHẬN THÚ CƯNG (HOTEL)
         // =========================================================================

@@ -1,14 +1,6 @@
 @model ManagePetStore.Areas.Customer.Models.CustomerSidebarViewModel
 
 @{
-    string TierLabel(string tier) => tier?.ToLowerInvariant() switch
-    {
-        "gold" or "vàng" => "THÀNH VIÊN VÀNG",
-        "silver" or "bạc" => "THÀNH VIÊN BẠC",
-        "bronze" or "đồng" => "THÀNH VIÊN ĐỒNG",
-        _ => $"THÀNH VIÊN {tier?.ToUpperInvariant()}"
-    };
-
     string NavClass(string key) => Model.ActiveNav == key ? "cp-nav-link active" : "cp-nav-link";
 }
 
@@ -18,9 +10,6 @@
             @Model.User.FullName.Substring(0, 1).ToUpper()
         </div>
         <div class="cp-sidebar-name">@Model.User.FullName</div>
-        <div class="cp-tier-badge">
-            <i class="bi bi-award"></i> @TierLabel(Model.Customer.MembershipTier)
-        </div>
         <div class="cp-loyalty">
             @Model.Customer.LoyaltyPoints.ToString("N0") <span>pts</span>
         </div>
