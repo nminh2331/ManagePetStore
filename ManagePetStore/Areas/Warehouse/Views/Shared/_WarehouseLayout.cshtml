@@ -144,6 +144,9 @@
                 <a asp-area="Warehouse" asp-controller="ProductCategory" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "ProductCategory" ? "active" : "")">
                     <i class="fas fa-tags"></i> Danh mục Sản phẩm
                 </a>
+                <a asp-area="Warehouse" asp-controller="Supplier" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Supplier" ? "active" : "")">
+                    <i class="fas fa-truck"></i> Nhà cung cấp
+                </a>
             </nav>
 
             <div class="mt-auto p-3">
@@ -160,11 +163,54 @@
         <main class="admin-content">
             <!-- Header -->
             <header class="admin-header" style="justify-content: space-between; align-items: center;">
-                <div class="header-left">
-                    <form method="get" action="/Warehouse/Product" class="d-flex align-items-center" style="background:#f4f6f8; padding:8px 16px; border-radius:24px; min-width:300px;">
-                        <i class="fas fa-search text-muted me-2"></i>
-                        <input type="text" name="search" class="border-0 bg-transparent flex-grow-1" style="outline:none;" placeholder="Tìm kiếm nhanh..." value="" />
-                    </form>
+                <div class="header-left" style="position: relative;">
+                    @{
+                        var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+                        string searchAction = "", searchPlaceholder = "", suggestionEndpoint = "", searchParamName = "search";
+
+                        switch (currentController)
+                        {
+                            case "Supplier":
+                                searchAction      = "/Warehouse/Supplier";
+                                searchPlaceholder = "Tìm nhà cung cấp...";
+                                suggestionEndpoint = "/Warehouse/Search/SupplierSuggestions";
+                                break;
+                            case "ProductCategory":
+                                searchAction      = "/Warehouse/ProductCategory";
+                                searchPlaceholder = "Tìm danh mục sản phẩm...";
+                                suggestionEndpoint = "";
+                                break;
+                            default: 
+                                searchAction      = "/Warehouse/Product";
+                                searchPlaceholder = "Tìm sản phẩm...";
+                                suggestionEndpoint = "/Warehouse/Search/ProductSuggestions";
+                                break;
+                        }
+                    }
+
+                    @if (currentController != "StockMovement")
+                    {
+                        <form method="get" action="@searchAction" id="headerSearchForm"
+                              class="d-flex align-items-center"
+                              style="background:#f4f6f8; padding:8px 16px; border-radius:24px; min-width:300px;"
+                              autocomplete="off">
+                            <i class="fas fa-search text-muted me-2"></i>
+                            <input type="text" name="@searchParamName" id="headerSearchInput"
+                                   class="border-0 bg-transparent flex-grow-1"
+                                   style="outline:none;"
+                                   placeholder="@searchPlaceholder"
+                                   value=""
+                                   data-suggest-url="@suggestionEndpoint"
+                                   data-navigate-url="@searchAction" />
+                        </form>
+
+                        @* Dropdown gợi ý *@
+                        <div id="searchSuggestions"
+                             style="display:none; position:absolute; top:calc(100% + 8px); left:0; right:0;
+                                    background:#fff; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.12);
+                                    z-index:9999; overflow:hidden; min-width:300px;">
+                        </div>
+                    }
                 </div>
 
                 <div class="admin-user-info">
@@ -194,6 +240,78 @@
     
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            let searchTimer = null;
+            const $input = $('#headerSearchInput');
+            const $dropdown = $('#searchSuggestions');
+            const suggestUrl = $input.data('suggest-url');
+
+            // Nếu trang hiện tại không hỗ trợ gợi ý (ví dụ Danh mục sản phẩm)
+            if (!suggestUrl) {
+                return;
+            }
+
+            $input.on('input', function () {
+                const q = $(this).val().trim();
+                clearTimeout(searchTimer);
+
+                if (q.length < 1) {
+                    $dropdown.hide();
+                    return;
+                }
+
+                // Debounce 300ms
+                searchTimer = setTimeout(function () {
+                    $.get(suggestUrl, { q: q })
+                        .done(function (data) {
+                            $dropdown.empty();
+                            if (data && data.length > 0) {
+                                $.each(data, function (i, item) {
+                                    const html = `
+                                        <a href="${item.url}" class="d-block p-3 text-decoration-none border-bottom text-dark suggestion-item" style="transition: background 0.2s;">
+                                            <div class="fw-bold">${item.label}</div>
+                                            <div class="text-muted small">${item.sub}</div>
+                                        </a>
+                                    `;
+                                    $dropdown.append(html);
+                                });
+                                $dropdown.show();
+                            } else {
+                                $dropdown.html('<div class="p-3 text-muted text-center small">Không tìm thấy kết quả</div>');
+                                $dropdown.show();
+                            }
+                        })
+                        .fail(function (err) {
+                            console.error('Lỗi khi tải gợi ý tìm kiếm:', err);
+                        });
+                }, 300);
+            });
+
+            // Ẩn dropdown khi click ra ngoài
+            $(document).on('click', function (e) {
+                if (!$(e.target).closest('#headerSearchForm, #searchSuggestions').length) {
+                    $dropdown.hide();
+                }
+            });
+
+            // Focus lại input thì hiện lại dropdown nếu có text
+            $input.on('focus', function () {
+                if ($(this).val().trim().length >= 1 && $dropdown.children().length > 0) {
+                    $dropdown.show();
+                }
+            });
+            
+            // Hover effect cho suggestion items
+            $(document).on('mouseenter', '.suggestion-item', function() {
+                $(this).css('background-color', '#f8f9fa');
+            }).on('mouseleave', '.suggestion-item', function() {
+                $(this).css('background-color', 'transparent');
+            });
+        });
+    </script>
+
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

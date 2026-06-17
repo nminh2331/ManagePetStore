@@ -31,9 +31,9 @@ public class StockMovementService : IStockMovementService
         _context = context;
     }
 
-    public async Task<IEnumerable<StockMovement>> GetAllMovements(DateTime? fromDate = null, DateTime? toDate = null)
+    public async Task<IEnumerable<StockMovement>> GetAllMovements(DateTime? fromDate = null, DateTime? toDate = null, string? search = null)
     {
-        return await _movementRepo.GetAllMovements(fromDate, toDate);
+        return await _movementRepo.GetAllMovements(fromDate, toDate, search);
     }
 
     public async Task<StockMovement?> GetMovementById(int id)
@@ -41,7 +41,7 @@ public class StockMovementService : IStockMovementService
         return await _movementRepo.GetMovementById(id);
     }
 
-    public async Task CreateImportOrder(int userId, string supplier, List<StockMovementDetail> details)
+    public async Task CreateImportOrder(int userId, int? supplierId, List<StockMovementDetail> details)
     {
         if (details == null || !details.Any())
             throw new ServiceException("Đơn nhập phải có ít nhất 1 sản phẩm.");
@@ -52,7 +52,7 @@ public class StockMovementService : IStockMovementService
         {
             Type = "Nhập hàng",
             Status = "Chờ duyệt",
-            Supplier = string.IsNullOrEmpty(supplier) ? "Không xác định" : supplier,
+            SupplierId = supplierId,
             CreatedById = userId,
             Date = DateTime.Now,
             TotalValue = totalValue,

@@ -21,20 +21,25 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
     {
         private readonly IStockMovementService _movementService;
         private readonly IProductService _productService;
+        private readonly IProductCategoryService _categoryService;
+        private readonly ISupplierService _supplierService;
 
-        public StockMovementController(IStockMovementService movementService, IProductService productService)
+        public StockMovementController(IStockMovementService movementService, IProductService productService, IProductCategoryService categoryService, ISupplierService supplierService)
         {
             _movementService = movementService;
             _productService = productService;
+            _categoryService = categoryService;
+            _supplierService = supplierService;
         }
 
         // Hiển thị danh sách các phiếu xuất/nhập kho
-        public async Task<IActionResult> Index(DateTime? fromDate, DateTime? toDate, string tab = "all")
+        public async Task<IActionResult> Index(DateTime? fromDate, DateTime? toDate, string tab = "all", string? search = null)
         {
             ViewBag.FromDate = fromDate?.ToString("yyyy-MM-dd");
             ViewBag.ToDate = toDate?.ToString("yyyy-MM-dd");
             ViewBag.Tab = tab;
-            var movements = await _movementService.GetAllMovements(fromDate, toDate);
+            ViewBag.Search = search;
+            var movements = await _movementService.GetAllMovements(fromDate, toDate, search);
             return View(movements);
         }
 
@@ -54,6 +59,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
                 var product = await _productService.GetProductBySku(productSku);
                 ViewBag.PrefillProduct = product;
             }
+            ViewBag.Categories = (await _categoryService.GetCategorySummary()).Categories;
             ViewBag.Products = await _productService.GetProductSummary("", "active");
             return View();
         }
@@ -61,7 +67,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         // Xử lý tạo phiếu nhập kho
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreateImport(string Supplier, string ProductSku, int Quantity, decimal CostPrice)
+        public async Task<IActionResult> CreateImport(int? SupplierId, string ProductSku, int Quantity, decimal CostPrice)
         {
             try
             {
@@ -76,15 +82,36 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
                     }
                 };
                 
-                await _movementService.CreateImportOrder(userId, Supplier, details);
+                await _movementService.CreateImportOrder(userId, SupplierId, details);
                 return RedirectToAction(nameof(Index));
             }
             catch (ServiceException ex)
             {
                 ModelState.AddModelError("", ex.Message);
+                ViewBag.Categories = (await _categoryService.GetCategorySummary()).Categories;
                 ViewBag.Products = await _productService.GetProductSummary("", "active");
                 return View();
             }
+        }
+
+        // AJAX: lấy danh sách sản phẩm theo danh mục
+        [HttpGet]
+        public async Task<IActionResult> GetProductsByCategory(int categoryId)
+        {
+            var allProducts = await _productService.GetProductSummary("", "active");
+            var filtered = allProducts.Products
+                .Where(p => p.CategoryId == categoryId)
+                .Select(p => new { sku = p.Sku, name = p.Name, stock = p.Stock });
+            return Json(filtered);
+        }
+
+        // AJAX: lấy danh sách nhà cung cấp theo danh mục
+        [HttpGet]
+        public async Task<IActionResult> GetSuppliersByCategory(int categoryId)
+        {
+            var suppliers = await _supplierService.GetSuppliersByCategoryAsync(categoryId);
+            var result = suppliers.Select(s => new { supplierId = s.SupplierId, name = s.Name });
+            return Json(result);
         }
 
         // Hiển thị form tạo phiếu xuất kho nội bộ

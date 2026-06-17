@@ -70,6 +70,8 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IProductCategoryService, ProductCategoryService>();
 builder.Services.AddScoped<ManagePetStore.Areas.Warehouse.Services.IInventoryBatchService, ManagePetStore.Areas.Warehouse.Services.InventoryBatchService>();
 builder.Services.AddScoped<ManagePetStore.Areas.Warehouse.Services.IStockMovementService, ManagePetStore.Areas.Warehouse.Services.StockMovementService>();
+builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
+builder.Services.AddScoped<ISupplierService, SupplierService>();
 
 // Background Services
 builder.Services.AddHostedService<ManagePetStore.BackgroundServices.ExpiryDateScannerService>();

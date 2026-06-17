@@ -69,6 +69,9 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<Voucher> Vouchers { get; set; }
 
+    public virtual DbSet<Supplier> Suppliers { get; set; } = null!;
+    public virtual DbSet<SupplierCategory> SupplierCategories { get; set; } = null!;
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer("Server=DESKTOP-Q2GI1JB;Database=PetStoreManagement;uid = sa;pwd = 123;Trusted_Connection=True;TrustServerCertificate=True;");
@@ -490,6 +493,10 @@ public partial class PetStoreManagementContext : DbContext
                 .HasForeignKey(d => d.CreatedById)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_StockMovements_Users");
+
+            entity.HasOne(d => d.SupplierNav).WithMany(p => p.StockMovements)
+                .HasForeignKey(d => d.SupplierId)
+                .HasConstraintName("FK_StockMovement_Supplier");
         });
 
         modelBuilder.Entity<StockMovementDetail>(entity =>
@@ -546,6 +553,30 @@ public partial class PetStoreManagementContext : DbContext
             entity.Property(e => e.Status).HasDefaultValue(true);
             entity.Property(e => e.Type).HasMaxLength(20);
             entity.Property(e => e.Value).HasColumnType("decimal(18, 2)");
+        });
+        modelBuilder.Entity<Supplier>(entity =>
+        {
+            entity.HasKey(e => e.SupplierId);
+            entity.Property(e => e.Name).HasMaxLength(255);
+            entity.Property(e => e.Phone).HasMaxLength(50);
+            entity.Property(e => e.Email).HasMaxLength(255);
+            entity.Property(e => e.Address).HasMaxLength(500);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+        });
+
+        modelBuilder.Entity<SupplierCategory>(entity =>
+        {
+            entity.HasKey(e => new { e.SupplierId, e.CategoryId });
+
+            entity.HasOne(d => d.Supplier)
+                .WithMany(p => p.SupplierCategories)
+                .HasForeignKey(d => d.SupplierId)
+                .HasConstraintName("FK_SupplierCategory_Supplier");
+
+            entity.HasOne(d => d.Category)
+                .WithMany()
+                .HasForeignKey(d => d.CategoryId)
+                .HasConstraintName("FK_SupplierCategory_Category");
         });
 
         OnModelCreatingPartial(modelBuilder);

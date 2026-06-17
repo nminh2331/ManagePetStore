@@ -1,7 +1,6 @@
 @{
     ViewData["Title"] = "Tạo Đơn Nhập Hàng";
-    var products = ViewBag.Products as ManagePetStore.Models.ProductSummaryViewModel;
-    var prefillProduct = ViewBag.PrefillProduct as ManagePetStore.Models.Product;
+    var categories = ViewBag.Categories as IEnumerable<ManagePetStore.Models.ProductCategory>;
 }
 
 <div class="mb-4">
@@ -14,57 +13,169 @@
 
 <div class="card border-0 shadow-sm" style="border-radius: 12px; max-width: 600px;">
     <div class="card-body p-4">
-        <form asp-action="CreateImport" method="post">
+        <form asp-action="CreateImport" method="post" id="importForm">
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
-            
-            <div class="mb-3">
-                <label for="Supplier" class="form-label fw-bold">Nhà cung cấp <span class="text-danger">*</span></label>
-                <input type="text" id="Supplier" name="Supplier" class="form-control" style="border-radius: 8px;" placeholder="Nhập tên nhà cung cấp..." required autocomplete="off" list="supplierList" />
-                <datalist id="supplierList">
-                    <option value="Công ty TNHH Pet Cưng"></option>
-                    <option value="Nhà phân phối Royal Canin"></option>
-                    <option value="Đại lý phụ kiện thú cưng Toàn Quốc"></option>
-                </datalist>
-                <div class="form-text text-muted">Hệ thống sẽ lưu tên để gợi ý cho lần sau.</div>
-            </div>
 
+            @* BƯỚC 1: Chọn danh mục *@
             <div class="mb-3">
-                <label for="ProductSku" class="form-label fw-bold">Sản phẩm <span class="text-danger">*</span></label>
-                <select id="ProductSku" name="ProductSku" class="form-select" style="border-radius: 8px;" required>
-                    <option value="">-- Chọn sản phẩm --</option>
-                    @if (products != null && products.Products != null)
+                <label for="CategoryId" class="form-label fw-bold">
+                    <span class="badge bg-warning text-dark rounded-circle me-1">1</span> Danh mục sản phẩm <span class="text-danger">*</span>
+                </label>
+                <select id="CategoryId" class="form-select" style="border-radius: 8px;" required onchange="onCategoryChange(this.value)">
+                    <option value="">-- Chọn danh mục --</option>
+                    @if (categories != null)
                     {
-                        foreach (var p in products.Products)
+                        foreach (var cat in categories)
                         {
-                            if (prefillProduct != null && p.Sku == prefillProduct.Sku)
-                            {
-                                <option value="@p.Sku" selected>@p.Name (Tồn: @p.Stock)</option>
-                            }
-                            else
-                            {
-                                <option value="@p.Sku">@p.Name (Tồn: @p.Stock)</option>
-                            }
+                            <option value="@cat.CategoryId">@cat.Name</option>
                         }
                     }
                 </select>
             </div>
-            
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="Quantity" class="form-label fw-bold">Số lượng nhập <span class="text-danger">*</span></label>
-                    <input type="number" id="Quantity" name="Quantity" min="1" class="form-control" style="border-radius: 8px;" required />
-                </div>
-                <div class="col-md-6 mb-4">
-                    <label for="CostPrice" class="form-label fw-bold">Đơn giá nhập dự kiến (đ) <span class="text-danger">*</span></label>
-                    <input type="number" id="CostPrice" name="CostPrice" min="0" class="form-control" style="border-radius: 8px;" required />
-                </div>
+
+            @* BƯỚC 2: Chọn sản phẩm thuộc danh mục *@
+            <div class="mb-3" id="productSection" style="display:none;">
+                <label for="ProductSku" class="form-label fw-bold">
+                    <span class="badge bg-warning text-dark rounded-circle me-1">2</span> Sản phẩm <span class="text-danger">*</span>
+                </label>
+                <select id="ProductSku" name="ProductSku" class="form-select" style="border-radius: 8px;" required>
+                    <option value="">-- Đang tải... --</option>
+                </select>
+                <div class="form-text text-muted">Chỉ hiển thị sản phẩm thuộc danh mục đã chọn.</div>
             </div>
-            
-            <div class="text-end">
-                <button type="submit" class="btn btn-primary-custom px-4 py-2">
-                    <i class="fas fa-paper-plane"></i> Gửi Yêu Cầu Nhập Hàng
-                </button>
+
+            @* BƯỚC 3: Chọn nhà cung cấp (không bắt buộc) *@
+            <div class="mb-3" id="supplierSection" style="display:none;">
+                <label for="SupplierId" class="form-label fw-bold">
+                    <span class="badge bg-warning text-dark rounded-circle me-1">3</span> Nhà cung cấp <span class="text-muted small">(không bắt buộc)</span>
+                </label>
+                <select id="SupplierId" name="SupplierId" class="form-select" style="border-radius: 8px;">
+                    <option value="">-- Không chọn --</option>
+                </select>
+                <div class="form-text text-muted">Chỉ hiển thị nhà cung cấp có đăng ký danh mục trên.</div>
+            </div>
+
+            @* Số lượng & Giá nhập *@
+            <div id="quantitySection" style="display:none;">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="Quantity" class="form-label fw-bold">Số lượng nhập <span class="text-danger">*</span></label>
+                        <input type="number" id="Quantity" name="Quantity" min="1" class="form-control" style="border-radius: 8px;" required oninput="calcTotal()" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="CostPrice" class="form-label fw-bold">
+                            Đơn giá nhập <span class="text-danger">*</span>
+                            <span class="badge bg-secondary fw-normal ms-1" style="font-size: 0.7rem;">/ 1 đơn vị</span>
+                        </label>
+                        <div class="input-group">
+                            <input type="number" id="CostPrice" name="CostPrice" min="0" class="form-control" style="border-radius: 8px 0 0 8px;" required placeholder="0" oninput="calcTotal()" />
+                            <span class="input-group-text" style="border-radius: 0 8px 8px 0;">đ</span>
+                        </div>
+                        <div class="form-text text-muted">Giá nhập cho <strong>1 đơn vị</strong> sản phẩm, không phải tổng đơn.</div>
+                    </div>
+                </div>
+
+                @* Hiển thị tổng giá trị dự kiến *@
+                <div class="alert alert-info py-2 px-3 mb-3" id="totalPreview" style="display:none; border-radius: 8px; font-size: 0.9rem;">
+                    <i class="fas fa-calculator me-2"></i>
+                    <strong>Tổng giá trị dự kiến:</strong>
+                    <span id="totalValue" class="fw-bold text-primary ms-1"></span>
+                    <span class="text-muted ms-1">= <span id="qtyPreview"></span> × <span id="pricePreview"></span></span>
+                </div>
+
+                <div class="text-end">
+                    <button type="submit" class="btn btn-primary-custom px-4 py-2">
+                        <i class="fas fa-paper-plane"></i> Gửi Yêu Cầu Nhập Hàng
+                    </button>
+                </div>
             </div>
         </form>
     </div>
 </div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        function onCategoryChange(categoryId) {
+            // Ẩn hết các bước phía dưới khi đổi danh mục
+            document.getElementById('productSection').style.display = 'none';
+            document.getElementById('supplierSection').style.display = 'none';
+            document.getElementById('quantitySection').style.display = 'none';
+
+            if (!categoryId) return;
+
+            // Load song song: sản phẩm + nhà cung cấp
+            loadProducts(categoryId);
+            loadSuppliers(categoryId);
+        }
+
+        function loadProducts(categoryId) {
+            var productSelect = document.getElementById('ProductSku');
+            productSelect.innerHTML = '<option value="">Đang tải sản phẩm...</option>';
+            document.getElementById('productSection').style.display = 'block';
+
+            fetch('/Warehouse/StockMovement/GetProductsByCategory?categoryId=' + categoryId)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    productSelect.innerHTML = '<option value="">-- Chọn sản phẩm --</option>';
+                    if (data && data.length > 0) {
+                        data.forEach(function(p) {
+                            var opt = document.createElement('option');
+                            opt.value = p.sku;
+                            opt.text = p.name + ' (Tồn: ' + p.stock + ')';
+                            productSelect.appendChild(opt);
+                        });
+                    } else {
+                        productSelect.innerHTML = '<option value="">-- Không có sản phẩm nào trong danh mục này --</option>';
+                    }
+                    // Hiện phần số lượng và nút gửi
+                    document.getElementById('quantitySection').style.display = 'block';
+                })
+                .catch(function(err) {
+                    console.error('Error loading products:', err);
+                    productSelect.innerHTML = '<option value="">Lỗi khi tải sản phẩm</option>';
+                });
+        }
+
+        function loadSuppliers(categoryId) {
+            var supplierSelect = document.getElementById('SupplierId');
+            document.getElementById('supplierSection').style.display = 'block';
+            supplierSelect.innerHTML = '<option value="">Đang tải nhà cung cấp...</option>';
+
+            fetch('/Warehouse/StockMovement/GetSuppliersByCategory?categoryId=' + categoryId)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    supplierSelect.innerHTML = '<option value="">-- Không chọn --</option>';
+                    if (data && data.length > 0) {
+                        data.forEach(function(s) {
+                            var opt = document.createElement('option');
+                            opt.value = s.supplierId;
+                            opt.text = s.name;
+                            supplierSelect.appendChild(opt);
+                        });
+                    } else {
+                        supplierSelect.innerHTML = '<option value="">-- Chưa có nhà cung cấp cho danh mục này --</option>';
+                    }
+                })
+                .catch(function(err) {
+                    console.error('Error loading suppliers:', err);
+                    supplierSelect.innerHTML = '<option value="">Lỗi khi tải nhà cung cấp</option>';
+                });
+        }
+        function calcTotal() {
+            var qty = parseFloat(document.getElementById('Quantity').value) || 0;
+            var price = parseFloat(document.getElementById('CostPrice').value) || 0;
+            var totalDiv = document.getElementById('totalPreview');
+
+            if (qty > 0 && price > 0) {
+                var total = qty * price;
+                document.getElementById('totalValue').textContent = total.toLocaleString('vi-VN') + ' đ';
+                document.getElementById('qtyPreview').textContent = qty + ' đơn vị';
+                document.getElementById('pricePreview').textContent = price.toLocaleString('vi-VN') + ' đ';
+                totalDiv.style.display = 'block';
+            } else {
+                totalDiv.style.display = 'none';
+            }
+        }
+    </script>
+}

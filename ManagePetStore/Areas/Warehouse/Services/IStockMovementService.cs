@@ -11,11 +11,11 @@ namespace ManagePetStore.Areas.Warehouse.Services;
 
 public interface IStockMovementService
 {
-    Task<IEnumerable<StockMovement>> GetAllMovements(DateTime? fromDate = null, DateTime? toDate = null);
+    Task<IEnumerable<StockMovement>> GetAllMovements(DateTime? fromDate = null, DateTime? toDate = null, string? search = null);
     Task<StockMovement?> GetMovementById(int id);
     
     // Tạo đơn nhập hàng (Purchase Order)
-    Task CreateImportOrder(int userId, string supplier, List<StockMovementDetail> details);
+    Task CreateImportOrder(int userId, int? supplierId, List<StockMovementDetail> details);
     
     // Tạo phiếu xuất kho nội bộ
     Task CreateInternalExport(int userId, string note, List<StockMovementDetail> details);
