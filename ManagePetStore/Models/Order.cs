@@ -25,7 +25,17 @@ public partial class Order
 
     public DateTime Date { get; set; }
 
+    public int? OrderStatus { get; set; }
+
+    public string? CancelReason { get; set; }
+
+    public string? CanceledBy { get; set; }
+
+    public DateTime? CanceledAt { get; set; }
+
     public virtual Customer Customer { get; set; } = null!;
 
     public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+
+    public virtual ICollection<OrderTracking> OrderTrackings { get; set; } = new List<OrderTracking>();
 }

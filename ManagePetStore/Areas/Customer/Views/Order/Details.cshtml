@@ -29,6 +29,17 @@
                 <span>Trạng thái</span>
                 <strong class="co-status co-status-@order.StatusKey">@order.Status</strong>
             </div>
+            @if ((order.StatusKey == "cancelled" || order.StatusKey == "rejected") && !string.IsNullOrWhiteSpace(order.CancelReason))
+            {
+                <div class="co-detail-summary-item co-detail-cancel-reason">
+                    <span>Lý do hủy</span>
+                    <strong>@order.CancelReason</strong>
+                    @if (order.CanceledAt.HasValue)
+                    {
+                        <small>Hủy lúc @order.CanceledAt.Value.ToString("dd/MM/yyyy HH:mm")</small>
+                    }
+                </div>
+            }
             <div class="co-detail-summary-item">
                 <span>Thanh toán</span>
                 <strong>@order.PaymentMethod</strong>
@@ -38,6 +49,13 @@
                 <strong class="co-order-total">@order.Total.ToString("N0")đ</strong>
             </div>
         </div>
+
+        @if (order.CanConfirmReceived)
+        {
+            <div class="co-delivery-hint">
+                Đơn hàng đang được giao. Sau khi bạn nhận đủ hàng, bấm <strong>Xác nhận đã nhận hàng</strong> để chuyển trạng thái sang đã hoàn thành và mở đánh giá.
+            </div>
+        }
 
         <div class="co-table-card">
             <div class="co-detail-card-title">Sản phẩm đã mua</div>
@@ -95,6 +113,15 @@
 
         <div class="co-detail-actions">
             <a asp-action="Index" class="co-btn-secondary">Quay lại danh sách</a>
+            @if (order.CanConfirmReceived)
+            {
+                <form asp-action="ConfirmReceived" method="post" class="co-action-form">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="orderId" value="@order.OrderId" />
+                    <input type="hidden" name="returnAction" value="Details" />
+                    <button type="submit" class="co-btn-received">Xác nhận đã nhận hàng</button>
+                </form>
+            }
             <a asp-area="" asp-controller="Home" asp-action="Index" class="co-btn-review">Tiếp tục mua sắm</a>
         </div>
     </section>

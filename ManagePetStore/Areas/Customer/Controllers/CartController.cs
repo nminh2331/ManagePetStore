@@ -14,9 +14,38 @@ public class CartController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? searchTerm, int page = 1)
     {
         var model = await _cartService.GetCartPageAsync();
+        var normalizedSearch = searchTerm?.Trim() ?? "";
+
+        var filteredItems = model.Items
+            .Where(i => string.IsNullOrWhiteSpace(normalizedSearch) ||
+                        i.Name.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+                        i.Sku.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var currentPage = page < 1 ? 1 : page;
+        var totalFilteredItems = filteredItems.Count;
+        var totalPages = totalFilteredItems == 0
+            ? 0
+            : (int)Math.Ceiling(totalFilteredItems / (double)model.PageSize);
+
+        if (totalPages > 0 && currentPage > totalPages)
+        {
+            currentPage = totalPages;
+        }
+
+        model.SearchTerm = normalizedSearch;
+        model.Page = currentPage;
+        model.TotalFilteredItems = totalFilteredItems;
+        model.TotalPages = totalPages;
+        model.FilteredQuantity = filteredItems.Sum(i => i.Quantity);
+        model.VisibleItems = filteredItems
+            .Skip((currentPage - 1) * model.PageSize)
+            .Take(model.PageSize)
+            .ToList();
+
         return View(model);
     }
 
@@ -43,28 +72,28 @@ public class CartController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Increase(string sku)
+    public async Task<IActionResult> Increase(string sku, string? searchTerm, int page = 1)
     {
         var (success, message) = await _cartService.IncreaseQuantityAsync(sku);
         TempData[success ? "SuccessMessage" : "ErrorMessage"] = message;
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { searchTerm, page });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Decrease(string sku)
+    public async Task<IActionResult> Decrease(string sku, string? searchTerm, int page = 1)
     {
         var (success, message) = await _cartService.DecreaseQuantityAsync(sku);
         TempData[success ? "SuccessMessage" : "ErrorMessage"] = message;
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { searchTerm, page });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Remove(string sku)
+    public async Task<IActionResult> Remove(string sku, string? searchTerm, int page = 1)
     {
         var (_, message) = await _cartService.RemoveItemAsync(sku);
         TempData["SuccessMessage"] = message;
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { searchTerm, page });
     }
 }
