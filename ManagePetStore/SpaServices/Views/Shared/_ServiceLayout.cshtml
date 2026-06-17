@@ -319,13 +319,29 @@
             </a>
             
             <nav class="service-nav">
-                <a href="/SpaServices" class="service-nav-item @(Context.Request.Path.Value?.StartsWith("/SpaServices/Hotel") == true ? "" : (Context.Request.Path.Value == "/SpaServices" || Context.Request.Path.Value == "/SpaServices/Index" || Context.Request.Path.Value == "/SpaServices/" ? "active" : ""))">
+                @{
+                    string servicePath = Context.Request.Path.Value ?? string.Empty;
+                    bool isHotelWorkspace =
+                        servicePath.StartsWith("/SpaServices/Hotel", StringComparison.OrdinalIgnoreCase) ||
+                        servicePath.StartsWith("/SpaServices/PetCheckIn", StringComparison.OrdinalIgnoreCase) ||
+                        servicePath.StartsWith("/SpaServices/CageMap", StringComparison.OrdinalIgnoreCase) ||
+                        servicePath.StartsWith("/SpaServices/CageCategories", StringComparison.OrdinalIgnoreCase);
+                }
+                <a href="/SpaServices" class="service-nav-item @(!isHotelWorkspace && (servicePath == "/SpaServices" || servicePath == "/SpaServices/Index" || servicePath == "/SpaServices/") ? "active" : "")">
                     <i class="fa-solid fa-scissors"></i>
                     Dịch vụ Spa
                 </a>
-                <a href="/SpaServices/Hotel" class="service-nav-item @(Context.Request.Path.Value?.StartsWith("/SpaServices/Hotel") == true ? "active" : "")">
+                <a href="/SpaServices/PetCheckIn" class="service-nav-item @(servicePath.StartsWith("/SpaServices/PetCheckIn", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                    <i class="fa-solid fa-clipboard-check"></i>
+                    Pet Check-In
+                </a>
+                <a href="/SpaServices/CageMap" class="service-nav-item @((servicePath.StartsWith("/SpaServices/CageMap", StringComparison.OrdinalIgnoreCase) || servicePath.StartsWith("/SpaServices/Hotel", StringComparison.OrdinalIgnoreCase)) ? "active" : "")">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                    Sơ đồ Chuồng
+                </a>
+                <a href="/SpaServices/CageCategories" class="service-nav-item @(servicePath.StartsWith("/SpaServices/CageCategories", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
                     <i class="fa-solid fa-house-chimney-medical"></i>
-                    Quản lý Chuồng
+                    Danh mục Chuồng
                 </a>
             </nav>
 

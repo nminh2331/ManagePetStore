@@ -1008,8 +1008,33 @@ namespace ManagePetStore.SpaServices.Controllers
         // =========================================================================
 
         [HttpGet("Hotel")]
-        public async Task<IActionResult> Hotel(int roomTypePage = 1, int cagePage = 1)
+        public IActionResult Hotel()
         {
+            return RedirectToAction(nameof(CageMap));
+        }
+
+        [HttpGet("PetCheckIn")]
+        public Task<IActionResult> PetCheckIn(int roomTypePage = 1, int cagePage = 1)
+        {
+            return HotelWorkspace("checkin", roomTypePage, cagePage);
+        }
+
+        [HttpGet("CageMap")]
+        public Task<IActionResult> CageMap(int roomTypePage = 1, int cagePage = 1)
+        {
+            return HotelWorkspace("map", roomTypePage, cagePage);
+        }
+
+        [HttpGet("CageCategories")]
+        public Task<IActionResult> CageCategories(int roomTypePage = 1, int cagePage = 1)
+        {
+            return HotelWorkspace("categories", roomTypePage, cagePage);
+        }
+
+        private async Task<IActionResult> HotelWorkspace(string pageMode, int roomTypePage = 1, int cagePage = 1)
+        {
+            ViewBag.HotelPageMode = pageMode;
+
             // Danh sách RoomTypes có phân trang
             int rtPageSize = 6;
             int totalRoomTypes = await _context.RoomTypes.CountAsync();
@@ -1295,6 +1320,15 @@ namespace ManagePetStore.SpaServices.Controllers
                     Description = BuildHealthCheckDescription(request, pathology, healthNote)
                 });
 
+                _context.PetBioTimelines.Add(new PetBioTimeline
+                {
+                    PetId = pet.PetId,
+                    Date = DateTime.Now,
+                    Title = "Pet Check-In lưu trú",
+                    Type = "PetCheckIn",
+                    Description = BuildPetCheckInDescription(request, cageId, customer.FullName)
+                });
+
                 decimal dailyPrice = cage.RoomType.DailyPrice;
                 int stayDays = checkOutDate.HasValue
                     ? Math.Max(1, (int)Math.Ceiling((checkOutDate.Value - checkInDate).TotalDays))
@@ -1344,13 +1378,13 @@ namespace ManagePetStore.SpaServices.Controllers
                 TempData["HotelError"] = "Không thể tiếp nhận thú cưng do lỗi hệ thống. Vui lòng thử lại.";
             }
 
-            return RedirectToAction(nameof(Hotel));
+            return RedirectToAction(nameof(PetCheckIn));
         }
 
         private IActionResult HotelValidationError(string message)
         {
             TempData["HotelError"] = message;
-            return RedirectToAction(nameof(Hotel));
+            return RedirectToAction(nameof(PetCheckIn));
         }
 
         private string GetModelStateErrorMessage()
@@ -1381,6 +1415,20 @@ namespace ManagePetStore.SpaServices.Controllers
                  + $"Bệnh lý/tình trạng đặc biệt: {(string.IsNullOrWhiteSpace(pathology) ? "Không ghi nhận" : pathology)}\n"
                  + $"Ghi chú kiểm tra: {healthNote}\n"
                  + $"Người kiểm tra: {checkedBy}";
+        }
+
+        private string BuildPetCheckInDescription(HotelCheckInRequest request, string cageId, string customerName)
+        {
+            string checkedBy = User.FindFirst("FullName")?.Value ?? User.Identity?.Name ?? "Nhân viên dịch vụ";
+            string expectedCheckout = request.CheckOutDate.HasValue
+                ? request.CheckOutDate.Value.ToString("dd/MM/yyyy HH:mm")
+                : "Chưa xác định";
+
+            return $"Chuồng tiếp nhận: {cageId}\n"
+                 + $"Chủ thú cưng: {customerName}\n"
+                 + $"Ngày nhận: {request.CheckInDate!.Value:dd/MM/yyyy HH:mm}\n"
+                 + $"Ngày trả dự kiến: {expectedCheckout}\n"
+                 + $"Nhân viên tiếp nhận: {checkedBy}";
         }
 
         [HttpPost("CheckOut")]
@@ -1721,13 +1769,13 @@ namespace ManagePetStore.SpaServices.Controllers
             if (string.IsNullOrWhiteSpace(type) || capacity <= 0 || dailyPrice < 0)
             {
                 TempData["HotelError"] = "Thông tin loại chuồng không hợp lệ.";
-                return RedirectToAction(nameof(Hotel));
+                return RedirectToAction(nameof(CageCategories));
             }
 
             if (await _context.RoomTypes.AnyAsync(r => r.Type.ToLower() == type.Trim().ToLower()))
             {
                 TempData["HotelError"] = "Tên loại chuồng này đã tồn tại.";
-                return RedirectToAction(nameof(Hotel));
+                return RedirectToAction(nameof(CageCategories));
             }
 
             var roomType = new RoomType
@@ -1747,7 +1795,7 @@ namespace ManagePetStore.SpaServices.Controllers
             await _context.SaveChangesAsync();
 
             TempData["HotelSuccess"] = $"Thêm loại chuồng '{type}' thành công!";
-            return RedirectToAction(nameof(Hotel));
+            return RedirectToAction(nameof(CageCategories));
         }
 
         [HttpPost("EditRoomType")]
@@ -1760,19 +1808,19 @@ namespace ManagePetStore.SpaServices.Controllers
             if (roomType == null)
             {
                 TempData["HotelError"] = "Không tìm thấy loại chuồng.";
-                return RedirectToAction(nameof(Hotel));
+                return RedirectToAction(nameof(CageCategories));
             }
 
             if (string.IsNullOrWhiteSpace(type) || capacity <= 0 || dailyPrice < 0)
             {
                 TempData["HotelError"] = "Thông tin không hợp lệ.";
-                return RedirectToAction(nameof(Hotel));
+                return RedirectToAction(nameof(CageCategories));
             }
 
             if (await _context.RoomTypes.AnyAsync(r => r.Type.ToLower() == type.Trim().ToLower() && r.RoomTypeId != id))
             {
                 TempData["HotelError"] = "Tên loại chuồng này đã tồn tại.";
-                return RedirectToAction(nameof(Hotel));
+                return RedirectToAction(nameof(CageCategories));
             }
 
             roomType.Type = type.Trim();
@@ -1786,7 +1834,7 @@ namespace ManagePetStore.SpaServices.Controllers
 
             await _context.SaveChangesAsync();
             TempData["HotelSuccess"] = "Cập nhật loại chuồng thành công!";
-            return RedirectToAction(nameof(Hotel));
+            return RedirectToAction(nameof(CageCategories));
         }
 
         [HttpPost("DeleteRoomType")]
@@ -1834,20 +1882,20 @@ namespace ManagePetStore.SpaServices.Controllers
             if (string.IsNullOrWhiteSpace(cageId) || roomTypeId <= 0)
             {
                 TempData["HotelError"] = "Thông tin chuồng không hợp lệ.";
-                return RedirectToAction(nameof(Hotel));
+                return RedirectToAction(nameof(CageCategories));
             }
 
             if (await _context.Cages.AnyAsync(c => c.CageId == cageId.Trim().ToUpper()))
             {
                 TempData["HotelError"] = $"Mã chuồng '{cageId}' đã tồn tại.";
-                return RedirectToAction(nameof(Hotel));
+                return RedirectToAction(nameof(CageCategories));
             }
 
             var roomType = await _context.RoomTypes.FindAsync(roomTypeId);
             if (roomType == null)
             {
                 TempData["HotelError"] = "Loại chuồng không tồn tại.";
-                return RedirectToAction(nameof(Hotel));
+                return RedirectToAction(nameof(CageCategories));
             }
 
             var cage = new Cage
@@ -1863,7 +1911,7 @@ namespace ManagePetStore.SpaServices.Controllers
             await _context.SaveChangesAsync();
 
             TempData["HotelSuccess"] = $"Thêm chuồng {cage.CageId} thành công!";
-            return RedirectToAction(nameof(Hotel));
+            return RedirectToAction(nameof(CageCategories));
         }
 
         [HttpPost("EditCage")]
@@ -1874,14 +1922,14 @@ namespace ManagePetStore.SpaServices.Controllers
             if (cage == null)
             {
                 TempData["HotelError"] = "Không tìm thấy chuồng.";
-                return RedirectToAction(nameof(Hotel));
+                return RedirectToAction(nameof(CageCategories));
             }
 
             var roomType = await _context.RoomTypes.FindAsync(roomTypeId);
             if (roomType == null)
             {
                 TempData["HotelError"] = "Loại chuồng không tồn tại.";
-                return RedirectToAction(nameof(Hotel));
+                return RedirectToAction(nameof(CageCategories));
             }
 
             cage.RoomTypeId = roomTypeId;
@@ -1890,7 +1938,7 @@ namespace ManagePetStore.SpaServices.Controllers
 
             await _context.SaveChangesAsync();
             TempData["HotelSuccess"] = $"Cập nhật chuồng {cageId} thành công!";
-            return RedirectToAction(nameof(Hotel));
+            return RedirectToAction(nameof(CageCategories));
         }
 
         [HttpPost("DeleteCage")]

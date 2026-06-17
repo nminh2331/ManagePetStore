@@ -1,7 +1,15 @@
 @using ManagePetStore.Models
 @{
     Layout = "~/SpaServices/Views/Shared/_ServiceLayout.cshtml";
-    ViewData["Title"] = "Quản lý Chuồng & Tiếp nhận Thú cưng";
+    string pageMode = ViewBag.HotelPageMode as string ?? "map";
+    bool isCheckInPage = pageMode == "checkin";
+    bool isMapPage = pageMode == "map";
+    bool isCategoryPage = pageMode == "categories";
+    ViewData["Title"] = isCheckInPage
+        ? "Pet Check-In & Health Check-In"
+        : isCategoryPage
+            ? "Quản lý Danh mục Chuồng"
+            : "Sơ đồ Chuồng";
     var roomTypes = ViewBag.RoomTypes as List<RoomType> ?? new List<RoomType>();
     var activeRoomTypes = ViewBag.ActiveRoomTypes as List<RoomType> ?? new List<RoomType>();
     var cages = ViewBag.Cages as List<Cage> ?? new List<Cage>();
@@ -17,6 +25,17 @@
     int emptyCageCount = ViewBag.EmptyCageCount ?? 0;
     int occupiedCageCount = ViewBag.OccupiedCageCount ?? 0;
     int maintenanceCageCount = ViewBag.MaintenanceCageCount ?? 0;
+
+    string pageTitle = isCheckInPage
+        ? "Pet Check-In & Health Check-In"
+        : isCategoryPage
+            ? "Quản lý Danh mục Chuồng"
+            : "Sơ đồ Chuồng";
+    string pageSubtitle = isCheckInPage
+        ? "Ghi nhận hồ sơ thú cưng, kiểm tra sức khỏe đầu vào và nhận chuồng trên cùng một màn"
+        : isCategoryPage
+            ? "Quản lý loại chuồng, chuồng cụ thể, giá và trang thiết bị"
+            : "Theo dõi sơ đồ phòng, xem chi tiết thú cưng và chuyển chuồng";
 }
 
 <style>
@@ -1019,13 +1038,23 @@
 <!-- ===== PAGE HEADER ===== -->
 <div class="hotel-page-header">
     <div class="hotel-page-title">
-        <h1><i class="fa-solid fa-house-chimney-medical" style="color:#FF7815; margin-right:10px;"></i>Quản lý Chuồng</h1>
-        <p>Tiếp nhận thú cưng & quản lý chuồng lưu trú</p>
+        <h1><i class="fa-solid @(isCheckInPage ? "fa-clipboard-check" : isCategoryPage ? "fa-layer-group" : "fa-map-location-dot")" style="color:#FF7815; margin-right:10px;"></i>@pageTitle</h1>
+        <p>@pageSubtitle</p>
     </div>
-    <button class="btn-checkin-primary" data-bs-toggle="modal" data-bs-target="#checkInModal">
-        <i class="fa-solid fa-plus"></i>
-        Tiếp nhận mới
-    </button>
+    @if (isCheckInPage)
+    {
+        <button class="btn-checkin-primary" data-bs-toggle="modal" data-bs-target="#checkInModal">
+            <i class="fa-solid fa-plus"></i>
+            Mở form tiếp nhận
+        </button>
+    }
+    else
+    {
+        <a class="btn-checkin-primary" href="/SpaServices/PetCheckIn">
+            <i class="fa-solid fa-plus"></i>
+            Pet Check-In
+        </a>
+    }
 </div>
 
 <!-- ===== STAT CARDS ===== -->
@@ -1059,6 +1088,8 @@
     </div>
 </div>
 
+@if (isMapPage)
+{
 <!-- ===== INTERACTIVE CAGE MAP DASHBOARD ===== -->
 <div class="hotel-card cage-map-dashboard">
     <div class="cage-map-toolbar">
@@ -1147,12 +1178,37 @@
         </div>
     }
 </div>
+}
 
 <!-- ===== MAIN LAYOUT ===== -->
 <div class="hotel-main-layout">
 
     <!-- LEFT: Bookings + Management Tabs -->
     <div>
+        @if (isCheckInPage)
+        {
+            <div class="hotel-card">
+                <div class="hotel-card-header">
+                    <h5 class="hotel-card-title">
+                        <i class="fa-solid fa-clipboard-check"></i>
+                        Pet Check-In + Health Check-In
+                    </h5>
+                </div>
+                <div style="background:#FFF8F1; border:1px solid #FFD8C2; border-radius:14px; padding:18px;">
+                    <p style="font-size:.9rem; font-weight:700; color:#2D2521; margin:0 0 6px;">Luồng tiếp nhận lưu trú</p>
+                    <p style="font-size:.78rem; color:#7D706A; margin:0 0 14px;">
+                        Màn này gộp kiểm tra sức khỏe đầu vào và tiếp nhận thú cưng vào chuồng. Hệ thống sẽ ghi timeline sức khỏe trước, sau đó mới tạo/cập nhật booking và đổi trạng thái chuồng.
+                    </p>
+                    <button class="btn-checkin-primary" data-bs-toggle="modal" data-bs-target="#checkInModal">
+                        <i class="fa-solid fa-clipboard-list"></i>
+                        Bắt đầu tiếp nhận
+                    </button>
+                </div>
+            </div>
+        }
+
+        @if (isMapPage || isCheckInPage)
+        {
         <!-- Online Reservations -->
         <div class="hotel-card">
             <div class="hotel-card-header">
@@ -1285,7 +1341,10 @@
                 }
             }
         </div>
+        }
 
+        @if (isCategoryPage)
+        {
         <!-- Management Tabs -->
         <div class="hotel-card">
             <div class="hotel-card-header" style="margin-bottom:0;">
@@ -1508,6 +1567,7 @@
                 }
             </div>
         </div>
+        }
     </div>
 
     <!-- RIGHT SIDEBAR -->
