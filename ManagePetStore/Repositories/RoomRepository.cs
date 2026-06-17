@@ -14,19 +14,19 @@ public class RoomRepository : IRoomRepository
 
     public IEnumerable<Room> GetAll()
     {
-        return _context.Rooms
+        return _context.Set<Room>()
             .OrderBy(r => r.RoomCode)
             .ToList();
     }
 
     public Room? GetById(int id)
     {
-        return _context.Rooms.FirstOrDefault(r => r.RoomId == id);
+        return _context.Set<Room>().FirstOrDefault(r => r.RoomId == id);
     }
 
     public IEnumerable<Room> GetByStatus(string status)
     {
-        return _context.Rooms
+        return _context.Set<Room>()
             .Where(r => r.Status == status)
             .OrderBy(r => r.RoomCode)
             .ToList();
@@ -34,29 +34,29 @@ public class RoomRepository : IRoomRepository
 
     public void Create(Room room)
     {
-        _context.Rooms.Add(room);
+        _context.Set<Room>().Add(room);
         _context.SaveChanges();
     }
 
     public void Update(Room room)
     {
-        _context.Rooms.Update(room);
+        _context.Set<Room>().Update(room);
         _context.SaveChanges();
     }
 
     public void Delete(int id)
     {
-        var room = _context.Rooms.Find(id);
+        var room = _context.Set<Room>().Find(id);
         if (room is not null)
         {
-            _context.Rooms.Remove(room);
+            _context.Set<Room>().Remove(room);
             _context.SaveChanges();
         }
     }
 
     public bool ExistsByRoomCode(string roomCode, int? excludeId = null)
     {
-        return _context.Rooms.Any(r =>
+        return _context.Set<Room>().Any(r =>
             r.RoomCode == roomCode &&
             (excludeId == null || r.RoomId != excludeId));
     }

@@ -19,17 +19,19 @@ public class ProductCategoryRepository : IProductCategoryRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<ProductCategory>> GetAllWithProducts()
+    public async Task<IEnumerable<ProductCategory>> GetAllWithProducts(bool showDeleted = false)
     {
         return await _context.ProductCategories
-            .Include(c => c.Products)
+            .Include(c => c.Products.Where(p => p.IsDeleted == false))
+            .Where(c => c.IsDeleted == showDeleted)
             .OrderBy(c => c.Name)
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<ProductCategory>> GetAllCategories()
+    public async Task<IEnumerable<ProductCategory>> GetAllCategories(bool showDeleted = false)
     {
         return await _context.ProductCategories
+            .Where(c => c.IsDeleted == showDeleted)
             .OrderBy(c => c.Name)
             .ToListAsync();
     }
@@ -57,7 +59,19 @@ public class ProductCategoryRepository : IProductCategoryRepository
         var category = await _context.ProductCategories.FindAsync(id);
         if (category is not null)
         {
-            _context.ProductCategories.Remove(category);
+            category.IsDeleted = true;
+            _context.ProductCategories.Update(category);
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    public async Task RestoreCategory(int id)
+    {
+        var category = await _context.ProductCategories.FindAsync(id);
+        if (category is not null)
+        {
+            category.IsDeleted = false;
+            _context.ProductCategories.Update(category);
             await _context.SaveChangesAsync();
         }
     }

@@ -1,0 +1,171 @@
+@model IEnumerable<ManagePetStore.Models.StockMovement>
+
+@{
+    ViewData["Title"] = "Lịch sử Xuất/Nhập Kho";
+}
+
+<div class="mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="fw-bold m-0" style="color: #333;">Lịch sử Xuất/Nhập Kho</h2>
+        <p class="text-muted small mt-1 mb-0">Quản lý các Phiếu nhập hàng và Phiếu xuất nội bộ</p>
+    </div>
+    
+    <div>
+        <a asp-action="CreateExport" class="btn btn-outline-primary btn-custom me-2">
+            <i class="fas fa-arrow-up"></i> Tạo Phiếu Xuất Nội Bộ
+        </a>
+        <a asp-action="CreateImport" class="btn btn-primary-custom btn-custom">
+            <i class="fas fa-arrow-down"></i> Tạo Đơn Nhập
+        </a>
+    </div>
+</div>
+
+@{
+    var currentTab = (string)(ViewBag.Tab ?? "all");
+    var allMovements = Model?.ToList() ?? new List<ManagePetStore.Models.StockMovement>();
+    var pendingImports = allMovements.Where(m => m.Type == "Nhập hàng" && m.Status == "Chờ duyệt").ToList();
+    var displayList = currentTab == "pending" ? pendingImports : allMovements;
+}
+
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <a class="nav-link @(currentTab == "all" ? "active fw-bold" : "")" 
+           asp-action="Index" asp-route-tab="all" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate">
+            <i class="fas fa-list me-1"></i> Tất cả phiếu
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(currentTab == "pending" ? "active fw-bold" : "")" 
+           asp-action="Index" asp-route-tab="pending" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate">
+            <i class="fas fa-clock me-1"></i> Chờ kiểm hàng
+            @if (pendingImports.Count > 0)
+            {
+                <span class="badge bg-warning text-dark ms-1">@pendingImports.Count</span>
+            }
+        </a>
+    </li>
+</ul>
+
+<div class="card border-0 shadow-sm mb-4" style="border-radius:12px;">
+    <div class="card-body p-3">
+        <form method="get" class="row g-3 align-items-end mb-3">
+            <input type="hidden" name="tab" value="@currentTab" />
+            
+            <div class="col-md-3">
+                <label class="form-label text-muted small fw-bold mb-1">Tìm kiếm</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Sản phẩm, nhà CC..." value="@ViewBag.Search" />
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <label class="form-label text-muted small fw-bold mb-1">Từ ngày</label>
+                <input type="date" name="fromDate" class="form-control" value="@ViewBag.FromDate" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label text-muted small fw-bold mb-1">Đến ngày</label>
+                <input type="date" name="toDate" class="form-control" value="@ViewBag.ToDate" />
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100 fw-bold">
+                    <i class="fas fa-filter"></i> Lọc dữ liệu
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm" style="border-radius:16px;">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mb-0 table-hover align-middle">
+                <thead style="background-color: #fafafa;">
+                    <tr>
+                        <th class="border-0 px-4 py-3">Mã phiếu</th>
+                        <th class="border-0 px-4 py-3">Ngày tạo</th>
+                        <th class="border-0 px-4 py-3">Loại / Ghi chú</th>
+                        <th class="border-0 px-4 py-3">Mặt hàng (Tóm tắt)</th>
+                        <th class="border-0 px-4 py-3 text-end">Tổng giá trị</th>
+                        <th class="border-0 px-4 py-3 text-center">Trạng thái</th>
+                        <th class="border-0 px-4 py-3 text-end">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (displayList != null && displayList.Any())
+                    {
+                        foreach (var item in displayList)
+                        {
+                            <tr>
+                                <td class="px-4 py-3 fw-bold text-muted">#@item.MovementId</td>
+                                <td class="px-4 py-3">@item.Date.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="px-4 py-3">
+                                    @if (item.Type == "Nhập hàng")
+                                    {
+                                        <span class="text-success fw-bold"><i class="fas fa-arrow-down"></i> Nhập hàng</span>
+                                        <div class="text-muted small mt-1"><i class="fas fa-truck"></i> @(item.Supplier ?? "N/A")</div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-danger fw-bold"><i class="fas fa-arrow-up"></i> Xuất nội bộ</span>
+                                        <div class="text-muted small mt-1">@item.Supplier</div>
+                                    }
+                                </td>
+                                <td class="px-4 py-3">
+                                    <ul class="list-unstyled mb-0 small">
+                                        @foreach(var detail in item.StockMovementDetails.Take(2))
+                                        {
+                                            <li><span class="fw-bold">@detail.Quantity</span> x @detail.ProductSkuNavigation?.Name</li>
+                                        }
+                                        @if(item.StockMovementDetails.Count > 2)
+                                        {
+                                            <li class="text-muted fst-italic">+ @(item.StockMovementDetails.Count - 2) mặt hàng khác...</li>
+                                        }
+                                    </ul>
+                                </td>
+                                <td class="px-4 py-3 text-end fw-bold">@string.Format("{0:N0} đ", item.TotalValue)</td>
+                                <td class="px-4 py-3 text-center">
+                                    @if (item.Status == "Hoàn thành")
+                                    {
+                                        <span class="badge bg-success rounded-pill px-3 py-2">Hoàn thành</span>
+                                    }
+                                    else if (item.Status == "Chờ duyệt")
+                                    {
+                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-2">Chờ duyệt</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger rounded-pill px-3 py-2">Đã hủy</span>
+                                    }
+                                </td>
+                                <td class="px-4 py-3 text-end">
+                                    @if (item.Type == "Nhập hàng" && item.Status == "Chờ duyệt")
+                                    {
+                                        <a asp-action="Approve" asp-route-id="@item.MovementId" class="btn btn-sm btn-warning fw-bold" style="border-radius:8px;">
+                                            <i class="fas fa-clipboard-check"></i> Kiểm hàng
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <a asp-action="Details" asp-route-id="@item.MovementId" class="btn btn-sm btn-outline-primary" style="border-radius:8px;">
+                                            <i class="fas fa-eye"></i> Chi tiết
+                                        </a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted">
+                                <i class="fas fa-file-invoice" style="font-size:2rem;opacity:.3;"></i>
+                                <p class="mt-2 mb-0">@(currentTab == "pending" ? "Không có đơn nào đang chờ kiểm hàng." : "Chưa có giao dịch xuất/nhập nào.")</p>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

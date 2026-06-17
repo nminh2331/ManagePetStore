@@ -31,6 +31,8 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<HotelBooking> HotelBookings { get; set; }
 
+    public virtual DbSet<InventoryBatch> InventoryBatchs { get; set; }
+
     public virtual DbSet<Order> Orders { get; set; }
 
     public virtual DbSet<OrderItem> OrderItems { get; set; }
@@ -46,8 +48,6 @@ public partial class PetStoreManagementContext : DbContext
     public virtual DbSet<ProductCategory> ProductCategories { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
-
-    public virtual DbSet<Room> Rooms { get; set; }
 
     public virtual DbSet<RoomType> RoomTypes { get; set; }
 
@@ -66,6 +66,10 @@ public partial class PetStoreManagementContext : DbContext
     public virtual DbSet<StockMovement> StockMovements { get; set; }
 
     public virtual DbSet<StockMovementDetail> StockMovementDetails { get; set; }
+
+    public virtual DbSet<Supplier> Suppliers { get; set; }
+
+    public virtual DbSet<SupplierCategory> SupplierCategories { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
 
@@ -228,6 +232,21 @@ public partial class PetStoreManagementContext : DbContext
                 .HasForeignKey(d => d.PetId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_HotelBookings_Pets");
+        });
+
+        modelBuilder.Entity<InventoryBatch>(entity =>
+        {
+            entity.HasKey(e => e.BatchId).HasName("PK__Inventor__5D55CE58BACC1E47");
+
+            entity.Property(e => e.ExpiryDate).HasColumnType("datetime");
+            entity.Property(e => e.ProductSku).HasMaxLength(50);
+            entity.Property(e => e.ReceivedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.ProductSkuNavigation).WithMany(p => p.InventoryBatches)
+                .HasForeignKey(d => d.ProductSku)
+                .HasConstraintName("FK_InventoryBatch_Product");
         });
 
         modelBuilder.Entity<Order>(entity =>
@@ -513,6 +532,10 @@ public partial class PetStoreManagementContext : DbContext
                 .HasForeignKey(d => d.CreatedById)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_StockMovements_Users");
+
+            entity.HasOne(d => d.SupplierNav).WithMany(p => p.StockMovements)
+                .HasForeignKey(d => d.SupplierId)
+                .HasConstraintName("FK_StockMovement_Supplier");
         });
 
         modelBuilder.Entity<StockMovementDetail>(entity =>
@@ -569,6 +592,30 @@ public partial class PetStoreManagementContext : DbContext
             entity.Property(e => e.Status).HasDefaultValue(true);
             entity.Property(e => e.Type).HasMaxLength(20);
             entity.Property(e => e.Value).HasColumnType("decimal(18, 2)");
+        });
+        modelBuilder.Entity<Supplier>(entity =>
+        {
+            entity.HasKey(e => e.SupplierId);
+            entity.Property(e => e.Name).HasMaxLength(255);
+            entity.Property(e => e.Phone).HasMaxLength(50);
+            entity.Property(e => e.Email).HasMaxLength(255);
+            entity.Property(e => e.Address).HasMaxLength(500);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+        });
+
+        modelBuilder.Entity<SupplierCategory>(entity =>
+        {
+            entity.HasKey(e => new { e.SupplierId, e.CategoryId });
+
+            entity.HasOne(d => d.Supplier)
+                .WithMany(p => p.SupplierCategories)
+                .HasForeignKey(d => d.SupplierId)
+                .HasConstraintName("FK_SupplierCategory_Supplier");
+
+            entity.HasOne(d => d.Category)
+                .WithMany()
+                .HasForeignKey(d => d.CategoryId)
+                .HasConstraintName("FK_SupplierCategory_Category");
         });
 
         OnModelCreatingPartial(modelBuilder);

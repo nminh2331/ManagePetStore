@@ -23,9 +23,9 @@ public class ProductCategoryService : IProductCategoryService
 
     // Index summary 
 
-    public async Task<CategorySummaryViewModel> GetCategorySummary()
+    public async Task<CategorySummaryViewModel> GetCategorySummary(bool showDeleted = false)
     {
-        var categories = (await _categoryRepo.GetAllWithProducts()).ToList();
+        var categories = (await _categoryRepo.GetAllWithProducts(showDeleted)).ToList();
 
         return new CategorySummaryViewModel
         {
@@ -78,6 +78,11 @@ public class ProductCategoryService : IProductCategoryService
     public async Task DeleteCategory(int id)
     {
         await _categoryRepo.DeleteCategory(id);
+    }
+
+    public async Task RestoreCategory(int id)
+    {
+        await _categoryRepo.RestoreCategory(id);
     }
 
     // Private helpers 
