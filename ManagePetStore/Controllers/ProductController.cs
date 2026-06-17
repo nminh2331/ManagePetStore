@@ -294,7 +294,7 @@ public class ProductController : Controller
         string? newPetBreed,
         string? newPetAge,
         decimal? newPetWeight,
-        int groomerId,
+        int? groomerId,
         string bookingDate,
         string bookingTime,
         string? note)
@@ -374,11 +374,24 @@ public class ProductController : Controller
         }
 
         // 3. Resolve Groomer
-        var groomer = await _context.Users.FindAsync(groomerId);
-        if (groomer == null || groomer.Status != "Active")
+        int targetGroomerId = groomerId ?? 0;
+        bool hasPreferredGroomer = targetGroomerId > 0;
+        User? preferredGroomer = null;
+
+        if (hasPreferredGroomer)
         {
-            TempData["ErrorMessage"] = "Kỹ thuật viên được chọn không tồn tại hoặc không hoạt động.";
-            return RedirectToAction("Details", new { id = sku });
+            preferredGroomer = await _context.Users.FindAsync(targetGroomerId);
+        }
+
+        if (targetGroomerId <= 0 || preferredGroomer == null || preferredGroomer.Status != "Active")
+        {
+            var defaultGroomer = await _context.Users.Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.Role.RoleName == "service" && u.Status == "Active")
+                ?? await _context.Users.Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.Role.RoleName == "service")
+                ?? await _context.Users.FirstOrDefaultAsync();
+            targetGroomerId = defaultGroomer?.UserId ?? 3;
+            preferredGroomer = await _context.Users.FindAsync(targetGroomerId);
         }
 
         // 4. Resolve Date and Time
@@ -395,16 +408,6 @@ public class ProductController : Controller
             return RedirectToAction("Details", new { id = sku });
         }
 
-        // 5. Check overlapping bookings for Groomer
-        bool isOverlap = await _context.SpaBookings
-            .AnyAsync(b => b.GroomerId == groomerId && b.DateTime == bookingDateTime && b.SpaStatus != "Cancelled");
-
-        if (isOverlap)
-        {
-            TempData["ErrorMessage"] = $"Kỹ thuật viên {groomer.FullName} đã có ca làm việc vào lúc {bookingTime} ngày {bookingDate}.";
-            return RedirectToAction("Details", new { id = sku });
-        }
-
         // 6. Create Booking & Queue Item
         using (var transaction = await _context.Database.BeginTransactionAsync())
         {
@@ -415,7 +418,7 @@ public class ProductController : Controller
                     CustomerId = customer.CustomerId,
                     PetId = pet.PetId,
                     ServiceId = service.ServiceId,
-                    GroomerId = groomerId,
+                    GroomerId = targetGroomerId,
                     DateTime = bookingDateTime,
                     Price = service.Price,
                     Status = "Chưa thanh toán",
@@ -428,6 +431,10 @@ public class ProductController : Controller
                 int countToday = await _context.SpaQueues.CountAsync(q => q.QueueNumber.StartsWith("OL-"));
                 string queueNumber = $"OL-{(100 + countToday + 1)}";
 
+                string preferredGroomerLabel = hasPreferredGroomer && preferredGroomer != null
+                    ? preferredGroomer.FullName
+                    : "Không yêu cầu";
+
                 var queueItem = new SpaQueue
                 {
                     QueueNumber = queueNumber,
@@ -435,7 +442,7 @@ public class ProductController : Controller
                     OwnerName = $"{customer.FullName} ({customer.Phone})",
                     ArrivalTime = bookingDateTime,
                     ServiceDescription = service.Name,
-                    Note = $"[Lịch trực tuyến - Groomer: {groomer.FullName}] " + note?.Trim()
+                    Note = $"[NV mong muốn: {preferredGroomerLabel}] " + note?.Trim()
                 };
                 _context.SpaQueues.Add(queueItem);
                 await _context.SaveChangesAsync();

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace ManagePetStore.Models;
@@ -17,7 +17,20 @@ public partial class Customer
 
     public int LoyaltyPoints { get; set; }
 
-    public string MembershipTier { get; set; } = null!;
+    private string _membershipTier = "Bronze";
+    public string MembershipTier
+    {
+        get
+        {
+            if (LoyaltyPoints >= 500) return "Gold";
+            if (LoyaltyPoints >= 100) return "Silver";
+            return "Bronze";
+        }
+        set
+        {
+            _membershipTier = value;
+        }
+    }
 
     public DateTime CreatedAt { get; set; }
 

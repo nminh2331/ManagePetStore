@@ -1516,7 +1516,9 @@ body.petstore-body {
     background-color: #fffaf5 !important;
 }
 
-.ps-slot-btn.active {
+.ps-slot-btn.active,
+.ps-slot-btn.free.active,
+.ps-slot-btn.busy.active {
     background-color: #ff7815 !important;
     border-color: #ff7815 !important;
     color: #ffffff !important;
@@ -1544,9 +1546,8 @@ body.petstore-body {
     background-color: #ffebee !important;
     border-color: #e57373 !important;
     color: #c62828 !important;
-    cursor: not-allowed !important;
-    pointer-events: none !important;
-    opacity: 0.8 !important;
+    cursor: pointer !important;
+    opacity: 0.85 !important;
 }
 
 #btnSubmitBooking {
