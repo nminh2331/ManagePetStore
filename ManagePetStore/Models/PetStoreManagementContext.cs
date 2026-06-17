@@ -67,6 +67,10 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<StockMovementDetail> StockMovementDetails { get; set; }
 
+    public virtual DbSet<Supplier> Suppliers { get; set; }
+
+    public virtual DbSet<SupplierCategory> SupplierCategories { get; set; }
+
     public virtual DbSet<User> Users { get; set; }
 
     public virtual DbSet<Voucher> Vouchers { get; set; }
