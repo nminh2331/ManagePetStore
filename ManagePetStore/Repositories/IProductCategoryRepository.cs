@@ -12,10 +12,10 @@ namespace ManagePetStore.Repositories;
 public interface IProductCategoryRepository
 {
     /// Returns all categories with their Products eagerly loaded.
-    Task<IEnumerable<ProductCategory>> GetAllWithProducts();
+    Task<IEnumerable<ProductCategory>> GetAllWithProducts(bool showDeleted = false);
 
     /// Returns all categories without navigation properties (for dropdowns etc.).
-    Task<IEnumerable<ProductCategory>> GetAllCategories();
+    Task<IEnumerable<ProductCategory>> GetAllCategories(bool showDeleted = false);
 
     /// Returns a single category by ID (without navigation properties).
     Task<ProductCategory?> GetCategoryById(int id);
@@ -26,8 +26,11 @@ public interface IProductCategoryRepository
     /// Updates an existing category and persists the change.
     Task UpdateCategory(ProductCategory category);
 
-    /// Deletes a category by ID and persists the change.
+    /// Soft deletes a category by ID and persists the change.
     Task DeleteCategory(int id);
+
+    /// Restores a soft-deleted category by ID.
+    Task RestoreCategory(int id);
 
     /// Returns true if a category with the given ID exists.
     Task<bool> CategoryExists(int id);

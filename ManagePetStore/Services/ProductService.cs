@@ -28,9 +28,18 @@ public class ProductService : IProductService
 
     // Index summary 
 
-    public async Task<ProductSummaryViewModel> GetProductSummary()
+    public async Task<ProductSummaryViewModel> GetProductSummary(string? search = null, string filter = "active")
     {
-        var products = (await _productRepo.GetAllWithCategory()).ToList();
+        var products = (await _productRepo.GetAllWithCategory(filter)).ToList();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchLower = search.Trim().ToLowerInvariant();
+            products = products.Where(p => 
+                p.Name.ToLowerInvariant().Contains(searchLower) || 
+                p.Sku.ToLowerInvariant().Contains(searchLower)
+            ).ToList();
+        }
 
         return new ProductSummaryViewModel
         {
@@ -98,6 +107,11 @@ public class ProductService : IProductService
     public async Task DeleteProduct(string sku)
     {
         await _productRepo.DeleteProduct(sku);
+    }
+
+    public async Task RestoreProduct(string sku)
+    {
+        await _productRepo.RestoreProduct(sku);
     }
 
     // Private helpers 

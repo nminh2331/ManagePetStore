@@ -43,20 +43,26 @@
                     <span asp-validation-for="Unit" class="text-danger small"></span>
                 </div>
                 
-                <div class="col-md-4 mb-3">
-                    <label asp-for="Price" class="form-label fw-bold">Giá bán <span class="text-danger">*</span></label>
+                <div class="col-md-3 mb-3">
+                    <label asp-for="Price" class="form-label fw-bold">Giá bán (đ) <span class="text-danger">*</span></label>
                     <input asp-for="Price" type="number" class="form-control" style="border-radius: 8px;" />
                     <span asp-validation-for="Price" class="text-danger small"></span>
                 </div>
+
+                <div class="col-md-3 mb-3">
+                    <label asp-for="CostPrice" class="form-label fw-bold">Giá nhập (đ) <span class="text-danger">*</span></label>
+                    <input asp-for="CostPrice" type="number" class="form-control" style="border-radius: 8px;" />
+                    <span asp-validation-for="CostPrice" class="text-danger small"></span>
+                </div>
                 
-                <div class="col-md-4 mb-3">
-                    <label asp-for="Stock" class="form-label fw-bold">Số lượng tồn</label>
+                <div class="col-md-3 mb-3">
+                    <label asp-for="Stock" class="form-label fw-bold">Số lượng tồn <span class="text-danger">*</span></label>
                     <input asp-for="Stock" type="number" class="form-control" style="border-radius: 8px;" value="0" />
                     <span asp-validation-for="Stock" class="text-danger small"></span>
                 </div>
                 
-                <div class="col-md-4 mb-3">
-                    <label asp-for="MinStock" class="form-label fw-bold">Tồn kho tối thiểu</label>
+                <div class="col-md-3 mb-3">
+                    <label asp-for="MinStock" class="form-label fw-bold">Tồn kho tối thiểu <span class="text-danger">*</span></label>
                     <input asp-for="MinStock" type="number" class="form-control" style="border-radius: 8px;" value="5" />
                     <span asp-validation-for="MinStock" class="text-danger small"></span>
                 </div>

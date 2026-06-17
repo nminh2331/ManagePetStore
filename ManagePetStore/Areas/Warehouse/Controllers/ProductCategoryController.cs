@@ -24,25 +24,26 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             _categoryService = categoryService;
         }
 
-        // GET: Warehouse/ProductCategory
-        public async Task<IActionResult> Index()
+        // Hiển thị danh sách danh mục sản phẩm
+        public async Task<IActionResult> Index(bool showDeleted = false)
         {
-            var summary = await _categoryService.GetCategorySummary();
+            var summary = await _categoryService.GetCategorySummary(showDeleted);
 
             ViewBag.TotalCategories = summary.TotalCategories;
             ViewBag.TotalProducts   = summary.TotalProducts;
             ViewBag.EmptyCategories = summary.EmptyCategories;
+            ViewBag.ShowDeleted     = showDeleted;
 
             return View(summary.Categories);
         }
 
-        // GET: Warehouse/ProductCategory/Create
+        // Hiển thị form thêm mới danh mục sản phẩm
         public IActionResult Create()
         {
             return View();
         }
 
-        // POST: Warehouse/ProductCategory/Create
+        // Xử lý thêm mới danh mục sản phẩm
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(
@@ -62,7 +63,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             }
         }
 
-        // GET: Warehouse/ProductCategory/Edit/{id}
+        // Hiển thị form chỉnh sửa danh mục sản phẩm
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null) return NotFound();
@@ -73,7 +74,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return View(category);
         }
 
-        // POST: Warehouse/ProductCategory/Edit/{id}
+        // Xử lý cập nhật danh mục sản phẩm
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(
@@ -94,13 +95,22 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             }
         }
 
-        // POST: Warehouse/ProductCategory/Delete/{id}
+        // Xử lý xóa (hoặc ẩn) danh mục sản phẩm
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             await _categoryService.DeleteCategory(id);
             return RedirectToAction(nameof(Index));
+        }
+
+        // Xử lý khôi phục danh mục sản phẩm đã xóa
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Restore(int id)
+        {
+            await _categoryService.RestoreCategory(id);
+            return RedirectToAction(nameof(Index), new { showDeleted = true });
         }
     }
 }
