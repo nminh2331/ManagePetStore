@@ -22,3 +22,12 @@ public class PetFormModel
     public string? Pathology { get; set; }
     public string? CurrentImageUrl { get; set; }
 }
+
+public class PetMedicalHistoryViewModel
+{
+    public ManagePetStore.Models.User User { get; set; } = null!;
+    public ManagePetStore.Models.Customer Customer { get; set; } = null!;
+    public List<ManagePetStore.Models.Pet> AllPets { get; set; } = [];
+    public ManagePetStore.Models.Pet SelectedPet { get; set; } = null!;
+    public List<ManagePetStore.Models.MedicalRecord> MedicalRecords { get; set; } = [];
+}

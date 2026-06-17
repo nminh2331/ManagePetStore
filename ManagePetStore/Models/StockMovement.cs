@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace ManagePetStore.Models;
@@ -13,17 +13,17 @@ public partial class StockMovement
 
     public string? Supplier { get; set; }
 
-    public int? SupplierId { get; set; }
-
     public decimal TotalValue { get; set; }
 
     public DateTime Date { get; set; }
 
     public string Status { get; set; } = null!;
 
+    public int? SupplierId { get; set; }
+
     public virtual User CreatedBy { get; set; } = null!;
 
-    public virtual Supplier? SupplierNav { get; set; }
-
     public virtual ICollection<StockMovementDetail> StockMovementDetails { get; set; } = new List<StockMovementDetail>();
+
+    public virtual Supplier? SupplierNavigation { get; set; }
 }

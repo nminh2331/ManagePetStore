@@ -1,0 +1,190 @@
+/* Sổ y tế styling for Service Staff Panel - Compact & Soft Rounded */
+
+:root {
+    --dog-color: #ff7815;
+    --cat-color: #2ecc71;
+    --turtle-color: #3498db;
+    --hamster-color: #f1c40f;
+    --bg-body: #F9F7F5;
+}
+
+/* Page Components border-radius */
+.card, .form-control, .form-select, .btn {
+    border-radius: 16px !important;
+}
+
+.rounded-pill {
+    border-radius: 50px !important;
+}
+
+.rounded-lg {
+    border-radius: 12px !important;
+}
+
+/* Species Selection Screen */
+.species-card {
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    border-radius: 20px !important;
+    background: #ffffff;
+    border: 1px solid #efece9 !important;
+}
+
+.species-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 15px 35px rgba(45, 37, 33, 0.08) !important;
+    border-color: #ff7815 !important;
+}
+
+.species-icon-wrapper {
+    width: 80px;
+    height: 80px;
+    transition: all 0.3s ease;
+}
+
+.species-card:hover .species-icon-wrapper {
+    transform: scale(1.08);
+}
+
+.bg-light-dog {
+    background-color: #fff6f0;
+    color: var(--dog-color) !important;
+}
+
+.bg-light-cat {
+    background-color: #ebfaf0;
+    color: var(--cat-color) !important;
+}
+
+.bg-light-turtle {
+    background-color: #ebf5fb;
+    color: var(--turtle-color) !important;
+}
+
+.bg-light-hamster {
+    background-color: #fef9e7;
+    color: var(--hamster-color) !important;
+}
+
+/* Compact Pet Cards Layout */
+.pet-item-card {
+    border-radius: 20px !important;
+    border: 1px solid #efece9 !important;
+    background: #ffffff;
+    transition: all 0.3s ease;
+}
+
+.pet-item-card:hover {
+    box-shadow: 0 10px 25px rgba(0,0,0,0.03) !important;
+}
+
+.has-record-border {
+    border: 2px solid #2ecc71 !important;
+    box-shadow: 0 6px 20px rgba(46, 204, 113, 0.05) !important;
+}
+
+.no-record-border {
+    border: 1px solid #efece9 !important;
+}
+
+.btn-orange {
+    background-color: #ff7815;
+    color: #ffffff;
+    border: none;
+    transition: background-color 0.25s;
+}
+
+.btn-orange:hover {
+    background-color: #e0630d;
+    color: #ffffff;
+}
+
+/* Form Styles */
+.form-group label {
+    font-size: 0.85rem;
+    color: #555555;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.form-control, .form-select {
+    border: 1px solid #e2dcd9 !important;
+    padding: 12px 18px !important;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    background-color: #fcfbfa;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #ff7815 !important;
+    background-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(255, 120, 21, 0.08) !important;
+    outline: none;
+}
+
+.section-title {
+    font-size: 0.95rem;
+    letter-spacing: 0.5px;
+}
+
+.bg-light-fields {
+    background-color: #fdfdfd;
+    border-left: 4px solid #dee2e6;
+}
+
+/* History Timeline Styles */
+.bg-light-timeline {
+    background-color: #fcfbfa;
+    border-radius: 20px;
+    padding: 24px;
+}
+
+.timeline-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.timeline-item {
+    border-radius: 16px !important;
+    border-left: 4px solid #ff7815 !important;
+    background: #ffffff;
+    border: 1px solid #efece9;
+}
+
+/* Custom Toast Styling */
+.custom-toast {
+    background: #ffffff;
+    padding: 16px 24px;
+    border-radius: 16px;
+    box-shadow: 0 15px 40px rgba(45, 37, 33, 0.12);
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transform: translateX(120%);
+    transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border-left: 5px solid #ff7815;
+    min-width: 280px;
+}
+
+.custom-toast.visible {
+    transform: translateX(0);
+}
+
+.toast-success {
+    border-left-color: #2ecc71;
+    color: #2d2521;
+}
+
+.toast-success i {
+    color: #2ecc71;
+}
+
+.toast-error {
+    border-left-color: #e74c3c;
+    color: #2d2521;
+}
+
+.toast-error i {
+    color: #e74c3c;
+}

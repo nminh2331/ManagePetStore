@@ -444,11 +444,128 @@ public class PetController : Controller
         return months > 0 ? $"{years} tuổi {months} tháng" : $"{years} tuổi";
     }
 
+    [HttpGet]
+    public async Task<IActionResult> GetMedicalRecords(int petId)
+    {
+        var customerId = await GetCurrentCustomerIdAsync();
+        if (customerId == null)
+        {
+            return Json(new { success = false, message = "Bạn chưa đăng nhập." });
+        }
+
+        var pet = await _context.Pets.FirstOrDefaultAsync(p => p.PetId == petId && p.CustomerId == customerId.Value);
+        if (pet == null)
+        {
+            return Json(new { success = false, message = "Không tìm thấy thú cưng hoặc bạn không có quyền truy cập." });
+        }
+
+        var records = await _context.MedicalRecords
+            .Where(mr => mr.PetId == petId)
+            .OrderByDescending(mr => mr.DateCreated)
+            .Select(r => new {
+                r.RecordId,
+                r.PetId,
+                DateCreated = r.DateCreated.ToString("dd/MM/yyyy HH:mm"),
+                r.Weight,
+                r.HealthStatus,
+                Symptoms = r.Symptoms ?? "",
+                Treatment = r.Treatment ?? "",
+                VaccinationStatus = r.VaccinationStatus ?? "",
+                ParasitePrevention = r.ParasitePrevention ?? "",
+                PhysicalCheck = r.PhysicalCheck ?? "",
+                ShellStatus = r.ShellStatus ?? "",
+                RearingConditions = r.RearingConditions ?? "",
+                AbnormalSymptoms = r.AbnormalSymptoms ?? "",
+                IncisorCheck = r.IncisorCheck ?? "",
+                FurSkinCheck = r.FurSkinCheck ?? "",
+                DigestiveSigns = r.DigestiveSigns ?? ""
+            })
+            .ToListAsync();
+
+        return Json(new { success = true, data = records });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> MedicalHistory(int? petId)
+    {
+        var customerId = await GetCurrentCustomerIdAsync();
+        if (customerId == null)
+        {
+            return RedirectToAction("Login", "Account", new { area = "Customer" });
+        }
+
+        var userClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userClaim == null)
+        {
+            return RedirectToAction("Login", "Account", new { area = "Customer" });
+        }
+        var userId = int.Parse(userClaim.Value);
+        var user = await _context.Users
+            .Include(u => u.Role)
+            .Include(u => u.Customer)
+            .FirstOrDefaultAsync(u => u.UserId == userId);
+
+        if (user?.Customer == null)
+        {
+            return RedirectToAction("Login", "Account", new { area = "Customer" });
+        }
+
+        var allPets = await _context.Pets
+            .Where(p => p.CustomerId == customerId.Value)
+            .OrderByDescending(p => p.PetId)
+            .ToListAsync();
+
+        if (allPets.Count == 0)
+        {
+            TempData["ErrorMessage"] = "Bạn chưa đăng ký hồ sơ thú cưng nào. Vui lòng thêm thú cưng trước.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (!petId.HasValue)
+        {
+            return RedirectToAction(nameof(MedicalHistory), new { petId = allPets.First().PetId });
+        }
+
+        var selectedPet = allPets.FirstOrDefault(p => p.PetId == petId.Value);
+        if (selectedPet == null)
+        {
+            TempData["ErrorMessage"] = "Không tìm thấy thú cưng hoặc bạn không có quyền truy cập.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var records = await _context.MedicalRecords
+            .Where(mr => mr.PetId == selectedPet.PetId)
+            .OrderByDescending(mr => mr.DateCreated)
+            .ToListAsync();
+
+        var viewModel = new PetMedicalHistoryViewModel
+        {
+            User = user,
+            Customer = user.Customer,
+            AllPets = allPets,
+            SelectedPet = selectedPet,
+            MedicalRecords = records
+        };
+
+        return View(viewModel);
+    }
+
+
     private static string GetDefaultPetImage(string species)
     {
-        return species.Contains("mèo", StringComparison.OrdinalIgnoreCase) ||
-               species.Contains("cat", StringComparison.OrdinalIgnoreCase)
-            ? "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=200&h=200&fit=crop"
-            : "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=200&h=200&fit=crop";
+        var spec = species.ToLowerInvariant();
+        if (spec.Contains("mèo") || spec.Contains("cat"))
+        {
+            return "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=200&h=200&fit=crop";
+        }
+        else if (spec.Contains("rùa") || spec.Contains("turtle"))
+        {
+            return "https://images.unsplash.com/photo-1596492784531-6e6eb5ea9993?w=200&h=200&fit=crop";
+        }
+        else if (spec.Contains("chuột") || spec.Contains("hamster"))
+        {
+            return "https://images.unsplash.com/photo-1425082661705-1834bfd09dca?w=200&h=200&fit=crop";
+        }
+        return "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=200&h=200&fit=crop";
     }
 }
