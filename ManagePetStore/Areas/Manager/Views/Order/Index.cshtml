@@ -1,146 +1,423 @@
-@model IEnumerable<ManagePetStore.Models.Order>
+@model ManagePetStore.Areas.Manager.Models.OrderManagementPageViewModel
+@using ManagePetStore.Areas.Manager.Models
 @{
     Layout = "_ManagerLayout";
-    ViewData["Title"] = "Quản lý đơn hàng";
+    ViewData["Title"] = "Duyệt đơn hàng";
 }
+
+<style>
+    .manager-order-shell {
+        display: grid;
+        gap: 20px;
+    }
+
+    .manager-tab-link {
+        text-decoration: none;
+    }
+
+    .manager-status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.8rem;
+        font-weight: 700;
+    }
+
+    .manager-status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+
+    .manager-status-pending { color: #f2780c; }
+    .manager-status-pending .manager-status-dot { background: #f2780c; }
+    .manager-status-approved { color: #0066ff; }
+    .manager-status-approved .manager-status-dot { background: #0066ff; }
+    .manager-status-delivering { color: #2563eb; }
+    .manager-status-delivering .manager-status-dot { background: #2563eb; }
+    .manager-status-completed { color: #2f9e58; }
+    .manager-status-completed .manager-status-dot { background: #2f9e58; }
+    .manager-status-rejected, .manager-status-cancelled { color: #dc2626; }
+    .manager-status-rejected .manager-status-dot, .manager-status-cancelled .manager-status-dot { background: #dc2626; }
+
+    .manager-action-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .manager-inline-form {
+        margin: 0;
+    }
+
+    .manager-empty-state {
+        padding: 48px 24px;
+        text-align: center;
+        color: var(--admin-text-muted);
+    }
+
+    .manager-muted-text {
+        color: var(--admin-text-muted);
+        font-size: 0.85rem;
+    }
+
+    .manager-filter-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .manager-search-form {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .manager-search-box {
+        position: relative;
+        min-width: 320px;
+    }
+
+    .manager-search-box i {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--admin-text-muted);
+    }
+
+    .manager-search-input {
+        width: 100%;
+        height: 44px;
+        border-radius: 14px;
+        border: 1px solid var(--admin-border);
+        padding: 0 14px 0 42px;
+        background: #fff;
+        font-family: var(--admin-font);
+    }
+
+    .manager-search-input:focus {
+        outline: none;
+        border-color: var(--admin-primary);
+        box-shadow: 0 0 0 3px rgba(242, 120, 12, 0.12);
+    }
+
+    .manager-filter-btn,
+    .manager-reset-btn {
+        height: 44px;
+        padding: 0 16px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .manager-filter-btn {
+        border: none;
+        background: var(--admin-primary);
+        color: #fff;
+    }
+
+    .manager-reset-btn {
+        border: 1px solid var(--admin-border);
+        background: #fff;
+        color: var(--admin-text-dark);
+    }
+
+    .manager-pagination {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .manager-page-link {
+        min-width: 40px;
+        height: 40px;
+        padding: 0 14px;
+        border-radius: 10px;
+        border: 1px solid var(--admin-border);
+        background: #fff;
+        color: var(--admin-text-dark);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .manager-page-link.active {
+        background: var(--admin-primary);
+        color: #fff;
+        border-color: var(--admin-primary);
+    }
+
+    .manager-page-link.disabled {
+        pointer-events: none;
+        opacity: 0.45;
+    }
+
+    .manager-result-meta {
+        font-size: 0.85rem;
+        color: var(--admin-text-muted);
+        font-weight: 600;
+    }
+</style>
 
 <div class="admin-title-row">
     <div>
-        <h1>Quản lý Đơn hàng</h1>
-        <p>Xem danh sách, kiểm tra thông tin, duyệt và cập nhật tiến độ giao hàng của các đơn hàng trong hệ thống.</p>
+        <h1>Duyệt / Từ chối đơn hàng</h1>
+        <p>Màn hình này chỉ cho phép quản lý duyệt đơn hoặc từ chối đơn đang chờ xử lý.</p>
     </div>
 </div>
 
-@if (TempData["SuccessMessage"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: 12px; font-family: 'Outfit';">
-        <strong>Thành công!</strong> @TempData["SuccessMessage"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+<div class="manager-order-shell">
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: 12px; font-family: 'Outfit';">
+            <strong>Thành công!</strong> @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: 12px; font-family: 'Outfit';">
+            <strong>Lỗi!</strong> @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="admin-table-filters" style="margin-bottom: 0;">
+        <div class="admin-filter-pills">
+            <a asp-action="Index" class="admin-filter-pill manager-tab-link @(Model.ActiveTab == "approval" ? "active" : "")">
+                Duyệt / từ chối
+            </a>
+            <a asp-action="Delivery" class="admin-filter-pill manager-tab-link @(Model.ActiveTab == "delivery" ? "active" : "")">
+                Giao hàng / hoàn thành
+            </a>
+        </div>
+        <div class="admin-filter-pills">
+            <a asp-action="Index"
+               asp-route-searchTerm="@Model.SearchTerm"
+               asp-route-statusFilter="pending"
+               class="admin-filter-pill manager-tab-link @(Model.StatusFilter == "pending" ? "active" : "")">
+                Đang chờ xử lý (@Model.PendingCount)
+            </a>
+            <a asp-action="Index"
+               asp-route-searchTerm="@Model.SearchTerm"
+               asp-route-statusFilter="rejected"
+               class="admin-filter-pill manager-tab-link @(Model.StatusFilter == "rejected" ? "active" : "")">
+                Bị từ chối (@Model.RejectedCount)
+            </a>
+            <a asp-action="Index"
+               asp-route-searchTerm="@Model.SearchTerm"
+               asp-route-statusFilter="all"
+               class="admin-filter-pill manager-tab-link @(Model.StatusFilter == "all" ? "active" : "")">
+                Tất cả (@Model.TotalCount)
+            </a>
+        </div>
     </div>
+
+    <div class="manager-filter-bar">
+        <form asp-action="Index" method="get" class="manager-search-form">
+            <input type="hidden" name="statusFilter" value="@Model.StatusFilter" />
+            <div class="manager-search-box">
+                <i class="bi bi-search"></i>
+                <input type="text"
+                       name="searchTerm"
+                       value="@Model.SearchTerm"
+                       class="manager-search-input"
+                       placeholder="Tìm theo mã đơn, khách hàng, SĐT..." />
+            </div>
+            <button type="submit" class="manager-filter-btn">Lọc</button>
+            @if (!string.IsNullOrWhiteSpace(Model.SearchTerm) || Model.StatusFilter != "all")
+            {
+                <a asp-action="Index" class="manager-reset-btn">Xóa lọc</a>
+            }
+        </form>
+
+        <div class="manager-result-meta">
+            Hiển thị @Model.Orders.Count / @Model.TotalFilteredItems đơn hàng
+        </div>
+    </div>
+
+    <div class="admin-table-container">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Mã đơn</th>
+                    <th>Khách hàng</th>
+                    <th>Thời gian đặt</th>
+                    <th>Tổng tiền</th>
+                    <th>Thanh toán</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Orders.Any())
+                {
+                    <tr>
+                        <td colspan="7" class="manager-empty-state">Không có đơn nào trong màn duyệt / từ chối.</td>
+                    </tr>
+                }
+                @foreach (var order in Model.Orders)
+                {
+                    <tr>
+                        <td>
+                            <strong style="color: var(--admin-primary);">@order.DisplayOrderId</strong>
+                        </td>
+                        <td>
+                            <div style="font-weight: 600;">@order.CustomerName</div>
+                            <div class="manager-muted-text">SĐT: @(string.IsNullOrWhiteSpace(order.CustomerPhone) ? "Chưa có" : order.CustomerPhone)</div>
+                        </td>
+                        <td>
+                            <span class="manager-muted-text">@order.OrderDate.ToString("dd/MM/yyyy HH:mm")</span>
+                        </td>
+                        <td>
+                            <strong>@order.Total.ToString("N0")đ</strong>
+                        </td>
+                        <td>
+                            <span class="manager-muted-text">@order.PaymentMethod</span>
+                        </td>
+                        <td>
+                            <span class="manager-status-pill manager-status-@order.StatusKey">
+                                <span class="manager-status-dot"></span>
+                                @order.StatusLabel
+                            </span>
+                            @if (!string.IsNullOrWhiteSpace(order.CancelReason))
+                            {
+                                <div style="font-size: 0.75rem; color: #dc2626; margin-top: 6px; max-width: 220px;">
+                                    Lý do: @order.CancelReason
+                                </div>
+                            }
+                        </td>
+                        <td>
+                            @if (order.CanApprove && order.CanReject)
+                            {
+                                <div class="manager-action-row">
+                                    <form asp-action="Approve" method="post" class="manager-inline-form">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="orderId" value="@order.OrderId" />
+                                        <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+                                        <input type="hidden" name="statusFilter" value="@Model.StatusFilter" />
+                                        <input type="hidden" name="page" value="@Model.Page" />
+                                        <button type="submit" class="admin-btn-primary" style="padding: 6px 16px; font-size: 0.8rem; border-radius: 8px; display:inline-flex;">
+                                            Phê duyệt
+                                        </button>
+                                    </form>
+                                    <button type="button"
+                                            class="admin-btn-secondary js-open-cancel-modal"
+                                            data-order-id="@order.OrderId"
+                                            data-display-id="@order.DisplayOrderId"
+                                            data-search-term="@Model.SearchTerm"
+                                            data-status-filter="@Model.StatusFilter"
+                                            data-page="@Model.Page"
+                                            style="padding: 6px 16px; font-size: 0.8rem; border-radius: 8px; border: 1px solid #DC2626; color: #DC2626; background: #fff;">
+                                        Từ chối
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="manager-muted-text">Không có thao tác</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <nav class="manager-pagination" aria-label="Phân trang duyệt đơn hàng">
+            <a asp-action="Index"
+               asp-route-searchTerm="@Model.SearchTerm"
+               asp-route-statusFilter="@Model.StatusFilter"
+               asp-route-page="@(Model.Page - 1)"
+               class="manager-page-link @(Model.HasPreviousPage ? "" : "disabled")">
+                Trước
+            </a>
+
+            @for (var i = 1; i <= Model.TotalPages; i++)
+            {
+                <a asp-action="Index"
+                   asp-route-searchTerm="@Model.SearchTerm"
+                   asp-route-statusFilter="@Model.StatusFilter"
+                   asp-route-page="@i"
+                   class="manager-page-link @(i == Model.Page ? "active" : "")">
+                    @i
+                </a>
+            }
+
+            <a asp-action="Index"
+               asp-route-searchTerm="@Model.SearchTerm"
+               asp-route-statusFilter="@Model.StatusFilter"
+               asp-route-page="@(Model.Page + 1)"
+               class="manager-page-link @(Model.HasNextPage ? "" : "disabled")">
+                Sau
+            </a>
+        </nav>
+    }
+</div>
+
+<div class="modal fade" id="cancelOrderModal" tabindex="-1" aria-labelledby="cancelOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 16px;">
+            <form asp-action="Cancel" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="orderId" id="cancelOrderId" />
+                <input type="hidden" name="searchTerm" id="cancelSearchTerm" />
+                <input type="hidden" name="statusFilter" id="cancelStatusFilter" />
+                <input type="hidden" name="page" id="cancelPage" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="cancelOrderModalLabel">Từ chối đơn hàng <span id="cancelOrderDisplayId"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                </div>
+                <div class="modal-body">
+                    <p style="color: var(--admin-text-muted); font-size: 0.9rem;">
+                        Vui lòng nhập lý do từ chối. Khách hàng sẽ thấy trạng thái <strong>BỊ TỪ CHỐI</strong> cùng lý do này.
+                    </p>
+                    <label for="cancelReason" class="form-label fw-semibold">Lý do từ chối <span style="color:#DC2626;">*</span></label>
+                    <textarea class="form-control"
+                              id="cancelReason"
+                              name="cancelReason"
+                              rows="4"
+                              required
+                              maxlength="500"
+                              placeholder="Ví dụ: Sản phẩm hết hàng, không đủ tồn kho để giao..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-danger">Xác nhận từ chối đơn</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.js-open-cancel-modal').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.getElementById('cancelOrderId').value = btn.getAttribute('data-order-id');
+                document.getElementById('cancelOrderDisplayId').textContent = btn.getAttribute('data-display-id');
+                document.getElementById('cancelSearchTerm').value = btn.getAttribute('data-search-term');
+                document.getElementById('cancelStatusFilter').value = btn.getAttribute('data-status-filter');
+                document.getElementById('cancelPage').value = btn.getAttribute('data-page');
+                document.getElementById('cancelReason').value = '';
+                new bootstrap.Modal(document.getElementById('cancelOrderModal')).show();
+            });
+        });
+    </script>
 }
-
-<div class="admin-table-filters" style="margin-bottom: 20px;">
-    <div></div>
-    <!-- Simple count pill -->
-    <div class="admin-filter-pills">
-        <span class="admin-filter-pill active">Tất cả đơn hàng (@Model.Count())</span>
-    </div>
-</div>
-
-<div class="admin-table-container">
-    <table class="admin-table">
-        <thead>
-            <tr>
-                <th>Mã Đơn</th>
-                <th>Khách hàng</th>
-                <th>Thời gian đặt</th>
-                <th>Tổng tiền</th>
-                <th>Thanh toán</th>
-                <th>Trạng thái</th>
-                <th>Thao tác quản lý</th>
-            </tr>
-        </thead>
-        <tbody>
-            @if (!Model.Any())
-            {
-                <tr>
-                    <td colspan="7" class="text-center text-muted py-4">Chưa có đơn hàng nào trong hệ thống.</td>
-                </tr>
-            }
-            @foreach (var order in Model)
-            {
-                var displayId = $"#OD-{order.OrderId.Split('-')[^1]}";
-                var statusNorm = order.Status?.Trim().ToLowerInvariant() ?? "";
-
-                <tr>
-                    <td>
-                        <strong style="color: var(--admin-primary);">@displayId</strong>
-                    </td>
-                    <td>
-                        <div style="font-weight: 600;">@order.Customer?.FullName</div>
-                        <div style="font-size: 0.75rem; color: var(--admin-text-muted);">SĐT: @order.Customer?.Phone</div>
-                    </td>
-                    <td>
-                        <span style="color: var(--admin-text-muted);">@order.Date.ToString("dd/MM/yyyy HH:mm")</span>
-                    </td>
-                    <td>
-                        <strong style="color: var(--admin-text-dark);">@order.Total.ToString("N0")đ</strong>
-                    </td>
-                    <td>
-                        <span style="font-size: 0.85rem; color: var(--admin-text-muted);">@order.PaymentMethod</span>
-                    </td>
-                    <td>
-                        @if (statusNorm == "pending" || statusNorm == "đã thanh toán" || statusNorm == "da thanh toan")
-                        {
-                            <span class="badge-status" style="color: #F2780C;">
-                                <span style="width: 8px; height: 8px; border-radius: 50%; background-color: #F2780C; display: inline-block;"></span>
-                                CHỜ DUYỆT
-                            </span>
-                        }
-                        else if (statusNorm == "approved")
-                        {
-                            <span class="badge-status" style="color: #0066FF;">
-                                <span style="width: 8px; height: 8px; border-radius: 50%; background-color: #0066FF; display: inline-block;"></span>
-                                ĐÃ DUYỆT (APPROVED)
-                            </span>
-                        }
-                        else if (statusNorm == "delivering")
-                        {
-                            <span class="badge-status" style="color: #FF9900;">
-                                <span style="width: 8px; height: 8px; border-radius: 50%; background-color: #FF9900; display: inline-block;"></span>
-                                ĐANG GIAO (DELIVERING)
-                            </span>
-                        }
-                        else if (statusNorm == "completed" || statusNorm == "hoàn thành" || statusNorm == "hoan thanh")
-                        {
-                            <span class="badge-status badge-status-active">
-                                <span style="width: 8px; height: 8px; border-radius: 50%; background-color: #2F9E58; display: inline-block;"></span>
-                                HOÀN THÀNH
-                            </span>
-                        }
-                        else
-                        {
-                            <span class="badge-status" style="color: var(--admin-text-muted);">
-                                <span style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--admin-text-muted); display: inline-block;"></span>
-                                @order.Status?.ToUpperInvariant()
-                            </span>
-                        }
-                    </td>
-                    <td>
-                        @if (statusNorm == "pending" || statusNorm == "đã thanh toán" || statusNorm == "da thanh toan")
-                        {
-                            <form asp-action="Approve" method="post" style="display:inline;">
-                                <input type="hidden" name="orderId" value="@order.OrderId" />
-                                <button type="submit" class="admin-btn-primary" style="padding: 6px 16px; font-size: 0.8rem; border-radius: 8px; display:inline-flex;">
-                                    Duyệt đơn
-                                </button>
-                            </form>
-                        }
-                        else if (statusNorm == "approved")
-                        {
-                            <form asp-action="Ship" method="post" style="display:inline;">
-                                <input type="hidden" name="orderId" value="@order.OrderId" />
-                                <button type="submit" class="admin-btn-primary" style="padding: 6px 16px; font-size: 0.8rem; border-radius: 8px; background-color: #FF9900; display:inline-flex;">
-                                    Giao hàng
-                                </button>
-                            </form>
-                        }
-                        else if (statusNorm == "delivering")
-                        {
-                            <form asp-action="Complete" method="post" style="display:inline;">
-                                <input type="hidden" name="orderId" value="@order.OrderId" />
-                                <button type="submit" class="admin-btn-primary" style="padding: 6px 16px; font-size: 0.8rem; border-radius: 8px; background-color: #2F9E58; display:inline-flex;">
-                                    Giả lập Khách nhận
-                                </button>
-                            </form>
-                        }
-                        else
-                        {
-                            <span style="font-size: 0.85rem; color: var(--admin-text-muted); font-style: italic;">Không có thao tác</span>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
