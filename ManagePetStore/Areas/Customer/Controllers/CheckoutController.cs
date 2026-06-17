@@ -5,6 +5,7 @@ using ManagePetStore.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
 
 namespace ManagePetStore.Areas.Customer.Controllers;
 
@@ -74,6 +75,11 @@ public class CheckoutController : Controller
         string? orderNote,
         string paymentMethod)
     {
+        var trimmedFullName = fullName?.Trim() ?? string.Empty;
+        var trimmedPhone = phone?.Trim() ?? string.Empty;
+        var trimmedEmail = email?.Trim() ?? string.Empty;
+        var trimmedShippingAddress = shippingAddress?.Trim() ?? string.Empty;
+
         var cart = await _cartService.GetCartPageAsync();
         if (!cart.Items.Any())
         {
@@ -88,17 +94,30 @@ public class CheckoutController : Controller
             return RedirectToAction("Index", "Cart");
         }
 
-        if (string.IsNullOrWhiteSpace(fullName) ||
-            string.IsNullOrWhiteSpace(phone) ||
-            string.IsNullOrWhiteSpace(email) ||
-            string.IsNullOrWhiteSpace(shippingAddress))
+        if (string.IsNullOrWhiteSpace(trimmedFullName) ||
+            string.IsNullOrWhiteSpace(trimmedPhone) ||
+            string.IsNullOrWhiteSpace(trimmedEmail) ||
+            string.IsNullOrWhiteSpace(trimmedShippingAddress))
         {
             TempData["ErrorMessage"] = "Vui lòng nhập đầy đủ họ tên, số điện thoại, Gmail và địa chỉ giao hàng.";
             return RedirectToAction(nameof(Index));
         }
 
-        var trimmedEmail = email.Trim();
-        var emailRegex = new System.Text.RegularExpressions.Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+        var fullNameRegex = new Regex(@"^[\p{L}\s]+$");
+        if (!fullNameRegex.IsMatch(trimmedFullName))
+        {
+            TempData["ErrorMessage"] = "Họ tên chỉ được chứa chữ và khoảng trắng, không được nhập số hoặc ký tự khác.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var phoneRegex = new Regex(@"^\d{10}$");
+        if (!phoneRegex.IsMatch(trimmedPhone))
+        {
+            TempData["ErrorMessage"] = "Số điện thoại phải là 10 chữ số và không được chứa ký tự đặc biệt.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var emailRegex = new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$");
         if (!emailRegex.IsMatch(trimmedEmail))
         {
             TempData["ErrorMessage"] = "Gmail không đúng định dạng. Vui lòng kiểm tra lại.";
@@ -225,9 +244,9 @@ public class CheckoutController : Controller
             var successModel = new CheckoutSuccessViewModel
             {
                 OrderId = orderId,
-                FullName = fullName.Trim(),
-                Phone = phone.Trim(),
-                ShippingAddress = shippingAddress.Trim(),
+                FullName = trimmedFullName,
+                Phone = trimmedPhone,
+                ShippingAddress = trimmedShippingAddress,
                 ConfirmationEmail = trimmedEmail,
                 PaymentMethod = normalizedPayment,
                 Total = cart.GrandTotal,
@@ -308,7 +327,6 @@ public class CheckoutController : Controller
         {
             "Cash" => "Tiền mặt",
             "VNPay" => "VNPay",
-            "MoMo" => "MoMo",
             _ => null
         };
     }

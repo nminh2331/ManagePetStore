@@ -41,7 +41,12 @@
                                 <label>Họ và tên</label>
                                 <div class="checkout-input-wrap">
                                     <i class="bi bi-person"></i>
-                                    <input type="text" name="fullName" value="@Model.FullName" placeholder="Nguyễn Văn A" required />
+                                    <input type="text"
+                                           name="fullName"
+                                           value="@Model.FullName"
+                                           placeholder="Nguyễn Văn A"
+                                           required
+                                           autocomplete="name" />
                                 </div>
                             </div>
 
@@ -49,7 +54,14 @@
                                 <label>Số điện thoại</label>
                                 <div class="checkout-input-wrap">
                                     <i class="bi bi-telephone"></i>
-                                    <input type="tel" name="phone" value="@Model.Phone" placeholder="090 123 4567" required />
+                                    <input type="text"
+                                           name="phone"
+                                           value="@Model.Phone"
+                                           placeholder="0987654321"
+                                           required
+                                           inputmode="numeric"
+                                           maxlength="10"
+                                           autocomplete="tel" />
                                 </div>
                             </div>
 
@@ -90,12 +102,6 @@
                                 <input type="radio" name="paymentMethod" value="VNPay" @(Model.PaymentMethod == "VNPay" ? "checked" : null) />
                                 <span class="checkout-payment-icon vnpay">VN</span>
                                 <span class="checkout-payment-name">VNPay</span>
-                            </label>
-
-                            <label class="checkout-payment-card @(Model.PaymentMethod == "MoMo" ? "active" : "")">
-                                <input type="radio" name="paymentMethod" value="MoMo" @(Model.PaymentMethod == "MoMo" ? "checked" : null) />
-                                <span class="checkout-payment-icon momo"><i class="bi bi-wallet2"></i></span>
-                                <span class="checkout-payment-name">MoMo</span>
                             </label>
                         </div>
                     </div>
@@ -172,6 +178,90 @@
 
 @section Scripts {
     <script>
+        var fullNameInput = document.querySelector('input[name="fullName"]');
+        var phoneInput = document.querySelector('input[name="phone"]');
+        var checkoutForm = document.getElementById('checkoutForm');
+        var fullNamePattern = /^[\p{L}\s]+$/u;
+        var phonePattern = /^\d{10}$/;
+
+        function resetFieldValidity(input) {
+            if (input) {
+                input.setCustomValidity('');
+            }
+        }
+
+        function validateFullNameField() {
+            if (!fullNameInput) {
+                return true;
+            }
+
+            var fullNameValue = fullNameInput.value.trim();
+            resetFieldValidity(fullNameInput);
+
+            if (!fullNamePattern.test(fullNameValue)) {
+                fullNameInput.setCustomValidity('Họ tên chỉ được chứa chữ và khoảng trắng.');
+                return false;
+            }
+
+            return true;
+        }
+
+        function validatePhoneField() {
+            if (!phoneInput) {
+                return true;
+            }
+
+            var phoneValue = phoneInput.value.trim();
+            resetFieldValidity(phoneInput);
+
+            if (!phonePattern.test(phoneValue)) {
+                phoneInput.setCustomValidity('Số điện thoại phải gồm đúng 10 chữ số.');
+                return false;
+            }
+
+            return true;
+        }
+
+        if (fullNameInput) {
+            fullNameInput.addEventListener('input', function () {
+                validateFullNameField();
+            });
+
+            fullNameInput.addEventListener('blur', function () {
+                validateFullNameField();
+            });
+        }
+
+        if (phoneInput) {
+            phoneInput.addEventListener('input', function () {
+                this.value = this.value.replace(/\D/g, '').slice(0, 10);
+                validatePhoneField();
+            });
+
+            phoneInput.addEventListener('blur', function () {
+                validatePhoneField();
+            });
+        }
+
+        if (checkoutForm) {
+            checkoutForm.addEventListener('submit', function (event) {
+                var isFullNameValid = validateFullNameField();
+                var isPhoneValid = validatePhoneField();
+
+                if (!isFullNameValid && fullNameInput) {
+                    fullNameInput.reportValidity();
+                    event.preventDefault();
+                    return;
+                }
+
+                if (!isPhoneValid && phoneInput) {
+                    phoneInput.reportValidity();
+                    event.preventDefault();
+                    return;
+                }
+            });
+        }
+
         document.querySelectorAll('.checkout-payment-card input[type="radio"]').forEach(function (radio) {
             radio.addEventListener('change', function () {
                 document.querySelectorAll('.checkout-payment-card').forEach(function (card) {

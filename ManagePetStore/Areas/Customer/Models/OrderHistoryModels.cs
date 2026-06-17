@@ -10,6 +10,15 @@ public class CustomerSidebarViewModel
 public class OrderHistoryPageViewModel : CustomerSidebarViewModel
 {
     public List<OrderListItemViewModel> Orders { get; set; } = [];
+    public List<OrderListItemViewModel> VisibleOrders { get; set; } = [];
+    public string SearchTerm { get; set; } = "";
+    public string StatusFilter { get; set; } = "all";
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 5;
+    public int TotalFilteredItems { get; set; }
+    public int TotalPages { get; set; }
+    public bool HasPreviousPage => Page > 1;
+    public bool HasNextPage => Page < TotalPages;
 }
 
 public class OrderListItemViewModel
@@ -20,6 +29,8 @@ public class OrderListItemViewModel
     public decimal Total { get; set; }
     public string Status { get; set; } = "";
     public string StatusKey { get; set; } = "";
+    public string? CancelReason { get; set; }
+    public bool CanConfirmReceived { get; set; }
     public bool CanReview { get; set; }
     public bool HasReviewed { get; set; }
 }
@@ -40,6 +51,9 @@ public class OrderDetailViewModel
     public string PaymentMethod { get; set; } = "";
     public string Status { get; set; } = "";
     public string StatusKey { get; set; } = "";
+    public string? CancelReason { get; set; }
+    public DateTime? CanceledAt { get; set; }
+    public bool CanConfirmReceived { get; set; }
     public List<OrderDetailItemViewModel> Items { get; set; } = [];
 }
 

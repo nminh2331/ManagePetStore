@@ -31,6 +31,8 @@ public class HomeController : Controller
     public async Task<IActionResult> Index(string? search, string? category)
     {
         var model = GetStaticHomepageData();
+        model.Pets = [];
+        model.RoomTypes = [];
         model.SearchKeyword = search?.Trim();
         model.SelectedCategorySlug = category?.Trim().ToLowerInvariant();
         model.IsFiltered = !string.IsNullOrWhiteSpace(model.SearchKeyword) ||
@@ -43,35 +45,50 @@ public class HomeController : Controller
                
         try
         {
-            //  Logic xác thực & Trích xuất dữ liệu Cá nhân (Form Đặt Khách sạn)
+            model.RoomTypes = await _context.RoomTypes
+                .AsNoTracking()
+                .Where(r => r.Status && r.Cages.Any())
+                .OrderBy(r => r.DailyPrice)
+                .Select(r => new RoomTypeOptionItem
+                {
+                    Id = r.RoomTypeId,
+                    Name = r.Type,
+                    DailyPrice = r.DailyPrice
+                })
+                .ToListAsync();
+
             if (User.Identity?.IsAuthenticated == true)
             {
                 var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
                 if (userIdClaim != null && int.TryParse(userIdClaim.Value, out var userId))
                 {
-                    var customer = await _context.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
+                    var customer = await _context.Customers
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(c => c.UserId == userId);
+
                     if (customer != null)
                     {
-                        var pets = await _context.Pets
-                            .Where(p => p.CustomerId == customer.CustomerId)
-                            .ToListAsync();
-
-                        if (pets.Count > 0)
-                        {
-                            model.Pets = pets.Select(p => new PetOptionItem
+                        model.Pets = await _context.Pets
+                            .AsNoTracking()
+                            .Where(p => p.CustomerId == customer.CustomerId && p.Status == "Active")
+                            .OrderBy(p => p.Name)
+                            .Select(p => new PetOptionItem
                             {
                                 Id = p.PetId,
                                 Name = p.Name,
                                 Breed = p.Breed ?? p.Species
-                            }).ToList();
-                        }
+                            })
+                            .ToListAsync();
+
+                        model.HotelMembershipTier = customer.MembershipTier;
+                        model.HotelDiscountPercent = ResolveHotelDiscountPercent(customer.MembershipTier);
                     }
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Giữ dữ liệu mockup mặc định cho homepage.
+            _logger.LogError(ex, "Không thể tải dữ liệu form đặt Hotel online.");
         }
 
         if (model.IsFiltered)
@@ -206,6 +223,16 @@ public class HomeController : Controller
             Rating = 4.7,
             ReviewCount = 50,
             InStock = product.Stock > 0
+        };
+    }
+
+    private static int ResolveHotelDiscountPercent(string? membershipTier)
+    {
+        return membershipTier?.Trim().ToLowerInvariant() switch
+        {
+            "gold" or "vàng" => 10,
+            "silver" or "bạc" => 5,
+            _ => 0
         };
     }
 

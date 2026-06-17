@@ -22,7 +22,7 @@ public class OrderController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? searchTerm, string statusFilter = "all", int page = 1)
     {
         var layout = await BuildSidebarViewModelAsync("orders");
         if (layout == null)
@@ -36,21 +36,64 @@ public class OrderController : Controller
             .ToListAsync();
 
         var reviewedOrderIds = _reviewService.GetReviewedOrderIds(layout.Customer.CustomerId);
+        var mappedOrders = orders.Select(o => MapToListItem(o, reviewedOrderIds)).ToList();
+        var normalizedSearch = searchTerm?.Trim() ?? "";
+        var normalizedStatus = string.IsNullOrWhiteSpace(statusFilter) ? "all" : statusFilter.Trim().ToLowerInvariant();
+
+        IEnumerable<OrderListItemViewModel> filteredOrders = mappedOrders;
+
+        if (!string.IsNullOrWhiteSpace(normalizedSearch))
+        {
+            filteredOrders = filteredOrders.Where(o =>
+                o.OrderId.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+                o.DisplayOrderId.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+                o.Status.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase));
+        }
+
+        filteredOrders = normalizedStatus switch
+        {
+            "pending" => filteredOrders.Where(o => o.StatusKey == "pending"),
+            "approved" => filteredOrders.Where(o => o.StatusKey == "approved"),
+            "delivering" => filteredOrders.Where(o => o.StatusKey == "delivering"),
+            "completed" => filteredOrders.Where(o => o.StatusKey == "completed"),
+            "cancelled" => filteredOrders.Where(o => o.StatusKey == "cancelled" || o.StatusKey == "rejected"),
+            _ => filteredOrders
+        };
+
+        var filteredOrderList = filteredOrders.ToList();
+        var currentPage = page < 1 ? 1 : page;
+        var totalFilteredItems = filteredOrderList.Count;
+        var totalPages = totalFilteredItems == 0 ? 0 : (int)Math.Ceiling(totalFilteredItems / (double)new OrderHistoryPageViewModel().PageSize);
+
+        if (totalPages > 0 && currentPage > totalPages)
+        {
+            currentPage = totalPages;
+        }
 
         var model = new OrderHistoryPageViewModel
         {
             User = layout.User,
             Customer = layout.Customer,
             ActiveNav = layout.ActiveNav,
-            Orders = orders.Select(o => MapToListItem(o, reviewedOrderIds)).ToList()
+            Orders = mappedOrders,
+            SearchTerm = normalizedSearch,
+            StatusFilter = normalizedStatus,
+            Page = totalPages == 0 ? 1 : currentPage,
+            TotalFilteredItems = totalFilteredItems,
+            TotalPages = totalPages
         };
+
+        model.VisibleOrders = filteredOrderList
+            .Skip((model.Page - 1) * model.PageSize)
+            .Take(model.PageSize)
+            .ToList();
 
         return View(model);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SubmitReview(string orderId, int rating, string comment)
+    public async Task<IActionResult> SubmitReview(string orderId, int rating, string comment, string? searchTerm, string statusFilter = "all", int page = 1)
     {
         var layout = await BuildSidebarViewModelAsync("orders");
         if (layout == null)
@@ -68,7 +111,45 @@ public class OrderController : Controller
             });
 
         TempData[success ? "SuccessMessage" : "ErrorMessage"] = message;
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ConfirmReceived(string orderId, string? returnAction, string? searchTerm, string statusFilter = "all", int page = 1)
+    {
+        if (string.IsNullOrWhiteSpace(orderId))
+        {
+            TempData["ErrorMessage"] = "Không xác định được đơn hàng cần xác nhận.";
+            return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);
+        }
+
+        var layout = await BuildSidebarViewModelAsync("orders");
+        if (layout == null)
+        {
+            return RedirectToAction("Login", "Account", new { area = "Customer" });
+        }
+
+        var order = await _context.Orders
+            .FirstOrDefaultAsync(o => o.OrderId == orderId && o.CustomerId == layout.Customer.CustomerId);
+
+        if (order == null)
+        {
+            TempData["ErrorMessage"] = "Không tìm thấy đơn hàng hoặc bạn không có quyền thao tác.";
+            return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);
+        }
+
+        if (OrderStatusHelper.ResolveStatusKey(order.Status) != "delivering")
+        {
+            TempData["ErrorMessage"] = "Chỉ có thể xác nhận với đơn hàng đang giao.";
+            return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);
+        }
+
+        order.Status = "Đã hoàn thành";
+        await _context.SaveChangesAsync();
+
+        TempData["SuccessMessage"] = $"Đơn hàng {FormatDisplayOrderId(orderId)} đã được xác nhận nhận hàng.";
+        return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);
     }
 
     [HttpGet]
@@ -140,7 +221,7 @@ public class OrderController : Controller
 
     private static OrderListItemViewModel MapToListItem(Order order, HashSet<string> reviewedOrderIds)
     {
-        var statusKey = ResolveStatusKey(order.Status);
+        var statusKey = OrderStatusHelper.ResolveStatusKey(order.Status);
         var hasReviewed = reviewedOrderIds.Contains(order.OrderId);
 
         return new OrderListItemViewModel
@@ -149,8 +230,10 @@ public class OrderController : Controller
             DisplayOrderId = FormatDisplayOrderId(order.OrderId),
             OrderDate = order.Date,
             Total = order.Total,
-            Status = FormatStatusLabel(statusKey, order.Status),
+            Status = OrderStatusHelper.FormatStatusLabel(statusKey, order.Status),
             StatusKey = statusKey,
+            CancelReason = order.CancelReason,
+            CanConfirmReceived = statusKey == "delivering",
             CanReview = statusKey == "completed" && !hasReviewed,
             HasReviewed = hasReviewed
         };
@@ -160,7 +243,7 @@ public class OrderController : Controller
         Order order,
         IReadOnlyDictionary<string, (string Name, string? ImageUrl)> productInfo)
     {
-        var statusKey = ResolveStatusKey(order.Status);
+        var statusKey = OrderStatusHelper.ResolveStatusKey(order.Status);
 
         return new OrderDetailViewModel
         {
@@ -171,8 +254,11 @@ public class OrderController : Controller
             Discount = order.Discount,
             Total = order.Total,
             PaymentMethod = order.PaymentMethod,
-            Status = FormatStatusLabel(statusKey, order.Status),
+            Status = OrderStatusHelper.FormatStatusLabel(statusKey, order.Status),
             StatusKey = statusKey,
+            CancelReason = order.CancelReason,
+            CanceledAt = order.CanceledAt,
+            CanConfirmReceived = statusKey == "delivering",
             Items = order.OrderItems.Select(item =>
             {
                 var sku = item.ProductSku ?? "";
@@ -230,37 +316,13 @@ public class OrderController : Controller
         return $"#{orderId}";
     }
 
-    private static string ResolveStatusKey(string? status)
+    private IActionResult RedirectAfterConfirmation(string orderId, string? returnAction, string? searchTerm, string statusFilter, int page)
     {
-        var normalized = status?.Trim().ToLowerInvariant() ?? "";
-
-        if (normalized.Contains("giao") && !normalized.Contains("hoàn"))
+        if (string.Equals(returnAction, nameof(Details), StringComparison.OrdinalIgnoreCase))
         {
-            return "delivering";
+            return RedirectToAction(nameof(Details), new { id = orderId });
         }
 
-        if (normalized.Contains("chờ") ||
-            normalized.Contains("cho") ||
-            normalized.Contains("duyệt") ||
-            normalized.Contains("duyet") ||
-            normalized.Contains("xử lý") ||
-            normalized.Contains("xu ly") ||
-            normalized.Contains("pending"))
-        {
-            return "pending";
-        }
-
-        return "completed";
-    }
-
-    private static string FormatStatusLabel(string statusKey, string? originalStatus)
-    {
-        return statusKey switch
-        {
-            "pending" => "CHỜ XỬ LÝ",
-            "delivering" => "ĐANG GIAO",
-            "completed" => "HOÀN THÀNH",
-            _ => string.IsNullOrWhiteSpace(originalStatus) ? "HOÀN THÀNH" : originalStatus.ToUpperInvariant()
-        };
+        return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
     }
 }

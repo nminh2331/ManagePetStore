@@ -38,6 +38,12 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 return RedirectToDashboard();
             }
             ViewData["ReturnUrl"] = returnUrl;
+
+            if (returnUrl != null && returnUrl.Contains("SPA-SVC", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["ErrorMessage"] = "Bạn phải đăng nhập tài khoản mới có thể đặt lịch dịch vụ.";
+            }
+
             return View();
         }
 
@@ -68,6 +74,13 @@ namespace ManagePetStore.Areas.Customer.Controllers
             if (user.Status != "Active")
             {
                 ModelState.AddModelError("", "Tài khoản của bạn đã bị khóa hoặc ngưng hoạt động.");
+                return View();
+            }
+
+            // Chặn nhân viên đăng nhập ở trang khách hàng
+            if (user.RoleId != 5)
+            {
+                ModelState.AddModelError("", "Tài khoản nhân viên không được phép đăng nhập tại trang dành cho khách hàng.");
                 return View();
             }
 
@@ -283,38 +296,38 @@ namespace ManagePetStore.Areas.Customer.Controllers
 
                 await using var transaction = await _context.Database.BeginTransactionAsync();
 
-                var newUser = new User
-                {
+                    var newUser = new User
+                    {
                     Password = pending.Password,
                     FullName = pending.FullName,
                     Email = pending.Email,
                     Phone = pending.Phone,
                     RoleId = 5,
-                    Status = "Active",
-                    CreatedAt = DateTime.Now
-                };
+                        Status = "Active",
+                        CreatedAt = DateTime.Now
+                    };
 
-                _context.Users.Add(newUser);
+                    _context.Users.Add(newUser);
                 await _context.SaveChangesAsync();
 
-                var newCustomer = new ManagePetStore.Models.Customer
-                {
-                    UserId = newUser.UserId,
+                    var newCustomer = new ManagePetStore.Models.Customer
+                    {
+                        UserId = newUser.UserId,
                     FullName = pending.FullName,
                     Phone = pending.Phone,
                     Email = pending.Email,
-                    LoyaltyPoints = 0,
-                    MembershipTier = "Bronze",
-                    CreatedAt = DateTime.Now
-                };
+                        LoyaltyPoints = 0,
+                        MembershipTier = "Bronze",
+                        CreatedAt = DateTime.Now
+                    };
 
-                _context.Customers.Add(newCustomer);
-                await _context.SaveChangesAsync();
+                    _context.Customers.Add(newCustomer);
+                    await _context.SaveChangesAsync();
 
-                await transaction.CommitAsync();
+                    await transaction.CommitAsync();
                 HttpContext.Session.Remove(PendingRegistrationSessionKey);
 
-                TempData["SuccessMessage"] = "Đăng ký tài khoản thành công! Vui lòng đăng nhập.";
+                    TempData["SuccessMessage"] = "Đăng ký tài khoản thành công! Vui lòng đăng nhập.";
                 return RedirectToAction(nameof(Login));
             }
             catch (Exception ex) when (ex is Microsoft.Data.SqlClient.SqlException or InvalidOperationException)
@@ -762,7 +775,12 @@ namespace ManagePetStore.Areas.Customer.Controllers
         [HttpGet]
         public async Task<IActionResult> Logout()
         {
+            bool isStaff = User.Identity != null && User.Identity.IsAuthenticated && !User.IsInRole("customer");
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            if (isStaff)
+            {
+                return Redirect("/Staff/Login");
+            }
             return RedirectToAction("Index", "Home", new { area = "" });
         }
 
@@ -1081,7 +1099,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 return RedirectToAction("Index", "Home", new { area = "Warehouse" });
             if (User.IsInRole("manager"))
                 return RedirectToAction("Index", "Order", new { area = "Manager" });
-
+            
             // Mặc định là customer hoặc vai trò khác -> về Trang chủ của Home ngoài Area
             return RedirectToAction("Index", "Home", new { area = "" });
         }
