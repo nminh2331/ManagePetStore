@@ -441,6 +441,19 @@
 
     .map-list li:last-child { border-bottom: none; }
 
+    .maintenance-log-badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 2px 7px;
+        margin-left: 6px;
+        background: #FFF0C9;
+        color: #9A5B00;
+        font-size: .58rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
     /* ===== BOOKING ITEMS ===== */
     .booking-item {
         display: flex;
@@ -1788,6 +1801,21 @@
                             </div>
                             <button type="button" class="btn-modal-submit" id="mapStatusButton" style="flex:0 0 auto; padding:11px 18px;">Cập nhật trạng thái</button>
                         </div>
+                        <div class="hform-group" id="mapMaintenanceReasonGroup" style="margin-top:12px; display:none;">
+                            <label class="hform-label" for="mapMaintenanceReason">Lý do dọn dẹp / bảo trì / khóa <span class="req">*</span></label>
+                            <textarea class="hform-control" id="mapMaintenanceReason" rows="2" maxlength="500"
+                                placeholder="VD: Khử khuẩn sau checkout, hỏng camera, khóa để sửa cửa..."></textarea>
+                        </div>
+                        <div class="hform-group" style="margin-top:10px;">
+                            <label class="hform-label" for="mapMaintenanceNote">Ghi chú thêm / ghi chú khi mở lại phòng</label>
+                            <textarea class="hform-control" id="mapMaintenanceNote" rows="2" maxlength="1000"
+                                placeholder="VD: Đã vệ sinh xong lúc 15:30, thay khóa phòng, chờ kỹ thuật kiểm tra..."></textarea>
+                        </div>
+                    </section>
+
+                    <section class="cage-detail-panel cage-detail-full">
+                        <h6><i class="fa-solid fa-clock-rotate-left" style="color:#FF7815; margin-right:5px;"></i>Lịch sử bảo trì / khóa phòng</h6>
+                        <ul class="map-list" id="mapMaintenanceHistory"><li>Chưa có lịch sử bảo trì.</li></ul>
                     </section>
                 </div>
             </div>
@@ -2296,6 +2324,19 @@ function setMapText(id, value) {
     document.getElementById(id).textContent = value ?? '—';
 }
 
+const mapMaintenanceStatuses = ['Đang dọn dẹp', 'Bảo trì', 'Khóa'];
+
+function updateMapMaintenanceReasonVisibility() {
+    const status = document.getElementById('mapOperationalStatus')?.value;
+    const reasonGroup = document.getElementById('mapMaintenanceReasonGroup');
+    const reasonInput = document.getElementById('mapMaintenanceReason');
+    if (!reasonGroup || !reasonInput) return;
+
+    const needsReason = mapMaintenanceStatuses.includes(status);
+    reasonGroup.style.display = needsReason ? 'block' : 'none';
+    reasonInput.required = needsReason;
+}
+
 function openCageMapDetail(cageId) {
     fetch('/SpaServices/GetCageMapDetail?cageId=' + encodeURIComponent(cageId))
         .then(response => response.json())
@@ -2354,6 +2395,11 @@ function openCageMapDetail(cageId) {
                     ['Trống', 'Đang dọn dẹp', 'Bảo trì', 'Khóa'].includes(cage.status) ? cage.status : 'Trống';
             }
 
+            const openMaintenanceLog = data.openMaintenanceLog;
+            document.getElementById('mapMaintenanceReason').value = openMaintenanceLog?.reason || '';
+            document.getElementById('mapMaintenanceNote').value = openMaintenanceLog?.note || '';
+            updateMapMaintenanceReasonVisibility();
+
             const careLogs = data.careLogs || [];
             document.getElementById('mapCareLogs').innerHTML = careLogs.length
                 ? careLogs.map(log =>
@@ -2368,6 +2414,19 @@ function openCageMapDetail(cageId) {
                     `<li><strong>${escapeMapHtml(addon.name)}</strong><span style="float:right;">${Number(addon.price).toLocaleString('vi-VN')}đ</span></li>`
                 ).join('')
                 : '<li>Không có dịch vụ bổ sung.</li>';
+
+            const maintenanceHistory = data.maintenanceHistory || [];
+            document.getElementById('mapMaintenanceHistory').innerHTML = maintenanceHistory.length
+                ? maintenanceHistory.map(log => {
+                    const finishedText = log.endedAt ? formatMapDate(log.endedAt) : 'Đang mở';
+                    const actorText = [log.createdByName, log.endedByName ? 'kết thúc bởi ' + log.endedByName : '']
+                        .filter(Boolean)
+                        .join(' · ');
+                    return `<li><strong>${escapeMapHtml(log.newStatus)}</strong>${log.isOpen ? '<span class="maintenance-log-badge">Đang mở</span>' : ''}<br>` +
+                        `<span style="color:#A0938C;">${formatMapDate(log.startedAt)} → ${finishedText}${actorText ? ' · ' + escapeMapHtml(actorText) : ''}</span><br>` +
+                        `<span>${escapeMapHtml(log.reason)}</span>${log.note ? `<br><span style="color:#A0938C;">Ghi chú: ${escapeMapHtml(log.note)}</span>` : ''}</li>`;
+                }).join('')
+                : '<li>Chưa có lịch sử bảo trì hoặc khóa phòng.</li>';
 
             new bootstrap.Modal(document.getElementById('cageMapDetailModal')).show();
         })
@@ -2439,15 +2498,44 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     });
 
+    document.getElementById('mapOperationalStatus').addEventListener('change', updateMapMaintenanceReasonVisibility);
+
     document.getElementById('mapStatusButton').addEventListener('click', () => {
         const cageId = document.getElementById('mapCurrentCageId').value;
         const status = document.getElementById('mapOperationalStatus').value;
+        const reason = document.getElementById('mapMaintenanceReason').value.trim();
+        const note = document.getElementById('mapMaintenanceNote').value.trim();
+
+        if (mapMaintenanceStatuses.includes(status) && reason.length < 5) {
+            alert('Vui lòng nhập lý do ít nhất 5 ký tự trước khi dọn dẹp, bảo trì hoặc khóa phòng.');
+            document.getElementById('mapMaintenanceReason').focus();
+            return;
+        }
+
+        if (reason.length > 500) {
+            alert('Lý do không được vượt quá 500 ký tự.');
+            document.getElementById('mapMaintenanceReason').focus();
+            return;
+        }
+
+        if (note.length > 1000) {
+            alert('Ghi chú không được vượt quá 1000 ký tự.');
+            document.getElementById('mapMaintenanceNote').focus();
+            return;
+        }
+
         if (!confirm(`Cập nhật chuồng ${cageId} sang trạng thái "${status}"?`)) return;
+
+        const body = new URLSearchParams();
+        body.set('cageId', cageId);
+        body.set('status', status);
+        body.set('reason', reason);
+        body.set('note', note);
 
         fetch('/SpaServices/UpdateCageOperationalStatus', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': getAntiForgeryToken() },
-            body: 'cageId=' + encodeURIComponent(cageId) + '&status=' + encodeURIComponent(status)
+            body: body.toString()
         })
         .then(response => response.json())
         .then(data => {

@@ -52,6 +52,8 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<Role> Roles { get; set; }
 
+    public virtual DbSet<RoomMaintenanceLog> RoomMaintenanceLogs { get; set; }
+
     public virtual DbSet<RoomType> RoomTypes { get; set; }
 
     public virtual DbSet<SpaBooking> SpaBookings { get; set; }
@@ -425,6 +427,40 @@ public partial class PetStoreManagementContext : DbContext
             entity.Property(e => e.Size).HasMaxLength(50);
             entity.Property(e => e.Status).HasDefaultValue(true);
             entity.Property(e => e.Type).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<RoomMaintenanceLog>(entity =>
+        {
+            entity.HasKey(e => e.MaintenanceLogId);
+
+            entity.HasIndex(e => e.StartedAt, "IX_RoomMaintenanceLogs_StartedAt");
+            entity.HasIndex(e => e.CageId, "UX_RoomMaintenanceLogs_OneOpenPerCage")
+                .IsUnique()
+                .HasFilter("([EndedAt] IS NULL)");
+
+            entity.Property(e => e.CageId).HasMaxLength(20);
+            entity.Property(e => e.CreatedByName).HasMaxLength(100);
+            entity.Property(e => e.EndedByName).HasMaxLength(100);
+            entity.Property(e => e.EndedAt).HasColumnType("datetime");
+            entity.Property(e => e.NewStatus).HasMaxLength(30);
+            entity.Property(e => e.Note).HasMaxLength(1000);
+            entity.Property(e => e.PreviousStatus).HasMaxLength(30);
+            entity.Property(e => e.Reason).HasMaxLength(500);
+            entity.Property(e => e.StartedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.Cage).WithMany(p => p.RoomMaintenanceLogs)
+                .HasForeignKey(d => d.CageId)
+                .HasConstraintName("FK_RoomMaintenanceLogs_Cages");
+
+            entity.HasOne(d => d.CreatedByUser).WithMany()
+                .HasForeignKey(d => d.CreatedByUserId)
+                .HasConstraintName("FK_RoomMaintenanceLogs_CreatedBy");
+
+            entity.HasOne(d => d.EndedByUser).WithMany()
+                .HasForeignKey(d => d.EndedByUserId)
+                .HasConstraintName("FK_RoomMaintenanceLogs_EndedBy");
         });
 
         modelBuilder.Entity<SpaBooking>(entity =>
