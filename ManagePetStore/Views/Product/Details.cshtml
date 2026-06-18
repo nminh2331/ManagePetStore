@@ -251,21 +251,37 @@
                         </div>
                     </div>
 
-                    <!-- WARNING MODAL FOR PETS WITH NO MEDICAL HISTORY -->
-                    <div id="medicalWarningModal" class="ps-booking-modal-overlay" style="display: none; z-index: 1100; backdrop-filter: blur(8px); background: rgba(0, 0, 0, 0.4); justify-content: center; align-items: center;">
-                        <div class="ps-booking-modal-content" style="max-width: 500px; text-align: center; padding: 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); background: white;">
-                            <div style="font-size: 3rem; color: #ffaa00; margin-bottom: 16px;">
+                    <!-- WARNING POPUP FOR PETS WITH NO MEDICAL HISTORY -->
+                    <div id="medicalWarningModal" style="display: none; position: fixed; top: 24px; right: 24px; width: 450px; max-width: calc(100vw - 48px); background: #ffffff; border-radius: 20px; box-shadow: 0 15px 40px rgba(139, 69, 19, 0.18); border: 1px solid #FFEAD2; z-index: 10005; padding: 24px; animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1);">
+                        <style>
+                            @@keyframes slideInRight {
+                                from {
+                                    transform: translateX(120%);
+                                    opacity: 0;
+                                }
+                                to {
+                                    transform: translateX(0);
+                                    opacity: 1;
+                                }
+                            }
+                        </style>
+                        <div style="display: flex; gap: 18px; align-items: flex-start; text-align: left;">
+                            <div style="font-size: 2.5rem; color: #ffaa00; line-height: 1; flex-shrink: 0; margin-top: -2px;">
                                 <i class="bi bi-exclamation-triangle-fill"></i>
                             </div>
-                            <h3 style="font-size: 1.25rem; font-weight: 700; color: #ff7815; margin-bottom: 12px; text-transform: uppercase;">Khuyến nghị khám sức khỏe</h3>
-                            <p style="font-size: 0.9rem; color: #555; line-height: 1.6; margin-bottom: 24px;">
-                                Thú cưng này chưa từng được khám sức khỏe tại cửa hàng (không có lịch sử sổ y tế). 
-                                <strong>Vui lòng mang bé đến cửa hàng để được bác sĩ khám và tạo sổ y tế trước khi đặt lịch dịch vụ Spa.</strong>
-                            </p>
-                            <p style="font-size: 0.8rem; color: #888; margin-bottom: 24px;">
-                                * Các mặt hàng (sản phẩm, thức ăn, phụ kiện...) vẫn có thể mua sắm bình thường.
-                            </p>
-                            <button type="button" class="btn btn-primary rounded-pill px-4 py-2" id="btnCloseWarningModal" style="background-color: #ff7815; border: none; font-weight: 600; color: white;">Đồng ý &amp; Đóng</button>
+                            <div style="flex: 1;">
+                                <h3 style="font-size: 1.15rem; font-weight: 700; color: #ff7815; margin-top: 0; margin-bottom: 8px; text-transform: uppercase;">Khuyến nghị khám sức khỏe</h3>
+                                <p style="font-size: 0.88rem; color: #555; line-height: 1.6; margin-bottom: 12px;">
+                                    Thú cưng này chưa từng được khám sức khỏe tại cửa hàng (không có lịch sử sổ y tế). 
+                                    <strong>Vui lòng mang bé đến cửa hàng để được bác sĩ khám và tạo sổ y tế trước khi đặt lịch dịch vụ Spa.</strong>
+                                </p>
+                                <p style="font-size: 0.78rem; color: #888; margin-bottom: 18px; line-height: 1.4;">
+                                    * Các mặt hàng (sản phẩm, thức ăn, phụ kiện...) vẫn có thể mua sắm bình thường.
+                                </p>
+                                <div style="text-align: right;">
+                                    <button type="button" class="btn btn-primary rounded-pill px-4 py-2" id="btnCloseWarningModal" style="background-color: #ff7815; border: none; font-weight: 600; color: white; font-size: 0.85rem; box-shadow: 0 4px 12px rgba(255, 120, 21, 0.25); transition: all 0.2s;">Tôi hiểu rồi</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 }
@@ -394,28 +410,31 @@
             function checkPetMedicalHistory(val) {
                 if (!btnSubmitBooking) return;
                 
+                // Keep the button clickable HTML-wise so we can catch clicks and show the warning popup
+                btnSubmitBooking.disabled = false;
+                
                 if (val === "0") {
-                    if (warningModal) warningModal.style.display = 'flex';
-                    btnSubmitBooking.disabled = true;
                     btnSubmitBooking.style.opacity = '0.5';
                     btnSubmitBooking.style.cursor = 'not-allowed';
+                    btnSubmitBooking.dataset.invalidPet = "true";
                 } else if (val && val !== "") {
                     var selectedId = parseInt(val);
                     var pet = customerPets.find(p => p.PetId === selectedId);
                     if (pet && !pet.HasMedicalRecord) {
-                        if (warningModal) warningModal.style.display = 'flex';
-                        btnSubmitBooking.disabled = true;
                         btnSubmitBooking.style.opacity = '0.5';
                         btnSubmitBooking.style.cursor = 'not-allowed';
+                        btnSubmitBooking.dataset.invalidPet = "true";
                     } else {
-                        btnSubmitBooking.disabled = false;
                         btnSubmitBooking.style.opacity = '1';
                         btnSubmitBooking.style.cursor = 'pointer';
+                        btnSubmitBooking.dataset.invalidPet = "false";
+                        // Automatically hide warning popup if a valid pet is chosen
+                        if (warningModal) warningModal.style.display = 'none';
                     }
                 } else {
-                    btnSubmitBooking.disabled = true;
                     btnSubmitBooking.style.opacity = '0.5';
                     btnSubmitBooking.style.cursor = 'not-allowed';
+                    btnSubmitBooking.dataset.invalidPet = "false";
                 }
             }
 
@@ -541,9 +560,29 @@
             var formEl = document.getElementById('spaBookingForm');
             if (formEl) {
                 formEl.addEventListener('submit', function (e) {
+                    if (btnSubmitBooking && btnSubmitBooking.dataset.invalidPet === "true") {
+                        e.preventDefault();
+                        if (warningModal) {
+                            warningModal.style.display = 'block';
+                        }
+                        return;
+                    }
+
                     if (selectedTimeInput && !selectedTimeInput.value) {
                         e.preventDefault();
                         alert('Vui lòng chọn khung giờ làm việc của nhân viên.');
+                    }
+                });
+            }
+
+            // Also check on click event directly to provide prompt visual response
+            if (btnSubmitBooking) {
+                btnSubmitBooking.addEventListener('click', function (e) {
+                    if (btnSubmitBooking.dataset.invalidPet === "true") {
+                        e.preventDefault();
+                        if (warningModal) {
+                            warningModal.style.display = 'block';
+                        }
                     }
                 });
             }
@@ -566,6 +605,7 @@
             if (btnCloseModal && modalOverlay) {
                 btnCloseModal.addEventListener('click', function () {
                     modalOverlay.style.display = 'none';
+                    if (warningModal) warningModal.style.display = 'none';
                 });
             }
 

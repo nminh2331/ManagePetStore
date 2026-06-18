@@ -125,8 +125,7 @@ public class HotelBookingController : Controller
                 .AsNoTracking()
                 .Where(c =>
                     c.RoomTypeId == roomTypeId &&
-                    c.Status != "Bảo trì" &&
-                    c.Status != "Ngừng hoạt động" &&
+                    c.Status == "Trống" &&
                     !conflictingCageIds.Contains(c.CageId))
                 .OrderBy(c => c.CageId)
                 .FirstOrDefaultAsync();
