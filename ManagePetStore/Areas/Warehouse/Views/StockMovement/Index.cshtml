@@ -10,21 +10,28 @@
         <p class="text-muted small mt-1 mb-0">Quản lý các Phiếu nhập hàng và Phiếu xuất nội bộ</p>
     </div>
     
-    <div>
-        <a asp-action="CreateExport" class="btn btn-outline-primary btn-custom me-2">
-            <i class="fas fa-arrow-up"></i> Tạo Phiếu Xuất Nội Bộ
-        </a>
-        <a asp-action="CreateImport" class="btn btn-primary-custom btn-custom">
-            <i class="fas fa-arrow-down"></i> Tạo Đơn Nhập
-        </a>
-    </div>
+    @if (User.FindFirst("RoleId")?.Value == "4" || User.IsInRole("admin"))
+    {
+        <div>
+            <a asp-action="CreateExport" class="btn btn-outline-primary btn-custom me-2">
+                <i class="fas fa-arrow-up"></i> Tạo Phiếu Xuất Nội Bộ
+            </a>
+            <a asp-action="CreateImport" class="btn btn-primary-custom btn-custom">
+                <i class="fas fa-arrow-down"></i> Tạo Đơn Nhập
+            </a>
+        </div>
+    }
 </div>
 
 @{
     var currentTab = (string)(ViewBag.Tab ?? "all");
     var allMovements = Model?.ToList() ?? new List<ManagePetStore.Models.StockMovement>();
-    var pendingImports = allMovements.Where(m => m.Type == "Nhập hàng" && m.Status == "Chờ duyệt").ToList();
-    var displayList = currentTab == "pending" ? pendingImports : allMovements;
+    var pendingManager = allMovements.Where(m => m.Status == "Chờ quản lý duyệt").ToList();
+    var pendingInspection = allMovements.Where(m => m.Status == "Chờ kiểm hàng").ToList();
+    
+    var displayList = allMovements;
+    if (currentTab == "manager") displayList = pendingManager;
+    if (currentTab == "inspection") displayList = pendingInspection;
 }
 
 <ul class="nav nav-tabs mb-3">
@@ -35,12 +42,22 @@
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link @(currentTab == "pending" ? "active fw-bold" : "")" 
-           asp-action="Index" asp-route-tab="pending" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate">
-            <i class="fas fa-clock me-1"></i> Chờ kiểm hàng
-            @if (pendingImports.Count > 0)
+        <a class="nav-link @(currentTab == "manager" ? "active fw-bold" : "")" 
+           asp-action="Index" asp-route-tab="manager" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate">
+            <i class="fas fa-user-tie me-1"></i> Chờ quản lý duyệt
+            @if (pendingManager.Count > 0)
             {
-                <span class="badge bg-warning text-dark ms-1">@pendingImports.Count</span>
+                <span class="badge bg-danger ms-1">@pendingManager.Count</span>
+            }
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(currentTab == "inspection" ? "active fw-bold" : "")" 
+           asp-action="Index" asp-route-tab="inspection" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate">
+            <i class="fas fa-boxes me-1"></i> Chờ kiểm hàng
+            @if (pendingInspection.Count > 0)
+            {
+                <span class="badge bg-warning text-dark ms-1">@pendingInspection.Count</span>
             }
         </a>
     </li>
@@ -103,12 +120,12 @@
                                     @if (item.Type == "Nhập hàng")
                                     {
                                         <span class="text-success fw-bold"><i class="fas fa-arrow-down"></i> Nhập hàng</span>
-                                        <div class="text-muted small mt-1"><i class="fas fa-truck"></i> @(item.Supplier ?? "N/A")</div>
+                                        <div class="text-muted small mt-1"><i class="fas fa-truck"></i> @(item.SupplierNav?.Name ?? item.Supplier ?? "N/A")</div>
                                     }
                                     else
                                     {
                                         <span class="text-danger fw-bold"><i class="fas fa-arrow-up"></i> Xuất nội bộ</span>
-                                        <div class="text-muted small mt-1">@item.Supplier</div>
+                                        <div class="text-muted small mt-1">@(item.SupplierNav?.Name ?? item.Supplier ?? "N/A")</div>
                                     }
                                 </td>
                                 <td class="px-4 py-3">
@@ -129,13 +146,17 @@
                                     {
                                         <span class="badge bg-success rounded-pill px-3 py-2">Hoàn thành</span>
                                     }
-                                    else if (item.Status == "Chờ duyệt")
+                                    else if (item.Status == "Chờ quản lý duyệt")
                                     {
-                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-2">Chờ duyệt</span>
+                                        <span class="badge bg-danger rounded-pill px-3 py-2">Chờ quản lý duyệt</span>
+                                    }
+                                    else if (item.Status == "Chờ kiểm hàng")
+                                    {
+                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-2">Chờ kiểm hàng</span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-danger rounded-pill px-3 py-2">Đã hủy</span>
+                                        <span class="badge bg-secondary rounded-pill px-3 py-2">Đã hủy</span>
                                     }
                                 </td>
                                 <td class="px-4 py-3 text-end">

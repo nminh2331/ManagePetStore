@@ -1,0 +1,130 @@
+@model IEnumerable<ManagePetStore.Models.StockMovement>
+@{
+    ViewData["Title"] = "Duyệt Phiếu Nhập Kho";
+    Layout = "~/Areas/Manager/Views/Shared/_ManagerLayout.cshtml";
+    var currentTab = (string)(ViewBag.Tab ?? "manager");
+    var allMovements = Model?.ToList() ?? new List<ManagePetStore.Models.StockMovement>();
+    var pendingManager    = allMovements.Where(m => m.Status == "Chờ quản lý duyệt").ToList();
+    var pendingInspection = allMovements.Where(m => m.Status == "Chờ kiểm hàng").ToList();
+    var displayList = allMovements;
+    if (currentTab == "manager")    displayList = pendingManager;
+    if (currentTab == "inspection") displayList = pendingInspection;
+}
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="fas fa-check-circle me-2"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        <i class="fas fa-exclamation-circle me-2"></i> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h2 class="fw-bold m-0" style="color:#333;">Duyệt Phiếu Nhập Kho</h2>
+        <p class="text-muted small mt-1 mb-0">Xem xét và duyệt các đơn nhập hàng từ thủ kho</p>
+    </div>
+</div>
+
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <a class="nav-link @(currentTab == "manager" ? "active fw-bold" : "")"
+           asp-area="Manager" asp-controller="Warehouse" asp-action="Index" asp-route-tab="manager">
+            <i class="fas fa-user-tie me-1"></i> Chờ tôi duyệt
+            @if (pendingManager.Count > 0) { <span class="badge bg-danger ms-1">@pendingManager.Count</span> }
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(currentTab == "inspection" ? "active fw-bold" : "")"
+           asp-area="Manager" asp-controller="Warehouse" asp-action="Index" asp-route-tab="inspection">
+            <i class="fas fa-boxes me-1"></i> Chờ kiểm hàng
+            @if (pendingInspection.Count > 0) { <span class="badge bg-warning text-dark ms-1">@pendingInspection.Count</span> }
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(currentTab == "all" ? "active fw-bold" : "")"
+           asp-area="Manager" asp-controller="Warehouse" asp-action="Index" asp-route-tab="all">
+            <i class="fas fa-list me-1"></i> Tất cả phiếu
+        </a>
+    </li>
+</ul>
+
+<div class="card border-0 shadow-sm" style="border-radius:12px;">
+    <div class="card-body p-0">
+        @if (!displayList.Any())
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i>
+                <p>Không có phiếu nào ở trạng thái này.</p>
+            </div>
+        }
+        else
+        {
+            <table class="table table-hover align-middle mb-0">
+                <thead style="background:#f8f9fa;">
+                    <tr>
+                        <th class="border-0 px-4 py-3">Mã phiếu</th>
+                        <th class="border-0 px-4 py-3">Ngày tạo</th>
+                        <th class="border-0 px-4 py-3">Loại</th>
+                        <th class="border-0 px-4 py-3">Mặt hàng</th>
+                        <th class="border-0 px-4 py-3">Người tạo</th>
+                        <th class="border-0 px-4 py-3 text-end">Tổng giá trị</th>
+                        <th class="border-0 px-4 py-3 text-center">Trạng thái</th>
+                        <th class="border-0 px-4 py-3 text-end">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in displayList)
+                    {
+                        <tr>
+                            <td class="px-4 py-3 fw-bold text-muted">#@item.MovementId</td>
+                            <td class="px-4 py-3">@item.Date.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td class="px-4 py-3">
+                                @if (item.Type == "Nhập hàng")
+                                { <span class="text-success fw-bold"><i class="fas fa-arrow-down"></i> Nhập hàng</span>
+                                  <div class="text-muted small mt-1"><i class="fas fa-truck"></i> @(item.SupplierNav?.Name ?? item.Supplier ?? "N/A")</div> }
+                                else
+                                { <span class="text-primary fw-bold"><i class="fas fa-arrow-up"></i> Xuất nội bộ</span>
+                                  <div class="text-muted small mt-1">@(item.SupplierNav?.Name ?? item.Supplier ?? "N/A")</div> }
+                            </td>
+                            <td class="px-4 py-3">
+                                <ul class="list-unstyled mb-0 small">
+                                    @foreach (var d in item.StockMovementDetails.Take(2))
+                                    { <li><span class="fw-bold">@d.Quantity</span> x @d.ProductSkuNavigation?.Name</li> }
+                                    @if (item.StockMovementDetails.Count > 2)
+                                    { <li class="text-muted fst-italic">+ @(item.StockMovementDetails.Count - 2) mặt hàng khác...</li> }
+                                </ul>
+                            </td>
+                            <td class="px-4 py-3">@item.CreatedBy?.FullName</td>
+                            <td class="px-4 py-3 text-end fw-bold">@string.Format("{0:N0} đ", item.TotalValue)</td>
+                            <td class="px-4 py-3 text-center">
+                                @{
+                                    var bc = item.Status switch {
+                                        "Hoàn thành"           => "bg-success",
+                                        "Chờ quản lý duyệt"   => "bg-danger",
+                                        "Chờ kiểm hàng"        => "bg-warning text-dark",
+                                        _                      => "bg-secondary"
+                                    };
+                                }
+                                <span class="badge @bc rounded-pill px-3 py-2">@item.Status</span>
+                            </td>
+                            <td class="px-4 py-3 text-end">
+                                <a asp-area="Manager" asp-controller="Warehouse" asp-action="Details"
+                                   asp-route-id="@item.MovementId" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i> Chi tiết
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>

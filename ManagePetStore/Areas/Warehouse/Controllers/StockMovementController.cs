@@ -16,7 +16,7 @@ using System.Security.Claims;
 namespace ManagePetStore.Areas.Warehouse.Controllers
 {
     [Area("Warehouse")]
-    [Authorize(Roles = "warehouse,admin")]
+    [Authorize(Roles = "warehouse,manager,admin")]
     public class StockMovementController : Controller
     {
         private readonly IStockMovementService _movementService;
@@ -150,14 +150,31 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             }
         }
 
-        // Hiển thị màn hình kiểm hàng (GET)
+        // Hiển thị màn hình kiểm hàng (GET) - Dành cho Warehouse
         public async Task<IActionResult> Approve(int id)
         {
             var movement = await _movementService.GetMovementById(id);
             if (movement == null) return NotFound();
-            if (movement.Type != "Nhập hàng" || movement.Status != "Chờ duyệt")
+            if (movement.Type != "Nhập hàng" || movement.Status != "Chờ kiểm hàng")
                 return RedirectToAction(nameof(Details), new { id });
             return View(movement);
+        }
+
+        // Action dùng chung cho Manager duyệt đơn hoặc Warehouse duyệt Xuất kho
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApproveStatus(int id)
+        {
+            try
+            {
+                int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "1");
+                await _movementService.ApproveMovement(id, userId, null);
+            }
+            catch (ServiceException ex)
+            {
+                TempData["ErrorMessage"] = ex.Message;
+            }
+            return RedirectToAction(nameof(Details), new { id });
         }
 
         // Xử lý duyệt phiếu sau khi nhân viên kiểm hàng và điền HSD (POST)
