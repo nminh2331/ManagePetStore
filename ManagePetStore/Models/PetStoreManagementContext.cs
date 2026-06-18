@@ -31,7 +31,10 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<HotelBooking> HotelBookings { get; set; }
 
-    public virtual DbSet<InventoryBatch> InventoryBatchs { get; set; }
+    public virtual DbSet<InventoryBatch> InventoryBatches { get; set; }
+    public virtual DbSet<InventoryBatch> InventoryBatchs { get => InventoryBatches; set => InventoryBatches = value; }
+
+    public virtual DbSet<MedicalRecord> MedicalRecords { get; set; }
 
     public virtual DbSet<Order> Orders { get; set; }
 
@@ -78,10 +81,9 @@ public partial class PetStoreManagementContext : DbContext
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
 
-
     }
 //#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-//        => optionsBuilder.UseSqlServer("Server= DESKTOP-S7IL3CT\\SQLEXPRESS;Database= PetStoreManagement;Trusted_Connection=True; TrustServerCertificate=True;");
+      //  => optionsBuilder.UseSqlServer("Server=DESKTOP-0NF6T35 ;Database= PetStoreManagement;Trusted_Connection=True; TrustServerCertificate=True;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -236,7 +238,9 @@ public partial class PetStoreManagementContext : DbContext
 
         modelBuilder.Entity<InventoryBatch>(entity =>
         {
-            entity.HasKey(e => e.BatchId).HasName("PK__Inventor__5D55CE58BACC1E47");
+            entity.HasKey(e => e.BatchId).HasName("PK__Inventor__5D55CE58B72515AF");
+
+            entity.ToTable("InventoryBatch");
 
             entity.Property(e => e.ExpiryDate).HasColumnType("datetime");
             entity.Property(e => e.ProductSku).HasMaxLength(50);
@@ -246,7 +250,32 @@ public partial class PetStoreManagementContext : DbContext
 
             entity.HasOne(d => d.ProductSkuNavigation).WithMany(p => p.InventoryBatches)
                 .HasForeignKey(d => d.ProductSku)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_InventoryBatch_Product");
+        });
+
+        modelBuilder.Entity<MedicalRecord>(entity =>
+        {
+            entity.HasKey(e => e.RecordId).HasName("PK__MedicalR__FBDF78E9E466D61C");
+
+            entity.Property(e => e.AbnormalSymptoms).HasMaxLength(500);
+            entity.Property(e => e.DateCreated)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.DigestiveSigns).HasMaxLength(500);
+            entity.Property(e => e.FurSkinCheck).HasMaxLength(100);
+            entity.Property(e => e.HealthStatus).HasMaxLength(100);
+            entity.Property(e => e.IncisorCheck).HasMaxLength(100);
+            entity.Property(e => e.ParasitePrevention).HasMaxLength(500);
+            entity.Property(e => e.PhysicalCheck).HasMaxLength(100);
+            entity.Property(e => e.RearingConditions).HasMaxLength(100);
+            entity.Property(e => e.ShellStatus).HasMaxLength(100);
+            entity.Property(e => e.VaccinationStatus).HasMaxLength(100);
+            entity.Property(e => e.Weight).HasColumnType("decimal(5, 2)");
+
+            entity.HasOne(d => d.Pet).WithMany(p => p.MedicalRecords)
+                .HasForeignKey(d => d.PetId)
+                .HasConstraintName("FK_MedicalRecords_Pets");
         });
 
         modelBuilder.Entity<Order>(entity =>
@@ -357,6 +386,7 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasKey(e => e.Sku);
 
             entity.Property(e => e.Sku).HasMaxLength(50);
+            entity.Property(e => e.CostPrice).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.ExpiryDate).HasColumnType("datetime");
             entity.Property(e => e.ImageUrl)
                 .HasMaxLength(500)
@@ -395,16 +425,6 @@ public partial class PetStoreManagementContext : DbContext
             entity.Property(e => e.Size).HasMaxLength(50);
             entity.Property(e => e.Status).HasDefaultValue(true);
             entity.Property(e => e.Type).HasMaxLength(100);
-        });
-
-        modelBuilder.Entity<Room>(entity =>
-        {
-            entity.HasKey(e => e.RoomId);
-            entity.Property(e => e.DailyRate).HasColumnType("decimal(18, 2)");
-            entity.Property(e => e.Dimensions).HasMaxLength(100);
-            entity.Property(e => e.RoomCode).HasMaxLength(50);
-            entity.Property(e => e.RoomType).HasMaxLength(50);
-            entity.Property(e => e.Status).HasMaxLength(30);
         });
 
         modelBuilder.Entity<SpaBooking>(entity =>
@@ -533,7 +553,7 @@ public partial class PetStoreManagementContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_StockMovements_Users");
 
-            entity.HasOne(d => d.SupplierNav).WithMany(p => p.StockMovements)
+            entity.HasOne(d => d.SupplierNavigation).WithMany(p => p.StockMovements)
                 .HasForeignKey(d => d.SupplierId)
                 .HasConstraintName("FK_StockMovement_Supplier");
         });
@@ -553,6 +573,33 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasOne(d => d.StockMovement).WithMany(p => p.StockMovementDetails)
                 .HasForeignKey(d => d.StockMovementId)
                 .HasConstraintName("FK_StockMovementDetails_StockMovements");
+        });
+
+        modelBuilder.Entity<Supplier>(entity =>
+        {
+            entity.HasKey(e => e.SupplierId).HasName("PK__Supplier__4BE666B4E6FC80CF");
+
+            entity.Property(e => e.Address).HasMaxLength(500);
+            entity.Property(e => e.Email).HasMaxLength(255);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.Name).HasMaxLength(255);
+            entity.Property(e => e.Phone).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<SupplierCategory>(entity =>
+        {
+            entity.ToTable("SupplierCategories");
+            entity.HasKey(e => new { e.SupplierId, e.CategoryId });
+
+            entity.HasOne(d => d.Supplier)
+                .WithMany(p => p.SupplierCategories)
+                .HasForeignKey(d => d.SupplierId)
+                .HasConstraintName("FK_SupplierCategory_Supplier");
+
+            entity.HasOne(d => d.Category)
+                .WithMany()
+                .HasForeignKey(d => d.CategoryId)
+                .HasConstraintName("FK_SupplierCategory_Category");
         });
 
         modelBuilder.Entity<User>(entity =>
@@ -592,30 +639,6 @@ public partial class PetStoreManagementContext : DbContext
             entity.Property(e => e.Status).HasDefaultValue(true);
             entity.Property(e => e.Type).HasMaxLength(20);
             entity.Property(e => e.Value).HasColumnType("decimal(18, 2)");
-        });
-        modelBuilder.Entity<Supplier>(entity =>
-        {
-            entity.HasKey(e => e.SupplierId);
-            entity.Property(e => e.Name).HasMaxLength(255);
-            entity.Property(e => e.Phone).HasMaxLength(50);
-            entity.Property(e => e.Email).HasMaxLength(255);
-            entity.Property(e => e.Address).HasMaxLength(500);
-            entity.Property(e => e.IsActive).HasDefaultValue(true);
-        });
-
-        modelBuilder.Entity<SupplierCategory>(entity =>
-        {
-            entity.HasKey(e => new { e.SupplierId, e.CategoryId });
-
-            entity.HasOne(d => d.Supplier)
-                .WithMany(p => p.SupplierCategories)
-                .HasForeignKey(d => d.SupplierId)
-                .HasConstraintName("FK_SupplierCategory_Supplier");
-
-            entity.HasOne(d => d.Category)
-                .WithMany()
-                .HasForeignKey(d => d.CategoryId)
-                .HasConstraintName("FK_SupplierCategory_Category");
         });
 
         OnModelCreatingPartial(modelBuilder);
