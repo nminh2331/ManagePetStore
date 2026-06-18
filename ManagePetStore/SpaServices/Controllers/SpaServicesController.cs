@@ -17,7 +17,7 @@ namespace ManagePetStore.SpaServices.Controllers
     {
         private static readonly string[] ActiveHotelStatuses = ["Active", "Đang ở"];
         private static readonly string[] BlockingHotelStatuses = ["Đã đặt", "Active", "Đang ở"];
-        private static readonly string[] EditableCageStatuses = ["Trống", "Bảo trì", "Đang dọn dẹp"];
+        private static readonly string[] EditableCageStatuses = ["Trống", "Đang dọn dẹp", "Bảo trì", "Khóa"];
 
         private readonly PetStoreManagementContext _context;
         private readonly ILogger<SpaServicesController> _logger;
@@ -1088,8 +1088,10 @@ namespace ManagePetStore.SpaServices.Controllers
             // Thống kê tổng quan
             ViewBag.TotalCageCount = await _context.Cages.CountAsync();
             ViewBag.EmptyCageCount = await _context.Cages.CountAsync(c => c.Status == "Trống");
+            ViewBag.CleaningCageCount = await _context.Cages.CountAsync(c => c.Status == "Đang dọn dẹp");
+            ViewBag.LockedCageCount = await _context.Cages.CountAsync(c => c.Status == "Khóa");
             ViewBag.MaintenanceCageCount = await _context.Cages.CountAsync(c =>
-                c.Status == "Bảo trì" || c.Status == "Đang dọn dẹp");
+                c.Status == "Bảo trì" || c.Status == "Đang dọn dẹp" || c.Status == "Khóa");
 
             // Danh sách HotelBookings đang active
             var activeBookings = await _context.HotelBookings
@@ -1704,7 +1706,7 @@ namespace ManagePetStore.SpaServices.Controllers
 
             if (!EditableCageStatuses.Contains(status))
             {
-                return Json(new { success = false, message = "Chỉ được cập nhật Trống, Bảo trì hoặc Đang dọn dẹp." });
+                return Json(new { success = false, message = "Chỉ được cập nhật Trống, Đang dọn dẹp, Bảo trì hoặc Khóa." });
             }
 
             await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -1739,7 +1741,7 @@ namespace ManagePetStore.SpaServices.Controllers
                     return Json(new
                     {
                         success = false,
-                        message = "Chuồng đang có lịch đặt online sắp tới. Hãy xử lý lịch đặt trước khi đưa chuồng vào bảo trì hoặc dọn dẹp."
+                        message = "Chuồng đang có lịch đặt online sắp tới. Hãy xử lý lịch đặt trước khi đưa chuồng vào dọn dẹp, bảo trì hoặc khóa."
                     });
                 }
 

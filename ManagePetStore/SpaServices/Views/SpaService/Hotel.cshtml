@@ -25,6 +25,9 @@
     int emptyCageCount = ViewBag.EmptyCageCount ?? 0;
     int occupiedCageCount = ViewBag.OccupiedCageCount ?? 0;
     int maintenanceCageCount = ViewBag.MaintenanceCageCount ?? 0;
+    int cleaningCageCount = ViewBag.CleaningCageCount ?? 0;
+    int lockedCageCount = ViewBag.LockedCageCount ?? 0;
+    int repairCageCount = Math.Max(0, maintenanceCageCount - cleaningCageCount - lockedCageCount);
 
     string pageTitle = isCheckInPage
         ? "Pet Check-In & Health Check-In"
@@ -255,6 +258,7 @@
     .cage-map-room.status-occupied { border-color: #FFB4BA; background: #FFF7F7; cursor: grab; }
     .cage-map-room.status-maintenance { border-color: #FFD28A; background: #FFFAEF; }
     .cage-map-room.status-cleaning { border-color: #A9D5FF; background: #F4F9FF; }
+    .cage-map-room.status-locked { border-color: #C6C1BD; background: #F4F2F0; }
     .cage-map-room.drag-target { outline: 3px solid rgba(255,120,21,.35); border-color: #FF7815; }
     .cage-map-room.map-hidden { display: none; }
 
@@ -284,6 +288,52 @@
     .status-occupied .cage-map-status { background: #FFE0E2; color: #B42332; }
     .status-maintenance .cage-map-status { background: #FFF0C9; color: #9A5B00; }
     .status-cleaning .cage-map-status { background: #DCEEFF; color: #1769AA; }
+    .status-locked .cage-map-status { background: #E7E3DF; color: #5D524D; }
+
+    .maintenance-status-row {
+        padding: 18px 24px 4px;
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .maintenance-status-card {
+        border: 1px solid #ECE9E5;
+        border-radius: 14px;
+        padding: 13px 14px;
+        background: #FFFFFF;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .maintenance-status-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: .9rem;
+    }
+
+    .maintenance-status-value {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: #2D2521;
+        line-height: 1;
+        margin: 0;
+    }
+
+    .maintenance-status-label {
+        color: #8C7E77;
+        font-size: .62rem;
+        text-transform: uppercase;
+        letter-spacing: .35px;
+        margin: 3px 0 0;
+        font-weight: 700;
+    }
 
     .cage-map-room-type {
         color: #7D706A;
@@ -1004,11 +1054,13 @@
         .hotel-main-layout { grid-template-columns: 1fr; }
         .cage-map-toolbar { flex-direction: column; }
         .cage-map-filters { justify-content: flex-start; }
+        .maintenance-status-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
 
     @@media (max-width: 760px) {
         .stat-cards-row { grid-template-columns: 1fr; }
         .cage-map-board { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px; }
+        .maintenance-status-row { grid-template-columns: 1fr; padding: 16px 16px 4px; }
         .cage-detail-grid { grid-template-columns: 1fr; }
         .cage-detail-full { grid-column: auto; }
         .cage-detail-actions { align-items: stretch; flex-direction: column; }
@@ -1104,7 +1156,45 @@
             <button type="button" class="cage-map-filter active" data-map-filter="all">Tất cả (@totalCageCount)</button>
             <button type="button" class="cage-map-filter" data-map-filter="empty">Trống (@emptyCageCount)</button>
             <button type="button" class="cage-map-filter" data-map-filter="occupied">Có thú cưng (@occupiedCageCount)</button>
-            <button type="button" class="cage-map-filter" data-map-filter="operational">Bảo trì / dọn dẹp (@maintenanceCageCount)</button>
+            <button type="button" class="cage-map-filter" data-map-filter="operational">Vận hành (@maintenanceCageCount)</button>
+        </div>
+    </div>
+
+    <div class="maintenance-status-row" aria-label="Room Maintenance Status">
+        <div class="maintenance-status-card">
+            <span class="maintenance-status-icon" style="background:#DDF7E7; color:#14733B;"><i class="fa-solid fa-door-open"></i></span>
+            <span>
+                <p class="maintenance-status-value">@emptyCageCount</p>
+                <p class="maintenance-status-label">Available</p>
+            </span>
+        </div>
+        <div class="maintenance-status-card">
+            <span class="maintenance-status-icon" style="background:#FFE0E2; color:#B42332;"><i class="fa-solid fa-paw"></i></span>
+            <span>
+                <p class="maintenance-status-value">@occupiedCageCount</p>
+                <p class="maintenance-status-label">Occupied</p>
+            </span>
+        </div>
+        <div class="maintenance-status-card">
+            <span class="maintenance-status-icon" style="background:#DCEEFF; color:#1769AA;"><i class="fa-solid fa-spray-can-sparkles"></i></span>
+            <span>
+                <p class="maintenance-status-value">@cleaningCageCount</p>
+                <p class="maintenance-status-label">Cleaning</p>
+            </span>
+        </div>
+        <div class="maintenance-status-card">
+            <span class="maintenance-status-icon" style="background:#FFF0C9; color:#9A5B00;"><i class="fa-solid fa-screwdriver-wrench"></i></span>
+            <span>
+                <p class="maintenance-status-value">@repairCageCount</p>
+                <p class="maintenance-status-label">Maintenance</p>
+            </span>
+        </div>
+        <div class="maintenance-status-card">
+            <span class="maintenance-status-icon" style="background:#E7E3DF; color:#5D524D;"><i class="fa-solid fa-lock"></i></span>
+            <span>
+                <p class="maintenance-status-value">@lockedCageCount</p>
+                <p class="maintenance-status-label">Locked</p>
+            </span>
         </div>
     </div>
 
@@ -1129,8 +1219,10 @@
                             ? "maintenance"
                             : cage.Status == "Đang dọn dẹp"
                                 ? "cleaning"
-                                : "occupied";
-                string filterKey = statusKey is "maintenance" or "cleaning" ? "operational" : statusKey;
+                                : cage.Status == "Khóa"
+                                    ? "locked"
+                                    : "occupied";
+                string filterKey = statusKey is "maintenance" or "cleaning" or "locked" ? "operational" : statusKey;
 
                 <button type="button"
                         class="cage-map-room status-@statusKey"
@@ -1158,7 +1250,7 @@
                     else
                     {
                         <span class="cage-map-room-hint">
-                            @(statusKey == "empty" ? "Sẵn sàng tiếp nhận thú cưng." : statusKey == "maintenance" ? "Tạm khóa do đang bảo trì." : statusKey == "cleaning" ? "Đang vệ sinh, chưa thể tiếp nhận." : "Trạng thái cần được kiểm tra.")
+                            @(statusKey == "empty" ? "Sẵn sàng tiếp nhận thú cưng." : statusKey == "maintenance" ? "Tạm khóa do đang bảo trì." : statusKey == "cleaning" ? "Đang vệ sinh, chưa thể tiếp nhận." : statusKey == "locked" ? "Đã khóa, không nhận lịch mới." : "Trạng thái cần được kiểm tra.")
                         </span>
                     }
 
@@ -1175,6 +1267,7 @@
             <span><i class="fa-solid fa-circle" style="color:#E05260;"></i>Đang có thú cưng</span>
             <span><i class="fa-solid fa-circle" style="color:#E8A122;"></i>Bảo trì</span>
             <span><i class="fa-solid fa-circle" style="color:#4C9DDF;"></i>Đang dọn dẹp</span>
+            <span><i class="fa-solid fa-circle" style="color:#8A817C;"></i>Khóa</span>
         </div>
     }
 </div>
@@ -1688,8 +1781,9 @@
                                 <label class="hform-label" for="mapOperationalStatus">Chỉ áp dụng khi chuồng không có thú cưng</label>
                                 <select class="hform-control" id="mapOperationalStatus">
                                     <option value="Trống">Trống, sẵn sàng tiếp nhận</option>
-                                    <option value="Bảo trì">Bảo trì</option>
                                     <option value="Đang dọn dẹp">Đang dọn dẹp</option>
+                                    <option value="Bảo trì">Bảo trì</option>
+                                    <option value="Khóa">Khóa</option>
                                 </select>
                             </div>
                             <button type="button" class="btn-modal-submit" id="mapStatusButton" style="flex:0 0 auto; padding:11px 18px;">Cập nhật trạng thái</button>
@@ -2257,7 +2351,7 @@ function openCageMapDetail(cageId) {
                 document.getElementById('mapMoveButton').disabled = data.availableDestinations.length === 0;
             } else {
                 document.getElementById('mapOperationalStatus').value =
-                    ['Trống', 'Bảo trì', 'Đang dọn dẹp'].includes(cage.status) ? cage.status : 'Trống';
+                    ['Trống', 'Đang dọn dẹp', 'Bảo trì', 'Khóa'].includes(cage.status) ? cage.status : 'Trống';
             }
 
             const careLogs = data.careLogs || [];
