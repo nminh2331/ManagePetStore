@@ -89,10 +89,10 @@
                             <td class="px-4 py-3">
                                 @if (item.Type == "Nhập hàng")
                                 { <span class="text-success fw-bold"><i class="fas fa-arrow-down"></i> Nhập hàng</span>
-                                  <div class="text-muted small mt-1"><i class="fas fa-truck"></i> @(item.SupplierNav?.Name ?? item.Supplier ?? "N/A")</div> }
+                                  <div class="text-muted small mt-1"><i class="fas fa-truck"></i> @(item.SupplierNavigation?.Name ?? item.Supplier ?? "N/A")</div> }
                                 else
                                 { <span class="text-primary fw-bold"><i class="fas fa-arrow-up"></i> Xuất nội bộ</span>
-                                  <div class="text-muted small mt-1">@(item.SupplierNav?.Name ?? item.Supplier ?? "N/A")</div> }
+                                  <div class="text-muted small mt-1">@(item.SupplierNavigation?.Name ?? item.Supplier ?? "N/A")</div> }
                             </td>
                             <td class="px-4 py-3">
                                 <ul class="list-unstyled mb-0 small">

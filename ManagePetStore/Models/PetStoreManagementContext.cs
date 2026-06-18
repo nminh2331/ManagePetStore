@@ -240,7 +240,7 @@ public partial class PetStoreManagementContext : DbContext
         {
             entity.HasKey(e => e.BatchId).HasName("PK__Inventor__5D55CE58B72515AF");
 
-            entity.ToTable("InventoryBatch");
+            entity.ToTable("InventoryBatchs");
 
             entity.Property(e => e.ExpiryDate).HasColumnType("datetime");
             entity.Property(e => e.ProductSku).HasMaxLength(50);

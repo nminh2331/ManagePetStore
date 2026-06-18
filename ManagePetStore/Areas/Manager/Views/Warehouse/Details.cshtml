@@ -90,7 +90,7 @@
             <p class="mb-1"><strong>Người lập phiếu:</strong> @Model.CreatedBy?.FullName</p>
             <p class="mb-1">
                 <strong>@(Model.Type == "Nhập hàng" ? "Nhà cung cấp" : "Đơn vị nhận"):</strong>
-                @(Model.SupplierNav?.Name ?? Model.Supplier ?? "N/A")
+                @(Model.SupplierNavigation?.Name ?? Model.Supplier ?? "N/A")
             </p>
         </div>
         <div class="col-5">

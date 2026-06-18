@@ -23,7 +23,7 @@ public class StockMovementRepository : IStockMovementRepository
     {
         var query = _context.StockMovements
             .Include(m => m.CreatedBy)
-            .Include(m => m.SupplierNav)
+            .Include(m => m.SupplierNavigation)
             .Include(m => m.StockMovementDetails)
                 .ThenInclude(d => d.ProductSkuNavigation)
             .AsQueryable();
@@ -41,7 +41,7 @@ public class StockMovementRepository : IStockMovementRepository
         {
             query = query.Where(m => 
                 (m.Supplier != null && m.Supplier.Contains(search)) ||
-                (m.SupplierNav != null && m.SupplierNav.Name.Contains(search)) ||
+                (m.SupplierNavigation != null && m.SupplierNavigation.Name.Contains(search)) ||
                 m.StockMovementDetails.Any(d => 
                     d.ProductSku.Contains(search) || 
                     d.ProductSkuNavigation.Name.Contains(search))
@@ -55,7 +55,7 @@ public class StockMovementRepository : IStockMovementRepository
     {
         return await _context.StockMovements
             .Include(m => m.CreatedBy)
-            .Include(m => m.SupplierNav)
+            .Include(m => m.SupplierNavigation)
             .Include(m => m.StockMovementDetails)
                 .ThenInclude(d => d.ProductSkuNavigation)
             .FirstOrDefaultAsync(m => m.MovementId == id);
