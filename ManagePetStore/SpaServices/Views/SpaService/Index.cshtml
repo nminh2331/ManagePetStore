@@ -374,12 +374,7 @@
         border: 1px dashed #CBEFDB;
         color: #178A45;
         align-items: center;
-    }
-
-    .slot-vacant:hover {
-        background-color: #D6F3E1;
-        border-style: solid;
-        transform: translateY(-2px);
+        cursor: default !important;
     }
 
     .slot-vacant i {
@@ -1252,12 +1247,8 @@
                                         }
                                         else
                                         {
-                                            // Cho phép click để đặt lịch nhanh
-                                            <div class="schedule-slot-card slot-vacant btn-quick-book" 
-                                                 data-groomer-id="@groomer.UserId"
-                                                 data-groomer-name="@groomer.FullName"
-                                                 data-time="@slot">
-                                                <i class="fa-solid fa-plus"></i>
+                                            <div class="schedule-slot-card slot-vacant">
+                                                <i class="fa-solid fa-circle-minus" style="font-size: 0.65rem; color: #a5d6a7; margin-bottom: 2px;"></i>
                                                 <span>Đang trống</span>
                                             </div>
                                         }
@@ -1742,99 +1733,6 @@
     </div>
 </div>
 
-<!-- ======================================================= -->
-<!-- MODAL C: ĐẶT LỊCH SPA NHANH (MOCKUP 2) -->
-<!-- ======================================================= -->
-<div class="modal fade" id="quickBookingModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content custom-modal-dialog">
-            <div class="custom-modal-header">
-                <span class="custom-modal-title">
-                    <i class="fa-solid fa-calendar-plus"></i>
-                    Đặt lịch Spa nhanh 
-                </span>
-                <button type="button" class="custom-modal-close-btn" data-bs-dismiss="modal" aria-label="Close">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-            <div class="custom-modal-body">
-                <form asp-area="" asp-controller="SpaServices" asp-action="CreateQuickBooking" method="post">
-                    <input type="hidden" name="groomerId" id="modalGroomerId">
-                    <input type="hidden" name="date" value="@selectedDate.ToString("yyyy-MM-dd")">
-                    
-                    <!-- Quick Info Strip -->
-                    <div class="quick-info-strip">
-                        <div class="quick-info-item">
-                            <label>Kỹ thuật viên</label>
-                            <span id="modalGroomerName">Minh Tran</span>
-                        </div>
-                        <div class="quick-info-item quick-info-item-date">
-                            <label>Ngày hẹn</label>
-                            <span>@selectedDate.ToString("yyyy-MM-dd")</span>
-                        </div>
-                        <div class="quick-info-item">
-                            <label>Giờ xếp ca</label>
-                            <span id="modalTimeSlot">11:00</span>
-                            <input type="hidden" name="time" id="modalTimeSlotInput">
-                        </div>
-                    </div>
-
-                    <!-- Customer Dropdown (CRM) -->
-                    <div class="form-group-custom">
-                        <label>Chọn khách hàng (CRM)</label>
-                        <select name="customerId" id="bookingCustomerSelect" class="form-control-custom" required>
-                            <option value="">-- Chọn khách hàng --</option>
-                            @foreach (var customer in customers)
-                            {
-                                <option value="@customer.CustomerId">@customer.FullName (@customer.Phone)</option>
-                            }
-                        </select>
-                    </div>
-
-                    <!-- Pet Dropdown -->
-                    <div class="form-group-custom">
-                        <label>Chọn thú cưng</label>
-                        <select name="petId" id="bookingPetSelect" class="form-control-custom" required disabled>
-                            <option value="">-- Vui lòng chọn khách hàng trước --</option>
-                        </select>
-                    </div>
-
-                    <!-- Spa Service Dropdown -->
-                    <div class="form-group-custom">
-                        <label>Dịch vụ Spa</label>
-                        <select name="serviceId" id="bookingServiceSelect" class="form-control-custom" required>
-                            <option value="">-- Chọn gói dịch vụ Spa --</option>
-                            @foreach (var service in activeServices)
-                            {
-                                <option value="@service.ServiceId" data-price="@service.Price">
-                                    @service.Name (@(service.Price.ToString("N0"))đ)
-                                </option>
-                            }
-                        </select>
-                    </div>
-
-                    <!-- Applied Price Display -->
-                    <div class="form-group-custom">
-                        <label>Đơn giá áp dụng</label>
-                        <input type="text" id="bookingAppliedPrice" class="form-control-custom" value="0đ" disabled>
-                    </div>
-
-                    <!-- Grooming notes -->
-                    <div class="form-group-custom">
-                        <label>Ghi chú (Grooming notes)</label>
-                        <textarea name="notes" class="form-control-custom" rows="2" placeholder="e.g. Sấy khô kỹ tai..."></textarea>
-                    </div>
-
-                    <!-- Buttons -->
-                    <div class="modal-btn-row">
-                        <button type="button" class="btn-custom-cancel" data-bs-dismiss="modal">Hủy bỏ</button>
-                        <button type="submit" class="btn-custom-submit">Đặt lịch ngay</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- ======================================================= -->
 <!-- MODAL D: THÊM DỊCH VỤ SPA MỚI (MOCKUP 3) -->
@@ -2079,39 +1977,7 @@
 @section Scripts {
     <script>
         $(document).ready(function () {
-            // =========================================================================
-            // 1. DYNAMIC DROPDOWN: CUSTOMER -> PETS (QUICK BOOKING MODAL)
-            // =========================================================================
-            $('#bookingCustomerSelect').change(function () {
-                var customerId = $(this).val();
-                var $petSelect = $('#bookingPetSelect');
-                
-                if (!customerId) {
-                    $petSelect.html('<option value="">-- Vui lòng chọn khách hàng trước --</option>').prop('disabled', true);
-                    return;
-                }
 
-                $petSelect.html('<option value="">Đang tải...</option>').prop('disabled', true);
-                
-                $.getJSON('/SpaServices/GetPetsByCustomer', { customerId: customerId }, function (data) {
-                    var options = '<option value="">-- Chọn thú cưng --</option>';
-                    $.each(data, function (index, pet) {
-                        options += '<option value="' + pet.petId + '">' + pet.name + ' (' + pet.species + ' - ' + pet.breed + ')</option>';
-                    });
-                    $petSelect.html(options).prop('disabled', false);
-                });
-            });
-
-            // Hiển thị đơn giá tự động trong modal đặt lịch nhanh
-            $('#bookingServiceSelect').change(function () {
-                var selectedOption = $(this).find('option:selected');
-                var price = selectedOption.data('price');
-                if (price !== undefined) {
-                    $('#bookingAppliedPrice').val(parseFloat(price).toLocaleString('vi-VN') + 'đ');
-                } else {
-                    $('#bookingAppliedPrice').val('0đ');
-                }
-            });
 
             // =========================================================================
             // 2. DATEPICKER CHANGED -> RELOAD DATE
@@ -2121,27 +1987,7 @@
                 window.location.href = '/SpaServices?date=' + date;
             });
 
-            // =========================================================================
-            // 3. INTERACTION: CLICK "ĐANG TRỐNG" -> OPEN QUICK BOOKING MODAL (MOCKUP 2)
-            // =========================================================================
-            $('.btn-quick-book').click(function () {
-                var groomerId = $(this).data('groomer-id');
-                var groomerName = $(this).data('groomer-name');
-                var time = $(this).data('time');
 
-                $('#modalGroomerId').val(groomerId);
-                $('#modalGroomerName').text(groomerName);
-                $('#modalTimeSlot').text(time);
-                $('#modalTimeSlotInput').val(time);
-
-                // Reset forms
-                $('#bookingCustomerSelect').val('');
-                $('#bookingPetSelect').html('<option value="">-- Vui lòng chọn khách hàng trước --</option>').prop('disabled', true);
-                $('#bookingServiceSelect').val('');
-                $('#bookingAppliedPrice').val('0đ');
-
-                $('#quickBookingModal').modal('show');
-            });
 
             // =========================================================================
             // 4. INTERACTION: TOGGLE ACTIVE SERVICE STATUS (AJAX)
