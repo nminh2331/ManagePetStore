@@ -11,7 +11,7 @@ using ManagePetStore.SpaServices.Models;
 
 namespace ManagePetStore.SpaServices.Controllers
 {
-    [Authorize(Roles = "service,admin")]
+    [Authorize(Roles = "service,admin,manager")]
     [Route("SpaServices")]
     public class SpaServicesController : Controller
     {
@@ -1960,6 +1960,105 @@ namespace ManagePetStore.SpaServices.Controllers
             _context.Cages.Remove(cage);
             await _context.SaveChangesAsync();
             return Json(new { success = true, message = $"Xóa chuồng {cageId} thành công!" });
+        }
+
+        [HttpGet("MedicalRecords")]
+        public async Task<IActionResult> MedicalRecords(string? species)
+        {
+            ViewBag.SelectedSpecies = species;
+            
+            if (!string.IsNullOrEmpty(species))
+            {
+                var pets = await _context.Pets
+                    .Include(p => p.Customer)
+                    .Include(p => p.MedicalRecords)
+                    .Where(p => p.Species.ToLower() == species.ToLower() || 
+                               (species.ToLower() == "chuột" && p.Species.ToLower() == "hamster") ||
+                               (species.ToLower() == "rùa" && p.Species.ToLower() == "turtle"))
+                    .ToListAsync();
+                
+                ViewBag.Pets = pets;
+            }
+            
+            return View("~/SpaServices/Views/SpaService/MedicalRecords.cshtml");
+        }
+
+        [HttpGet("GetPetMedicalHistory")]
+        public async Task<IActionResult> GetPetMedicalHistory(int petId)
+        {
+            var records = await _context.MedicalRecords
+                .Where(r => r.PetId == petId)
+                .OrderByDescending(r => r.DateCreated)
+                .Select(r => new {
+                    r.RecordId,
+                    r.PetId,
+                    DateCreated = r.DateCreated.ToString("dd/MM/yyyy HH:mm"),
+                    r.Weight,
+                    r.HealthStatus,
+                    Symptoms = r.Symptoms ?? "",
+                    Treatment = r.Treatment ?? "",
+                    VaccinationStatus = r.VaccinationStatus ?? "",
+                    ParasitePrevention = r.ParasitePrevention ?? "",
+                    PhysicalCheck = r.PhysicalCheck ?? "",
+                    ShellStatus = r.ShellStatus ?? "",
+                    RearingConditions = r.RearingConditions ?? "",
+                    AbnormalSymptoms = r.AbnormalSymptoms ?? "",
+                    IncisorCheck = r.IncisorCheck ?? "",
+                    FurSkinCheck = r.FurSkinCheck ?? "",
+                    DigestiveSigns = r.DigestiveSigns ?? ""
+                })
+                .ToListAsync();
+            return Json(records);
+        }
+
+        [HttpPost("CreateMedicalRecord")]
+        public async Task<IActionResult> CreateMedicalRecord(
+            int petId, 
+            decimal weight, 
+            string healthStatus, 
+            string? symptoms, 
+            string? treatment,
+            string? vaccinationStatus,
+            string[]? parasitePrevention,
+            string? physicalCheck,
+            string? shellStatus,
+            string? rearingConditions,
+            string[]? abnormalSymptoms,
+            string? incisorCheck,
+            string? furSkinCheck,
+            string[]? digestiveSigns)
+        {
+            var pet = await _context.Pets.FindAsync(petId);
+            if (pet == null)
+            {
+                return Json(new { success = false, message = "Không tìm thấy thú cưng." });
+            }
+
+            var record = new MedicalRecord
+            {
+                PetId = petId,
+                DateCreated = DateTime.Now,
+                Weight = weight,
+                HealthStatus = healthStatus,
+                Symptoms = symptoms,
+                Treatment = treatment,
+                VaccinationStatus = vaccinationStatus,
+                ParasitePrevention = parasitePrevention != null ? string.Join(", ", parasitePrevention) : "",
+                PhysicalCheck = physicalCheck,
+                ShellStatus = shellStatus,
+                RearingConditions = rearingConditions,
+                AbnormalSymptoms = abnormalSymptoms != null ? string.Join(", ", abnormalSymptoms) : "",
+                IncisorCheck = incisorCheck,
+                FurSkinCheck = furSkinCheck,
+                DigestiveSigns = digestiveSigns != null ? string.Join(", ", digestiveSigns) : ""
+            };
+
+            pet.Weight = weight;
+            
+            _context.MedicalRecords.Add(record);
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, message = "Tạo sổ y tế thành công!" });
         }
     }
 }

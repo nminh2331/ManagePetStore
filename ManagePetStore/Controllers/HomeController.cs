@@ -318,7 +318,8 @@ public class HomeController : Controller
                 new CategoryItem { Name = "Chuồng & Đệm", Icon = "bi-house-door", Slug = "cages" },
                 new CategoryItem { Name = "Vệ sinh", Icon = "bi-droplet", Slug = "hygiene" },
                 new CategoryItem { Name = "Thuốc & Vitamin", Icon = "bi-capsule", Slug = "medicine" },
-                new CategoryItem { Name = "Dịch vụ Spa", Icon = "bi-scissors", Slug = "spa" }
+                new CategoryItem { Name = "Dịch vụ Spa", Icon = "bi-scissors", Slug = "spa" },
+                new CategoryItem { Name = "Sổ y tế thú cưng", Icon = "bi-journal-medical", Slug = "medical-records" }
             ],
             BestSellers =
             [

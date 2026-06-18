@@ -49,6 +49,14 @@ public class ProductController : Controller
                                     petsList = await _context.Pets
                                         .Where(p => p.CustomerId == customerObj.CustomerId && p.Status == "Active")
                                         .ToListAsync();
+
+                                    var petIds = petsList.Select(p => p.PetId).ToList();
+                                    var petsWithRecords = await _context.MedicalRecords
+                                        .Where(mr => petIds.Contains(mr.PetId))
+                                        .Select(mr => mr.PetId)
+                                        .Distinct()
+                                        .ToListAsync();
+                                    ViewBag.PetIdsWithRecords = new HashSet<int>(petsWithRecords);
                                 }
                             }
                         }

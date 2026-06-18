@@ -37,14 +37,24 @@
     <div class="ps-categories-grid">
         @foreach (var cat in Model.Categories)
         {
-            <a asp-controller="Home"
-               asp-action="Index"
-               asp-route-category="@cat.Slug"
-               asp-route-search="@Model.SearchKeyword"
-               class="ps-category-card @(Model.SelectedCategorySlug == cat.Slug ? "active" : "")">
-                <div class="ps-category-icon"><i class="bi @cat.Icon"></i></div>
-                <div class="ps-category-name">@cat.Name</div>
-            </a>
+            if (cat.Slug == "medical-records")
+            {
+                <a href="/Customer/Pet/MedicalHistory" class="ps-category-card">
+                    <div class="ps-category-icon"><i class="bi @cat.Icon"></i></div>
+                    <div class="ps-category-name">@cat.Name</div>
+                </a>
+            }
+            else
+            {
+                <a asp-controller="Home"
+                   asp-action="Index"
+                   asp-route-category="@cat.Slug"
+                   asp-route-search="@Model.SearchKeyword"
+                   class="ps-category-card @(Model.SelectedCategorySlug == cat.Slug ? "active" : "")">
+                    <div class="ps-category-icon"><i class="bi @cat.Icon"></i></div>
+                    <div class="ps-category-name">@cat.Name</div>
+                </a>
+            }
         }
     </div>
 </section>

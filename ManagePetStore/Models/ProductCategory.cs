@@ -14,4 +14,6 @@ public partial class ProductCategory
     public bool IsDeleted { get; set; }
 
     public virtual ICollection<Product> Products { get; set; } = new List<Product>();
+
+    public virtual ICollection<Supplier> Suppliers { get; set; } = new List<Supplier>();
 }

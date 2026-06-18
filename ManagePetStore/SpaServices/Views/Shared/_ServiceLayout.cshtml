@@ -308,6 +308,9 @@
             z-index: 1000;
         }
     </style>
+
+    @await RenderSectionAsync("Styles", required: false)
+
 </head>
 <body class="service-body">
     <div class="service-wrapper">
@@ -319,16 +322,23 @@
             </a>
             
             <nav class="service-nav">
-                @{
-                    string servicePath = Context.Request.Path.Value ?? string.Empty;
-                    bool isHotelWorkspace =
-                        servicePath.StartsWith("/SpaServices/Hotel", StringComparison.OrdinalIgnoreCase) ||
-                        servicePath.StartsWith("/SpaServices/PetCheckIn", StringComparison.OrdinalIgnoreCase) ||
+servicePath.StartsWith("/SpaServices/PetCheckIn", StringComparison.OrdinalIgnoreCase) ||
                         servicePath.StartsWith("/SpaServices/CageMap", StringComparison.OrdinalIgnoreCase) ||
                         servicePath.StartsWith("/SpaServices/CageCategories", StringComparison.OrdinalIgnoreCase);
                     bool isMedicalRecords = servicePath.StartsWith("/SpaServices/MedicalRecords", StringComparison.OrdinalIgnoreCase);
                 }
+                <a href="/SpaServices" class="service-nav-item @(!isHotelWorkspace && (servicePath == "/SpaServices" || servicePath == "/SpaServices/Index" || servicePath == "/SpaServices/") ? "active" : "")">
                 <a href="/SpaServices" class="service-nav-item @(!isHotelWorkspace && !isMedicalRecords && (servicePath == "/SpaServices" || servicePath == "/SpaServices/Index" || servicePath == "/SpaServices/") ? "active" : "")">
+                    <i class="fa-solid fa-scissors"></i>
+                    Dịch vụ Spa
+                </a>
+                <a href="/SpaServices/MedicalRecords" class="service-nav-item @(isMedicalRecords ? "active" : "")">
+                    <i class="fa-solid fa-book-medical"></i>
+                    Sổ y tế
+                </a>
+                <a href="/SpaServices/PetCheckIn" class="service-nav-item @(servicePath.StartsWith("/SpaServices/PetCheckIn", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                    <i class="fa-solid fa-clipboard-check"></i>
+                    Pet Check-In
                     <i class="fa-solid fa-scissors"></i>
                     Dịch vụ Spa
                 </a>
