@@ -648,57 +648,7 @@ namespace ManagePetStore.SpaServices.Controllers
             });
         }
 
-        // =========================================================================
-        // 5. ĐẶT LỊCH SPA NHANH & DỮ LIỆU ĐỘNG
-        // =========================================================================
-        
-        [HttpPost("CreateQuickBooking")]
-        public async Task<IActionResult> CreateQuickBooking(int groomerId, string date, string time, int customerId, int petId, int serviceId, string notes)
-        {
-            var customer = await _context.Customers.FindAsync(customerId);
-            var pet = await _context.Pets.FindAsync(petId);
-            var service = await _context.SpaServices.FindAsync(serviceId);
-            var groomer = await _context.Users.FindAsync(groomerId);
 
-            if (customer == null || pet == null || service == null || !service.Active || groomer == null)
-            {
-                TempData["ErrorMessage"] = "Thông tin không hợp lệ.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            if (!DateTime.TryParse($"{date} {time}", out DateTime bookingDateTime))
-            {
-                bookingDateTime = DateTime.Today.AddHours(12);
-            }
-
-            bool isOverlap = await _context.SpaBookings
-                .AnyAsync(b => b.GroomerId == groomerId && b.DateTime == bookingDateTime && b.SpaStatus != "Cancelled");
-
-            if (isOverlap)
-            {
-                TempData["ErrorMessage"] = $"Groomer {groomer.FullName} đã có lịch vào khung giờ {time} ngày {date}.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            var booking = new SpaBooking
-            {
-                CustomerId = customer.CustomerId,
-                PetId = pet.PetId,
-                ServiceId = service.ServiceId,
-                GroomerId = groomerId,
-                DateTime = bookingDateTime,
-                Price = service.Price,
-                Status = "Chưa thanh toán",
-                SpaStatus = "|0", // Bắt đầu ở bước 0 (Tiếp nhận)
-                Notes = notes
-            };
-
-            _context.SpaBookings.Add(booking);
-            await _context.SaveChangesAsync();
-
-            TempData["SuccessMessage"] = $"Đặt lịch thành công cho pet {pet.Name} lúc {time}!";
-            return RedirectToAction(nameof(Index), new { date = date });
-        }
 
         [HttpPost("CancelBooking")]
         public async Task<IActionResult> CancelBooking(int bookingId)
@@ -715,16 +665,6 @@ namespace ManagePetStore.SpaServices.Controllers
             return Json(new { success = true, message = "Hủy lịch hẹn thành công!" });
         }
 
-        [HttpGet("GetPetsByCustomer")]
-        public async Task<IActionResult> GetPetsByCustomer(int customerId)
-        {
-            var pets = await _context.Pets
-                .Where(p => p.CustomerId == customerId && p.Status == "Active")
-                .Select(p => new { petId = p.PetId, name = p.Name, species = p.Species, breed = p.Breed })
-                .ToListAsync();
-
-            return Json(pets);
-        }
 
         [HttpGet("GetRealtimeQueue")]
         public async Task<IActionResult> GetRealtimeQueue(int page = 1)
