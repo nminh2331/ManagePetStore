@@ -7,6 +7,8 @@
     {
         "chó" or "dog" => "CHÓ",
         "mèo" or "cat" => "MÈO",
+        "rùa" or "turtle" => "RÙA",
+        "chuột" or "hamster" => "CHUỘT",
         _ => species?.ToUpperInvariant() ?? ""
     };
 }
@@ -95,7 +97,7 @@
                             </form>
                         </div>
 
-                        <div>
+                        <div class="cp-pet-card-body">
                             <h2 class="cp-pet-name">@pet.Name</h2>
                             <div class="cp-pet-breed">@SpeciesLabel(pet.Species) - @(pet.Breed?.ToUpperInvariant() ?? "N/A")</div>
 
@@ -109,9 +111,11 @@
                                     <div class="cp-pet-stat-value">@(pet.Age ?? "N/A")</div>
                                 </div>
                             </div>
-
-                            <div class="cp-pet-pathology">
-                                <strong>Bệnh lý:</strong> @(string.IsNullOrWhiteSpace(pet.Pathology) ? "Khỏe mạnh" : pet.Pathology)
+                             
+                            <div class="cp-pet-medical-btn-wrapper mt-auto pt-2">
+                                <a href="/Customer/Pet/MedicalHistory?petId=@pet.PetId" class="cp-btn-medical-view w-100 text-decoration-none" style="background-color: #f97316; color: white; border: none; border-radius: 8px; padding: 8px 16px; font-weight: 600; font-size: 0.85rem; transition: background-color 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                    <i class="bi bi-journal-medical"></i> Xem lịch sử sổ y tế
+                                </a>
                             </div>
                         </div>
                     </article>
@@ -141,6 +145,8 @@
                         <option value="">-- Chọn loài --</option>
                         <option value="Chó">Chó</option>
                         <option value="Mèo">Mèo</option>
+                        <option value="Rùa">Rùa</option>
+                        <option value="Chuột">Chuột</option>
                     </select>
                     <span class="cp-field-error"></span>
                 </div>
@@ -179,10 +185,6 @@
                     </div>
                     <span class="cp-field-error"></span>
                 </div>
-                <div class="col-12">
-                    <label class="cp-form-label">TÌNH TRẠNG BỆNH LÝ / GHI CHÚ SỨC KHỎE</label>
-                    <textarea name="pathology" class="cp-form-textarea" placeholder="Ví dụ: Khỏe mạnh"></textarea>
-                </div>
             </div>
 
             <div class="cp-modal-actions">
@@ -215,16 +217,10 @@
                     <div class="col-md-6 cp-form-field" data-field="species">
                         <label class="cp-form-label">GIỐNG LOÀI <span class="req">*</span></label>
                         <select name="species" id="editPetSpecies" class="cp-form-select" required>
-                            @if (edit.Species == "Chó")
-                            {
-                                <option value="Chó" selected>Chó</option>
-                                <option value="Mèo">Mèo</option>
-                            }
-                            else
-                            {
-                                <option value="Chó">Chó</option>
-                                <option value="Mèo" selected>Mèo</option>
-                            }
+                            <option value="Chó" selected="@(edit.Species == "Chó" ? "selected" : null)">Chó</option>
+                            <option value="Mèo" selected="@(edit.Species == "Mèo" ? "selected" : null)">Mèo</option>
+                            <option value="Rùa" selected="@(edit.Species == "Rùa" ? "selected" : null)">Rùa</option>
+                            <option value="Chuột" selected="@(edit.Species == "Chuột" ? "selected" : null)">Chuột</option>
                         </select>
                         <span class="cp-field-error"></span>
                     </div>
@@ -268,10 +264,6 @@
                         </div>
                         <span class="cp-field-error"></span>
                     </div>
-                    <div class="col-12">
-                        <label class="cp-form-label">TÌNH TRẠNG BỆNH LÝ / GHI CHÚ SỨC KHỎE</label>
-                        <textarea name="pathology" class="cp-form-textarea">@edit.Pathology</textarea>
-                    </div>
                 </div>
 
                 <div class="cp-modal-actions">
@@ -282,6 +274,7 @@
         </div>
     </div>
 }
+
 
 @section Scripts {
     <script>

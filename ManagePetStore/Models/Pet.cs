@@ -29,6 +29,8 @@ public partial class Pet
 
     public virtual ICollection<HotelBooking> HotelBookings { get; set; } = new List<HotelBooking>();
 
+    public virtual ICollection<MedicalRecord> MedicalRecords { get; set; } = new List<MedicalRecord>();
+
     public virtual ICollection<PetBioTimeline> PetBioTimelines { get; set; } = new List<PetBioTimeline>();
 
     public virtual ICollection<SpaBooking> SpaBookings { get; set; } = new List<SpaBooking>();

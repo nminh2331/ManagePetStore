@@ -372,4 +372,81 @@
             showAllFieldErrors(document.getElementById('editPetForm'), window.petFieldErrors);
         }
     }
+
+    function viewPetMedicalRecords(petId, petName) {
+        document.getElementById('medRecordsPetName').textContent = petName;
+        var container = document.getElementById('customerMedicalRecordsContainer');
+        container.innerHTML = '<div style="text-align: center; padding: 24px;"><i class="bi bi-arrow-repeat spin" style="font-size: 2rem; color: #f97316; display: inline-block; animation: spin 1s linear infinite;"></i><p style="color: #666; margin-top: 8px;">Đang tải lịch sử khám...</p></div>';
+        
+        openModal('customerMedicalRecordsModal');
+
+        if (!document.getElementById('spinStyle')) {
+            var style = document.createElement('style');
+            style.id = 'spinStyle';
+            style.innerHTML = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
+            document.head.appendChild(style);
+        }
+
+        $.ajax({
+            url: '/Customer/Pet/GetMedicalRecords',
+            type: 'GET',
+            data: { petId: petId },
+            success: function (res) {
+                if (res.success && res.data && res.data.length > 0) {
+                    var html = '<div style="display: flex; flex-direction: column; gap: 16px;">';
+                    res.data.forEach(function (rec) {
+                        var healthClass = rec.healthStatus === 'Khỏe mạnh' ? 'bg-success' : (rec.healthStatus === 'Cần theo dõi' ? 'bg-warning' : 'bg-danger');
+                        html += '<div style="border: 1px solid #eee; border-left: 4px solid #f97316; border-radius: 8px; padding: 12px 16px; background-color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.02); text-align: left;">';
+                        html += '  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f5f5f5; padding-bottom: 8px; margin-bottom: 8px;">';
+                        html += '    <span style="font-weight: 700; color: #f97316; font-size: 0.85rem;"><i class="bi bi-calendar3"></i> ' + rec.dateCreated + '</span>';
+                        html += '    <span class="badge ' + healthClass + '" style="font-size: 0.72rem; padding: 4px 8px; border-radius: 12px; color: white;">' + rec.healthStatus + '</span>';
+                        html += '  </div>';
+                        html += '  <div style="font-size: 0.82rem; color: #555; margin-bottom: 6px;">Cân nặng: <strong>' + rec.weight + ' kg</strong></div>';
+                        html += '  <div style="margin-bottom: 6px;">';
+                        html += '    <strong style="font-size: 0.82rem; color: #333;">Chẩn đoán / Triệu chứng:</strong>';
+                        html += '    <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: #666; background: #fafafa; padding: 6px 10px; border-radius: 6px; border-left: 3px solid #00c6ff;">' + rec.symptoms + '</p>';
+                        html += '  </div>';
+                        html += '  <div style="margin-bottom: 6px;">';
+                        html += '    <strong style="font-size: 0.82rem; color: #333;">Điều trị / Kê đơn:</strong>';
+                        html += '    <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: #666; background: #fafafa; padding: 6px 10px; border-radius: 6px; border-left: 3px solid #2ecc71;">' + rec.treatment + '</p>';
+                        html += '  </div>';
+
+                        var hasSpecifics = false;
+                        var specHtml = '<div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #eee; font-size: 0.78rem; color: #777;"><div style="display: flex; flex-wrap: wrap; gap: 12px;">';
+                        if (rec.vaccinationStatus || rec.parasitePrevention || rec.physicalCheck) {
+                            hasSpecifics = true;
+                            specHtml += '<div><strong>Tiêm chủng:</strong> ' + (rec.vaccinationStatus || 'N/A') + '</div>';
+                            specHtml += '<div><strong>Ký sinh trùng:</strong> ' + (rec.parasitePrevention || 'N/A') + '</div>';
+                            specHtml += '<div><strong>Thể chất:</strong> ' + (rec.physicalCheck || 'N/A') + '</div>';
+                        } else if (rec.shellStatus || rec.rearingConditions || rec.abnormalSymptoms) {
+                            hasSpecifics = true;
+                            specHtml += '<div><strong>Tình trạng mai:</strong> ' + (rec.shellStatus || 'N/A') + '</div>';
+                            specHtml += '<div><strong>ĐK nuôi:</strong> ' + (rec.rearingConditions || 'N/A') + '</div>';
+                            specHtml += '<div><strong>Bất thường:</strong> ' + (rec.abnormalSymptoms || 'N/A') + '</div>';
+                        } else if (rec.incisorCheck || rec.furSkinCheck || rec.digestiveSigns) {
+                            hasSpecifics = true;
+                            specHtml += '<div><strong>Răng cửa:</strong> ' + (rec.incisorCheck || 'N/A') + '</div>';
+                            specHtml += '<div><strong>Da/Lông:</strong> ' + (rec.furSkinCheck || 'N/A') + '</div>';
+                            specHtml += '<div><strong>Tiêu hóa:</strong> ' + (rec.digestiveSigns || 'N/A') + '</div>';
+                        }
+                        specHtml += '</div></div>';
+                        if (hasSpecifics) {
+                            html += specHtml;
+                        }
+
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = '<div style="text-align: center; padding: 24px; color: #888;"><i class="bi bi-info-circle" style="font-size: 2rem;"></i><p style="margin-top: 8px; font-size: 0.85rem;">Chưa có lịch sử khám bệnh nào được ghi nhận cho thú cưng này.</p></div>';
+                }
+            },
+            error: function () {
+                container.innerHTML = '<div style="text-align: center; padding: 24px; color: #d9534f;"><i class="bi bi-exclamation-triangle" style="font-size: 2rem;"></i><p style="margin-top: 8px; font-size: 0.85rem;">Đã xảy ra lỗi khi tải dữ liệu lịch sử.</p></div>';
+            }
+        });
+    }
+
+    window.viewPetMedicalRecords = viewPetMedicalRecords;
 })();

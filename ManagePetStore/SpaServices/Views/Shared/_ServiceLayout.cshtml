@@ -308,6 +308,9 @@
             z-index: 1000;
         }
     </style>
+
+    @await RenderSectionAsync("Styles", required: false)
+
 </head>
 <body class="service-body">
     <div class="service-wrapper">
@@ -319,7 +322,11 @@
             </a>
             
             <nav class="service-nav">
-                <a href="/SpaServices" class="service-nav-item @(Context.Request.Path.Value?.StartsWith("/SpaServices/Hotel") == true ? "" : (Context.Request.Path.Value == "/SpaServices" || Context.Request.Path.Value == "/SpaServices/Index" || Context.Request.Path.Value == "/SpaServices/" ? "active" : ""))">
+                <a href="/SpaServices/MedicalRecords" class="service-nav-item @(Context.Request.Path.Value?.StartsWith("/SpaServices/MedicalRecords") == true ? "active" : "")">
+                    <i class="fa-solid fa-book-medical"></i>
+                    Sổ y tế
+                </a>
+                <a href="/SpaServices" class="service-nav-item @(Context.Request.Path.Value?.StartsWith("/SpaServices/Hotel") == true || Context.Request.Path.Value?.StartsWith("/SpaServices/MedicalRecords") == true ? "" : (Context.Request.Path.Value == "/SpaServices" || Context.Request.Path.Value == "/SpaServices/Index" || Context.Request.Path.Value == "/SpaServices/" ? "active" : ""))">
                     <i class="fa-solid fa-scissors"></i>
                     Dịch vụ Spa
                 </a>

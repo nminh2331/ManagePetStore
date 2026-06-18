@@ -250,6 +250,24 @@
                             </form>
                         </div>
                     </div>
+
+                    <!-- WARNING MODAL FOR PETS WITH NO MEDICAL HISTORY -->
+                    <div id="medicalWarningModal" class="ps-booking-modal-overlay" style="display: none; z-index: 1100; backdrop-filter: blur(8px); background: rgba(0, 0, 0, 0.4); justify-content: center; align-items: center;">
+                        <div class="ps-booking-modal-content" style="max-width: 500px; text-align: center; padding: 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); background: white;">
+                            <div style="font-size: 3rem; color: #ffaa00; margin-bottom: 16px;">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                            </div>
+                            <h3 style="font-size: 1.25rem; font-weight: 700; color: #ff7815; margin-bottom: 12px; text-transform: uppercase;">Khuyến nghị khám sức khỏe</h3>
+                            <p style="font-size: 0.9rem; color: #555; line-height: 1.6; margin-bottom: 24px;">
+                                Thú cưng này chưa từng được khám sức khỏe tại cửa hàng (không có lịch sử sổ y tế). 
+                                <strong>Vui lòng mang bé đến cửa hàng để được bác sĩ khám và tạo sổ y tế trước khi đặt lịch dịch vụ Spa.</strong>
+                            </p>
+                            <p style="font-size: 0.8rem; color: #888; margin-bottom: 24px;">
+                                * Các mặt hàng (sản phẩm, thức ăn, phụ kiện...) vẫn có thể mua sắm bình thường.
+                            </p>
+                            <button type="button" class="btn btn-primary rounded-pill px-4 py-2" id="btnCloseWarningModal" style="background-color: #ff7815; border: none; font-weight: 600; color: white;">Đồng ý &amp; Đóng</button>
+                        </div>
+                    </div>
                 }
             }
             else
@@ -292,8 +310,17 @@
         var serializedPets = "[]";
         if (ViewBag.CustomerPets != null)
         {
+            var petsWithRecords = ViewBag.PetIdsWithRecords as HashSet<int> ?? new HashSet<int>();
             var petListData = (ViewBag.CustomerPets as List<Pet> ?? new List<Pet>())
-                .Select(p => new { p.PetId, p.Name, Species = p.Species ?? "Chó", Breed = p.Breed ?? "Không rõ", Age = p.Age ?? "Chưa rõ", Weight = p.Weight });
+                .Select(p => new { 
+                    p.PetId, 
+                    p.Name, 
+                    Species = p.Species ?? "Chó", 
+                    Breed = p.Breed ?? "Không rõ", 
+                    Age = p.Age ?? "Chưa rõ", 
+                    Weight = p.Weight,
+                    HasMedicalRecord = petsWithRecords.Contains(p.PetId)
+                });
             serializedPets = System.Text.Json.JsonSerializer.Serialize(petListData);
         }
     }
@@ -354,9 +381,52 @@
             // Fields to toggle required status
             var newPetName = document.getElementById('newPetName');
 
+            var warningModal = document.getElementById('medicalWarningModal');
+            var btnCloseWarningModal = document.getElementById('btnCloseWarningModal');
+            var btnSubmitBooking = document.getElementById('btnSubmitBooking');
+
+            if (btnCloseWarningModal && warningModal) {
+                btnCloseWarningModal.addEventListener('click', function () {
+                    warningModal.style.display = 'none';
+                });
+            }
+
+            function checkPetMedicalHistory(val) {
+                if (!btnSubmitBooking) return;
+                
+                if (val === "0") {
+                    if (warningModal) warningModal.style.display = 'flex';
+                    btnSubmitBooking.disabled = true;
+                    btnSubmitBooking.style.opacity = '0.5';
+                    btnSubmitBooking.style.cursor = 'not-allowed';
+                } else if (val && val !== "") {
+                    var selectedId = parseInt(val);
+                    var pet = customerPets.find(p => p.PetId === selectedId);
+                    if (pet && !pet.HasMedicalRecord) {
+                        if (warningModal) warningModal.style.display = 'flex';
+                        btnSubmitBooking.disabled = true;
+                        btnSubmitBooking.style.opacity = '0.5';
+                        btnSubmitBooking.style.cursor = 'not-allowed';
+                    } else {
+                        btnSubmitBooking.disabled = false;
+                        btnSubmitBooking.style.opacity = '1';
+                        btnSubmitBooking.style.cursor = 'pointer';
+                    }
+                } else {
+                    btnSubmitBooking.disabled = true;
+                    btnSubmitBooking.style.opacity = '0.5';
+                    btnSubmitBooking.style.cursor = 'not-allowed';
+                }
+            }
+
             if (petSelect) {
+                // Initial check on load
+                checkPetMedicalHistory(petSelect.value);
+
                 petSelect.addEventListener('change', function () {
                     var val = this.value;
+                    checkPetMedicalHistory(val);
+                    
                     if (val === "0") {
                         // Show new pet fields and require them
                         newPetFields.style.display = 'block';
@@ -488,6 +558,7 @@
                     modalOverlay.style.display = 'flex';
                     slotButtons.forEach(b => b.classList.remove('active'));
                     if (selectedTimeInput) selectedTimeInput.value = '';
+                    if (petSelect) checkPetMedicalHistory(petSelect.value);
                     updateAvailableTimeSlots();
                 });
             }
