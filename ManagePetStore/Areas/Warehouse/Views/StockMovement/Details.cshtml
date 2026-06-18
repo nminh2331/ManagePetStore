@@ -68,30 +68,53 @@
         <button onclick="window.print()" class="btn btn-outline-secondary me-2">
             <i class="fas fa-print"></i> In phiếu
         </button>
-        @if (Model.Status == "Chờ duyệt")
+
+        @{
+            var userRole = User.FindFirst("RoleId")?.Value;
+            bool isManager = userRole == "6" || User.IsInRole("admin");
+            bool isWarehouse = userRole == "4";
+        }
+
+        @* Manager duyệt hoặc hủy đơn Nhập hàng đang chờ *@
+        @if (isManager && Model.Status == "Chờ quản lý duyệt")
         {
-            @if (Model.Type == "Nhập hàng")
-            {
-                <a asp-action="Approve" asp-route-id="@Model.MovementId" class="btn btn-warning fw-bold text-dark me-2">
-                    <i class="fas fa-clipboard-check"></i> Kiểm & Duyệt hàng
-                </a>
-            }
-            else
-            {
-                <form asp-action="ApproveExport" method="post" class="d-inline">
-                    <input type="hidden" name="id" value="@Model.MovementId" />
-                    <button type="submit" class="btn btn-warning fw-bold text-dark me-2">
-                        <i class="fas fa-clipboard-check"></i> Duyệt Xuất kho
-                    </button>
-                </form>
-            }
-            
-            <form asp-action="Cancel" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn hủy phiếu này không?');">
+            <form asp-action="ApproveStatus" method="post" class="d-inline">
                 <input type="hidden" name="id" value="@Model.MovementId" />
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-success fw-bold me-2">
+                    <i class="fas fa-check-circle"></i> Duyệt đơn
+                </button>
+            </form>
+            <form asp-action="Cancel" method="post" class="d-inline" 
+                  onsubmit="return confirm('Xác nhận hủy phiếu này?');">
+                <input type="hidden" name="id" value="@Model.MovementId" />
+                @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-danger fw-bold">
+                    <i class="fas fa-times-circle"></i> Từ chối
+                </button>
+            </form>
+        }
+
+        @* Warehouse kiểm hàng khi đã được Manager duyệt *@
+        @if (isWarehouse && Model.Status == "Chờ kiểm hàng" && Model.Type == "Nhập hàng")
+        {
+            <a asp-action="Approve" asp-route-id="@Model.MovementId" class="btn btn-warning fw-bold text-dark me-2">
+                <i class="fas fa-clipboard-check"></i> Kiểm & Nhận hàng
+            </a>
+            <form asp-action="Cancel" method="post" class="d-inline" 
+                  onsubmit="return confirm('Xác nhận hủy phiếu này?');">
+                <input type="hidden" name="id" value="@Model.MovementId" />
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-danger fw-bold">
                     <i class="fas fa-times"></i> Hủy phiếu
                 </button>
             </form>
+        }
+
+        @* Manager/Warehouse duyệt phiếu Xuất nội bộ *@
+        @if (isManager && Model.Status == "Chờ quản lý duyệt" && Model.Type == "Xuất nội bộ")
+        {
+            @* Đã được xử lý ở khối Manager ở trên *@
         }
     </div>
 </div>
@@ -118,9 +141,15 @@
         <div class="doc-title">PHIẾU @(Model.Type.ToUpper()) KHO</div>
         <div class="text-muted mt-1">Ngày lập: @Model.Date.ToString("dd/MM/yyyy HH:mm")</div>
         <div>
-            <span class="badge @(Model.Status == "Hoàn thành" ? "bg-success" : (Model.Status == "Chờ duyệt" ? "bg-warning text-dark" : "bg-danger")) mt-2">
-                @Model.Status
-            </span>
+            @{
+                var badgeClass = Model.Status switch {
+                    "Hoàn thành" => "bg-success",
+                    "Chờ quản lý duyệt" => "bg-danger",
+                    "Chờ kiểm hàng" => "bg-warning text-dark",
+                    _ => "bg-secondary"
+                };
+            }
+            <span class="badge @badgeClass mt-2 px-3 py-2">@Model.Status</span>
         </div>
     </div>
 
@@ -129,7 +158,7 @@
             <p class="mb-1"><strong>Người lập phiếu:</strong> @Model.CreatedBy.FullName</p>
             <p class="mb-1">
                 <strong>@(Model.Type == "Nhập hàng" ? "Nhà cung cấp" : "Đơn vị nhận"):</strong> 
-                @(string.IsNullOrEmpty(Model.Supplier) ? "N/A" : Model.Supplier)
+                @(Model.SupplierNavigation?.Name ?? Model.Supplier ?? "N/A")
             </p>
         </div>
         <div class="col-5">

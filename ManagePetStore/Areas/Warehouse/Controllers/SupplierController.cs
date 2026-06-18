@@ -1,3 +1,10 @@
+/**
+ * Project: Pet Store Management System (PSMS)
+ * File: SupplierController.cs
+ * Author: Tran Duong
+ * Date: June 17, 2026
+ * Description: Controller xử lý nghiệp vụ quản lý nhà cung cấp.
+ */
 using ManagePetStore.Models;
 using ManagePetStore.Services;
 using Microsoft.AspNetCore.Mvc;

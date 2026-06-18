@@ -51,7 +51,7 @@ public class StockMovementService : IStockMovementService
         var movement = new StockMovement
         {
             Type = "Nhập hàng",
-            Status = "Chờ duyệt",
+            Status = "Chờ quản lý duyệt",
             SupplierId = supplierId,
             CreatedById = userId,
             Date = DateTime.Now,
@@ -78,7 +78,7 @@ public class StockMovementService : IStockMovementService
         var movement = new StockMovement
         {
             Type = "Xuất nội bộ",
-            Status = "Chờ duyệt",
+            Status = "Chờ quản lý duyệt",
             Supplier = note, // Tận dụng trường Supplier để ghi chú mục đích xuất
             CreatedById = userId,
             Date = DateTime.Now,
@@ -93,10 +93,32 @@ public class StockMovementService : IStockMovementService
     {
         var movement = await _movementRepo.GetMovementById(movementId);
         if (movement == null) throw new ServiceException("Không tìm thấy phiếu.");
-        if (movement.Status != "Chờ duyệt") throw new ServiceException("Chỉ có thể duyệt phiếu ở trạng thái Chờ duyệt.");
-
-        movement.Status = "Hoàn thành";
-        await _movementRepo.UpdateMovement(movement);
+        
+        if (movement.Status == "Chờ quản lý duyệt")
+        {
+            if (movement.Type == "Nhập hàng")
+            {
+                movement.Status = "Chờ kiểm hàng";
+                await _movementRepo.UpdateMovement(movement);
+                return; // Manager duyệt xong thì dừng lại chờ Warehouse kiểm hàng
+            }
+            else if (movement.Type == "Xuất nội bộ")
+            {
+                movement.Status = "Hoàn thành";
+                await _movementRepo.UpdateMovement(movement);
+                // Tiếp tục xuống dưới để trừ kho
+            }
+        }
+        else if (movement.Status == "Chờ kiểm hàng" && movement.Type == "Nhập hàng")
+        {
+            movement.Status = "Hoàn thành";
+            await _movementRepo.UpdateMovement(movement);
+            // Tiếp tục xuống dưới để cộng kho
+        }
+        else
+        {
+            throw new ServiceException($"Phiếu đang ở trạng thái '{movement.Status}' nên không thể thao tác duyệt.");
+        }
 
         if (movement.Type == "Nhập hàng")
         {
@@ -151,7 +173,8 @@ public class StockMovementService : IStockMovementService
     {
         var movement = await _movementRepo.GetMovementById(movementId);
         if (movement == null) throw new ServiceException("Không tìm thấy phiếu.");
-        if (movement.Status != "Chờ duyệt") throw new ServiceException("Chỉ có thể hủy phiếu đang Chờ duyệt.");
+        if (movement.Status != "Chờ quản lý duyệt" && movement.Status != "Chờ kiểm hàng") 
+            throw new ServiceException("Không thể hủy phiếu đã hoàn thành hoặc đã hủy.");
 
         movement.Status = "Đã hủy";
         await _movementRepo.UpdateMovement(movement);
