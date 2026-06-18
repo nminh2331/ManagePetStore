@@ -21,5 +21,7 @@ public partial class Cage
 
     public virtual ICollection<HotelBooking> HotelBookings { get; set; } = new List<HotelBooking>();
 
+    public virtual ICollection<RoomMaintenanceLog> RoomMaintenanceLogs { get; set; } = new List<RoomMaintenanceLog>();
+
     public virtual RoomType RoomType { get; set; } = null!;
 }
