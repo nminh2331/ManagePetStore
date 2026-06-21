@@ -1,0 +1,193 @@
+﻿@model ManagePetStore.Controllers.PetMedicalHistoryViewModel
+@{
+    Layout = "/Views/Shared/_PetStoreLayout.cshtml";
+    ViewData["Title"] = $"Sổ y tế: {Model.SelectedPet.Name}";
+    
+    string SpeciesLabel(string species) => species?.ToLowerInvariant() switch
+    {
+        "chó" or "dog" => "CHÓ",
+        "mèo" or "cat" => "MÈO",
+        "rùa" or "turtle" => "RÙA",
+        "chuột" or "hamster" => "CHUỘT",
+        _ => species?.ToUpperInvariant() ?? ""
+    };
+}
+
+<section class="ps-product-detail" style="font-family: 'Outfit', sans-serif;">
+    <!-- Breadcrumb / Back Navigation -->
+    <div class="mb-4 d-flex align-items-center justify-content-between">
+        <a  asp-controller="Pet" asp-action="Index" class="d-inline-flex align-items-center text-decoration-none" style="color: #6b7280; font-weight: 600; font-size: 0.95rem; transition: color 0.2s;">
+            <i class="bi bi-arrow-left me-2" style="font-size: 1.1rem; -webkit-text-stroke: 0.5px;"></i> Quay lại danh sách hồ sơ
+        </a>
+        <span class="badge" style="background: rgba(249, 115, 22, 0.1); color: #f97316; font-size: 0.8rem; padding: 6px 14px; border-radius: 20px; font-weight: 700;">HỒ SƠ Y TẾ</span>
+    </div>
+
+    <div class="ps-pd-grid">
+        <!-- LEFT HALF: PET IMAGE AND PROFILE INFO -->
+        <div>
+            <div class="ps-pd-main-image" style="box-shadow: 0 8px 32px rgba(61, 35, 20, 0.08); border-radius: 24px; overflow: hidden; border: 4px solid #fff;">
+                <img id="pdMainImage" src="@(string.IsNullOrEmpty(Model.SelectedPet.ImageUrl) ? "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=600&h=600&fit=crop" : Model.SelectedPet.ImageUrl)" alt="@Model.SelectedPet.Name" style="width: 100%; height: 100%; object-fit: cover;" />
+            </div>
+
+            <!-- Pet Statistics Profile Box -->
+            <div class="mt-4 p-4" style="background: #fff; border-radius: 24px; box-shadow: 0 4px 24px rgba(61, 35, 20, 0.05); border: 1px solid #f3f0ec;">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <span class="text-uppercase" style="font-size: 0.75rem; font-weight: 800; color: #f97316; letter-spacing: 0.8px;">@SpeciesLabel(Model.SelectedPet.Species)</span>
+                        <h1 class="h2 font-weight-bold mb-1" style="color: #3d2314; font-family: 'Outfit', sans-serif; font-weight: 800;">@Model.SelectedPet.Name</h1>
+                        <p class="text-muted mb-0" style="font-size: 0.85rem;"><i class="bi bi-tag me-1"></i>Giống: <strong>@(Model.SelectedPet.Breed ?? "N/A")</strong></p>
+                    </div>
+                    
+                    <div class="text-end">
+                        <span class="d-block text-muted" style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase;">Mã thú cưng</span>
+                        <span class="font-weight-bold" style="color: #3d2314; font-size: 0.9rem;">#PET-@Model.SelectedPet.PetId.ToString("D4")</span>
+                    </div>
+                </div>
+
+                <div class="row text-center g-2 py-3 px-1 my-3 rounded-4" style="background-color: #faf8f6; border: 1px solid #efeae5;">
+                    <div class="col-6 border-end" style="border-color: #efeae5 !important;">
+                        <span class="d-block text-muted" style="font-size: 0.72rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.3px;">Tuổi hiện tại</span>
+                        <strong class="text-dark fs-5" style="font-weight: 800;">@(Model.SelectedPet.Age ?? "N/A")</strong>
+                    </div>
+                    <div class="col-6">
+                        <span class="d-block text-muted" style="font-size: 0.72rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.3px;">Cân nặng</span>
+                        <strong class="text-dark fs-5" style="font-weight: 800;">@Model.SelectedPet.Weight.ToString("0.0") kg</strong>
+                    </div>
+                </div>
+
+                <!-- Pet Switcher Dropdown (If customer has multiple pets) -->
+                @if (Model.AllPets.Count > 1)
+                {
+                    <div class="mt-4 pt-3 border-top" style="border-color: #efeae5 !important;">
+                        <label class="form-label mb-2" style="font-size: 0.72rem; font-weight: 700; color: #9ca3af; letter-spacing: 0.5px; text-transform: uppercase;">XEM SỔ Y TẾ BÉ KHÁC</label>
+                        <select class="form-select rounded-3 border-1 py-2 px-3" style="font-size: 0.9rem; color: #3d2314; background-color: #faf9f8; border-color: #e5e7eb;" onchange="location = this.value;">
+                            @foreach (var pet in Model.AllPets)
+                            {
+                                <option value="/Customer/Pet/MedicalHistory?petId=@pet.PetId" selected="@(pet.PetId == Model.SelectedPet.PetId ? "selected" : null)">
+                                    @pet.Name (@SpeciesLabel(pet.Species))
+                                </option>
+                            }
+                        </select>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- RIGHT HALF: MEDICAL HISTORY TIMELINE -->
+        <div class="d-flex flex-column h-100">
+            <div class="mb-4">
+                <h2 class="h3 font-weight-bold mb-1" style="color: #3d2314; font-family: 'Outfit', sans-serif; font-weight: 800;">
+                    <i class="bi bi-journal-medical me-2 text-primary" style="color: #f97316 !important;"></i>Lịch sử khám bệnh &amp; Sức khỏe
+                </h2>
+                <p class="text-muted small mb-0">Xem thông tin chỉ định lâm sàng, tiêm phòng và hồ sơ bệnh án của bé qua các lượt khám tại cửa hàng.</p>
+            </div>
+
+            @if (Model.MedicalRecords.Count == 0)
+            {
+                <div class="p-5 text-center bg-white rounded-4 shadow-sm border border-light d-flex flex-column align-items-center justify-content-center flex-grow-1" style="min-height: 300px; border-radius: 24px;">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-light mb-3" style="width: 80px; height: 80px; background-color: #fff7ed !important;">
+                        <i class="bi bi-info-circle-fill text-warning" style="font-size: 2.5rem; color: #f97316 !important;"></i>
+                    </div>
+                    <h3 class="h5 font-weight-bold text-dark mb-2">Chưa có lịch sử sổ y tế</h3>
+                    <p class="text-muted small px-4 mb-4">Bé @Model.SelectedPet.Name chưa từng thực hiện kiểm tra sức khỏe hoặc lưu bệnh án tại hệ thống của chúng tôi.</p>
+                    <a href="/Home#categories" class="btn btn-primary px-4 py-2 rounded-pill font-weight-bold" style="background-color: #f97316; border: none; font-size: 0.85rem; font-weight: 600;">
+                        Hãy đưa thú cưng của bạn đến cửa hàng để kiểm tra sức khỏe ngay
+                    </a>
+                </div>
+            }
+            else
+            {
+                <div class="pe-2 flex-grow-1" style="max-height: 620px; overflow-y: auto; padding-right: 8px;">
+                    <div class="timeline-wrapper" style="display: flex; flex-direction: column; gap: 20px;">
+                        @foreach (var rec in Model.MedicalRecords)
+                        {
+                            var healthClass = rec.HealthStatus switch
+                            {
+                                "Khỏe mạnh" => "bg-success",
+                                "Cần theo dõi" => "bg-warning",
+                                _ => "bg-danger"
+                            };
+
+                            <div class="card border-0 shadow-sm p-4 rounded-4" style="background-color: #fff; border-radius: 20px; border: 1px solid #f3f0ec; box-shadow: 0 4px 20px rgba(61, 35, 20, 0.04);">
+                                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2" style="border-color: #f5f2ee !important;">
+                                    <span class="font-weight-bold" style="color: #f97316; font-size: 0.9rem;">
+                                        <i class="bi bi-calendar3 me-2"></i>@rec.DateCreated.ToString("dd/MM/yyyy HH:mm")
+                                    </span>
+                                    <span class="badge @healthClass px-3 py-2 rounded-pill font-weight-bold" style="font-size: 0.72rem; color: #fff;">
+                                        @rec.HealthStatus
+                                    </span>
+                                </div>
+
+                                <div class="row mb-3 fs-6">
+                                    <div class="col-12" style="color: #3d2314;">
+                                        Cân nặng lúc khám: <strong class="fs-5" style="color: #f97316;">@rec.Weight.ToString("0.0") kg</strong>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <strong style="font-size: 0.85rem; color: #3d2314; display: block; margin-bottom: 6px;"><i class="bi bi-activity me-1 text-primary"></i> Chẩn đoán / Triệu chứng:</strong>
+                                    <p class="mb-0 text-secondary bg-light p-3 rounded-3 border-start" style="font-size: 0.85rem; background-color: #faf9f8 !important; border-left: 4px solid #00c6ff !important; line-height: 1.5;">
+                                        @rec.Symptoms
+                                    </p>
+                                </div>
+
+                                <div class="mb-3">
+                                    <strong style="font-size: 0.85rem; color: #3d2314; display: block; margin-bottom: 6px;"><i class="bi bi-capsule me-1 text-success"></i> Hướng xử lý / Kê đơn:</strong>
+                                    <p class="mb-0 text-secondary bg-light p-3 rounded-3 border-start" style="font-size: 0.85rem; background-color: #faf9f8 !important; border-left: 4px solid #2ecc71 !important; line-height: 1.5;">
+                                        @rec.Treatment
+                                    </p>
+                                </div>
+
+                                @{
+                                    var hasSpecifics = false;
+                                    var specFields = new List<(string Label, string Value)>();
+                                    
+                                    if (!string.IsNullOrEmpty(rec.VaccinationStatus) || !string.IsNullOrEmpty(rec.ParasitePrevention) || !string.IsNullOrEmpty(rec.PhysicalCheck))
+                                    {
+                                        hasSpecifics = true;
+                                        specFields.Add(("Tiêm phòng", rec.VaccinationStatus ?? "N/A"));
+                                        specFields.Add(("Ký sinh trùng", rec.ParasitePrevention ?? "N/A"));
+                                        specFields.Add(("Thể chất", rec.PhysicalCheck ?? "N/A"));
+                                    }
+                                    else if (!string.IsNullOrEmpty(rec.ShellStatus) || !string.IsNullOrEmpty(rec.RearingConditions) || !string.IsNullOrEmpty(rec.AbnormalSymptoms))
+                                    {
+                                        hasSpecifics = true;
+                                        specFields.Add(("Tình trạng mai", rec.ShellStatus ?? "N/A"));
+                                        specFields.Add(("ĐK nuôi", rec.RearingConditions ?? "N/A"));
+                                        specFields.Add(("Bất thường", rec.AbnormalSymptoms ?? "N/A"));
+                                    }
+                                    else if (!string.IsNullOrEmpty(rec.IncisorCheck) || !string.IsNullOrEmpty(rec.FurSkinCheck) || !string.IsNullOrEmpty(rec.DigestiveSigns))
+                                    {
+                                        hasSpecifics = true;
+                                        specFields.Add(("Răng cửa", rec.IncisorCheck ?? "N/A"));
+                                        specFields.Add(("Da/Lông", rec.FurSkinCheck ?? "N/A"));
+                                        specFields.Add(("Tiêu hóa", rec.DigestiveSigns ?? "N/A"));
+                                    }
+                                }
+
+                                @if (hasSpecifics)
+                                {
+                                    <div class="mt-3 pt-3 border-top" style="border-color: #f5f2ee !important;">
+                                        <span class="d-block text-muted mb-2 font-weight-bold" style="font-size: 0.72rem; letter-spacing: 0.3px; text-transform: uppercase;">
+                                            <i class="bi bi-clipboard-check-fill me-1"></i>Chi tiết lâm sàng đặc thù loài
+                                        </span>
+                                        <div class="row g-2 text-dark" style="font-size: 0.8rem;">
+                                            @foreach (var field in specFields)
+                                            {
+                                                <div class="col-md-4">
+                                                    <span class="text-muted font-weight-normal">@field.Label:</span>
+                                                    <span class="font-weight-bold text-dark d-block">@field.Value</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+

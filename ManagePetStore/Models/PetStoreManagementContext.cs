@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -294,7 +294,7 @@ public partial class PetStoreManagementContext : DbContext
             entity.Property(e => e.PaymentMethod).HasMaxLength(30);
             entity.Property(e => e.Status)
                 .HasMaxLength(30)
-                .HasDefaultValue("Đã thanh toán");
+                .HasDefaultValue("�� thanh to�n");
             entity.Property(e => e.Subtotal).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.Total).HasColumnType("decimal(18, 2)");
 

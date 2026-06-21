@@ -1,9 +1,9 @@
-/**
+﻿/**
  * Project: Pet Store Management System (PSMS)
  * File: ExpiryDateScannerService.cs
  * Author: Tran Duong
  * Date: June 11, 2026
- * Description: Background service quét hạn sử dụng lô hàng tự động mỗi ngày.
+ * Description: Background service qu�t h?n s? d?ng l� h�ng t? d?ng m?i ng�y.
  */
 using ManagePetStore.Models;
 using Microsoft.EntityFrameworkCore;
@@ -36,7 +36,7 @@ namespace ManagePetStore.BackgroundServices
             {
                 try
                 {
-                    _logger.LogInformation("Bắt đầu quét hạn sử dụng các lô hàng...");
+                    _logger.LogInformation("B?t d?u qu�t h?n s? d?ng c�c l� h�ng...");
                     
                     using (var scope = _serviceProvider.CreateScope())
                     {
@@ -49,34 +49,34 @@ namespace ManagePetStore.BackgroundServices
 
                         if (expiringBatches.Any())
                         {
-                            _logger.LogWarning($"Phát hiện {expiringBatches.Count} lô hàng sắp hoặc đã hết hạn!");
+                            _logger.LogWarning($"Ph�t hi?n {expiringBatches.Count} l� h�ng s?p ho?c d� h?t h?n!");
                             foreach(var batch in expiringBatches)
                             {
                                 if (batch.ExpiryDate < DateTime.Now)
                                 {
-                                    _logger.LogError($"- Lô #{batch.BatchId} của {batch.ProductSkuNavigation.Name} ĐÃ HẾT HẠN (HSD: {batch.ExpiryDate:dd/MM/yyyy}).");
+                                    _logger.LogError($"- L� #{batch.BatchId} c?a {batch.ProductSkuNavigation.Name} �� H?T H?N (HSD: {batch.ExpiryDate:dd/MM/yyyy}).");
                                 }
                                 else
                                 {
-                                    _logger.LogWarning($"- Lô #{batch.BatchId} của {batch.ProductSkuNavigation.Name} sắp hết hạn (HSD: {batch.ExpiryDate:dd/MM/yyyy}).");
+                                    _logger.LogWarning($"- L� #{batch.BatchId} c?a {batch.ProductSkuNavigation.Name} s?p h?t h?n (HSD: {batch.ExpiryDate:dd/MM/yyyy}).");
                                 }
                             }
                             
-                            // Trong thực tế, ở đây ta có thể lưu vào bảng Notifications để hiển thị trên UI cho Admin/Warehouse
+                            // Trong th?c t?, ? d�y ta c� th? luu v�o b?ng Notifications d? hi?n th? tr�n UI cho Admin/Warehouse
                         }
                         else
                         {
-                            _logger.LogInformation("Quét hoàn tất. Không có lô hàng nào sắp hết hạn.");
+                            _logger.LogInformation("Qu�t ho�n t?t. Kh�ng c� l� h�ng n�o s?p h?t h?n.");
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Lỗi khi quét hạn sử dụng.");
+                    _logger.LogError(ex, "L?i khi qu�t h?n s? d?ng.");
                 }
 
-                // Chờ 24 giờ rồi quét lại
-                // (Trong quá trình test có thể để 1 phút: TimeSpan.FromMinutes(1))
+                // Ch? 24 gi? r?i qu�t l?i
+                // (Trong qu� tr�nh test c� th? d? 1 ph�t: TimeSpan.FromMinutes(1))
                 await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
             }
         }

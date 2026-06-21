@@ -1,9 +1,9 @@
-/**
+﻿/**
  * Project: Pet Store Management System (PSMS)
  * File: ProductRepository.cs
  * Author: Tran Duong
  * Date: May 31, 2026
- * Description: Các thao tác CRUD cho bảng sản phẩm.
+ * Description: C�c thao t�c CRUD cho b?ng s?n ph?m.
  */
 using ManagePetStore.Models;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +27,7 @@ public class ProductRepository : IProductRepository
             query = query.Where(p => p.IsDeleted == false);
         else if (filter == "deleted")
             query = query.Where(p => p.IsDeleted == true);
-        // "all" → không lọc, lấy toàn bộ
+        // "all" ? kh�ng l?c, l?y to�n b?
 
         return await query.OrderBy(p => p.Name).ToListAsync();
     }

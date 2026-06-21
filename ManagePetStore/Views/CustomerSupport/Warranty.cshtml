@@ -1,0 +1,57 @@
+﻿@{
+    Layout = "_PetStoreLayout";
+    ViewData["Title"] = "Chính sách đổi trả & bảo hành";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/customer-support.css" asp-append-version="true" />
+}
+
+<section class="support-page">
+    <div class="support-page-inner">
+        <a asp-area="" asp-controller="Home" asp-action="Index" class="support-back">
+            <i class="bi bi-arrow-left"></i> Về trang chủ
+        </a>
+
+        @await Html.PartialAsync("_SupportNav", "warranty")
+
+        <div class="support-hero">
+            <div class="support-hero-icon"><i class="bi bi-shield-check"></i></div>
+            <h1>Chính Sách Bảo Hành &amp; Đổi Trả</h1>
+            <p>Nhằm đảm bảo quyền lợi của khách hàng, chúng tôi áp dụng chính sách đổi trả và bảo hành minh bạch như sau:</p>
+        </div>
+
+        <div class="support-card">
+            <h2>Quy định đổi trả Phụ kiện &amp; Thức ăn</h2>
+            <h3>Thời gian</h3>
+            <p>Hỗ trợ đổi trả trong vòng <strong>7 ngày</strong> kể từ ngày xuất hóa đơn.</p>
+            <h3>Điều kiện</h3>
+            <ul>
+                <li>Hàng hóa phải còn nguyên seal, chưa qua sử dụng, không bị rách bao bì.</li>
+                <li>Đối với quần áo thú cưng, phải còn nguyên tem mác, không dính lông chó/mèo, không có mùi lạ.</li>
+            </ul>
+            <h3>Từ chối đổi trả</h3>
+            <ul>
+                <li>Không áp dụng đổi trả đối với thức ăn/pate đã bóc vỏ.</li>
+                <li>Không áp dụng đối với các sản phẩm nằm trong chương trình sale thanh lý cận date.</li>
+            </ul>
+        </div>
+
+        <div class="support-card">
+            <h2>Chính sách bảo hành Thú cưng thuần chủng</h2>
+            <h3>Phạm vi</h3>
+            <p>Cam kết bảo hành 2 bệnh lây nhiễm nguy hiểm (<strong>Care và Parvo</strong> ở chó, <strong>Giảm bạch cầu</strong> ở mèo) trong vòng <strong>15 ngày</strong> kể từ ngày đón bé về nhà.</p>
+            <h3>Điều kiện</h3>
+            <ul>
+                <li>Nếu bé có biểu hiện ốm, bỏ ăn, tiêu chảy... khách hàng phải thông báo ngay cho Hotline.</li>
+                <li>Bắt buộc test bệnh tại các trạm thú y do cửa hàng chỉ định.</li>
+                <li>Nếu dương tính, cửa hàng chịu <strong>100% chi phí</strong> nếu bé không qua khỏi.</li>
+            </ul>
+            <h3>Từ chối bảo hành</h3>
+            <ul>
+                <li>Không bảo hành các bệnh lý do lỗi chăm sóc (cảm lạnh do nằm điều hòa, ngộ độc thức ăn, tai nạn,...).</li>
+                <li>Không bảo hành khi khách tự ý tiêm phòng, cho uống thuốc không qua sự tư vấn của bác sĩ thú y.</li>
+            </ul>
+        </div>
+    </div>
+</section>
