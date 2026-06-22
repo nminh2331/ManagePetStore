@@ -969,37 +969,58 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             {
                 try
                 {
-                    if (queueItem.QueueNumber.StartsWith("OL-"))
+                    string phone = "";
+                    string ownerName = queueItem.OwnerName;
+                    if (ownerName.Contains("(") && ownerName.Contains(")"))
                     {
-                        string phone = "";
-                        string ownerName = queueItem.OwnerName;
-                        if (ownerName.Contains("(") && ownerName.Contains(")"))
+                        int startIndex = ownerName.LastIndexOf("(") + 1;
+                        int endIndex = ownerName.LastIndexOf(")");
+                        if (startIndex > 0 && endIndex > startIndex)
                         {
-                            int startIndex = ownerName.LastIndexOf("(") + 1;
-                            int endIndex = ownerName.LastIndexOf(")");
-                            if (startIndex > 0 && endIndex > startIndex)
-                            {
-                                phone = ownerName.Substring(startIndex, endIndex - startIndex).Trim();
-                            }
+                            phone = ownerName.Substring(startIndex, endIndex - startIndex).Trim();
                         }
+                    }
 
-                        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Phone == phone);
-                        if (customer != null)
+                    var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Phone == phone);
+                    if (customer != null)
+                    {
+                        var pet = await _context.Pets.FirstOrDefaultAsync(p => p.CustomerId == customer.CustomerId && p.Name == queueItem.PetName);
+                        var service = await _context.SpaServices.FirstOrDefaultAsync(s => s.Name == queueItem.ServiceDescription);
+                        
+                        if (pet != null && service != null)
                         {
-                            var pet = await _context.Pets.FirstOrDefaultAsync(p => p.CustomerId == customer.CustomerId && p.Name == queueItem.PetName);
-                            var service = await _context.SpaServices.FirstOrDefaultAsync(s => s.Name == queueItem.ServiceDescription);
+                            DateTime targetBookingDateTime = queueItem.ArrivalTime;
+                            var booking = await _context.SpaBookings
+                                .FirstOrDefaultAsync(b => b.CustomerId == customer.CustomerId && b.PetId == pet.PetId && b.ServiceId == service.ServiceId && b.DateTime == targetBookingDateTime && b.SpaStatus != "Cancelled");
                             
-                            if (pet != null && service != null)
+                            if (booking != null)
                             {
-                                DateTime targetBookingDateTime = queueItem.ArrivalTime;
-                                var booking = await _context.SpaBookings
-                                    .FirstOrDefaultAsync(b => b.CustomerId == customer.CustomerId && b.PetId == pet.PetId && b.ServiceId == service.ServiceId && b.DateTime == targetBookingDateTime && b.SpaStatus != "Cancelled");
-                                
-                                if (booking != null)
+                                booking.SpaStatus = "Cancelled";
+                                booking.Notes = $"[Lý do hủy: {reason}] " + (booking.Notes ?? "");
+                            }
+                            else
+                            {
+                                // Tạo một lịch hẹn Cancelled cho khách vãng lai để lưu lại lịch sử hủy trong DB
+                                var defaultGroomer = await _context.Users.Include(u => u.Role)
+                                    .FirstOrDefaultAsync(u => u.Role.RoleName == "service" && u.Status == "Active")
+                                    ?? await _context.Users.Include(u => u.Role)
+                                    .FirstOrDefaultAsync(u => u.Role.RoleName == "service")
+                                    ?? await _context.Users.FirstOrDefaultAsync();
+                                int groomerId = defaultGroomer?.UserId ?? 3;
+
+                                var cancelledBooking = new SpaBooking
                                 {
-                                    booking.SpaStatus = "Cancelled";
-                                    booking.Notes = $"[Lý do hủy: {reason}] " + (booking.Notes ?? "");
-                                }
+                                    CustomerId = customer.CustomerId,
+                                    PetId = pet.PetId,
+                                    ServiceId = service.ServiceId,
+                                    GroomerId = groomerId,
+                                    DateTime = targetBookingDateTime,
+                                    Price = service.Price,
+                                    Status = "Chưa thanh toán",
+                                    SpaStatus = "Cancelled",
+                                    Notes = $"[Lý do hủy: {reason}] " + (queueItem.Note ?? "")
+                                };
+                                _context.SpaBookings.Add(cancelledBooking);
                             }
                         }
                     }
