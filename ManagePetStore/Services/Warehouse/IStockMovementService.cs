@@ -7,7 +7,7 @@
  */
 using ManagePetStore.Models;
 
-namespace ManagePetStore.Areas.Warehouse.Services;
+namespace ManagePetStore.Services.Warehouse;
 
 public interface IStockMovementService
 {

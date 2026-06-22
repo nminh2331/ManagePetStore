@@ -6,7 +6,7 @@
  * Description: Controller xử lý duyệt phiếu nhập kho cho Manager.
  */
 using System.Security.Claims;
-using ManagePetStore.Areas.Warehouse.Services;
+using ManagePetStore.Services.Warehouse;
 using ManagePetStore.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

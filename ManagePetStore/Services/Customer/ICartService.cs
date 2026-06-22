@@ -1,6 +1,6 @@
 using ManagePetStore.Areas.Customer.Models;
 
-namespace ManagePetStore.Areas.Customer.Services;
+namespace ManagePetStore.Services.Customer;
 
 public interface ICartService
 {

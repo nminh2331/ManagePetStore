@@ -2,7 +2,7 @@ using System.Text;
 using ManagePetStore.Areas.Customer.Models;
 using ManagePetStore.Services;
 
-namespace ManagePetStore.Areas.Customer.Services;
+namespace ManagePetStore.Services.Customer;
 
 public class CheckoutEmailService : ICheckoutEmailService
 {

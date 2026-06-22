@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using ManagePetStore.Areas.Customer.Models;
-using ManagePetStore.Areas.Customer.Services;
+using ManagePetStore.Services.Customer;
 using ManagePetStore.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

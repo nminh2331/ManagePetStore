@@ -5,8 +5,8 @@
  * Date: June 10, 2026
  * Description: Controller xử lý lô hàng.
  */
-using ManagePetStore.Areas.Warehouse.Services;
-using ManagePetStore.Areas.Warehouse.Repositories;
+using ManagePetStore.Services.Warehouse;
+using ManagePetStore.Repositories.Warehouse;
 using ManagePetStore.Exceptions;
 using ManagePetStore.Models;
 using ManagePetStore.Services;

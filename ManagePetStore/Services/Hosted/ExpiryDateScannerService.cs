@@ -15,7 +15,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ManagePetStore.BackgroundServices
+namespace ManagePetStore.Services.Hosted
 {
     public class ExpiryDateScannerService : BackgroundService
     {
