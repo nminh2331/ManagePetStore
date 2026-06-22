@@ -1,0 +1,64 @@
+@model ManagePetStore.Models.CustomerModels.CheckoutSuccessViewModel
+@{
+    Layout = "_PetStoreLayout";
+    ViewData["Title"] = "Đặt hàng thành công";
+    var orderNote = ViewBag.OrderNote as string;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/customer-checkout.css" asp-append-version="true" />
+}
+
+<section class="checkout-success-page">
+    <div class="checkout-success-card">
+        <div class="checkout-success-icon">
+            <i class="bi bi-check-circle-fill"></i>
+        </div>
+        <h1>Đặt hàng thành công!</h1>
+        <p>Cảm ơn bạn đã mua hàng tại PetStore. Đơn hàng của bạn đang được xử lý.</p>
+
+        @if (ViewBag.EmailSentMessage != null)
+        {
+            <div class="checkout-success-note" style="background: #ecfdf5; border-color: #a7f3d0; color: #047857;">
+                @ViewBag.EmailSentMessage
+            </div>
+        }
+
+        @if (ViewBag.EmailSentWarning != null)
+        {
+            <div class="checkout-success-note">
+                @ViewBag.EmailSentWarning
+            </div>
+        }
+
+        <div class="checkout-success-details">
+            <div><span>Mã đơn hàng</span><strong>@Model.OrderId</strong></div>
+            <div><span>Người nhận</span><strong>@Model.FullName</strong></div>
+            <div><span>Số điện thoại</span><strong>@Model.Phone</strong></div>
+            @if (!string.IsNullOrWhiteSpace(Model.ConfirmationEmail))
+            {
+                <div><span>Gmail xác nhận</span><strong>@Model.ConfirmationEmail</strong></div>
+            }
+            <div><span>Địa chỉ giao hàng</span><strong>@Model.ShippingAddress</strong></div>
+            <div><span>Phương thức thanh toán</span><strong>@Model.PaymentMethod</strong></div>
+            <div><span>Số sản phẩm</span><strong>@Model.ItemCount</strong></div>
+            <div><span>Tổng thanh toán</span><strong class="checkout-success-total">@Model.Total.ToString("N0")đ</strong></div>
+            @if (!string.IsNullOrWhiteSpace(orderNote))
+            {
+                <div><span>Ghi chú</span><strong>@orderNote</strong></div>
+            }
+        </div>
+
+        @if (Model.PaymentMethod != "Tiền mặt")
+        {
+            <div class="checkout-success-note">
+                Đơn hàng ở trạng thái <strong>Chờ thanh toán</strong>. Vui lòng hoàn tất thanh toán qua @Model.PaymentMethod.
+            </div>
+        }
+
+        <div class="checkout-success-actions">
+            <a asp-area="" asp-controller="Home" asp-action="Index" class="checkout-success-btn primary">Tiếp tục mua sắm</a>
+            <a asp-controller="CustomerCart" asp-action="Index" class="checkout-success-btn secondary">Xem giỏ hàng</a>
+        </div>
+    </div>
+</section>

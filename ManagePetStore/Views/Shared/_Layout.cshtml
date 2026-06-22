@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -34,14 +34,14 @@
                                     Xin chào, @User.FindFirst("FullName")?.Value
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end border-0 shadow-sm" aria-labelledby="navbarDropdown" style="border-radius: 12px; margin-top: 10px;">
-                                    <li><a class="dropdown-item" asp-area="Customer" asp-controller="Account" asp-action="Profile">Thông tin cá nhân</a></li>
+                                    <li><a class="dropdown-item" asp-controller="CustomerAccount" asp-action="Profile">Thông tin cá nhân</a></li>
                                     @if (User.IsInRole("admin"))
                                     {
-                                        <li><a class="dropdown-item text-primary" asp-area="Admin" asp-controller="Home" asp-action="Index" style="font-weight: 500;">Bảng quản trị</a></li>
+                                        <li><a class="dropdown-item text-primary"  asp-controller="Home" asp-action="Index" style="font-weight: 500;">Bảng quản trị</a></li>
                                     }
                                     else if (User.IsInRole("cashier"))
                                     {
-                                        <li><a class="dropdown-item text-primary" asp-area="Cashier" asp-controller="Home" asp-action="Index" style="font-weight: 500;">Trang thu ngân</a></li>
+                                        <li><a class="dropdown-item text-primary"  asp-controller="Home" asp-action="Index" style="font-weight: 500;">Trang thu ngân</a></li>
                                     }
                                     else if (User.IsInRole("service"))
                                     {
@@ -49,11 +49,11 @@
                                     }
                                     else if (User.IsInRole("warehouse"))
                                     {
-                                        <li><a class="dropdown-item text-primary" asp-area="Warehouse" asp-controller="Home" asp-action="Index" style="font-weight: 500;">Trang thủ kho</a></li>
+                                        <li><a class="dropdown-item text-primary"  asp-controller="Home" asp-action="Index" style="font-weight: 500;">Trang thủ kho</a></li>
                                     }
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
-                                        <form asp-area="Customer" asp-controller="Account" asp-action="Logout" method="post" class="px-3 py-1">
+                                        <form asp-controller="CustomerAccount" asp-action="Logout" method="post" class="px-3 py-1">
                                             <button type="submit" class="btn btn-sm btn-outline-danger w-100" style="border-radius: 8px;">Đăng xuất</button>
                                         </form>
                                     </li>
@@ -63,10 +63,10 @@
                         else
                         {
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="Customer" asp-controller="Account" asp-action="Login">Đăng nhập</a>
+                                <a class="nav-link text-dark" asp-controller="CustomerAccount" asp-action="Login">Đăng nhập</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="Customer" asp-controller="Account" asp-action="Register">Đăng ký</a>
+                                <a class="nav-link text-dark" asp-controller="CustomerAccount" asp-action="Register">Đăng ký</a>
                             </li>
                         }
                     </ul>
@@ -91,3 +91,4 @@
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
+

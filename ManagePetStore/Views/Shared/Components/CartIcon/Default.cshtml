@@ -1,9 +1,10 @@
-@model int
+﻿@model int
 
-<a class="ps-icon-btn ps-cart-btn" asp-area="Customer" asp-controller="Cart" asp-action="Index" aria-label="Giỏ hàng">
+<a class="ps-icon-btn ps-cart-btn" asp-controller="CustomerCart" asp-action="Index" aria-label="Giỏ hàng">
     <i class="bi bi-cart3"></i>
     @if (Model > 0)
     {
         <span class="ps-badge">@Model</span>
     }
 </a>
+

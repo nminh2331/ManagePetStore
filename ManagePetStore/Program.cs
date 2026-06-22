@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authentication.Cookies;
+﻿using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using ManagePetStore.Models;
@@ -9,24 +9,24 @@ using ManagePetStore.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // =========================================================================
-// 1. CẤU HÌNH CƠ SỞ DỮ LIỆU (ENTITY FRAMEWORK CORE)
+// 1. C?U H�NH CO S? D? LI?U (ENTITY FRAMEWORK CORE)
 // =========================================================================
 builder.Services.AddDbContext<PetStoreManagementContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // =========================================================================
-// 2. CẤU HÌNH XÁC THỰC & PHÂN QUYỀN (COOKIE AUTHENTICATION)
+// 2. C?U H�NH X�C TH?C & PH�N QUY?N (COOKIE AUTHENTICATION)
 // =========================================================================
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
-        // Đường dẫn đến trang đăng nhập nếu người dùng chưa xác thực
-        options.LoginPath = "/Customer/Account/Login";
+        // �u?ng d?n d?n trang dang nh?p n?u ngu?i d�ng chua x�c th?c
+        options.LoginPath = "/CustomerAccount/Login";
 
-        // Đường dẫn đến trang thông báo từ chối truy cập nếu sai Quyền (Role)
-        options.AccessDeniedPath = "/Customer/Account/AccessDenied";
+        // �u?ng d?n d?n trang th�ng b�o t? ch?i truy c?p n?u sai Quy?n (Role)
+        options.AccessDeniedPath = "/CustomerAccount/AccessDenied";
 
-        // Thời gian duy trì đăng nhập (7 ngày)
+        // Th?i gian duy tr� dang nh?p (7 ng�y)
         options.ExpireTimeSpan = TimeSpan.FromDays(7);
         options.SlidingExpiration = true;
 
@@ -39,13 +39,13 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
                     path.StartsWith("/Cashier", StringComparison.OrdinalIgnoreCase) ||
                     path.StartsWith("/Warehouse", StringComparison.OrdinalIgnoreCase) ||
                     path.StartsWith("/Manager", StringComparison.OrdinalIgnoreCase) ||
-                    path.StartsWith("/SpaServices", StringComparison.OrdinalIgnoreCase))
+                    path.StartsWith("/ServiceStaff", StringComparison.OrdinalIgnoreCase))
                 {
                     context.RedirectUri = "/Staff/Login";
                 }
                 else
                 {
-                    context.RedirectUri = "/Customer/Account/Login";
+                    context.RedirectUri = "/CustomerAccount/Login";
                 }
                 context.Response.Redirect(context.RedirectUri);
                 return Task.CompletedTask;
@@ -54,29 +54,29 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 
 // =========================================================================
-// 3. CẤU HÌNH LƯU TRỮ TẠM THỜI (SESSION - PHỤC VỤ GIỎ HÀNG GUEST)
+// 3. C?U H�NH LUU TR? T?M TH?I (SESSION - PH?C V? GI? H�NG GUEST)
 // =========================================================================
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromMinutes(30); // Giỏ hàng tồn tại 30 phút nếu không thao tác
+    options.IdleTimeout = TimeSpan.FromMinutes(30); // Gi? h�ng t?n t?i 30 ph�t n?u kh�ng thao t�c
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });
 
-// Thêm các dịch vụ hỗ trợ cho kiến trúc MVC
+// Th�m c�c d?ch v? h? tr? cho ki?n tr�c MVC
 builder.Services.Configure<ManagePetStore.Services.EmailSettings>(
     builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddScoped<ManagePetStore.Services.IEmailService, ManagePetStore.Services.EmailService>();
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ManagePetStore.Areas.Customer.Services.CartProductResolver>();
-builder.Services.AddScoped<ManagePetStore.Areas.Customer.Services.ICartService, ManagePetStore.Areas.Customer.Services.CartService>();
-builder.Services.AddScoped<ManagePetStore.Areas.Customer.Services.IOrderReviewService, ManagePetStore.Areas.Customer.Services.OrderReviewService>();
-builder.Services.AddScoped<ManagePetStore.Areas.Customer.Services.ICheckoutEmailService, ManagePetStore.Areas.Customer.Services.CheckoutEmailService>();
+builder.Services.AddScoped<ManagePetStore.Services.Customer.CartProductResolver>();
+builder.Services.AddScoped<ManagePetStore.Services.Customer.ICartService, ManagePetStore.Services.Customer.CartService>();
+builder.Services.AddScoped<ManagePetStore.Services.Customer.IOrderReviewService, ManagePetStore.Services.Customer.OrderReviewService>();
+builder.Services.AddScoped<ManagePetStore.Services.Customer.ICheckoutEmailService, ManagePetStore.Services.Customer.CheckoutEmailService>();
 builder.Services.AddControllersWithViews();
 
 // =========================================================================
-// 4. ĐĂNG KÝ DEPENDENCY INJECTION
+// 4. �ANG K� DEPENDENCY INJECTION
 // =========================================================================
 builder.Services.AddScoped<IRoomRepository, RoomRepository>();
 builder.Services.AddScoped<IRoomService, RoomService>();
@@ -84,14 +84,14 @@ builder.Services.AddScoped<IRoomService, RoomService>();
 // Warehouse repositories
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductCategoryRepository, ProductCategoryRepository>();
-builder.Services.AddScoped<ManagePetStore.Areas.Warehouse.Repositories.IInventoryBatchRepository, ManagePetStore.Areas.Warehouse.Repositories.InventoryBatchRepository>();
-builder.Services.AddScoped<ManagePetStore.Areas.Warehouse.Repositories.IStockMovementRepository, ManagePetStore.Areas.Warehouse.Repositories.StockMovementRepository>();
+builder.Services.AddScoped<ManagePetStore.Repositories.Warehouse.IInventoryBatchRepository, ManagePetStore.Repositories.Warehouse.InventoryBatchRepository>();
+builder.Services.AddScoped<ManagePetStore.Repositories.Warehouse.IStockMovementRepository, ManagePetStore.Repositories.Warehouse.StockMovementRepository>();
 
 // Warehouse services
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IProductCategoryService, ProductCategoryService>();
-builder.Services.AddScoped<ManagePetStore.Areas.Warehouse.Services.IInventoryBatchService, ManagePetStore.Areas.Warehouse.Services.InventoryBatchService>();
-builder.Services.AddScoped<ManagePetStore.Areas.Warehouse.Services.IStockMovementService, ManagePetStore.Areas.Warehouse.Services.StockMovementService>();
+builder.Services.AddScoped<ManagePetStore.Services.Warehouse.IInventoryBatchService, ManagePetStore.Services.Warehouse.InventoryBatchService>();
+builder.Services.AddScoped<ManagePetStore.Services.Warehouse.IStockMovementService, ManagePetStore.Services.Warehouse.StockMovementService>();
 builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
 builder.Services.AddScoped<ISupplierService, SupplierService>();
 
@@ -104,17 +104,17 @@ builder.Services.AddHostedService<ManagePetStore.BackgroundServices.ExpiryDateSc
 var app = builder.Build();
 
 // =========================================================================
-// 4. CẤU HÌNH ĐƯỜNG ỐNG XỬ LÝ (MIDDLEWARE PIPELINE) - THỨ TỰ BẮT BUỘC
+// 4. C?U H�NH �U?NG ?NG X? L� (MIDDLEWARE PIPELINE) - TH? T? B?T BU?C
 // =========================================================================
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
 }
 
-// Cho phép truy cập các file tĩnh trong wwwroot (CSS, JS, Images, File upload của chuồng/pet)
+// Cho ph�p truy c?p c�c file tinh trong wwwroot (CSS, JS, Images, File upload c?a chu?ng/pet)
 app.UseStaticFiles();
 
-// Phục vụ CSS/JS homepage từ thư mục Views (chỉ cho phép .css và .js)
+// Ph?c v? CSS/JS homepage t? thu m?c Views (ch? cho ph�p .css v� .js)
 app.Use(async (context, next) =>
 {
     if (context.Request.Path.StartsWithSegments("/views-assets"))
@@ -139,25 +139,20 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseRouting();
 
-// Kích hoạt Session (Phải đặt trước Authentication và Authorization)
+// K�ch ho?t Session (Ph?i d?t tru?c Authentication v� Authorization)
 app.UseSession();
 
-// Kích hoạt nhận diện danh tính (Ai đang đăng nhập?)
+// K�ch ho?t nh?n di?n danh t�nh (Ai dang dang nh?p?)
 app.UseAuthentication();
 
-// Kích hoạt kiểm tra quyền hạn (Tài khoản đó thuộc Role nào, được vào đâu?)
+// K�ch ho?t ki?m tra quy?n h?n (T�i kho?n d� thu?c Role n�o, du?c v�o d�u?)
 app.UseAuthorization();
 
 // =========================================================================
-// 5. CẤU HÌNH ĐỊNH TUYẾN (ROUTING) - CHIA LÃNH ĐỊA CHO CÁC THÀNH VIÊN
+// 5. C?U H�NH �?NH TUY?N (ROUTING)
 // =========================================================================
 
-// Route ưu tiên 1: Dành cho các phân hệ nằm trong Areas (Admin, Customer, v.v.)
-app.MapControllerRoute(
-    name: "areas",
-    pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}");
-
-// Route ưu tiên 2: Dành cho trang chủ công khai bên ngoài nếu không thuộc Area nào
+// Route m?c d?nh
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");

@@ -1,0 +1,244 @@
+@model ManagePetStore.Models.CustomerModels.CartPageViewModel
+@{
+    Layout = "_PetStoreLayout";
+    ViewData["Title"] = "Giỏ hàng";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/customer-cart.css" asp-append-version="true" />
+}
+
+<section class="cart-page">
+    <div class="container-fluid cart-page-inner">
+        <a class="cart-back-link" asp-area="" asp-controller="Home" asp-action="Index">
+            <i class="bi bi-arrow-left"></i> Tiếp tục mua sắm
+        </a>
+
+        <h1 class="cart-page-title">Giỏ hàng của bạn</h1>
+
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="cart-alert cart-alert-success">@TempData["SuccessMessage"]</div>
+        }
+
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="cart-alert cart-alert-danger">@TempData["ErrorMessage"]</div>
+        }
+
+        @if (Model.Items.Any())
+        {
+            <div class="cart-toolbar">
+                <form asp-action="Index" method="get" class="cart-filter-form">
+                    <div class="cart-search-box">
+                        <i class="bi bi-search"></i>
+                        <input type="text"
+                               name="searchTerm"
+                               value="@Model.SearchTerm"
+                               class="cart-search-input"
+                               placeholder="Tìm theo tên sản phẩm hoặc SKU..." />
+                    </div>
+                    <button type="submit" class="cart-filter-btn">Lọc</button>
+                    @if (Model.HasFilter)
+                    {
+                        <a asp-action="Index" class="cart-reset-btn">Xóa lọc</a>
+                    }
+                </form>
+
+                <div class="cart-result-meta">
+                    Hiển thị @Model.VisibleItems.Count / @Model.TotalFilteredItems sản phẩm
+                </div>
+            </div>
+        }
+
+        <div class="cart-layout">
+            <div class="cart-main">
+                @if (!Model.Items.Any())
+                {
+                    <div class="cart-empty">
+                        <i class="bi bi-cart-x"></i>
+                        <h2>Giỏ hàng trống</h2>
+                        <p>Bạn chưa thêm sản phẩm nào vào giỏ hàng.</p>
+                        <a asp-area="" asp-controller="Home" asp-action="Index" class="cart-btn-primary">Khám phá sản phẩm</a>
+                    </div>
+                }
+                else
+                {
+                    @if (!Model.VisibleItems.Any())
+                    {
+                        <div class="cart-filter-empty">
+                            Không tìm thấy sản phẩm nào phù hợp với từ khóa hiện tại.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="cart-table-wrap">
+                            <table class="cart-table">
+                                <thead>
+                                    <tr>
+                                        <th>Sản phẩm</th>
+                                        <th>Đơn giá</th>
+                                        <th>Số lượng</th>
+                                        <th>Tổng tiền</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model.VisibleItems)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="cart-product-cell">
+                                                    <img src="@item.ImageUrl" alt="@item.Name" class="cart-product-img" />
+                                                    <div>
+                                                        <div class="cart-product-name">@item.Name</div>
+                                                        <div class="cart-product-sku">SKU: @item.Sku</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="cart-unit-price">@item.UnitPrice.ToString("N0")đ</span>
+                                            </td>
+                                            <td>
+                                                <div class="cart-qty-control">
+                                                    <form asp-action="Decrease" method="post" class="d-inline">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="sku" value="@item.Sku" />
+                                                        <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+                                                        <input type="hidden" name="page" value="@Model.Page" />
+                                                        <button type="submit" class="cart-qty-btn" aria-label="Giảm số lượng">−</button>
+                                                    </form>
+                                                    <span class="cart-qty-value">@item.Quantity</span>
+                                                    <form asp-action="Increase" method="post" class="d-inline">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="sku" value="@item.Sku" />
+                                                        <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+                                                        <input type="hidden" name="page" value="@Model.Page" />
+                                                        <button type="submit"
+                                                                class="cart-qty-btn"
+                                                                aria-label="Tăng số lượng"
+                                                                @(item.Quantity >= item.MaxStock ? "disabled" : null)>
+                                                            +
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="cart-line-total">@item.LineTotal.ToString("N0")đ</span>
+                                            </td>
+                                            <td>
+                                                <form asp-action="Remove" method="post">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="sku" value="@item.Sku" />
+                                                    <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+                                                    <input type="hidden" name="page" value="@Model.Page" />
+                                                    <button type="submit" class="cart-remove-btn" aria-label="Xóa sản phẩm">
+                                                        <i class="bi bi-trash3"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="3" class="cart-footer-label">Tổng cộng (@Model.TotalQuantity sản phẩm)</td>
+                                        <td colspan="2">
+                                            <span class="cart-grand-total">@Model.Subtotal.ToString("N0")đ</span>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    }
+
+                    @if (Model.TotalPages > 1)
+                    {
+                        <nav class="cart-pagination" aria-label="Phân trang giỏ hàng">
+                            <a asp-action="Index"
+                               asp-route-searchTerm="@Model.SearchTerm"
+                               asp-route-page="@(Model.Page - 1)"
+                               class="cart-page-link @(Model.HasPreviousPage ? "" : "disabled")">
+                                Trước
+                            </a>
+
+                            @for (var i = 1; i <= Model.TotalPages; i++)
+                            {
+                                <a asp-action="Index"
+                                   asp-route-searchTerm="@Model.SearchTerm"
+                                   asp-route-page="@i"
+                                   class="cart-page-link @(i == Model.Page ? "active" : "")">
+                                    @i
+                                </a>
+                            }
+
+                            <a asp-action="Index"
+                               asp-route-searchTerm="@Model.SearchTerm"
+                               asp-route-page="@(Model.Page + 1)"
+                               class="cart-page-link @(Model.HasNextPage ? "" : "disabled")">
+                                Sau
+                            </a>
+                        </nav>
+                    }
+                }
+            </div>
+
+            @if (Model.Items.Any())
+            {
+                <aside class="cart-summary">
+                    <div class="cart-summary-card">
+                        <div class="cart-summary-header">
+                            <i class="bi bi-bag-check-fill"></i>
+                            <h2>Tóm tắt đơn hàng</h2>
+                        </div>
+
+                        <div class="cart-summary-items">
+                            @foreach (var item in Model.Items)
+                            {
+                                <div class="cart-summary-item">
+                                    <img src="@item.ImageUrl" alt="@item.Name" />
+                                    <div class="cart-summary-item-info">
+                                        <div class="cart-summary-item-name">@item.Name</div>
+                                        <div class="cart-summary-item-qty">Số lượng: @item.Quantity</div>
+                                    </div>
+                                    <div class="cart-summary-item-price">@item.LineTotal.ToString("N0")đ</div>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="cart-summary-row">
+                            <span>Tạm tính</span>
+                            <span>@Model.Subtotal.ToString("N0")đ</span>
+                        </div>
+                        <div class="cart-summary-row">
+                            <span>Phí vận chuyển</span>
+                            <span>@Model.ShippingFee.ToString("N0")đ</span>
+                        </div>
+                        @if (Model.VoucherDiscount > 0)
+                        {
+                            <div class="cart-summary-row cart-summary-discount">
+                                <span>Giảm giá voucher</span>
+                                <span>-@Model.VoucherDiscount.ToString("N0")đ</span>
+                            </div>
+                        }
+
+                        <div class="cart-summary-total">
+                            <span>TỔNG THANH TOÁN</span>
+                            <strong>@Model.GrandTotal.ToString("N0")đ</strong>
+                        </div>
+
+                        <a asp-controller="CustomerCheckout" asp-action="Index" class="cart-btn-checkout">
+                            Xác nhận thanh toán
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </div>
+
+                    <div class="cart-security-note">
+                        <i class="bi bi-shield-check"></i>
+                        <span>Thanh toán an toàn &amp; bảo mật thông tin khách hàng.</span>
+                    </div>
+                </aside>
+            }
+        </div>
+    </div>
+</section>

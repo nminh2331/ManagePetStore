@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Text.Json;
@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ManagePetStore.Models;
 using ManagePetStore.Services;
-using ManagePetStore.Areas.Customer.Models;
+using ManagePetStore.Models.CustomerModels;
 
 namespace ManagePetStore.Controllers
 {
@@ -455,11 +455,11 @@ namespace ManagePetStore.Controllers
         {
             return roleName.ToLowerInvariant() switch
             {
-                "admin"     => RedirectToAction("Index", "Home", new { area = "Admin" }),
-                "cashier"   => RedirectToAction("Index", "Home", new { area = "Cashier" }),
+                "admin"     => RedirectToAction("Index", "AdminHome"),
+                "cashier"   => RedirectToAction("Index", "CashierHome"),
                 "service"   => Redirect("/SpaServices"),
-                "warehouse" => RedirectToAction("Index", "Home", new { area = "Warehouse" }),
-                "manager"   => RedirectToAction("Index", "Order", new { area = "Manager" }),
+                "warehouse" => RedirectToAction("Index", "WarehouseHome"),
+                "manager"   => RedirectToAction("Index", "ManagerOrder"),
                 _           => RedirectToAction("Index", "Home", new { area = "" })
             };
         }
@@ -467,17 +467,18 @@ namespace ManagePetStore.Controllers
         private IActionResult RedirectToDashboard()
         {
             if (User.IsInRole("admin"))
-                return RedirectToAction("Index", "Home", new { area = "Admin" });
+                return RedirectToAction("Index", "AdminHome");
             if (User.IsInRole("cashier"))
-                return RedirectToAction("Index", "Home", new { area = "Cashier" });
+                return RedirectToAction("Index", "CashierHome");
             if (User.IsInRole("service"))
                 return Redirect("/SpaServices");
             if (User.IsInRole("warehouse"))
-                return RedirectToAction("Index", "Home", new { area = "Warehouse" });
+                return RedirectToAction("Index", "WarehouseHome");
             if (User.IsInRole("manager"))
-                return RedirectToAction("Index", "Order", new { area = "Manager" });
+                return RedirectToAction("Index", "ManagerOrder");
 
             return RedirectToAction("Index", "Home", new { area = "" });
         }
     }
 }
+

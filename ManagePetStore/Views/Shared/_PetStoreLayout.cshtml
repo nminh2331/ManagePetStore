@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="utf-8" />
@@ -33,14 +33,14 @@
             <div class="ps-header-actions">
                 @if (User.Identity?.IsAuthenticated == true)
                 {
-                    <a class="ps-admin-link" asp-area="Customer" asp-controller="Pet" asp-action="Index" style="color: #f97316; font-weight: 700; white-space: nowrap;">
+                    <a class="ps-admin-link" asp-controller="CustomerPet" asp-action="Index" style="color: #f97316; font-weight: 700; white-space: nowrap;">
                         <i class="bi bi-heart-fill"></i> Hồ sơ thú cưng
                     </a>
                 }
 
                 @if (User.IsInRole("admin"))
                 {
-                    <a class="ps-admin-link" asp-area="Admin" asp-controller="Home" asp-action="Index">Quản trị hệ thống</a>
+                    <a class="ps-admin-link"  asp-controller="Home" asp-action="Index">Quản trị hệ thống</a>
                 }
                
 
@@ -50,7 +50,7 @@
 
                 @if (User.Identity?.IsAuthenticated == true)
                 {
-                    <a class="ps-icon-btn" asp-area="Customer" asp-controller="Account" asp-action="Profile" aria-label="Tài khoản">
+                    <a class="ps-icon-btn" asp-controller="CustomerAccount" asp-action="Profile" aria-label="Tài khoản">
                         <i class="bi bi-person-circle"></i>
                     </a>
                     <button class="ps-icon-btn" type="button" aria-label="Thông báo">
@@ -58,20 +58,20 @@
                         <span class="ps-badge ps-badge-red">4</span>
                     </button>
                     <span class="ps-greeting">Hi, @(User.FindFirst("FullName")?.Value ?? "Nguyễn Văn A")</span>
-                    <form asp-area="Customer" asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                    <form asp-controller="CustomerAccount" asp-action="Logout" method="post" class="d-inline">
                         <button type="submit" class="ps-logout-btn">Đăng xuất</button>
                     </form>
                 }
                 else
                 {
-                    <a class="ps-icon-btn" asp-area="Customer" asp-controller="Account" asp-action="Login" aria-label="Tài khoản">
+                    <a class="ps-icon-btn" asp-controller="CustomerAccount" asp-action="Login" aria-label="Tài khoản">
                         <i class="bi bi-person-circle"></i>
                     </a>
                     <button class="ps-icon-btn" type="button" aria-label="Thông báo">
                         <i class="bi bi-bell"></i>
                     </button>
                     <span class="ps-greeting">Hi, Khách</span>
-                    <a asp-area="Customer" asp-controller="Account" asp-action="Login" class="ps-logout-btn text-decoration-none">Đăng nhập</a>
+                    <a asp-controller="CustomerAccount" asp-action="Login" class="ps-logout-btn text-decoration-none">Đăng nhập</a>
                 }
             </div>
         </div>
@@ -104,9 +104,9 @@
                 <div class="col-lg-2 col-md-6">
                     <h6 class="ps-footer-title">Hỗ trợ</h6>
                     <ul class="ps-footer-links">
-                        <li><a asp-area="Customer" asp-controller="Support" asp-action="Warranty">Chính sách đổi trả</a></li>
-                        <li><a asp-area="Customer" asp-controller="Support" asp-action="Shipping">Vận chuyển</a></li>
-                        <li><a asp-area="Customer" asp-controller="Support" asp-action="Faq">Câu hỏi thường gặp</a></li>
+                        <li><a asp-controller="CustomerSupport" asp-action="Warranty">Chính sách đổi trả</a></li>
+                        <li><a asp-controller="CustomerSupport" asp-action="Shipping">Vận chuyển</a></li>
+                        <li><a asp-controller="CustomerSupport" asp-action="Faq">Câu hỏi thường gặp</a></li>
                     </ul>
                 </div>
                 <div class="col-lg-4 col-md-6">
@@ -131,3 +131,4 @@
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
+

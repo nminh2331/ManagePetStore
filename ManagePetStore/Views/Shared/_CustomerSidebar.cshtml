@@ -1,0 +1,39 @@
+@model ManagePetStore.Models.CustomerModels.CustomerSidebarViewModel
+
+@{
+    string NavClass(string key) => Model.ActiveNav == key ? "cp-nav-link active" : "cp-nav-link";
+}
+
+<aside>
+    <div class="cp-sidebar-card">
+        <div class="cp-sidebar-avatar">
+            @Model.User.FullName.Substring(0, 1).ToUpper()
+        </div>
+        <div class="cp-sidebar-name">@Model.User.FullName</div>
+        <div class="cp-loyalty">
+            @Model.Customer.LoyaltyPoints.ToString("N0") <span>pts</span>
+        </div>
+    </div>
+
+    <nav class="cp-nav">
+        
+        <a asp-controller="CustomerPet" asp-action="Index" class="@NavClass("pets")">
+            <i class="bi bi-heart"></i> Hồ sơ thú cưng
+        </a>
+        <a asp-controller="CustomerHotelBooking" asp-action="Index" class="@NavClass("appointments")">
+            <i class="bi bi-calendar-event"></i> Lịch hẹn &amp; Khách sạn
+            @if (Model.ActiveNav == "appointments")
+            {
+                <i class="bi bi-chevron-right ms-auto"></i>
+            }
+        </a>
+        <a asp-controller="CustomerOrder" asp-action="Index" class="@NavClass("orders")">
+            <i class="bi bi-bag"></i> Lịch sử đơn hàng
+            @if (Model.ActiveNav == "orders")
+            {
+                <i class="bi bi-chevron-right ms-auto"></i>
+            }
+        </a>
+        
+    </nav>
+</aside>

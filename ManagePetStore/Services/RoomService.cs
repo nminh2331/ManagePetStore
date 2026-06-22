@@ -1,4 +1,4 @@
-using ManagePetStore.Exceptions;
+﻿using ManagePetStore.Exceptions;
 using ManagePetStore.Models;
 using ManagePetStore.Repositories;
 
@@ -24,7 +24,7 @@ public class RoomService : IRoomService
         _repository = repository;
     }
 
-    // ─── Lấy danh sách (có filter) ────────────────────────────────────────────
+    // --- L?y danh s�ch (c� filter) --------------------------------------------
 
     public RoomListViewModel GetAll(string? statusFilter = null)
     {
@@ -46,7 +46,7 @@ public class RoomService : IRoomService
         };
     }
 
-    // ─── Lấy chi tiết 1 chuồng ────────────────────────────────────────────────
+    // --- L?y chi ti?t 1 chu?ng ------------------------------------------------
 
     public RoomViewModel? GetById(int id)
     {
@@ -54,7 +54,7 @@ public class RoomService : IRoomService
         return room is null ? null : MapToViewModel(room);
     }
 
-    // ─── Tạo mới ──────────────────────────────────────────────────────────────
+    // --- T?o m?i --------------------------------------------------------------
 
     public void Create(RoomViewModel model)
     {
@@ -72,12 +72,12 @@ public class RoomService : IRoomService
         _repository.Create(room);
     }
 
-    // ─── Cập nhật ─────────────────────────────────────────────────────────────
+    // --- C?p nh?t -------------------------------------------------------------
 
     public void Update(RoomViewModel model)
     {
         var existing = _repository.GetById(model.RoomId)
-            ?? throw new ServiceException("Không tìm thấy chuồng cần cập nhật.");
+            ?? throw new ServiceException("Kh�ng t�m th?y chu?ng c?n c?p nh?t.");
 
         ValidateModel(model, excludeId: model.RoomId);
 
@@ -90,42 +90,42 @@ public class RoomService : IRoomService
         _repository.Update(existing);
     }
 
-    // ─── Xóa ──────────────────────────────────────────────────────────────────
+    // --- X�a ------------------------------------------------------------------
 
     public void Delete(int id)
     {
         _ = _repository.GetById(id)
-            ?? throw new ServiceException("Không tìm thấy chuồng cần xóa.");
+            ?? throw new ServiceException("Kh�ng t�m th?y chu?ng c?n x�a.");
 
         _repository.Delete(id);
     }
 
-    // ─── Đổi trạng thái nhanh ─────────────────────────────────────────────────
+    // --- �?i tr?ng th�i nhanh -------------------------------------------------
 
     public void UpdateStatus(int id, string status)
     {
         if (!ValidStatuses.Contains(status))
-            throw new ServiceException($"Trạng thái '{status}' không hợp lệ.");
+            throw new ServiceException($"Tr?ng th�i '{status}' kh�ng h?p l?.");
 
         var room = _repository.GetById(id)
-            ?? throw new ServiceException("Không tìm thấy chuồng.");
+            ?? throw new ServiceException("Kh�ng t�m th?y chu?ng.");
 
         room.Status = status;
         _repository.Update(room);
     }
 
-    // ─── Private helpers ──────────────────────────────────────────────────────
+    // --- Private helpers ------------------------------------------------------
 
     private void ValidateModel(RoomViewModel model, int? excludeId)
     {
         if (_repository.ExistsByRoomCode(model.RoomCode.Trim(), excludeId))
-            throw new ServiceException("Mã chuồng đã tồn tại.");
+            throw new ServiceException("M� chu?ng d� t?n t?i.");
 
         if (!RoomTypes.Contains(model.RoomType))
-            throw new ServiceException($"Loại chuồng '{model.RoomType}' không hợp lệ.");
+            throw new ServiceException($"Lo?i chu?ng '{model.RoomType}' kh�ng h?p l?.");
 
         if (!string.IsNullOrEmpty(model.Status) && !ValidStatuses.Contains(model.Status))
-            throw new ServiceException($"Trạng thái '{model.Status}' không hợp lệ.");
+            throw new ServiceException($"Tr?ng th�i '{model.Status}' kh�ng h?p l?.");
     }
 
     private static RoomViewModel MapToViewModel(Room room) => new()

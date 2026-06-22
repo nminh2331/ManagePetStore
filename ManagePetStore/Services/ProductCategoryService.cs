@@ -1,9 +1,9 @@
-/**
+﻿/**
  * Project: Pet Store Management System (PSMS)
  * File: ProductCategoryService.cs
  * Author: Tran Duong
  * Date: May 31, 2026
- * Description: Các hàm xử lý logic nghiệp vụ cho việc quản lý danh mục sản phẩm.
+ * Description: C�c h�m x? l� logic nghi?p v? cho vi?c qu?n l� danh m?c s?n ph?m.
  */
 using ManagePetStore.Exceptions;
 using ManagePetStore.Models;
@@ -56,10 +56,10 @@ public class ProductCategoryService : IProductCategoryService
     public async Task UpdateCategory(int routeId, ProductCategory category)
     {
         if (routeId != category.CategoryId)
-            throw new ServiceException("ID danh mục không khớp.");
+            throw new ServiceException("ID danh m?c kh�ng kh?p.");
 
         if (!await _categoryRepo.CategoryExists(category.CategoryId))
-            throw new ServiceException($"Không tìm thấy danh mục ID = {category.CategoryId}.");
+            throw new ServiceException($"Kh�ng t�m th?y danh m?c ID = {category.CategoryId}.");
 
         SanitizeCategory(category);
 
@@ -69,7 +69,7 @@ public class ProductCategoryService : IProductCategoryService
         }
         catch (DbUpdateConcurrencyException)
         {
-            throw new ServiceException("Danh mục đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
+            throw new ServiceException("Danh m?c d� b? thay d?i b?i ngu?i kh�c. Vui l�ng t?i l?i trang.");
         }
     }
 

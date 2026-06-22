@@ -1,0 +1,286 @@
+@model ManagePetStore.Controllers.PetProfilePageViewModel
+@{
+    Layout = "/Views/Shared/_PetStoreLayout.cshtml";
+    ViewData["Title"] = "Hồ sơ thú cưng";
+
+    string SpeciesLabel(string species) => species?.ToLowerInvariant() switch
+    {
+        "chó" or "dog" => "CHÓ",
+        "mèo" or "cat" => "MÈO",
+        "rùa" or "turtle" => "RÙA",
+        "chuột" or "hamster" => "CHUỘT",
+        _ => species?.ToUpperInvariant() ?? ""
+    };
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/customer-pets.css" asp-append-version="true" />
+}
+
+@{
+    var petFieldErrorsJson = TempData["PetFieldErrors"]?.ToString();
+}
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="cp-toast success" id="cpToast">@TempData["SuccessMessage"]</div>
+}
+@if (TempData["ErrorMessage"] != null && string.IsNullOrEmpty(petFieldErrorsJson))
+{
+    <div class="cp-toast error" id="cpToast">@TempData["ErrorMessage"]</div>
+}
+
+<div class="cp-dashboard">
+    <!-- Sidebar -->
+    <aside>
+        <div class="cp-sidebar-card">
+            <div class="cp-sidebar-avatar">
+                @Model.User.FullName.Substring(0, 1).ToUpper()
+            </div>
+            <div class="cp-sidebar-name">@Model.User.FullName</div>
+            <div class="cp-loyalty">
+                @Model.Customer.LoyaltyPoints.ToString("N0") <span>pts</span>
+            </div>
+        </div>
+
+        <nav class="cp-nav">
+            <a asp-controller="CustomerPet" asp-action="Index" class="cp-nav-link active">
+                <i class="bi bi-heart"></i> Hồ sơ thú cưng
+            </a>
+            <a asp-controller="CustomerHotelBooking" asp-action="Index" class="cp-nav-link">
+                <i class="bi bi-calendar-event"></i> Lịch hẹn &amp; Khách sạn
+            </a>
+            <a asp-controller="CustomerOrder" asp-action="Index" class="cp-nav-link">
+                <i class="bi bi-bag"></i> Lịch sử đơn hàng
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main -->
+    <section class="cp-main">
+        <div class="cp-main-header">
+            <div>
+                <h1 class="cp-main-title">Hồ sơ thú cưng</h1>
+                <p class="cp-main-subtitle">Danh sách thú cưng đã đăng ký chăm sóc tại hệ thống</p>
+            </div>
+            <button type="button" class="cp-btn-add" data-open-modal="createPetModal">
+                + Thêm thú cưng mới
+            </button>
+        </div>
+
+        @if (Model.Pets.Count == 0)
+        {
+            <div class="cp-empty">
+                <i class="bi bi-heart" style="font-size: 48px; color: #f97316; display: block; margin-bottom: 12px;"></i>
+                <p>Bạn chưa có thú cưng nào. Nhấn <strong>+ Thêm thú cưng mới</strong> để tạo hồ sơ đầu tiên.</p>
+            </div>
+        }
+        else
+        {
+            <div class="cp-pet-list">
+                @foreach (var pet in Model.Pets)
+                {
+                    <article class="cp-pet-card">
+                        <img class="cp-pet-image"
+                             src="@(string.IsNullOrEmpty(pet.ImageUrl) ? "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=200&h=200&fit=crop" : pet.ImageUrl)"
+                             alt="@pet.Name" />
+
+                        <div class="cp-pet-actions">
+                            <button type="button" class="cp-pet-action-btn" data-edit-pet="@pet.PetId" title="Chỉnh sửa">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <form asp-action="Delete" method="post" class="cp-delete-form">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="petId" value="@pet.PetId" />
+                                <button type="submit" class="cp-pet-action-btn delete" data-confirm-delete="@pet.Name" title="Xóa">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+
+                        <div class="cp-pet-card-body">
+                            <h2 class="cp-pet-name">@pet.Name</h2>
+                            <div class="cp-pet-breed">@SpeciesLabel(pet.Species) - @(pet.Breed?.ToUpperInvariant() ?? "N/A")</div>
+
+                            <div class="cp-pet-stats">
+                                <div>
+                                    <div class="cp-pet-stat-label">Cân nặng</div>
+                                    <div class="cp-pet-stat-value">@pet.Weight.ToString("0.0")kg</div>
+                                </div>
+                                <div>
+                                    <div class="cp-pet-stat-label">Tuổi</div>
+                                    <div class="cp-pet-stat-value">@(pet.Age ?? "N/A")</div>
+                                </div>
+                            </div>
+                             
+                            <div class="cp-pet-medical-btn-wrapper mt-auto pt-2">
+                                <a href="/Customer/Pet/MedicalHistory?petId=@pet.PetId" class="cp-btn-medical-view w-100 text-decoration-none" style="background-color: #f97316; color: white; border: none; border-radius: 8px; padding: 8px 16px; font-weight: 600; font-size: 0.85rem; transition: background-color 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                    <i class="bi bi-journal-medical"></i> Xem lịch sử sổ y tế
+                                </a>
+                            </div>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+</div>
+
+<!-- UC-13: Create Modal -->
+<div class="cp-modal-overlay @(Model.OpenCreateModal ? "active" : "")" id="createPetModal">
+    <div class="cp-modal" role="dialog" aria-labelledby="createPetTitle">
+        <h2 class="cp-modal-title" id="createPetTitle">Thêm hồ sơ thú cưng mới</h2>
+        <p class="cp-modal-desc">Vui lòng điền thông tin chi tiết về thú cưng của bạn. Các trường đánh dấu <span class="req">*</span> là bắt buộc.</p>
+
+        <form asp-action="Create" method="post" enctype="multipart/form-data" id="createPetForm" novalidate>
+            @Html.AntiForgeryToken()
+            <div class="row g-3">
+                <div class="col-md-6 cp-form-field" data-field="name">
+                    <label class="cp-form-label">TÊN THÚ CƯNG <span class="req">*</span></label>
+                    <input type="text" name="name" id="createPetName" class="cp-form-input" required maxlength="50" placeholder="Ví dụ: LuLu" />
+                    <span class="cp-field-error"></span>
+                </div>
+                <div class="col-md-6 cp-form-field" data-field="species">
+                    <label class="cp-form-label">GIỐNG LOÀI <span class="req">*</span></label>
+                    <select name="species" id="createPetSpecies" class="cp-form-select" required>
+                        <option value="">-- Chọn loài --</option>
+                        <option value="Chó">Chó</option>
+                        <option value="Mèo">Mèo</option>
+                        <option value="Rùa">Rùa</option>
+                        <option value="Chuột">Chuột</option>
+                    </select>
+                    <span class="cp-field-error"></span>
+                </div>
+                <div class="col-md-6 cp-form-field" data-field="breed">
+                    <label class="cp-form-label">GIỐNG (BREED) <span class="req">*</span></label>
+                    <input type="text" name="breed" id="createPetBreed" class="cp-form-input" required maxlength="50" placeholder="Ví dụ: Poodle" />
+                    <span class="cp-field-error"></span>
+                </div>
+                <div class="col-md-6 cp-form-field" data-field="dateOfBirth">
+                    <label class="cp-form-label">NGÀY SINH <span class="req">*</span></label>
+                    <input type="date"
+                           name="dateOfBirth"
+                           id="createPetDob"
+                           class="cp-form-input"
+                           required
+                           min="2000-01-01"
+                           max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    <span class="cp-field-error"></span>
+                </div>
+                <div class="col-md-6 cp-form-field" data-field="weight">
+                    <label class="cp-form-label">CÂN NẶNG (KG) <span class="req">*</span></label>
+                    <input type="text"
+                           name="weight"
+                           id="createPetWeight"
+                           class="cp-form-input"
+                           required
+                           inputmode="decimal"
+                           placeholder="Ví dụ: 4.0" />
+                    <span class="cp-field-error"></span>
+                </div>
+                <div class="col-md-6 cp-form-field" data-field="avatarFile">
+                    <label class="cp-form-label">ẢNH AVATAR (TÙY CHỌN)</label>
+                    <div class="cp-upload-wrap">
+                        <img id="createAvatarPreview" class="cp-upload-preview" alt="Xem trước" />
+                        <input type="file" id="createAvatarFile" name="avatarFile" class="cp-form-input cp-upload-input" accept=".jpg,.jpeg,.png,.gif,.tiff,.tif,.svg,image/jpeg,image/png,image/gif,image/tiff,image/svg+xml" />
+                    </div>
+                    <span class="cp-field-error"></span>
+                </div>
+            </div>
+
+            <div class="cp-modal-actions">
+                <button type="button" class="cp-btn-cancel" data-close-modal="createPetModal">Hủy bỏ</button>
+                <button type="submit" class="cp-btn-save">Lưu hồ sơ</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- UC-14: Edit Modal -->
+@if (Model.EditPet != null)
+{
+    var edit = Model.EditPet;
+    <div class="cp-modal-overlay @(Model.OpenEditModal ? "active" : "")" id="editPetModal">
+        <div class="cp-modal" role="dialog" aria-labelledby="editPetTitle">
+            <h2 class="cp-modal-title" id="editPetTitle">Chỉnh sửa hồ sơ thú cưng</h2>
+            <p class="cp-modal-desc">Vui lòng điền thông tin chi tiết về thú cưng của bạn. Các trường đánh dấu <span class="req">*</span> là bắt buộc.</p>
+
+            <form asp-action="Edit" method="post" enctype="multipart/form-data" id="editPetForm" novalidate>
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="petId" value="@edit.PetId" />
+
+                <div class="row g-3">
+                    <div class="col-md-6 cp-form-field" data-field="name">
+                        <label class="cp-form-label">TÊN THÚ CƯNG <span class="req">*</span></label>
+                        <input type="text" name="name" id="editPetName" class="cp-form-input" required maxlength="50" value="@edit.Name" />
+                        <span class="cp-field-error"></span>
+                    </div>
+                    <div class="col-md-6 cp-form-field" data-field="species">
+                        <label class="cp-form-label">GIỐNG LOÀI <span class="req">*</span></label>
+                        <select name="species" id="editPetSpecies" class="cp-form-select" required>
+                            <option value="Chó" selected="@(edit.Species == "Chó" ? "selected" : null)">Chó</option>
+                            <option value="Mèo" selected="@(edit.Species == "Mèo" ? "selected" : null)">Mèo</option>
+                            <option value="Rùa" selected="@(edit.Species == "Rùa" ? "selected" : null)">Rùa</option>
+                            <option value="Chuột" selected="@(edit.Species == "Chuột" ? "selected" : null)">Chuột</option>
+                        </select>
+                        <span class="cp-field-error"></span>
+                    </div>
+                    <div class="col-md-6 cp-form-field" data-field="breed">
+                        <label class="cp-form-label">GIỐNG (BREED) <span class="req">*</span></label>
+                        <input type="text" name="breed" id="editPetBreed" class="cp-form-input" required maxlength="50" value="@edit.Breed" />
+                        <span class="cp-field-error"></span>
+                    </div>
+                    <div class="col-md-6 cp-form-field" data-field="dateOfBirth">
+                        <label class="cp-form-label">NGÀY THÁNG NĂM SINH <span class="req">*</span></label>
+                        <input type="date"
+                               name="dateOfBirth"
+                               id="editPetDob"
+                               class="cp-form-input"
+                               required
+                               min="2000-01-01"
+                               max="@DateTime.Today.ToString("yyyy-MM-dd")"
+                               value="@(edit.DateOfBirth?.ToString("yyyy-MM-dd"))" />
+                        <span class="cp-field-error"></span>
+                    </div>
+                    <div class="col-md-6 cp-form-field" data-field="weight">
+                        <label class="cp-form-label">CÂN NẶNG (KG) <span class="req">*</span></label>
+                        <input type="text"
+                               name="weight"
+                               id="editPetWeight"
+                               class="cp-form-input"
+                               required
+                               inputmode="decimal"
+                               value="@edit.Weight.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)" />
+                        <span class="cp-field-error"></span>
+                    </div>
+                    <div class="col-md-6 cp-form-field" data-field="avatarFile">
+                        <label class="cp-form-label">ẢNH AVATAR (TÙY CHỌN)</label>
+                        <div class="cp-upload-wrap">
+                            <img id="editAvatarPreview"
+                                 class="cp-upload-preview visible"
+                                 data-default-src="@edit.CurrentImageUrl"
+                                 src="@(edit.CurrentImageUrl ?? "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=200&h=200&fit=crop")"
+                                 alt="Xem trước" />
+                            <input type="file" id="editAvatarFile" name="avatarFile" class="cp-form-input cp-upload-input" accept=".jpg,.jpeg,.png,.gif,.tiff,.tif,.svg,image/jpeg,image/png,image/gif,image/tiff,image/svg+xml" />
+                        </div>
+                        <span class="cp-field-error"></span>
+                    </div>
+                </div>
+
+                <div class="cp-modal-actions">
+                    <a asp-action="Index" class="cp-btn-cancel text-center text-decoration-none d-flex align-items-center justify-content-center">Hủy bỏ</a>
+                    <button type="submit" class="cp-btn-save">Lưu thay đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+
+@section Scripts {
+    <script>
+        window.petPageOpenCreate = @(Model.OpenCreateModal ? "true" : "false");
+        window.petPageOpenEdit = @(Model.OpenEditModal ? "true" : "false");
+        window.petFieldErrors = @(string.IsNullOrEmpty(petFieldErrorsJson) ? "null" : petFieldErrorsJson);
+    </script>
+    <script src="~/js/customer-pets.js" asp-append-version="true"></script>
+}
