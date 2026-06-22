@@ -1,6 +1,6 @@
 @using ManagePetStore.Models
 @{
-    Layout = "~/SpaServices/Views/Shared/_ServiceLayout.cshtml";
+    Layout = "~/Areas/ServiceStaff/Views/Shared/_ServiceLayout.cshtml";
     ViewData["Title"] = "Vận hành & Đặt ca Spa";
     var services = ViewBag.Services as List<SpaService> ?? new List<SpaService>();
     var activeServices = ViewBag.ActiveServices as List<SpaService> ?? new List<SpaService>();

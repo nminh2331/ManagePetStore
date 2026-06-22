@@ -1,4 +1,4 @@
-using ManagePetStore.Areas.Customer.Services;
+using ManagePetStore.Services.Customer;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ManagePetStore.Areas.Customer.ViewComponents;

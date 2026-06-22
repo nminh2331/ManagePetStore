@@ -69,10 +69,10 @@ builder.Services.Configure<ManagePetStore.Services.EmailSettings>(
     builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddScoped<ManagePetStore.Services.IEmailService, ManagePetStore.Services.EmailService>();
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ManagePetStore.Areas.Customer.Services.CartProductResolver>();
-builder.Services.AddScoped<ManagePetStore.Areas.Customer.Services.ICartService, ManagePetStore.Areas.Customer.Services.CartService>();
-builder.Services.AddScoped<ManagePetStore.Areas.Customer.Services.IOrderReviewService, ManagePetStore.Areas.Customer.Services.OrderReviewService>();
-builder.Services.AddScoped<ManagePetStore.Areas.Customer.Services.ICheckoutEmailService, ManagePetStore.Areas.Customer.Services.CheckoutEmailService>();
+builder.Services.AddScoped<ManagePetStore.Services.Customer.CartProductResolver>();
+builder.Services.AddScoped<ManagePetStore.Services.Customer.ICartService, ManagePetStore.Services.Customer.CartService>();
+builder.Services.AddScoped<ManagePetStore.Services.Customer.IOrderReviewService, ManagePetStore.Services.Customer.OrderReviewService>();
+builder.Services.AddScoped<ManagePetStore.Services.Customer.ICheckoutEmailService, ManagePetStore.Services.Customer.CheckoutEmailService>();
 builder.Services.AddControllersWithViews();
 
 // =========================================================================
@@ -84,19 +84,19 @@ builder.Services.AddScoped<IRoomService, RoomService>();
 // Warehouse repositories
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductCategoryRepository, ProductCategoryRepository>();
-builder.Services.AddScoped<ManagePetStore.Areas.Warehouse.Repositories.IInventoryBatchRepository, ManagePetStore.Areas.Warehouse.Repositories.InventoryBatchRepository>();
-builder.Services.AddScoped<ManagePetStore.Areas.Warehouse.Repositories.IStockMovementRepository, ManagePetStore.Areas.Warehouse.Repositories.StockMovementRepository>();
+builder.Services.AddScoped<ManagePetStore.Repositories.Warehouse.IInventoryBatchRepository, ManagePetStore.Repositories.Warehouse.InventoryBatchRepository>();
+builder.Services.AddScoped<ManagePetStore.Repositories.Warehouse.IStockMovementRepository, ManagePetStore.Repositories.Warehouse.StockMovementRepository>();
 
 // Warehouse services
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IProductCategoryService, ProductCategoryService>();
-builder.Services.AddScoped<ManagePetStore.Areas.Warehouse.Services.IInventoryBatchService, ManagePetStore.Areas.Warehouse.Services.InventoryBatchService>();
-builder.Services.AddScoped<ManagePetStore.Areas.Warehouse.Services.IStockMovementService, ManagePetStore.Areas.Warehouse.Services.StockMovementService>();
+builder.Services.AddScoped<ManagePetStore.Services.Warehouse.IInventoryBatchService, ManagePetStore.Services.Warehouse.InventoryBatchService>();
+builder.Services.AddScoped<ManagePetStore.Services.Warehouse.IStockMovementService, ManagePetStore.Services.Warehouse.StockMovementService>();
 builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
 builder.Services.AddScoped<ISupplierService, SupplierService>();
 
-// Background Services
-builder.Services.AddHostedService<ManagePetStore.BackgroundServices.ExpiryDateScannerService>();
+// Hosted Services
+builder.Services.AddHostedService<ManagePetStore.Services.Hosted.ExpiryDateScannerService>();
 
 
 

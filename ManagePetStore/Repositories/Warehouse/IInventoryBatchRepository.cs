@@ -7,7 +7,7 @@
  */
 using ManagePetStore.Models;
 
-namespace ManagePetStore.Areas.Warehouse.Repositories;
+namespace ManagePetStore.Repositories.Warehouse;
 
 public interface IInventoryBatchRepository
 {
