@@ -1,0 +1,118 @@
+@model IEnumerable<ManagePetStore.Models.InventoryBatch>
+
+@{
+    var product = ViewBag.Product as ManagePetStore.Models.Product;
+    ViewData["Title"] = "Quản lý Lô hàng - " + product?.Name;
+}
+
+<div class="mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <a asp-controller="Product" asp-action="Index" class="text-decoration-none text-muted mb-2 d-inline-block">
+            <i class="fas fa-arrow-left"></i> Quay lại danh sách sản phẩm
+        </a>
+        <h2 class="fw-bold m-0" style="color: #333;">Quản lý lô hàng</h2>
+        <p class="text-muted small mt-1 mb-0">Sản phẩm: <span class="fw-bold text-dark">@product?.Name (@product?.Sku)</span></p>
+    </div>
+    
+    <a asp-action="Create" asp-route-productSku="@product?.Sku" class="btn btn-primary-custom btn-custom">
+        <i class="fas fa-plus"></i> Nhập lô hàng mới
+    </a>
+</div>
+
+@{
+    int totalBatchStock = Model != null ? Model.Sum(b => b.CurrentQuantity) : 0;
+    int productStock = product?.Stock ?? 0;
+}
+
+@if (productStock > totalBatchStock)
+{
+    <div class="alert alert-warning shadow-sm border-0 d-flex align-items-center mb-4" style="border-radius:12px;">
+        <i class="fas fa-exclamation-triangle fa-2x me-3 text-warning"></i>
+        <div class="flex-grow-1">
+            <h5 class="alert-heading fw-bold mb-1">Cảnh báo mâu thuẫn dữ liệu!</h5>
+            <p class="mb-0">Tổng tồn kho của sản phẩm (@productStock) đang lớn hơn tổng số lượng trong các lô hàng (@totalBatchStock).</p>
+        </div>
+        <form asp-action="SyncStock" asp-route-productSku="@product?.Sku" method="post" onsubmit="return confirm('Hệ thống sẽ tự động tạo một lô hàng với số lượng bằng mức chênh lệch. Tiếp tục?');">
+            <button type="submit" class="btn btn-warning fw-bold text-dark">
+                <i class="fas fa-sync-alt"></i> Đồng bộ tồn kho
+            </button>
+        </form>
+    </div>
+}
+
+<div class="card border-0 shadow-sm" style="border-radius:16px;">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mb-0 table-hover">
+                <thead style="background-color: #fafafa;">
+                    <tr>
+                        <th class="border-0 px-4 py-3">ID Lô</th>
+                        <th class="border-0 px-4 py-3">Ngày nhập</th>
+                        <th class="border-0 px-4 py-3 text-center">SL nhập ban đầu</th>
+                        <th class="border-0 px-4 py-3 text-center">SL tồn hiện tại</th>
+                        <th class="border-0 px-4 py-3">Hạn sử dụng</th>
+                        <th class="border-0 px-4 py-3 text-end">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var batch in Model)
+                        {
+                            bool isExpired = batch.ExpiryDate.Date < DateTime.Now.Date;
+                            bool isExpiringSoon = batch.ExpiryDate.Date <= DateTime.Now.Date.AddDays(30) && !isExpired;
+                            
+                            <tr>
+                                <td class="px-4 py-3 fw-bold text-muted">#@batch.BatchId</td>
+                                <td class="px-4 py-3">@batch.ReceivedDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="px-4 py-3 text-center">@batch.Quantity</td>
+                                <td class="px-4 py-3 text-center">
+                                    @if (batch.CurrentQuantity == 0)
+                                    {
+                                        <span class="badge bg-secondary rounded-pill">Đã hết</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success rounded-pill px-3">@batch.CurrentQuantity</span>
+                                    }
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="fw-bold @(isExpired ? "text-danger" : isExpiringSoon ? "text-warning" : "text-dark")">
+                                        @batch.ExpiryDate.ToString("dd/MM/yyyy")
+                                    </span>
+                                    @if (isExpired)
+                                    {
+                                        <span class="badge bg-danger ms-2" style="font-size:0.7rem;">Hết hạn</span>
+                                    }
+                                    else if (isExpiringSoon)
+                                    {
+                                        <span class="badge bg-warning text-dark ms-2" style="font-size:0.7rem;">Sắp hết hạn</span>
+                                    }
+                                </td>
+                                <td class="px-4 py-3 text-end">
+                                    <a asp-action="Edit" asp-route-id="@batch.BatchId" class="btn btn-sm btn-outline-primary" style="border-radius:8px;" title="Chỉnh sửa">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <form asp-action="Delete" asp-route-id="@batch.BatchId" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa lô hàng này? Số lượng tồn kho sản phẩm sẽ bị giảm đi tương ứng.');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius:8px;" title="Xóa">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <i class="fas fa-box-open" style="font-size:2rem;opacity:.3;"></i>
+                                <p class="mt-2 mb-0">Chưa có lô hàng nào. Hãy nhập lô hàng đầu tiên!</p>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

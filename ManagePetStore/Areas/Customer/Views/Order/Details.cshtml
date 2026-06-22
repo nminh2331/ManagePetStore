@@ -1,0 +1,128 @@
+@model ManagePetStore.Areas.Customer.Models.OrderDetailPageViewModel
+@{
+    Layout = "/Views/Shared/_PetStoreLayout.cshtml";
+    ViewData["Title"] = "Chi tiết đơn hàng";
+    var order = Model.Order;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/customer-pets.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/customer-orders.css" asp-append-version="true" />
+}
+
+<div class="cp-dashboard">
+    @await Html.PartialAsync("_CustomerSidebar", Model)
+
+    <section class="cp-main">
+        <div class="co-detail-header">
+            <a asp-action="Index" class="checkout-back-btn" aria-label="Quay lại">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div>
+                <h1 class="cp-main-title">Chi tiết đơn hàng</h1>
+                <p class="cp-main-subtitle">@order.DisplayOrderId · @order.OrderDate.ToString("dd/MM/yyyy HH:mm")</p>
+            </div>
+        </div>
+
+        <div class="co-detail-summary">
+            <div class="co-detail-summary-item">
+                <span>Trạng thái</span>
+                <strong class="co-status co-status-@order.StatusKey">@order.Status</strong>
+            </div>
+            @if ((order.StatusKey == "cancelled" || order.StatusKey == "rejected") && !string.IsNullOrWhiteSpace(order.CancelReason))
+            {
+                <div class="co-detail-summary-item co-detail-cancel-reason">
+                    <span>Lý do hủy</span>
+                    <strong>@order.CancelReason</strong>
+                    @if (order.CanceledAt.HasValue)
+                    {
+                        <small>Hủy lúc @order.CanceledAt.Value.ToString("dd/MM/yyyy HH:mm")</small>
+                    }
+                </div>
+            }
+            <div class="co-detail-summary-item">
+                <span>Thanh toán</span>
+                <strong>@order.PaymentMethod</strong>
+            </div>
+            <div class="co-detail-summary-item">
+                <span>Tổng tiền</span>
+                <strong class="co-order-total">@order.Total.ToString("N0")đ</strong>
+            </div>
+        </div>
+
+        @if (order.CanConfirmReceived)
+        {
+            <div class="co-delivery-hint">
+                Đơn hàng đang được giao. Sau khi bạn nhận đủ hàng, bấm <strong>Xác nhận đã nhận hàng</strong> để chuyển trạng thái sang đã hoàn thành và mở đánh giá.
+            </div>
+        }
+
+        <div class="co-table-card">
+            <div class="co-detail-card-title">Sản phẩm đã mua</div>
+
+            <div class="co-table-wrap">
+                <table class="co-table co-detail-table">
+                    <thead>
+                        <tr>
+                            <th>SẢN PHẨM</th>
+                            <th>MÃ SKU</th>
+                            <th>SỐ LƯỢNG</th>
+                            <th>ĐƠN GIÁ</th>
+                            <th>THÀNH TIỀN</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in order.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="co-product-cell">
+                                        <img src="@(string.IsNullOrEmpty(item.ImageUrl) ? "https://images.unsplash.com/photo-1589924691995-400dc9ecc119?w=120&h=120&fit=crop" : item.ImageUrl)"
+                                             alt="@item.ProductName"
+                                             class="co-product-img" />
+                                        <span class="co-product-name">@item.ProductName</span>
+                                    </div>
+                                </td>
+                                <td><span class="co-sku">@(item.ProductSku ?? "—")</span></td>
+                                <td>@item.Quantity</td>
+                                <td>@item.UnitPrice.ToString("N0")đ</td>
+                                <td><strong class="co-order-total">@item.LineTotal.ToString("N0")đ</strong></td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="4" class="co-footer-label">Tạm tính</td>
+                            <td>@order.Subtotal.ToString("N0")đ</td>
+                        </tr>
+                        @if (order.Discount > 0)
+                        {
+                            <tr>
+                                <td colspan="4" class="co-footer-label">Giảm giá</td>
+                                <td class="co-discount">-@order.Discount.ToString("N0")đ</td>
+                            </tr>
+                        }
+                        <tr>
+                            <td colspan="4" class="co-footer-label">Tổng thanh toán</td>
+                            <td><strong class="co-order-total co-grand-total">@order.Total.ToString("N0")đ</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <div class="co-detail-actions">
+            <a asp-action="Index" class="co-btn-secondary">Quay lại danh sách</a>
+            @if (order.CanConfirmReceived)
+            {
+                <form asp-action="ConfirmReceived" method="post" class="co-action-form">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="orderId" value="@order.OrderId" />
+                    <input type="hidden" name="returnAction" value="Details" />
+                    <button type="submit" class="co-btn-received">Xác nhận đã nhận hàng</button>
+                </form>
+            }
+            <a asp-area="" asp-controller="Home" asp-action="Index" class="co-btn-review">Tiếp tục mua sắm</a>
+        </div>
+    </section>
+</div>

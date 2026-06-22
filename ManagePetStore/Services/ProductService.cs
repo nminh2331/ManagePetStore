@@ -1,9 +1,9 @@
-﻿/**
+/**
  * Project: Pet Store Management System (PSMS)
  * File: ProductService.cs
  * Author: Tran Duong
  * Date: May 31, 2026
- * Description: Tri?n khai c�c h�m x? l� logic nghi?p v? cho qu?n l� s?n ph?m v� t?n kho c?a c?a h�ng.
+ * Description: Triển khai các hàm xử lý logic nghiệp vụ cho quản lý sản phẩm và tồn kho của cửa hàng.
  */
 using ManagePetStore.Exceptions;
 using ManagePetStore.Models;
@@ -73,7 +73,7 @@ public class ProductService : IProductService
     {
         // Validate: SKU must not already exist
         if (await _productRepo.ProductExists(product.Sku.Trim()))
-            throw new ServiceException($"M� s?n ph?m '{product.Sku}' d� t?n t?i.");
+            throw new ServiceException($"Mã sản phẩm '{product.Sku}' đã tồn tại.");
 
         SanitizeProduct(product);
 
@@ -85,10 +85,10 @@ public class ProductService : IProductService
     public async Task UpdateProduct(string routeId, Product product)
     {
         if (routeId != product.Sku)
-            throw new ServiceException("M� s?n ph?m kh�ng kh?p.");
+            throw new ServiceException("Mã sản phẩm không khớp.");
 
         if (!await _productRepo.ProductExists(product.Sku))
-            throw new ServiceException($"Kh�ng t�m th?y s?n ph?m '{product.Sku}'.");
+            throw new ServiceException($"Không tìm thấy sản phẩm '{product.Sku}'.");
 
         SanitizeProduct(product);
 
@@ -98,7 +98,7 @@ public class ProductService : IProductService
         }
         catch (DbUpdateConcurrencyException)
         {
-            throw new ServiceException("S?n ph?m d� b? thay d?i b?i ngu?i kh�c. Vui l�ng t?i l?i trang.");
+            throw new ServiceException("Sản phẩm đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
         }
     }
 

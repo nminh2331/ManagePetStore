@@ -1,4 +1,4 @@
-﻿namespace ManagePetStore.Controllers;
+namespace ManagePetStore.Controllers;
 
 public class HomepageViewModel
 {
@@ -86,4 +86,3 @@ public class ProductDetailViewModel
     public List<string> Images { get; set; } = [];
     public List<string> Features { get; set; } = [];
 }
-

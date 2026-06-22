@@ -35,7 +35,7 @@
             <div class="hotel-empty-state">
                 <i class="bi bi-person-lock"></i>
                 <p>Vui lòng đăng nhập để chọn thú cưng và đặt phòng Hotel.</p>
-                <a asp-controller="CustomerAccount" asp-action="Login" class="hotel-submit-btn text-decoration-none">
+                <a asp-area="Customer" asp-controller="Account" asp-action="Login" class="hotel-submit-btn text-decoration-none">
                     Đăng nhập để đặt phòng
                 </a>
             </div>
@@ -54,8 +54,8 @@
         {
             <form class="hotel-modal-form"
                   id="hotelBookingForm"
-                  
-                  asp-controller="CustomerHotelBooking"
+                  asp-area="Customer"
+                  asp-controller="HotelBooking"
                   asp-action="Book"
                   method="post"
                   data-discount-percent="@discountPercent">
@@ -152,7 +152,7 @@
 
                 @if (pets?.Any() != true)
                 {
-                    <a asp-controller="CustomerPet" asp-action="Index" class="hotel-secondary-link">
+                    <a asp-area="Customer" asp-controller="Pet" asp-action="Index" class="hotel-secondary-link">
                         Tạo hồ sơ thú cưng trước
                     </a>
                 }
@@ -164,4 +164,3 @@
         }
     </div>
 </div>
-

@@ -1,4 +1,4 @@
-﻿using ManagePetStore.Models;
+using ManagePetStore.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
@@ -419,4 +419,3 @@ public class HomeController : Controller
         };
     }
 }
-

@@ -1,0 +1,155 @@
+@model ManagePetStore.Models.StockMovement
+@{
+    ViewData["Title"] = "Chi tiết Phiếu #" + Model.MovementId;
+    Layout = "~/Areas/Manager/Views/Shared/_ManagerLayout.cshtml";
+}
+<style>
+    .document-page { background:#fff; max-width:850px; margin:0 auto; padding:3rem 4rem; box-shadow:0 4px 20px rgba(0,0,0,.08); border-radius:8px; position:relative; }
+    .doc-title { font-size:22px; font-weight:800; text-transform:uppercase; letter-spacing:1px; }
+    .doc-table th { background:#f8f9fa!important; border-bottom:2px solid #333; font-weight:700; }
+    .doc-table td, .doc-table th { padding:10px 8px; vertical-align:middle; }
+</style>
+
+<div class="mb-3 d-flex justify-content-between align-items-center" style="max-width:850px;margin:0 auto;">
+    <a asp-area="Manager" asp-controller="Warehouse" asp-action="Index" class="text-decoration-none text-muted">
+        <i class="fas fa-arrow-left"></i> Quay lại danh sách
+    </a>
+    <div>
+        @if (Model.Status == "Chờ quản lý duyệt")
+        {
+            <form asp-area="Manager" asp-controller="Warehouse" asp-action="Approve" method="post" class="d-inline">
+                <input type="hidden" name="id" value="@Model.MovementId" />
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-success fw-bold me-2">
+                    <i class="fas fa-check-circle"></i> Duyệt đơn
+                </button>
+            </form>
+            <form asp-area="Manager" asp-controller="Warehouse" asp-action="Cancel" method="post" class="d-inline"
+                  onsubmit="return confirm('Xác nhận từ chối phiếu này?');">
+                <input type="hidden" name="id" value="@Model.MovementId" />
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-danger fw-bold">
+                    <i class="fas fa-times-circle"></i> Từ chối
+                </button>
+            </form>
+        }
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show mb-3" style="max-width:850px;margin:0 auto 1rem;">
+        <i class="fas fa-check-circle me-2"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show mb-3" style="max-width:850px;margin:0 auto 1rem;">
+        <i class="fas fa-exclamation-circle me-2"></i> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="document-page">
+    @if (Model.Status == "Đã hủy")
+    {
+        <div class="position-absolute" style="top:80px;left:50%;transform:translateX(-50%) rotate(-15deg);opacity:.08;pointer-events:none;">
+            <h1 style="font-size:7rem;color:red;font-weight:900;border:10px solid red;padding:20px;border-radius:20px;">ĐÃ HỦY</h1>
+        </div>
+    }
+
+    <div class="row mb-4 border-bottom pb-3">
+        <div class="col-6">
+            <h4 class="fw-bold mb-0">PET STORE</h4>
+            <p class="text-muted small mb-0">Hệ thống quản lý thú cưng</p>
+        </div>
+        <div class="col-6 text-end">
+            <div class="fs-5 fw-bold text-muted">Mẫu số: 01-VT</div>
+        </div>
+    </div>
+
+    <div class="text-center mb-4">
+        <div class="doc-title">PHIẾU @(Model.Type.ToUpper()) KHO</div>
+        <div class="text-muted mt-1">Ngày lập: @Model.Date.ToString("dd/MM/yyyy HH:mm")</div>
+        <div>
+            @{
+                var bc = Model.Status switch {
+                    "Hoàn thành"         => "bg-success",
+                    "Chờ quản lý duyệt" => "bg-danger",
+                    "Chờ kiểm hàng"     => "bg-warning text-dark",
+                    _                   => "bg-secondary"
+                };
+            }
+            <span class="badge @bc mt-2 px-3 py-2">@Model.Status</span>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-7">
+            <p class="mb-1"><strong>Người lập phiếu:</strong> @Model.CreatedBy?.FullName</p>
+            <p class="mb-1">
+                <strong>@(Model.Type == "Nhập hàng" ? "Nhà cung cấp" : "Đơn vị nhận"):</strong>
+                @(Model.SupplierNavigation?.Name ?? Model.Supplier ?? "N/A")
+            </p>
+        </div>
+        <div class="col-5">
+            <p class="mb-1"><strong>Số phiếu:</strong> #@Model.MovementId.ToString("D5")</p>
+            <p class="mb-1"><strong>Loại phiếu:</strong> @Model.Type</p>
+        </div>
+    </div>
+
+    <table class="table table-bordered doc-table mb-4">
+        <thead>
+            <tr>
+                <th class="text-center">#</th>
+                <th>Tên sản phẩm</th>
+                <th>Mã SKU</th>
+                <th class="text-center">Đơn vị</th>
+                <th class="text-end">Số lượng</th>
+                <th class="text-end">Giá nhập</th>
+                <th class="text-end">Thành tiền</th>
+            </tr>
+        </thead>
+        <tbody>
+            @{ int stt = 1; }
+            @foreach (var item in Model.StockMovementDetails)
+            {
+                <tr>
+                    <td class="text-center">@stt</td>
+                    <td><div class="fw-bold">@item.ProductSkuNavigation?.Name</div></td>
+                    <td>@item.ProductSku</td>
+                    <td class="text-center">@item.ProductSkuNavigation?.Unit</td>
+                    <td class="text-end fw-bold">@item.Quantity</td>
+                    <td class="text-end">@string.Format("{0:N0} đ", item.CostPrice)</td>
+                    <td class="text-end fw-bold">@string.Format("{0:N0} đ", item.Quantity * item.CostPrice)</td>
+                </tr>
+                stt++;
+            }
+        </tbody>
+        <tfoot>
+            <tr style="border-top:2px solid #333;">
+                <td colspan="6" class="text-end fw-bold fs-5">TỔNG GIÁ TRỊ</td>
+                <td class="text-end fw-bold fs-5 text-danger">@string.Format("{0:N0} đ", Model.TotalValue)</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <div class="row mt-5 text-center">
+        <div class="col-4">
+            <div class="fw-bold">Người lập phiếu</div>
+            <small class="text-muted">(@Model.CreatedBy?.FullName)</small>
+            <div style="margin-top:4rem;border-top:1px solid #333;padding-top:.5rem;">Ký tên</div>
+        </div>
+        <div class="col-4">
+            <div class="fw-bold">Quản lý duyệt</div>
+            <small class="text-muted">&nbsp;</small>
+            <div style="margin-top:4rem;border-top:1px solid #333;padding-top:.5rem;">Ký tên</div>
+        </div>
+        <div class="col-4">
+            <div class="fw-bold">Thủ kho</div>
+            <small class="text-muted">&nbsp;</small>
+            <div style="margin-top:4rem;border-top:1px solid #333;padding-top:.5rem;">Ký tên</div>
+        </div>
+    </div>
+</div>

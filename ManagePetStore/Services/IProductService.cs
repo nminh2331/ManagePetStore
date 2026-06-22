@@ -1,9 +1,9 @@
-﻿/**
+/**
  * Project: Pet Store Management System (PSMS)
  * File: IProductService.cs
  * Author: Tran Duong
  * Date: May 31, 2026
- * Description: �?nh nghia giao di?n cho d?ch v? qu?n l� s?n ph?m v� t�nh to�n th?ng k� t?n kho h�ng h�a.
+ * Description: Định nghĩa giao diện cho dịch vụ quản lý sản phẩm và tính toán thống kê tồn kho hàng hóa.
  */
 using ManagePetStore.Models;
 using Microsoft.AspNetCore.Mvc.Rendering;

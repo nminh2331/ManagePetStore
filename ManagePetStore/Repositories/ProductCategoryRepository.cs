@@ -1,9 +1,9 @@
-﻿/**
+/**
  * Project: Pet Store Management System (PSMS)
  * File: ProductCategoryRepository.cs
  * Author: Tran Duong
  * Date: May 31, 2026
- * Description: C�c thao t�c CRUD cho danh m?c s?n ph?m.
+ * Description: Các thao tác CRUD cho danh mục sản phẩm.
  */
 using ManagePetStore.Models;
 using Microsoft.EntityFrameworkCore;
