@@ -346,6 +346,12 @@ public class ProductController : Controller
                 return RedirectToAction("Details", new { id = sku });
             }
 
+            if (newPetWeight.HasValue && (newPetWeight.Value <= 0 || newPetWeight.Value > 200m))
+            {
+                TempData["ErrorMessage"] = "Cân nặng thú cưng phải lớn hơn 0 và không vượt quá 200 kg.";
+                return RedirectToAction("Details", new { id = sku });
+            }
+
             pet = new Pet
             {
                 CustomerId = customer.CustomerId,
@@ -388,10 +394,10 @@ public class ProductController : Controller
 
         if (hasPreferredGroomer)
         {
-            preferredGroomer = await _context.Users.FindAsync(targetGroomerId);
+            preferredGroomer = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == targetGroomerId);
         }
 
-        if (targetGroomerId <= 0 || preferredGroomer == null || preferredGroomer.Status != "Active")
+        if (targetGroomerId <= 0 || preferredGroomer == null || preferredGroomer.Status != "Active" || preferredGroomer.Role?.RoleName != "service")
         {
             var defaultGroomer = await _context.Users.Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.Role.RoleName == "service" && u.Status == "Active")
@@ -409,10 +415,35 @@ public class ProductController : Controller
             return RedirectToAction("Details", new { id = sku });
         }
 
-        // Check if date is in the past
-        if (bookingDateTime.Date < DateTime.Today)
+        // Check if date and time is in the past
+        if (bookingDateTime < DateTime.Now)
         {
-            TempData["ErrorMessage"] = "Không thể đặt lịch cho ngày trong quá khứ.";
+            TempData["ErrorMessage"] = "Không thể đặt lịch ở thời điểm trong quá khứ.";
+            return RedirectToAction("Details", new { id = sku });
+        }
+
+        // Limit booking window to 90 days
+        if (bookingDateTime > DateTime.Today.AddDays(90))
+        {
+            TempData["ErrorMessage"] = "Chỉ có thể đặt lịch trước tối đa 90 ngày.";
+            return RedirectToAction("Details", new { id = sku });
+        }
+
+        // Validate business hours (08:00 - 17:00)
+        if (bookingDateTime.Hour < 8 || bookingDateTime.Hour >= 17)
+        {
+            TempData["ErrorMessage"] = "Thời gian đặt lịch phải nằm trong giờ mở cửa (08:00 - 17:00).";
+            return RedirectToAction("Details", new { id = sku });
+        }
+
+        // Check if groomer has an overlapping appointment at this slot
+        bool isOverlap = await _context.SpaBookings.AnyAsync(b => 
+            b.GroomerId == targetGroomerId && 
+            b.DateTime == bookingDateTime && 
+            b.SpaStatus != "Cancelled");
+        if (isOverlap)
+        {
+            TempData["ErrorMessage"] = "Kỹ thuật viên đã có ca làm việc ở khung giờ này. Vui lòng chọn khung giờ hoặc kỹ thuật viên khác.";
             return RedirectToAction("Details", new { id = sku });
         }
 
@@ -443,11 +474,17 @@ public class ProductController : Controller
                     ? preferredGroomer.FullName
                     : "Không yêu cầu";
 
+                var ownerLabel = $"{customer.FullName} ({customer.Phone})";
+                if (ownerLabel.Length > 100)
+                {
+                    ownerLabel = ownerLabel.Substring(0, 100);
+                }
+
                 var queueItem = new SpaQueue
                 {
                     QueueNumber = queueNumber,
                     PetName = pet.Name,
-                    OwnerName = $"{customer.FullName} ({customer.Phone})",
+                    OwnerName = ownerLabel,
                     ArrivalTime = bookingDateTime,
                     ServiceDescription = service.Name,
                     Note = $"[NV mong muốn: {preferredGroomerLabel}] " + note?.Trim()

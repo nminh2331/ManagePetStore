@@ -301,6 +301,19 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            var cleanPhone = phone.Trim();
+            if (cleanPhone.Length != 10 || !cleanPhone.All(char.IsDigit))
+            {
+                TempData["ErrorMessage"] = "Số điện thoại không hợp lệ. Số điện thoại phải gồm đúng 10 chữ số và không chứa ký tự chữ.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (weight <= 0 || weight > 200m)
+            {
+                TempData["ErrorMessage"] = "Cân nặng thú cưng phải lớn hơn 0 và không vượt quá 200 kg.";
+                return RedirectToAction(nameof(Index));
+            }
+
             var service = await _context.SpaServices.FindAsync(serviceId);
             if (service == null || !service.Active)
             {
@@ -312,13 +325,19 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             {
                 try
                 {
-                    var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Phone == phone.Trim());
+                    var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Phone == cleanPhone);
                     if (customer == null)
                     {
+                        var cleanCustomerName = customerName.Trim();
+                        if (cleanCustomerName.Length > 100)
+                        {
+                            cleanCustomerName = cleanCustomerName.Substring(0, 100);
+                        }
+
                         customer = new ManagePetStore.Models.Customer
                         {
-                            FullName = customerName.Trim(),
-                            Phone = phone.Trim(),
+                            FullName = cleanCustomerName,
+                            Phone = cleanPhone,
                             CreatedAt = DateTime.Now,
                             MembershipTier = "Bronze"
                         };
@@ -326,13 +345,37 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                         await _context.SaveChangesAsync();
                     }
 
+                    var cleanPetName = petName.Trim();
+                    if (cleanPetName.Length > 50)
+                    {
+                        cleanPetName = cleanPetName.Substring(0, 50);
+                    }
+
+                    var cleanSpecies = species?.Trim() ?? "Chó";
+                    if (cleanSpecies.Length > 30)
+                    {
+                        cleanSpecies = cleanSpecies.Substring(0, 30);
+                    }
+
+                    var cleanBreed = breed?.Trim() ?? "Không rõ";
+                    if (cleanBreed.Length > 50)
+                    {
+                        cleanBreed = cleanBreed.Substring(0, 50);
+                    }
+
+                    var cleanAge = age?.Trim() ?? "Chưa rõ";
+                    if (cleanAge.Length > 30)
+                    {
+                        cleanAge = cleanAge.Substring(0, 30);
+                    }
+
                     var pet = new Pet
                     {
                         CustomerId = customer.CustomerId,
-                        Name = petName.Trim(),
-                        Species = species ?? "Chó",
-                        Breed = breed?.Trim() ?? "Không rõ",
-                        Age = age?.Trim() ?? "Chưa rõ",
+                        Name = cleanPetName,
+                        Species = cleanSpecies,
+                        Breed = cleanBreed,
+                        Age = cleanAge,
                         Weight = weight > 0 ? weight : 4.5m,
                         Status = "Active"
                     };
@@ -349,11 +392,17 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     }
                     redirectDate = arrivalTime.ToString("yyyy-MM-dd");
 
+                    var ownerLabel = $"{customer.FullName} ({customer.Phone})";
+                    if (ownerLabel.Length > 100)
+                    {
+                        ownerLabel = ownerLabel.Substring(0, 100);
+                    }
+
                     var queueItem = new SpaQueue
                     {
                         QueueNumber = queueNumber,
                         PetName = pet.Name,
-                        OwnerName = $"{customer.FullName} ({customer.Phone})",
+                        OwnerName = ownerLabel,
                         ArrivalTime = arrivalTime,
                         ServiceDescription = service.Name,
                         Note = note?.Trim()
@@ -385,10 +434,10 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return Json(new { success = false, message = "Không tìm thấy hàng đợi." });
             }
 
-            var groomer = await _context.Users.FindAsync(groomerId);
-            if (groomer == null)
+            var groomer = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == groomerId);
+            if (groomer == null || groomer.Status != "Active" || groomer.Role?.RoleName != "service")
             {
-                return Json(new { success = false, message = "Không tìm thấy kỹ thuật viên." });
+                return Json(new { success = false, message = "Kỹ thuật viên không hợp lệ hoặc ngừng hoạt động." });
             }
 
             var ownerName = queueItem.OwnerName;
@@ -665,6 +714,11 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             if (booking == null)
             {
                 return Json(new { success = false, message = "Không tìm thấy lịch hẹn." });
+            }
+
+            if (booking.SpaStatus != null && booking.SpaStatus != "|0" && booking.SpaStatus != "0" && booking.SpaStatus != "Cancelled")
+            {
+                return Json(new { success = false, message = "Không thể hủy/xóa lịch hẹn đã bắt đầu thực hiện dịch vụ." });
             }
 
             // Find and remove associated queue item if this was an online booking
