@@ -665,6 +665,23 @@ namespace ManagePetStore.SpaServices.Controllers
                 return Json(new { success = false, message = "Không tìm thấy lịch hẹn." });
             }
 
+            // Find and remove associated queue item if this was an online booking
+            if (booking.CustomerId > 0 && booking.PetId > 0)
+            {
+                var customer = await _context.Customers.FindAsync(booking.CustomerId);
+                var pet = await _context.Pets.FindAsync(booking.PetId);
+                if (customer != null && pet != null)
+                {
+                    var ownerLabel = $"{customer.FullName} ({customer.Phone})";
+                    var queueItem = await _context.SpaQueues
+                        .FirstOrDefaultAsync(q => q.PetName == pet.Name && q.OwnerName == ownerLabel && q.ArrivalTime == booking.DateTime);
+                    if (queueItem != null)
+                    {
+                        _context.SpaQueues.Remove(queueItem);
+                    }
+                }
+            }
+
             _context.SpaBookings.Remove(booking);
             await _context.SaveChangesAsync();
 
