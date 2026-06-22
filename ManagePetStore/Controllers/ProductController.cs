@@ -1,4 +1,4 @@
-using ManagePetStore.Models;
+﻿using ManagePetStore.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,19 +21,19 @@ public class ProductController : Controller
             return RedirectToAction("Index", "Home");
         }
 
-        ProductDetailViewModel? model = null;  // Khai b�o bi?n model c� ki?u d? li?u l� ProductDetailViewModel
+        ProductDetailViewModel? model = null;  // Khai báo biến model có kiểu dữ liệu là ProductDetailViewModel
 
         try
         {
             if (id.StartsWith("SPA-SVC-", StringComparison.OrdinalIgnoreCase))
             {
-                var idString = id.Substring(8); //C?t b? 8 k� t? d?u ti�n (SPA-SVC-) d? l?y ph?n s? ? du�i (v� d? 001).
-                if (int.TryParse(idString, out int serviceId))  // �p ph?n du�i d� th�nh s? nguy�n (int).
+                var idString = id.Substring(8); //Cắt bỏ 8 ký tự đầu tiên (SPA-SVC-) để lấy phần số ở đuôi (ví dụ 001).
+                if (int.TryParse(idString, out int serviceId))  // Ép phần đuôi đó thành số nguyên (int).
                 {
                     var spaService = await _context.SpaServices.FirstOrDefaultAsync(s => s.ServiceId == serviceId);
                     if (spaService != null)
                     {
-                        model = MapFromSpaService(spaService);  // chuy?n d?i d? li?u th� t? DB th�nh ProductDetailViewModel d? UI d?c du?c.
+                        model = MapFromSpaService(spaService);  // chuyển đổi dữ liệu thô từ DB thành ProductDetailViewModel để UI đọc được.
                         
                         // Query extra info for Spa service booking form
                         Customer? customerObj = null;
@@ -75,7 +75,7 @@ public class ProductController : Controller
             else
             {
                 var product = await _context.Products.Include(p => p.Category).FirstOrDefaultAsync(p => p.Sku == id);  
-                //Eager Loading d? l?y k�m th�ng tin Danh m?c (tuong t? trang ch?).
+                //Eager Loading để lấy kèm thông tin Danh mục (tương tự trang chủ).
                 if (product != null)
                 {
                     model = MapFromProduct(product);
@@ -100,9 +100,9 @@ public class ProductController : Controller
         return new ProductDetailViewModel
         {
             Sku = $"SPA-SVC-{service.ServiceId:D3}",
-            Brand = "D?CH V? SPA",
+            Brand = "DỊCH VỤ SPA",
             Name = service.Name,
-            FullTitle = $"{service.Name} - Li?u tr�nh cham s�c chuy�n nghi?p",
+            FullTitle = $"{service.Name} - Liệu trình chăm sóc chuyên nghiệp",
             Price = service.Price,
             OriginalPrice = originalPrice,
             DiscountPercent = discount,
@@ -110,7 +110,7 @@ public class ProductController : Controller
             Rating = 4.9,
             ReviewCount = 35,
             SoldCount = "100+",
-            Description = $"D?ch v? {service.Name} ch?t lu?ng cao gi�p th� cung s?ch s?, kh?e m?nh v� tho?i m�i. Li?u tr�nh th?c hi?n trong {service.DurationMinutes} ph�t b?i c�c chuy�n vi�n spa tay ngh? cao.",
+            Description = $"Dịch vụ {service.Name} chất lượng cao giúp thú cưng sạch sẽ, khỏe mạnh và thoải mái. Liệu trình thực hiện trong {service.DurationMinutes} phút bởi các chuyên viên spa tay nghề cao.",
             Stock = 999, // Spa services always have virtual stock
             InStock = true,
             Images =
@@ -121,10 +121,10 @@ public class ProductController : Controller
             ],
             Features =
             [
-                $"Th?i gian th?c hi?n: {service.DurationMinutes} ph�t",
-                "Cham s�c t?n t�nh chu?n 5 sao",
-                "Chuy�n vi�n gi�u kinh nghi?m",
-                "S? d?ng s?a t?m, m? ph?m cao c?p an to�n"
+                $"Thời gian thực hiện: {service.DurationMinutes} phút",
+                "Chăm sóc tận tình chuẩn 5 sao",
+                "Chuyên viên giàu kinh nghiệm",
+                "Sử dụng sữa tắm, mỹ phẩm cao cấp an toàn"
             ]
         };
     }
@@ -148,7 +148,7 @@ public class ProductController : Controller
             Rating = 4.8,
             ReviewCount = 124,
             SoldCount = "1.2k+",
-            Description = "Th?c an cao c?p du?c nghi�n c?u d?c bi?t cho m�o m? v� m�o con, cung c?p d?y d? du?ng ch?t thi?t y?u gi�p m�o con ph�t tri?n kh?e m?nh.",
+            Description = "Thức ăn cao cấp được nghiên cứu đặc biệt cho mèo mẹ và mèo con, cung cấp đầy đủ dưỡng chất thiết yếu giúp mèo con phát triển khỏe mạnh.",
             Stock = product.Stock,
             InStock = product.Stock > 0,
             Images =
@@ -161,10 +161,10 @@ public class ProductController : Controller
             ],
             Features =
             [
-                "H? tr? h? mi?n d?ch",
-                "D? d�ng cai s?a",
-                "Tang cu?ng s?c kh?e h? ti�u h�a",
-                "Gi�u DHA cho ph�t tri?n tr� n�o"
+                "Hỗ trợ hệ miễn dịch",
+                "Dễ dàng cai sữa",
+                "Tăng cường sức khỏe hệ tiêu hóa",
+                "Giàu DHA cho phát triển trí não"
             ]
         };
     }
@@ -178,7 +178,7 @@ public class ProductController : Controller
                 Sku = "RC-MBC-001",
                 Brand = "ROYAL CANIN",
                 Name = "Royal Canin Mother & Babycat",
-                FullTitle = "Royal Canin Mother & Babycat - Th?c an cho m�o m? v� m�o con",
+                FullTitle = "Royal Canin Mother & Babycat - Thức ăn cho mèo mẹ và mèo con",
                 Price = 350000,
                 OriginalPrice = 388000,
                 DiscountPercent = 10,
@@ -186,7 +186,7 @@ public class ProductController : Controller
                 Rating = 4.8,
                 ReviewCount = 124,
                 SoldCount = "1.2k+",
-                Description = "Th?c an cao c?p du?c nghi�n c?u d?c bi?t cho m�o m? v� m�o con, cung c?p d?y d? du?ng ch?t thi?t y?u gi�p m�o con ph�t tri?n kh?e m?nh trong giai do?n d?u d?i quan tr?ng nh?t.",
+                Description = "Thức ăn cao cấp được nghiên cứu đặc biệt cho mèo mẹ và mèo con, cung cấp đầy đủ dưỡng chất thiết yếu giúp mèo con phát triển khỏe mạnh trong giai đoạn đầu đời quan trọng nhất.",
                 Stock = 45,
                 InStock = true,
                 Images =
@@ -197,18 +197,18 @@ public class ProductController : Controller
                 ],
                 Features =
                 [
-                    "H? tr? h? mi?n d?ch",
-                    "D? d�ng cai s?a",
-                    "Tang cu?ng s?c kh?e h? ti�u h�a",
-                    "Gi�u DHA cho ph�t tri?n tr� n�o"
+                    "Hỗ trợ hệ miễn dịch",
+                    "Dễ dàng cai sữa",
+                    "Tăng cường sức khỏe hệ tiêu hóa",
+                    "Giàu DHA cho phát triển trí não"
                 ]
             },
             ["MN-CAT-5L"] = new()
             {
                 Sku = "MN-CAT-5L",
                 Brand = "MANEKI NEKO",
-                Name = "C�t v? sinh Maneki Neko 5L",
-                FullTitle = "C�t v? sinh Maneki Neko 5L - Kh? m�i hi?u qu?",
+                Name = "Cát vệ sinh Maneki Neko 5L",
+                FullTitle = "Cát vệ sinh Maneki Neko 5L - Khử mùi hiệu quả",
                 Price = 89000,
                 OriginalPrice = 99000,
                 DiscountPercent = 10,
@@ -216,7 +216,7 @@ public class ProductController : Controller
                 Rating = 4.6,
                 ReviewCount = 89,
                 SoldCount = "800+",
-                Description = "C�t v? sinh cao c?p v?i kh? nang kh? m�i vu?t tr?i, v�n c?c t?t v� an to�n cho m�o cung.",
+                Description = "Cát vệ sinh cao cấp với khả năng khử mùi vượt trội, vón cục tốt và an toàn cho mèo cưng.",
                 Stock = 120,
                 InStock = true,
                 Images =
@@ -224,14 +224,14 @@ public class ProductController : Controller
                     "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=600&h=600&fit=crop",
                     "https://images.unsplash.com/photo-1589924691995-400dc9ecc119?w=600&h=600&fit=crop"
                 ],
-                Features = ["Kh? m�i 24h", "V�n c?c ch?c", "Kh�ng b?i", "An to�n cho m�o"]
+                Features = ["Khử mùi 24h", "Vón cục chắc", "Không bụi", "An toàn cho mèo"]
             },
             ["JD-SHAMPOO"] = new()
             {
                 Sku = "JD-SHAMPOO",
                 Brand = "JOYCE & DOLLS",
-                Name = "S?a t?m Joyce & Dolls 400ml",
-                FullTitle = "S?a t?m Joyce & Dolls 400ml - D?u nh? cho da l�ng",
+                Name = "Sữa tắm Joyce & Dolls 400ml",
+                FullTitle = "Sữa tắm Joyce & Dolls 400ml - Dịu nhẹ cho da lông",
                 Price = 125000,
                 OriginalPrice = 125000,
                 DiscountPercent = 0,
@@ -239,7 +239,7 @@ public class ProductController : Controller
                 Rating = 4.9,
                 ReviewCount = 56,
                 SoldCount = "350+",
-                Description = "S?a t?m d?u nh? chi?t xu?t th?o m?c, gi�p l�ng m?m mu?t v� da kh?e m?nh.",
+                Description = "Sữa tắm dịu nhẹ chiết xuất thảo mộc, giúp lông mềm mượt và da khỏe mạnh.",
                 Stock = 60,
                 InStock = true,
                 Images =
@@ -247,14 +247,14 @@ public class ProductController : Controller
                     "https://images.unsplash.com/photo-1558788353-f76d92427f16?w=600&h=600&fit=crop",
                     "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=600&h=600&fit=crop"
                 ],
-                Features = ["pH c�n b?ng", "Kh�ng g�y k�ch ?ng", "Huong th?o m?c", "Du?ng l�ng m?m"]
+                Features = ["pH cân bằng", "Không gây kích ứng", "Hương thảo mộc", "Dưỡng lông mềm"]
             },
             ["BONE-TET-5"] = new()
             {
                 Sku = "BONE-TET-5",
                 Brand = "PETSTORE",
-                Name = "Xuong g?m cho ch� 5 c�y",
-                FullTitle = "Xuong g?m cho ch� 5 c�y - Gi�p s?ch rang",
+                Name = "Xương gặm cho chó 5 cây",
+                FullTitle = "Xương gặm cho chó 5 cây - Giúp sạch răng",
                 Price = 45000,
                 OriginalPrice = 50000,
                 DiscountPercent = 10,
@@ -262,14 +262,14 @@ public class ProductController : Controller
                 Rating = 4.5,
                 ReviewCount = 32,
                 SoldCount = "200+",
-                Description = "Xuong g?m t? nhi�n gi�p l�m s?ch rang v� massage nu?u cho ch� cung.",
+                Description = "Xương gặm tự nhiên giúp làm sạch răng và massage nướu cho chó cưng.",
                 Stock = 200,
                 InStock = true,
                 Images =
                 [
                     "/images/dog-bone-chew.png"
                 ],
-                Features = ["L�m s?ch rang", "Massage nu?u", "100% t? nhi�n", "Kh�ng ch?t b?o qu?n"]
+                Features = ["Làm sạch răng", "Massage nướu", "100% tự nhiên", "Không chất bảo quản"]
             }
         };
 
@@ -309,21 +309,21 @@ public class ProductController : Controller
     {
         if (User.Identity?.IsAuthenticated != true)
         {
-            TempData["ErrorMessage"] = "B?n ph?i dang nh?p t�i kho?n m?i c� th? d?t l?ch d?ch v?.";
+            TempData["ErrorMessage"] = "Bạn phải đăng nhập tài khoản mới có thể đặt lịch dịch vụ.";
             return RedirectToAction("Login", "Account", new { area = "Customer", returnUrl = Url.Action("Details", "Product", new { id = sku }) });
         }
 
         var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var userId))
         {
-            TempData["ErrorMessage"] = "Kh�ng t�m th?y th�ng tin dang nh?p.";
+            TempData["ErrorMessage"] = "Không tìm thấy thông tin đăng nhập.";
             return RedirectToAction("Index", "Home");
         }
 
         var customer = await _context.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
         if (customer == null)
         {
-            TempData["ErrorMessage"] = "Kh�ng t�m th?y th�ng tin kh�ch h�ng.";
+            TempData["ErrorMessage"] = "Không tìm thấy thông tin khách hàng.";
             return RedirectToAction("Index", "Home");
         }
 
@@ -334,7 +334,7 @@ public class ProductController : Controller
             pet = await _context.Pets.FirstOrDefaultAsync(p => p.PetId == petId.Value && p.CustomerId == customer.CustomerId);
             if (pet == null)
             {
-                TempData["ErrorMessage"] = "Th� cung du?c ch?n kh�ng h?p l?.";
+                TempData["ErrorMessage"] = "Thú cưng được chọn không hợp lệ.";
                 return RedirectToAction("Details", new { id = sku });
             }
         }
@@ -342,7 +342,7 @@ public class ProductController : Controller
         {
             if (string.IsNullOrWhiteSpace(newPetName))
             {
-                TempData["ErrorMessage"] = "Vui l�ng nh?p t�n th� cung m?i.";
+                TempData["ErrorMessage"] = "Vui lòng nhập tên thú cưng mới.";
                 return RedirectToAction("Details", new { id = sku });
             }
 
@@ -350,9 +350,9 @@ public class ProductController : Controller
             {
                 CustomerId = customer.CustomerId,
                 Name = newPetName.Trim(),
-                Species = newPetSpecies ?? "Ch�",
-                Breed = newPetBreed?.Trim() ?? "Kh�ng r�",
-                Age = newPetAge?.Trim() ?? "Chua r�",
+                Species = newPetSpecies ?? "Chó",
+                Breed = newPetBreed?.Trim() ?? "Không rõ",
+                Age = newPetAge?.Trim() ?? "Chưa rõ",
                 Weight = newPetWeight.HasValue && newPetWeight.Value > 0 ? newPetWeight.Value : 4.5m,
                 Status = "Active"
             };
@@ -363,21 +363,21 @@ public class ProductController : Controller
         // 2. Resolve Service
         if (string.IsNullOrWhiteSpace(sku) || !sku.StartsWith("SPA-SVC-", StringComparison.OrdinalIgnoreCase))
         {
-            TempData["ErrorMessage"] = "M� d?ch v? kh�ng h?p l?.";
+            TempData["ErrorMessage"] = "Mã dịch vụ không hợp lệ.";
             return RedirectToAction("Index", "Home");
         }
 
         var idString = sku.Substring(8);
         if (!int.TryParse(idString, out int serviceId))
         {
-            TempData["ErrorMessage"] = "M� d?ch v? kh�ng h?p l?.";
+            TempData["ErrorMessage"] = "Mã dịch vụ không hợp lệ.";
             return RedirectToAction("Index", "Home");
         }
 
         var service = await _context.SpaServices.FirstOrDefaultAsync(s => s.ServiceId == serviceId);
         if (service == null || !service.Active)
         {
-            TempData["ErrorMessage"] = "D?ch v? d� ch?n kh�ng t?n t?i ho?c ng?ng ho?t d?ng.";
+            TempData["ErrorMessage"] = "Dịch vụ đã chọn không tồn tại hoặc ngừng hoạt động.";
             return RedirectToAction("Index", "Home");
         }
 
@@ -405,14 +405,14 @@ public class ProductController : Controller
         // 4. Resolve Date and Time
         if (!DateTime.TryParse($"{bookingDate} {bookingTime}", out DateTime bookingDateTime))
         {
-            TempData["ErrorMessage"] = "Ng�y ho?c gi? d?t l?ch kh�ng h?p l?.";
+            TempData["ErrorMessage"] = "Ngày hoặc giờ đặt lịch không hợp lệ.";
             return RedirectToAction("Details", new { id = sku });
         }
 
         // Check if date is in the past
         if (bookingDateTime.Date < DateTime.Today)
         {
-            TempData["ErrorMessage"] = "Kh�ng th? d?t l?ch cho ng�y trong qu� kh?.";
+            TempData["ErrorMessage"] = "Không thể đặt lịch cho ngày trong quá khứ.";
             return RedirectToAction("Details", new { id = sku });
         }
 
@@ -429,7 +429,7 @@ public class ProductController : Controller
                     GroomerId = targetGroomerId,
                     DateTime = bookingDateTime,
                     Price = service.Price,
-                    Status = "Chua thanh to�n",
+                    Status = "Chưa thanh toán",
                     SpaStatus = "|0",
                     Notes = note?.Trim()
                 };
@@ -441,7 +441,7 @@ public class ProductController : Controller
 
                 string preferredGroomerLabel = hasPreferredGroomer && preferredGroomer != null
                     ? preferredGroomer.FullName
-                    : "Kh�ng y�u c?u";
+                    : "Không yêu cầu";
 
                 var queueItem = new SpaQueue
                 {
@@ -450,19 +450,19 @@ public class ProductController : Controller
                     OwnerName = $"{customer.FullName} ({customer.Phone})",
                     ArrivalTime = bookingDateTime,
                     ServiceDescription = service.Name,
-                    Note = $"[NV mong mu?n: {preferredGroomerLabel}] " + note?.Trim()
+                    Note = $"[NV mong muốn: {preferredGroomerLabel}] " + note?.Trim()
                 };
                 _context.SpaQueues.Add(queueItem);
                 await _context.SaveChangesAsync();
 
                 await transaction.CommitAsync();
 
-                TempData["SuccessMessage"] = $"�?t l?ch d?ch v? th�nh c�ng! L?ch h?n c?a b?n v�o l�c {bookingTime} ng�y {bookingDate} d� du?c ghi nh?n.";
+                TempData["SuccessMessage"] = $"Đặt lịch dịch vụ thành công! Lịch hẹn của bạn vào lúc {bookingTime} ngày {bookingDate} đã được ghi nhận.";
             }
             catch (Exception)
             {
                 await transaction.RollbackAsync();
-                TempData["ErrorMessage"] = "C� l?i x?y ra trong qu� tr�nh d?t l?ch. Vui l�ng th? l?i.";
+                TempData["ErrorMessage"] = "Có lỗi xảy ra trong quá trình đặt lịch. Vui lòng thử lại.";
                 return RedirectToAction("Details", new { id = sku });
             }
         }
@@ -470,6 +470,3 @@ public class ProductController : Controller
         return RedirectToAction("Details", new { id = sku });
     }
 }
-
-
-

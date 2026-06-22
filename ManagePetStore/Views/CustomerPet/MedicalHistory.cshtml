@@ -1,4 +1,4 @@
-﻿@model ManagePetStore.Controllers.PetMedicalHistoryViewModel
+@model ManagePetStore.Controllers.PetMedicalHistoryViewModel
 @{
     Layout = "/Views/Shared/_PetStoreLayout.cshtml";
     ViewData["Title"] = $"Sổ y tế: {Model.SelectedPet.Name}";
@@ -16,7 +16,7 @@
 <section class="ps-product-detail" style="font-family: 'Outfit', sans-serif;">
     <!-- Breadcrumb / Back Navigation -->
     <div class="mb-4 d-flex align-items-center justify-content-between">
-        <a  asp-controller="Pet" asp-action="Index" class="d-inline-flex align-items-center text-decoration-none" style="color: #6b7280; font-weight: 600; font-size: 0.95rem; transition: color 0.2s;">
+        <a asp-controller="CustomerPet" asp-action="Index" class="d-inline-flex align-items-center text-decoration-none" style="color: #6b7280; font-weight: 600; font-size: 0.95rem; transition: color 0.2s;">
             <i class="bi bi-arrow-left me-2" style="font-size: 1.1rem; -webkit-text-stroke: 0.5px;"></i> Quay lại danh sách hồ sơ
         </a>
         <span class="badge" style="background: rgba(249, 115, 22, 0.1); color: #f97316; font-size: 0.8rem; padding: 6px 14px; border-radius: 20px; font-weight: 700;">HỒ SƠ Y TẾ</span>
@@ -190,4 +190,3 @@
         </div>
     </div>
 </section>
-

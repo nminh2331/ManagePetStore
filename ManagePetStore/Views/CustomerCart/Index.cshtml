@@ -1,4 +1,4 @@
-﻿@model ManagePetStore.Models.CustomerModels.CartPageViewModel
+@model ManagePetStore.Models.CustomerModels.CartPageViewModel
 @{
     Layout = "_PetStoreLayout";
     ViewData["Title"] = "Giỏ hàng";
@@ -227,7 +227,7 @@
                             <strong>@Model.GrandTotal.ToString("N0")đ</strong>
                         </div>
 
-                        <a asp-controller="Checkout" asp-action="Index" class="cart-btn-checkout">
+                        <a asp-controller="CustomerCheckout" asp-action="Index" class="cart-btn-checkout">
                             Xác nhận thanh toán
                             <i class="bi bi-chevron-right"></i>
                         </a>
@@ -242,4 +242,3 @@
         </div>
     </div>
 </section>
-

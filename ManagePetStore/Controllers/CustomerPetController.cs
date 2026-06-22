@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -560,13 +560,13 @@ public class CustomerPetController : Controller
         }
         else if (spec.Contains("rùa") || spec.Contains("turtle"))
         {
-            return "https://images.unsplash.com/photo-1596492784531-6e6eb5ea9993?w=200&h=200&fit=crop";
+            return "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=200&h=200&fit=crop";
         }
         else if (spec.Contains("chuột") || spec.Contains("hamster"))
         {
-            return "https://images.unsplash.com/photo-1425082661705-1834bfd09dca?w=200&h=200&fit=crop";
+            return "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=200&h=200&fit=crop";
         }
-        return "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=200&h=200&fit=crop";
+        return "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=200&h=200&fit=crop";
     }
 }
 

@@ -1,4 +1,4 @@
-﻿@model ManagePetStore.Models.CustomerModels.CheckoutSuccessViewModel
+@model ManagePetStore.Models.CustomerModels.CheckoutSuccessViewModel
 @{
     Layout = "_PetStoreLayout";
     ViewData["Title"] = "Đặt hàng thành công";
@@ -58,8 +58,7 @@
 
         <div class="checkout-success-actions">
             <a asp-area="" asp-controller="Home" asp-action="Index" class="checkout-success-btn primary">Tiếp tục mua sắm</a>
-            <a asp-controller="Cart" asp-action="Index" class="checkout-success-btn secondary">Xem giỏ hàng</a>
+            <a asp-controller="CustomerCart" asp-action="Index" class="checkout-success-btn secondary">Xem giỏ hàng</a>
         </div>
     </div>
 </section>
-

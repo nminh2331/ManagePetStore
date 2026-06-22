@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="utf-8" />
@@ -135,16 +135,16 @@
             </div>
             
             <nav class="admin-nav mt-3">
-                <a  asp-controller="WarehouseProduct" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "WarehouseProduct" ? "active" : "")">
+                <a  asp-controller="WarehouseProduct" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Product" ? "active" : "")">
                     <i class="fas fa-box-open"></i> Danh sách Sản phẩm
                 </a>
-                <a  asp-controller="WarehouseStockMovement" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "WarehouseStockMovement" ? "active" : "")">
+                <a  asp-controller="WarehouseStockMovement" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "StockMovement" ? "active" : "")">
                     <i class="fas fa-exchange-alt"></i> Lịch sử Nhập/Xuất
                 </a>
-                <a  asp-controller="WarehouseProductCategory" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "WarehouseProductCategory" ? "active" : "")">
+                <a  asp-controller="WarehouseProductCategory" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "ProductCategory" ? "active" : "")">
                     <i class="fas fa-tags"></i> Danh mục Sản phẩm
                 </a>
-                <a  asp-controller="WarehouseSupplier" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "WarehouseSupplier" ? "active" : "")">
+                <a  asp-controller="WarehouseSupplier" asp-action="Index" class="admin-nav-item @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Supplier" ? "active" : "")">
                     <i class="fas fa-truck"></i> Nhà cung cấp
                 </a>
             </nav>

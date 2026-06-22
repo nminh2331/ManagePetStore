@@ -1,4 +1,4 @@
-﻿@model ManagePetStore.Models.CustomerModels.CheckoutViewModel
+@model ManagePetStore.Models.CustomerModels.CheckoutViewModel
 @{
     Layout = "_PetStoreLayout";
     ViewData["Title"] = "Thông tin thanh toán";
@@ -12,7 +12,7 @@
 <section class="checkout-page">
     <div class="container-fluid checkout-page-inner">
         <div class="checkout-page-header">
-            <a class="checkout-back-btn" asp-controller="Cart" asp-action="Index" aria-label="Quay lại giỏ hàng">
+            <a class="checkout-back-btn" asp-controller="CustomerCart" asp-action="Index" aria-label="Quay lại giỏ hàng">
                 <i class="bi bi-arrow-left"></i>
             </a>
             <h1>Thông tin thanh toán</h1>
@@ -272,4 +272,3 @@
         });
     </script>
 }
-

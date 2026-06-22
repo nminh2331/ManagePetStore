@@ -334,7 +334,7 @@
     document.querySelectorAll('[data-edit-pet]').forEach(function (btn) {
         btn.addEventListener('click', function () {
             var petId = btn.getAttribute('data-edit-pet');
-            window.location.href = '/Customer/Pet?editId=' + petId;
+            window.location.href = '/CustomerPet?editId=' + petId;
         });
     });
 
@@ -388,7 +388,7 @@
         }
 
         $.ajax({
-            url: '/Customer/Pet/GetMedicalRecords',
+            url: '/CustomerPet/GetMedicalRecords',
             type: 'GET',
             data: { petId: petId },
             success: function (res) {

@@ -1,4 +1,4 @@
-﻿@{
+@{
     var pets = ViewBag.HotelPets as IEnumerable<ManagePetStore.Controllers.PetOptionItem>;
     var roomTypes = ViewBag.HotelRoomTypes as IEnumerable<ManagePetStore.Controllers.RoomTypeOptionItem>;
     var discountPercent = ViewBag.HotelDiscountPercent is int value ? value : 0;
@@ -55,7 +55,7 @@
             <form class="hotel-modal-form"
                   id="hotelBookingForm"
                   
-                  asp-controller="HotelBooking"
+                  asp-controller="CustomerHotelBooking"
                   asp-action="Book"
                   method="post"
                   data-discount-percent="@discountPercent">
