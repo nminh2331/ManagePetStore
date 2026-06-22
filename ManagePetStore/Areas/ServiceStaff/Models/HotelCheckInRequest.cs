@@ -7,6 +7,11 @@ public sealed class HotelCheckInRequest : IValidatableObject
     public const string FitStatus = "Fit";
     public const string MonitorStatus = "Monitor";
     public const string RejectedStatus = "Rejected";
+    public const string MedicalRecordMode = "MedicalRecord";
+    public const string NoMedicalRecordMode = "NoMedicalRecord";
+
+    [Required(ErrorMessage = "Phải chọn hình thức tiếp nhận.")]
+    public string ReceptionMode { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Số điện thoại chủ thú cưng là bắt buộc.")]
     [RegularExpression(@"^0(?:[\s.-]?\d){9,10}$", ErrorMessage = "Số điện thoại phải bắt đầu bằng 0 và gồm 10-11 chữ số.")]
@@ -66,6 +71,14 @@ public sealed class HotelCheckInRequest : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
+        var validReceptionModes = new[] { MedicalRecordMode, NoMedicalRecordMode };
+        if (!validReceptionModes.Contains(ReceptionMode, StringComparer.Ordinal))
+        {
+            yield return new ValidationResult(
+                "Hình thức tiếp nhận không hợp lệ.",
+                new[] { nameof(ReceptionMode) });
+        }
+
         var validSpecies = new[] { "Chó", "Mèo", "Thỏ", "Hamster", "Khác" };
         if (!validSpecies.Contains(Species, StringComparer.Ordinal))
         {

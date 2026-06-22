@@ -6,7 +6,7 @@
     bool isMapPage = pageMode == "map";
     bool isCategoryPage = pageMode == "categories";
     ViewData["Title"] = isCheckInPage
-        ? "Pet Check-In & Health Check-In"
+        ? "Tiếp nhận lưu trú"
         : isCategoryPage
             ? "Quản lý Danh mục Chuồng"
             : "Sơ đồ Chuồng";
@@ -30,12 +30,12 @@
     int repairCageCount = Math.Max(0, maintenanceCageCount - cleaningCageCount - lockedCageCount);
 
     string pageTitle = isCheckInPage
-        ? "Pet Check-In & Health Check-In"
+        ? "Tiếp nhận lưu trú"
         : isCategoryPage
             ? "Quản lý Danh mục Chuồng"
             : "Sơ đồ Chuồng";
     string pageSubtitle = isCheckInPage
-        ? "Ghi nhận hồ sơ thú cưng, kiểm tra sức khỏe đầu vào và nhận chuồng trên cùng một màn"
+        ? "Chọn tiếp nhận bằng sổ y tế hoặc kiểm tra ban đầu, sau đó phân chuồng trên cùng một màn"
         : isCategoryPage
             ? "Quản lý loại chuồng, chuồng cụ thể, giá và trang thiết bị"
             : "Theo dõi sơ đồ phòng, xem chi tiết thú cưng và chuyển chuồng";
@@ -84,6 +84,64 @@
         transform: translateY(-2px);
         box-shadow: 0 10px 28px rgba(255, 120, 21, 0.4);
         color: #FFFFFF;
+    }
+
+    .reception-mode-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .reception-mode-option {
+        border: 1px solid #E8DDD5;
+        border-radius: 12px;
+        padding: 14px;
+        cursor: pointer;
+        background: #FFFFFF;
+        transition: border-color .2s, box-shadow .2s, background .2s;
+    }
+
+    .reception-mode-option:has(input:checked) {
+        border-color: #FF7815;
+        background: #FFF8F1;
+        box-shadow: 0 0 0 3px rgba(255, 120, 21, .12);
+    }
+
+    .reception-mode-option strong,
+    .reception-mode-option small {
+        display: block;
+    }
+
+    .reception-mode-option strong {
+        color: #2D2521;
+        font-size: .86rem;
+    }
+
+    .reception-mode-option small {
+        color: #7D706A;
+        line-height: 1.4;
+        margin: 4px 0 0 24px;
+    }
+
+    .medical-record-summary {
+        display: none;
+        background: #F4FBF6;
+        border: 1px solid #C9E9D1;
+        border-radius: 12px;
+        color: #24633A;
+        font-size: .8rem;
+        line-height: 1.55;
+        margin: 0 0 14px;
+        padding: 12px 14px;
+    }
+
+    .medical-record-summary.visible {
+        display: block;
+    }
+
+    @@media (max-width: 620px) {
+        .reception-mode-grid { grid-template-columns: 1fr; }
     }
 
     /* ===== STAT CARDS ===== */
@@ -1115,9 +1173,9 @@
     }
     else
     {
-        <a class="btn-checkin-primary" href="/SpaServices/PetCheckIn">
+        <a class="btn-checkin-primary" href="/SpaServices/Reception">
             <i class="fa-solid fa-plus"></i>
-            Pet Check-In
+            Tiếp nhận lưu trú
         </a>
     }
 </div>
@@ -1297,13 +1355,13 @@
                 <div class="hotel-card-header">
                     <h5 class="hotel-card-title">
                         <i class="fa-solid fa-clipboard-check"></i>
-                        Pet Check-In + Health Check-In
+                        Tiếp nhận lưu trú
                     </h5>
                 </div>
                 <div style="background:#FFF8F1; border:1px solid #FFD8C2; border-radius:14px; padding:18px;">
                     <p style="font-size:.9rem; font-weight:700; color:#2D2521; margin:0 0 6px;">Luồng tiếp nhận lưu trú</p>
                     <p style="font-size:.78rem; color:#7D706A; margin:0 0 14px;">
-                        Màn này gộp kiểm tra sức khỏe đầu vào và tiếp nhận thú cưng vào chuồng. Hệ thống sẽ ghi timeline sức khỏe trước, sau đó mới tạo/cập nhật booking và đổi trạng thái chuồng.
+                        Chọn một trong hai luồng: dùng sổ y tế có sẵn hoặc kiểm tra ban đầu khi chưa có sổ. Dù ở luồng nào, nhân viên vẫn phải xác nhận tình trạng thực tế trước khi phân chuồng.
                     </p>
                     <button class="btn-checkin-primary" data-bs-toggle="modal" data-bs-target="#checkInModal">
                         <i class="fa-solid fa-clipboard-list"></i>
@@ -1840,6 +1898,24 @@
                 <form method="post" action="/SpaServices/CheckIn" id="checkInForm">
                     @Html.AntiForgeryToken()
 
+                    <p class="form-section-label"><i class="fa-solid fa-route"></i> Hình thức tiếp nhận</p>
+                    <div class="reception-mode-grid" role="radiogroup" aria-label="Hình thức tiếp nhận">
+                        <label class="reception-mode-option" for="ci-mode-medical">
+                            <input type="radio" name="receptionMode" id="ci-mode-medical" value="MedicalRecord" required onchange="setReceptionMode()">
+                            <strong>Dùng sổ y tế có sẵn</strong>
+                            <small>Chọn thú cưng có sổ y tế, hệ thống hiển thị thông tin gần nhất để đối chiếu.</small>
+                        </label>
+                        <label class="reception-mode-option" for="ci-mode-new">
+                            <input type="radio" name="receptionMode" id="ci-mode-new" value="NoMedicalRecord" required onchange="setReceptionMode()">
+                            <strong>Chưa có sổ y tế</strong>
+                            <small>Kiểm tra ban đầu và tạo bản ghi y tế đầu tiên từ lần tiếp nhận này.</small>
+                        </label>
+                    </div>
+                    <div id="receptionModeHint" class="health-warning-strip">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Chọn hình thức trước khi tra cứu thú cưng.
+                    </div>
+
                     <!-- THÔNG TIN CHỦ -->
                     <p class="form-section-label"><i class="fa-solid fa-user"></i> Thông tin chủ thú cưng</p>
 
@@ -1863,12 +1939,15 @@
 
                     <!-- Dropdown chọn pet có sẵn hoặc tạo mới -->
                     <div class="hform-group" id="existingPetGroup" style="display:none;">
-                        <label class="hform-label">Chọn thú cưng đã có hồ sơ</label>
+                        <label class="hform-label" id="existingPetLabel">Chọn thú cưng đã có hồ sơ</label>
                         <select id="ci-existingPet" class="hform-control" onchange="fillExistingPet(this)">
                             <option value="">— Tạo mới —</option>
                         </select>
+                        <small id="existingPetHelp" style="display:block; color:#9E918B; margin-top:6px; font-size:.74rem;"></small>
                     </div>
                     <input type="hidden" name="existingPetId" id="ci-existingPetHidden" value="">
+
+                    <div id="medicalRecordSummary" class="medical-record-summary" aria-live="polite"></div>
 
                     <div id="petNewForm">
                         <div class="grid-3">
@@ -1905,7 +1984,7 @@
                     </div>
 
                     <!-- TÌNH TRẠNG SỨC KHỎE -->
-                    <p class="form-section-label"><i class="fa-solid fa-heart-pulse"></i> Tình trạng sức khỏe</p>
+                    <p class="form-section-label"><i class="fa-solid fa-heart-pulse"></i> Kiểm tra sức khỏe khi tiếp nhận</p>
 
                     <div class="health-warning-strip">
                         <i class="fa-solid fa-triangle-exclamation"></i>
@@ -2558,48 +2637,169 @@ function switchTab(tabName, btn) {
     btn.classList.add('active');
 }
 
-// ===== CHECK-IN: LOOKUP CUSTOMER BY PHONE =====
+// ===== RECEPTION: MEDICAL RECORD OR INITIAL HEALTH CHECK =====
 let lookupTimer;
+
+function getReceptionMode() {
+    return document.querySelector('input[name="receptionMode"]:checked')?.value || '';
+}
+
+function isMedicalRecordMode() {
+    return getReceptionMode() === 'MedicalRecord';
+}
+
+function enableNewPetForm() {
+    const form = document.getElementById('petNewForm');
+    form.style.opacity = '1';
+    form.style.pointerEvents = 'auto';
+}
+
+function hideMedicalRecordSummary() {
+    const summary = document.getElementById('medicalRecordSummary');
+    summary.replaceChildren();
+    summary.classList.remove('visible');
+}
+
+function setReceptionModeHint(message, type = 'info') {
+    const hint = document.getElementById('receptionModeHint');
+    hint.innerHTML = '';
+    const icon = document.createElement('i');
+    icon.className = type === 'error' ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-circle-info';
+    hint.append(icon, document.createTextNode(' ' + message));
+}
+
+function resetPetSelection() {
+    const select = document.getElementById('ci-existingPet');
+    select.value = '';
+    document.getElementById('ci-existingPetHidden').value = '';
+    enableNewPetForm();
+    hideMedicalRecordSummary();
+}
+
+function setReceptionMode() {
+    const mode = getReceptionMode();
+    const isMedicalMode = mode === 'MedicalRecord';
+    const select = document.getElementById('ci-existingPet');
+    const label = document.getElementById('existingPetLabel');
+    const help = document.getElementById('existingPetHelp');
+
+    select.required = isMedicalMode;
+    label.textContent = isMedicalMode
+        ? 'Chọn thú cưng có sổ y tế'
+        : 'Chọn thú cưng chưa có sổ y tế hoặc tạo hồ sơ mới';
+    help.textContent = isMedicalMode
+        ? 'Chỉ hiển thị thú cưng đã có sổ y tế trên hệ thống.'
+        : 'Lần tiếp nhận này sẽ tạo bản ghi y tế đầu tiên cho thú cưng được chọn hoặc thú cưng mới.';
+    setReceptionModeHint(isMedicalMode
+        ? 'Thông tin sổ y tế chỉ dùng để đối chiếu. Kiểm tra thực tế vẫn là bắt buộc.'
+        : 'Hệ thống sẽ lưu kết quả kiểm tra này thành bản ghi y tế đầu tiên.');
+
+    resetPetSelection();
+    const phone = document.getElementById('ci-phone').value;
+    if (phone.replace(/\D/g, '').length >= 10) {
+        lookupCustomer(phone);
+    }
+}
+
+function populateExistingPets(pets) {
+    if (!getReceptionMode()) {
+        document.getElementById('existingPetGroup').style.display = 'none';
+        return;
+    }
+
+    const isMedicalMode = isMedicalRecordMode();
+    const select = document.getElementById('ci-existingPet');
+    const group = document.getElementById('existingPetGroup');
+    const help = document.getElementById('existingPetHelp');
+    const eligiblePets = isMedicalMode
+        ? pets.filter(p => p.hasMedicalRecord)
+        : pets.filter(p => !p.hasMedicalRecord);
+
+    select.replaceChildren();
+    const initialOption = document.createElement('option');
+    initialOption.value = '';
+    initialOption.textContent = isMedicalMode
+        ? (eligiblePets.length ? '— Chọn thú cưng có sổ y tế —' : '— Không có thú cưng có sổ y tế —')
+        : '— Tạo hồ sơ thú cưng mới —';
+    select.appendChild(initialOption);
+
+    eligiblePets.forEach(p => {
+        const option = document.createElement('option');
+        option.value = p.petId;
+        option.textContent = `${p.name} (${p.species})`;
+        option.dataset.name = p.name;
+        option.dataset.species = p.species;
+        option.dataset.breed = p.breed;
+        option.dataset.age = p.age;
+        option.dataset.weight = p.weight;
+        option.dataset.pathology = p.pathology;
+        option.dataset.hasMedicalRecord = p.hasMedicalRecord ? 'true' : 'false';
+        select.appendChild(option);
+    });
+
+    select.required = isMedicalMode;
+    group.style.display = (eligiblePets.length > 0 || isMedicalMode) ? 'block' : 'none';
+    if (isMedicalMode && !eligiblePets.length) {
+        help.textContent = 'Khách này chưa có thú cưng nào có sổ y tế. Hãy chuyển sang luồng chưa có sổ y tế.';
+    }
+}
+
 function lookupCustomer(phone) {
     clearTimeout(lookupTimer);
     const normalizedPhone = phone.replace(/\D/g, '');
     if (normalizedPhone.length < 10) {
         document.getElementById('existingPetGroup').style.display = 'none';
         document.getElementById('ci-customerName').value = '';
-        document.getElementById('ci-existingPetHidden').value = '';
+        resetPetSelection();
         return;
     }
+
     lookupTimer = setTimeout(() => {
-        // Find from server-side customers list
         const customers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(customers.Select(c => new { c.CustomerId, c.FullName, c.Phone })));
-        const found = customers.find(c => c.phone === normalizedPhone);
-        if (found) {
-            document.getElementById('ci-customerName').value = found.fullName;
-            // Load their pets
-            fetch('/SpaServices/GetHotelPetsByCustomer?customerId=' + found.customerId)
-                .then(r => r.json())
-                .then(pets => {
-                    const sel = document.getElementById('ci-existingPet');
-                    sel.innerHTML = '<option value="">— Tạo mới —</option>';
-                    pets.forEach(p => {
-                        const option = document.createElement('option');
-                        option.value = p.petId;
-                        option.textContent = `${p.name} (${p.species})`;
-                        option.dataset.name = p.name;
-                        option.dataset.species = p.species;
-                        option.dataset.breed = p.breed;
-                        option.dataset.age = p.age;
-                        option.dataset.weight = p.weight;
-                        option.dataset.pathology = p.pathology;
-                        sel.appendChild(option);
-                    });
-                    document.getElementById('existingPetGroup').style.display = pets.length > 0 ? 'block' : 'none';
-                });
-        } else {
+        const found = customers.find(c => (c.phone || '').replace(/\D/g, '') === normalizedPhone);
+        if (!found) {
             document.getElementById('existingPetGroup').style.display = 'none';
-            document.getElementById('ci-existingPetHidden').value = '';
+            resetPetSelection();
+            return;
         }
+
+        document.getElementById('ci-customerName').value = found.fullName;
+        fetch('/SpaServices/GetHotelPetsByCustomer?customerId=' + encodeURIComponent(found.customerId))
+            .then(response => response.ok ? response.json() : Promise.reject())
+            .then(populateExistingPets)
+            .catch(() => setReceptionModeHint('Không thể tải hồ sơ thú cưng của khách. Vui lòng thử lại.', 'error'));
     }, 400);
+}
+
+function renderMedicalRecordSummary(record) {
+    const summary = document.getElementById('medicalRecordSummary');
+    summary.replaceChildren();
+
+    const title = document.createElement('strong');
+    title.textContent = 'Sổ y tế gần nhất';
+    summary.appendChild(title);
+
+    const fields = [
+        ['Ngày ghi nhận', record.dateCreated],
+        ['Tình trạng', record.healthStatus],
+        ['Triệu chứng / bệnh lý', record.symptoms],
+        ['Tiêm phòng', record.vaccinationStatus],
+        ['Kiểm tra thể chất', record.physicalCheck]
+    ];
+    fields.forEach(([label, value]) => {
+        const line = document.createElement('div');
+        line.textContent = `${label}: ${value || 'Chưa ghi nhận'}`;
+        summary.appendChild(line);
+    });
+    summary.classList.add('visible');
+}
+
+function loadMedicalRecordSummary(petId) {
+    hideMedicalRecordSummary();
+    fetch('/SpaServices/GetPetMedicalSummary?petId=' + encodeURIComponent(petId))
+        .then(response => response.ok ? response.json() : Promise.reject())
+        .then(result => renderMedicalRecordSummary(result.record))
+        .catch(() => setReceptionModeHint('Không đọc được sổ y tế của thú cưng. Vui lòng đổi sang luồng chưa có sổ y tế.', 'error'));
 }
 
 function fillExistingPet(select) {
@@ -2607,10 +2807,21 @@ function fillExistingPet(select) {
     const hidden = document.getElementById('ci-existingPetHidden');
     if (!opt.value) {
         hidden.value = '';
-        document.getElementById('petNewForm').style.opacity = '1';
-        document.getElementById('petNewForm').style.pointerEvents = 'auto';
+        enableNewPetForm();
+        hideMedicalRecordSummary();
         return;
     }
+
+    const hasMedicalRecord = opt.dataset.hasMedicalRecord === 'true';
+    if ((isMedicalRecordMode() && !hasMedicalRecord) || (!isMedicalRecordMode() && hasMedicalRecord)) {
+        select.value = '';
+        hidden.value = '';
+        enableNewPetForm();
+        hideMedicalRecordSummary();
+        setReceptionModeHint('Lựa chọn thú cưng không khớp với hình thức tiếp nhận.', 'error');
+        return;
+    }
+
     hidden.value = opt.value;
     document.getElementById('ci-petName').value = opt.dataset.name || '';
     document.getElementById('ci-species').value = opt.dataset.species || 'Chó';
@@ -2618,9 +2829,15 @@ function fillExistingPet(select) {
     document.getElementById('ci-age').value = opt.dataset.age || '';
     document.getElementById('ci-weight').value = opt.dataset.weight || '';
     document.getElementById('ci-pathology').value = opt.dataset.pathology || '';
-    // Dim the pet form to show it's prefilled
-    document.getElementById('petNewForm').style.opacity = '0.7';
-    document.getElementById('petNewForm').style.pointerEvents = 'none';
+    const form = document.getElementById('petNewForm');
+    form.style.opacity = '0.7';
+    form.style.pointerEvents = 'none';
+
+    if (isMedicalRecordMode()) {
+        loadMedicalRecordSummary(opt.value);
+    } else {
+        hideMedicalRecordSummary();
+    }
 }
 
 // ===== HEALTH CHECK VALIDATION =====
@@ -2682,7 +2899,15 @@ document.getElementById('checkInForm').addEventListener('submit', event => {
     updateHealthStatus();
     validateStayDates();
 
+    const receptionMode = getReceptionMode();
     const healthStatus = document.getElementById('ci-healthStatus').value;
+
+    if (receptionMode === 'MedicalRecord' && !document.getElementById('ci-existingPetHidden').value) {
+        event.preventDefault();
+        setReceptionModeHint('Tiếp nhận bằng sổ y tế yêu cầu chọn thú cưng đã có sổ y tế.', 'error');
+        document.getElementById('ci-existingPet').focus();
+        return;
+    }
 
     if (healthStatus === 'Rejected') {
         event.preventDefault();

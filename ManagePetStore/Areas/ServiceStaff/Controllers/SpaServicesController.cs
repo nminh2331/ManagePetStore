@@ -957,10 +957,17 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return RedirectToAction(nameof(CageMap));
         }
 
+        [HttpGet("Reception")]
+        public Task<IActionResult> Reception(int roomTypePage = 1, int cagePage = 1)
+        {
+            return HotelWorkspace("checkin", roomTypePage, cagePage);
+        }
+
+        // Retain the former URL so bookmarks and existing links continue to work.
         [HttpGet("PetCheckIn")]
         public Task<IActionResult> PetCheckIn(int roomTypePage = 1, int cagePage = 1)
         {
-            return HotelWorkspace("checkin", roomTypePage, cagePage);
+            return Reception(roomTypePage, cagePage);
         }
 
         [HttpGet("CageMap")]
@@ -1097,10 +1104,35 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     breed = p.Breed ?? "Chưa rõ",
                     age = p.Age ?? "Chưa rõ",
                     weight = p.Weight,
-                    pathology = p.Pathology ?? ""
+                    pathology = p.Pathology ?? "",
+                    hasMedicalRecord = _context.MedicalRecords.Any(record => record.PetId == p.PetId)
                 })
                 .ToListAsync();
             return Json(pets);
+        }
+
+        [HttpGet("GetPetMedicalSummary")]
+        public async Task<IActionResult> GetPetMedicalSummary(int petId)
+        {
+            var record = await _context.MedicalRecords
+                .AsNoTracking()
+                .Where(item => item.PetId == petId)
+                .OrderByDescending(item => item.DateCreated)
+                .Select(item => new
+                {
+                    dateCreated = item.DateCreated.ToString("dd/MM/yyyy HH:mm"),
+                    item.Weight,
+                    healthStatus = item.HealthStatus ?? "Chưa ghi nhận",
+                    symptoms = item.Symptoms ?? "Không ghi nhận",
+                    vaccinationStatus = item.VaccinationStatus ?? "Chưa ghi nhận",
+                    parasitePrevention = item.ParasitePrevention ?? "Chưa ghi nhận",
+                    physicalCheck = item.PhysicalCheck ?? "Không có ghi chú"
+                })
+                .FirstOrDefaultAsync();
+
+            return record == null
+                ? NotFound(new { success = false, message = "Thú cưng chưa có sổ y tế trên hệ thống." })
+                : Json(new { success = true, record });
         }
 
         [HttpPost("CheckIn")]
@@ -1207,6 +1239,27 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     await _context.SaveChangesAsync();
                 }
 
+                bool hasMedicalRecord = await _context.MedicalRecords
+                    .AsNoTracking()
+                    .AnyAsync(record => record.PetId == pet.PetId);
+
+                if (request.ReceptionMode == HotelCheckInRequest.MedicalRecordMode)
+                {
+                    if (!request.ExistingPetId.HasValue)
+                    {
+                        return HotelValidationError("Tiếp nhận bằng sổ y tế yêu cầu chọn thú cưng đã có hồ sơ.");
+                    }
+
+                    if (!hasMedicalRecord)
+                    {
+                        return HotelValidationError("Thú cưng được chọn chưa có sổ y tế trên hệ thống. Vui lòng dùng luồng chưa có sổ y tế.");
+                    }
+                }
+                else if (hasMedicalRecord)
+                {
+                    return HotelValidationError("Thú cưng này đã có sổ y tế. Vui lòng dùng luồng tiếp nhận bằng sổ y tế để bảo toàn lịch sử.");
+                }
+
                 bool petIsAlreadyBoarding = await _context.HotelBookings.AnyAsync(b =>
                     b.PetId == pet.PetId && (b.Status == "Active" || b.Status == "Đang ở"));
                 if (petIsAlreadyBoarding)
@@ -1270,10 +1323,27 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 {
                     PetId = pet.PetId,
                     Date = DateTime.Now,
-                    Title = "Pet Check-In lưu trú",
+                    Title = "Tiếp nhận lưu trú",
                     Type = "PetCheckIn",
                     Description = BuildPetCheckInDescription(request, cageId, customer.FullName)
                 });
+
+                if (request.ReceptionMode == HotelCheckInRequest.NoMedicalRecordMode)
+                {
+                    _context.MedicalRecords.Add(new MedicalRecord
+                    {
+                        PetId = pet.PetId,
+                        DateCreated = DateTime.Now,
+                        Weight = request.Weight,
+                        HealthStatus = request.HealthStatus == HotelCheckInRequest.FitStatus
+                            ? "Đủ điều kiện lưu trú"
+                            : "Cần theo dõi",
+                        Symptoms = string.IsNullOrWhiteSpace(pathology) ? null : pathology,
+                        PhysicalCheck = $"Kiểm tra lúc tiếp nhận: {healthNote}\nNhiệt độ cơ thể: {request.BodyTemperature:0.##}°C",
+                        VaccinationStatus = "Chưa ghi nhận",
+                        ParasitePrevention = "Chưa ghi nhận"
+                    });
+                }
 
                 decimal dailyPrice = cage.RoomType.DailyPrice;
                 int stayDays = checkOutDate.HasValue
@@ -1310,7 +1380,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                TempData["HotelSuccess"] = $"Đã ghi nhận sức khỏe và tiếp nhận {pet.Name} vào chuồng {cageId} thành công!";
+                TempData["HotelSuccess"] = $"Đã hoàn tất tiếp nhận lưu trú cho {pet.Name} tại chuồng {cageId}!";
             }
             catch (InvalidOperationException ex)
             {
@@ -1324,13 +1394,13 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 TempData["HotelError"] = "Không thể tiếp nhận thú cưng do lỗi hệ thống. Vui lòng thử lại.";
             }
 
-            return RedirectToAction(nameof(PetCheckIn));
+            return RedirectToAction(nameof(Reception));
         }
 
         private IActionResult HotelValidationError(string message)
         {
             TempData["HotelError"] = message;
-            return RedirectToAction(nameof(PetCheckIn));
+            return RedirectToAction(nameof(Reception));
         }
 
         private string GetModelStateErrorMessage()
@@ -1354,8 +1424,12 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 ? "Đủ điều kiện lưu trú"
                 : "Đủ điều kiện nhưng cần theo dõi";
             string checkedBy = User.FindFirst("FullName")?.Value ?? User.Identity?.Name ?? "Nhân viên dịch vụ";
+            string receptionSource = request.ReceptionMode == HotelCheckInRequest.MedicalRecordMode
+                ? "Dùng sổ y tế hiện có"
+                : "Chưa có sổ y tế - tạo bản ghi ban đầu";
 
-            return $"Kết luận: {conclusion}\n"
+            return $"Hình thức tiếp nhận: {receptionSource}\n"
+                 + $"Kết luận: {conclusion}\n"
                  + $"Cân nặng lúc nhận: {request.Weight:0.##} kg\n"
                  + $"Nhiệt độ cơ thể: {request.BodyTemperature:0.##}°C\n"
                  + $"Bệnh lý/tình trạng đặc biệt: {(string.IsNullOrWhiteSpace(pathology) ? "Không ghi nhận" : pathology)}\n"
@@ -1369,8 +1443,12 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             string expectedCheckout = request.CheckOutDate.HasValue
                 ? request.CheckOutDate.Value.ToString("dd/MM/yyyy HH:mm")
                 : "Chưa xác định";
+            string receptionSource = request.ReceptionMode == HotelCheckInRequest.MedicalRecordMode
+                ? "Dùng sổ y tế hiện có"
+                : "Chưa có sổ y tế";
 
-            return $"Chuồng tiếp nhận: {cageId}\n"
+            return $"Hình thức tiếp nhận: {receptionSource}\n"
+                 + $"Chuồng tiếp nhận: {cageId}\n"
                  + $"Chủ thú cưng: {customerName}\n"
                  + $"Ngày nhận: {request.CheckInDate!.Value:dd/MM/yyyy HH:mm}\n"
                  + $"Ngày trả dự kiến: {expectedCheckout}\n"
