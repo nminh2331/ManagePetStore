@@ -3,7 +3,7 @@ using ManagePetStore.Areas.Customer.Models;
 using ManagePetStore.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace ManagePetStore.Areas.Customer.Services;
+namespace ManagePetStore.Services.Customer;
 
 public class CartService : ICartService
 {

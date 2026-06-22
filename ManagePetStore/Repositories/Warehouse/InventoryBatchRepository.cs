@@ -8,7 +8,7 @@
 using ManagePetStore.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace ManagePetStore.Areas.Warehouse.Repositories;
+namespace ManagePetStore.Repositories.Warehouse;
 
 public class InventoryBatchRepository : IInventoryBatchRepository
 {

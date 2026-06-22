@@ -5,7 +5,7 @@
  * Date: June 11, 2026
  * Description: Controller xử lý các phiếu xuất/nhập kho.
  */
-using ManagePetStore.Areas.Warehouse.Services;
+using ManagePetStore.Services.Warehouse;
 using ManagePetStore.Exceptions;
 using ManagePetStore.Models;
 using ManagePetStore.Services;

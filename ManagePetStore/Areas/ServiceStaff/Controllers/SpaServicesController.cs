@@ -8,10 +8,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ManagePetStore.Models;
-using ManagePetStore.SpaServices.Models;
+using ManagePetStore.Areas.ServiceStaff.Models;
+using CustomerEntity = ManagePetStore.Models.Customer;
 
-namespace ManagePetStore.SpaServices.Controllers
+namespace ManagePetStore.Areas.ServiceStaff.Controllers
 {
+    [Area("ServiceStaff")]
     [Authorize(Roles = "service,admin,manager")]
     [Route("SpaServices")]
     public class SpaServicesController : Controller
@@ -170,7 +172,7 @@ namespace ManagePetStore.SpaServices.Controllers
                 .ToListAsync();
             ViewBag.Customers = customers;
 
-            return View("~/SpaServices/Views/SpaService/Index.cshtml");
+            return View("~/Areas/ServiceStaff/Views/SpaServices/Index.cshtml");
         }
 
         // =========================================================================
@@ -390,7 +392,7 @@ namespace ManagePetStore.SpaServices.Controllers
             }
 
             var ownerName = queueItem.OwnerName;
-            Customer? customer = null;
+            CustomerEntity? customer = null;
             if (ownerName.Contains("(") && ownerName.Contains(")"))
             {
                 int startIndex = ownerName.LastIndexOf("(") + 1;
@@ -1065,7 +1067,7 @@ namespace ManagePetStore.SpaServices.Controllers
                 .ToListAsync();
             ViewBag.Customers = customers;
 
-            return View("~/SpaServices/Views/SpaService/Hotel.cshtml");
+            return View("~/Areas/ServiceStaff/Views/SpaServices/Hotel.cshtml");
         }
 
         // =========================================================================
@@ -1175,7 +1177,7 @@ namespace ManagePetStore.SpaServices.Controllers
                 {
                     if (customer == null)
                     {
-                        customer = new Customer
+                        customer = new CustomerEntity
                         {
                             FullName = request.CustomerName.Trim(),
                             Phone = customerPhone,
@@ -2047,7 +2049,7 @@ namespace ManagePetStore.SpaServices.Controllers
                 ViewBag.Pets = pets;
             }
             
-            return View("~/SpaServices/Views/SpaService/MedicalRecords.cshtml");
+            return View("~/Areas/ServiceStaff/Views/SpaServices/MedicalRecords.cshtml");
         }
 
         [HttpGet("GetPetMedicalHistory")]

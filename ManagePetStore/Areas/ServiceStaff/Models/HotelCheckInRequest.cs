@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace ManagePetStore.SpaServices.Models;
+namespace ManagePetStore.Areas.ServiceStaff.Models;
 
 public sealed class HotelCheckInRequest : IValidatableObject
 {

@@ -5,12 +5,12 @@
  * Date: June 11, 2026
  * Description: Triển khai dịch vụ quản lý xuất/nhập kho.
  */
-using ManagePetStore.Areas.Warehouse.Repositories;
+using ManagePetStore.Repositories.Warehouse;
 using ManagePetStore.Exceptions;
 using ManagePetStore.Models;
 using ManagePetStore.Repositories;
 
-namespace ManagePetStore.Areas.Warehouse.Services;
+namespace ManagePetStore.Services.Warehouse;
 
 public class StockMovementService : IStockMovementService
 {
