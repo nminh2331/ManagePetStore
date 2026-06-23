@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - PetStore AI</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        /* Custom overrides for Service Staff panel to match Mockup perfectly */
+        :root {
+            --primary-orange: #FF7815;
+            --primary-orange-hover: #E0630D;
+            --bg-body: #F9F7F5;
+            --sidebar-width: 260px;
+            --text-dark: #2D2521;
+            --text-muted: #9E918B;
+            --border-light: #EFECE9;
+            --card-shadow: 0 8px 30px rgba(45, 37, 33, 0.04);
+        }
+
+        body.service-body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .service-wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar layout styling */
+        .service-sidebar {
+            width: var(--sidebar-width);
+            background-color: #FFFFFF;
+            border-right: 1px solid var(--border-light);
+            display: flex;
+            flex-direction: column;
+            padding: 25px 18px;
+            position: fixed;
+            height: 100vh;
+            left: 0;
+            top: 0;
+            z-index: 100;
+        }
+
+        .service-logo {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--primary-orange);
+            text-decoration: none;
+            margin-bottom: 35px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-left: 10px;
+        }
+
+        .service-logo i {
+            font-size: 1.5rem;
+        }
+
+        .service-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex-grow: 1;
+        }
+
+        .service-nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            color: var(--text-dark);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.25s ease;
+        }
+
+        .service-nav-item i {
+            width: 20px;
+            font-size: 1.05rem;
+            color: var(--text-muted);
+            transition: color 0.25s;
+        }
+
+        .service-nav-item:hover {
+            background-color: #FFF6F0;
+            color: var(--primary-orange);
+        }
+
+        .service-nav-item:hover i {
+            color: var(--primary-orange);
+        }
+
+        .service-nav-item.active {
+            background-color: var(--primary-orange);
+            color: #FFFFFF;
+            font-weight: 600;
+            box-shadow: 0 6px 20px rgba(255, 120, 21, 0.25);
+        }
+
+        .service-nav-item.active i {
+            color: #FFFFFF;
+        }
+
+        .service-sidebar-footer {
+            border-top: 1px solid var(--border-light);
+            padding-top: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .branch-info {
+            background-color: #FFF9F5;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 0.75rem;
+            color: var(--text-dark);
+        }
+
+        .branch-title {
+            font-weight: 600;
+            color: var(--text-muted);
+            margin: 0;
+            text-transform: uppercase;
+            font-size: 0.65rem;
+            letter-spacing: 0.5px;
+        }
+
+        .branch-name {
+            font-weight: 700;
+            color: var(--primary-orange);
+            margin: 2px 0 0 0;
+        }
+
+        .service-logout-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 12px 16px;
+            border: none;
+            background: none;
+            color: #EC5959;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: all 0.25s;
+            text-align: left;
+        }
+
+        .service-logout-btn:hover {
+            background-color: #FFF2F2;
+        }
+
+        /* Main Dashboard Content Layout */
+        .service-content {
+            margin-left: var(--sidebar-width);
+            flex-grow: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header styling */
+        .service-header {
+            height: 70px;
+            background-color: #FFFFFF;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            position: sticky;
+            top: 0;
+            z-index: 90;
+        }
+
+        .search-box-wrapper {
+            position: relative;
+            max-width: 340px;
+            width: 100%;
+        }
+
+        .search-box-wrapper i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .search-box-input {
+            width: 100%;
+            padding: 10px 16px 10px 44px;
+            border-radius: 20px;
+            border: 1px solid var(--border-light);
+            background-color: #FDFDFD;
+            font-size: 0.85rem;
+            transition: all 0.25s;
+        }
+
+        .search-box-input:focus {
+            outline: none;
+            border-color: var(--primary-orange);
+            background-color: #FFFFFF;
+            box-shadow: 0 0 0 3px rgba(255, 120, 21, 0.08);
+        }
+
+        .user-panel {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .bell-icon-btn {
+            border: none;
+            background: none;
+            color: var(--text-dark);
+            padding: 8px;
+            cursor: pointer;
+            position: relative;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.25s;
+        }
+
+        .bell-icon-btn:hover {
+            background-color: #F7F5F3;
+        }
+
+        .bell-dot-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 6px;
+            height: 6px;
+            background-color: var(--primary-orange);
+            border-radius: 50%;
+        }
+
+        .user-profile-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .user-greet-details {
+            text-align: right;
+        }
+
+        .user-fullname-text {
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin: 0;
+            color: var(--text-dark);
+        }
+
+        .user-role-label {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin: 1px 0 0 0;
+            font-weight: 500;
+        }
+
+        .user-circle-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #FFE8DB 0%, #FFDCD0 100%);
+            color: var(--primary-orange);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            border: 1px solid #FFE3D5;
+        }
+
+        .service-body-container {
+            padding: 30px 40px;
+            background-color: var(--bg-body);
+            flex-grow: 1;
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+    </style>
+
+    @await RenderSectionAsync("Styles", required: false)
+
+</head>
+<body class="service-body">
+    <div class="service-wrapper">
+        <!-- Sidebar -->
+        <aside class="service-sidebar">
+            <a href="/" class="service-logo">
+                <i class="fa-solid fa-paw"></i>
+                <span>PetStore AI</span>
+            </a>
+            
+            <nav class="service-nav">
+                @{
+                    var servicePath = Context.Request.Path.Value ?? "";
+                    bool isHotelWorkspace = servicePath.StartsWith("/SpaServices/Reception", StringComparison.OrdinalIgnoreCase) ||
+                                             servicePath.StartsWith("/SpaServices/PetCheckIn", StringComparison.OrdinalIgnoreCase) ||
+                                            servicePath.StartsWith("/SpaServices/CageMap", StringComparison.OrdinalIgnoreCase) ||
+                                            servicePath.StartsWith("/SpaServices/CageCategories", StringComparison.OrdinalIgnoreCase);
+                    bool isMedicalRecords = servicePath.StartsWith("/SpaServices/MedicalRecords", StringComparison.OrdinalIgnoreCase);
+                }
+                <a href="/SpaServices" class="service-nav-item @(!isHotelWorkspace && !isMedicalRecords && (servicePath == "/SpaServices" || servicePath == "/SpaServices/Index" || servicePath == "/SpaServices/") ? "active" : "")">
+                    <i class="fa-solid fa-scissors"></i>
+                    Dịch vụ Spa
+                </a>
+                <a href="/SpaServices/MedicalRecords" class="service-nav-item @(isMedicalRecords ? "active" : "")">
+                    <i class="fa-solid fa-book-medical"></i>
+                    Sổ y tế
+                </a>
+                <a href="/SpaServices/Reception" class="service-nav-item @((servicePath.StartsWith("/SpaServices/Reception", StringComparison.OrdinalIgnoreCase) || servicePath.StartsWith("/SpaServices/PetCheckIn", StringComparison.OrdinalIgnoreCase)) ? "active" : "")">
+                    <i class="fa-solid fa-clipboard-check"></i>
+                    Tiếp nhận
+                </a>
+                <a href="/SpaServices/CageMap" class="service-nav-item @((servicePath.StartsWith("/SpaServices/CageMap", StringComparison.OrdinalIgnoreCase) || servicePath.StartsWith("/SpaServices/Hotel", StringComparison.OrdinalIgnoreCase)) ? "active" : "")">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                    Sơ đồ Chuồng
+                </a>
+                <a href="/SpaServices/CageCategories" class="service-nav-item @(servicePath.StartsWith("/SpaServices/CageCategories", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                    <i class="fa-solid fa-house-chimney-medical"></i>
+                    Danh mục Chuồng
+                </a>
+            </nav>
+
+            <div class="service-sidebar-footer">
+                <div class="branch-info">
+                    <p class="branch-title">Cửa hàng PET</p>
+                    <p class="branch-name">Service Staff</p>
+                </div>
+                
+                <form id="sidebarLogoutForm" asp-area="Customer" asp-controller="Account" asp-action="Logout" method="post" class="d-none">
+                    @Html.AntiForgeryToken()
+                </form>
+                <button onclick="document.getElementById('sidebarLogoutForm').submit();" class="service-logout-btn">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    Đăng xuất
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="service-content">
+            <!-- Header -->
+            <header class="service-header">
+                <div class="search-box-wrapper">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" class="search-box-input" placeholder="Tìm kiếm nhanh..." />
+                </div>
+
+                <div class="user-panel">
+                    <button class="bell-icon-btn">
+                        <i class="fa-regular fa-bell"></i>
+                        <span class="bell-dot-indicator"></span>
+                    </button>
+                    
+                    <a asp-area="Customer" asp-controller="Account" asp-action="Profile" class="user-profile-link">
+                        <div class="user-greet-details">
+                            <p class="user-fullname-text">@User.FindFirst("FullName")?.Value</p>
+                            <p class="user-role-label">Nhân viên Chăm sóc</p>
+                        </div>
+                        <div class="user-circle-avatar">
+                            @User.FindFirst("FullName")?.Value.Substring(0, 1).ToUpper()
+                        </div>
+                    </a>
+                </div>
+            </header>
+
+            <!-- Body -->
+            <section class="service-body-container">
+                @RenderBody()
+            </section>
+        </main>
+    </div>
+    
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

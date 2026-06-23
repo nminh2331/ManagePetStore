@@ -1,0 +1,564 @@
+@using ManagePetStore.Models
+@{
+    Layout = "~/Areas/ServiceStaff/Views/Shared/_ServiceLayout.cshtml";
+    ViewData["Title"] = "Quản lý Sổ Y Tế Thú Cưng";
+    var selectedSpecies = ViewBag.SelectedSpecies as string;
+    var pets = ViewBag.Pets as List<Pet> ?? new List<Pet>();
+}
+
+<div class="container-fluid py-3">
+    <!-- ========================================================================= -->
+    <!-- SECTION 1: PETS LIST AND SPECIES CHOICE -->
+    <!-- ========================================================================= -->
+    <div id="petsListSection">
+        <!-- Header Page -->
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h1 class="h3 font-weight-bold text-dark mb-1" style="font-family: 'Outfit', sans-serif;">
+                    <i class="fa-solid fa-book-medical mr-2 text-primary"></i>Quản lý Sổ Y Tế Thú Cưng
+                </h1>
+                <p class="text-muted small mb-0">Theo dõi, tạo mới và xem lịch sử hồ sơ khám bệnh, tiêm phòng và kiểm tra sức khỏe của thú cưng tại cửa hàng.</p>
+            </div>
+            @if (!string.IsNullOrEmpty(selectedSpecies))
+            {
+                <a href="/SpaServices/MedicalRecords" class="btn btn-outline-secondary btn-sm rounded-pill px-4 py-2" style="font-weight: 500;">
+                    <i class="fa-solid fa-arrow-left mr-1"></i> Quay lại chọn loài
+                </a>
+            }
+        </div>
+
+        @if (string.IsNullOrEmpty(selectedSpecies))
+        {
+            <!-- Species Selection Grid (4 Large visual blocks) -->
+            <div class="row mt-4">
+                <!-- Dog Card -->
+                <div class="col-md-3 mb-4">
+                    <a href="/SpaServices/MedicalRecords?species=Chó" class="card species-card border-0 shadow-sm text-decoration-none h-100 text-center py-5">
+                        <div class="species-icon-wrapper mx-auto mb-3 bg-light-dog text-primary d-flex align-items-center justify-content-center rounded-circle">
+                            <i class="fa-solid fa-dog fa-3x"></i>
+                        </div>
+                        <h3 class="h5 font-weight-bold text-dark mb-2">Chó</h3>
+                        <p class="text-muted small px-3 mb-0">Sổ y tế tập trung vào tiêm phòng vắc xin, kiểm tra da/lông ký sinh trùng và thể chất.</p>
+                    </a>
+                </div>
+
+                <!-- Cat Card -->
+                <div class="col-md-3 mb-4">
+                    <a href="/SpaServices/MedicalRecords?species=Mèo" class="card species-card border-0 shadow-sm text-decoration-none h-100 text-center py-5">
+                        <div class="species-icon-wrapper mx-auto mb-3 bg-light-cat text-success d-flex align-items-center justify-content-center rounded-circle">
+                            <i class="fa-solid fa-cat fa-3x"></i>
+                        </div>
+                        <h3 class="h5 font-weight-bold text-dark mb-2">Mèo</h3>
+                        <p class="text-muted small px-3 mb-0">Sổ y tế quản lý tiêm ngừa dịch, tẩy giun sán đường ruột và nấm ghẻ ngoài da.</p>
+                    </a>
+                </div>
+
+                <!-- Turtle Card -->
+                <div class="col-md-3 mb-4">
+                    <a href="/SpaServices/MedicalRecords?species=Rùa" class="card species-card border-0 shadow-sm text-decoration-none h-100 text-center py-5">
+                        <div class="species-icon-wrapper mx-auto mb-3 bg-light-turtle text-info d-flex align-items-center justify-content-center rounded-circle">
+                            <img src="~/images/turtle-icon.png" alt="Rùa" style="width: 120px; height:140px; object-fit: contain;" />
+                        </div>
+                        <h3 class="h5 font-weight-bold text-dark mb-2">Loài Rùa</h3>
+                        <p class="text-muted small px-3 mb-0">Kiểm tra độ cứng mai rùa, điều kiện nuôi dưới đèn UVB/nắng tự nhiên và biểu hiện bất thường.</p>
+                    </a>
+                </div>
+
+                <!-- Hamster Card -->
+                <div class="col-md-3 mb-4">
+                    <a href="/SpaServices/MedicalRecords?species=Chuột" class="card species-card border-0 shadow-sm text-decoration-none h-100 text-center py-5">
+                        <div class="species-icon-wrapper mx-auto mb-3 bg-light-hamster text-warning d-flex align-items-center justify-content-center rounded-circle">
+                            <i class="fa-solid fa-paw fa-3x"></i>
+                        </div>
+                        <h3 class="h5 font-weight-bold text-dark mb-2">Hamster</h3>
+                        <p class="text-muted small px-3 mb-0">Theo dõi độ dài răng cửa, rụng lông nấm da và bệnh ướt đuôi/tiêu chảy ở chuột Hamster.</p>
+                    </a>
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- Pets List Grid View with compact visual design -->
+            <div class="card border-0 shadow-sm" style="border-radius: 20px;">
+                <div class="card-body p-4">
+                    <div class="row align-items-center justify-content-between mb-4">
+                        <div class="col-md-5">
+                            <h2 class="h5 font-weight-bold text-dark mb-0">Danh sách thú cưng: Loài @selectedSpecies</h2>
+                        </div>
+                        <div class="col-md-5">
+                            <input type="text" id="petSearchInput" class="form-control px-4 rounded-pill" placeholder="Tìm theo tên hoặc ngày sinh/tuổi..." style="border: 1px solid #efece9;" />
+                        </div>
+                    </div>
+
+                    @if (pets.Count == 0)
+                    {
+                        <div class="text-center py-5">
+                            <i class="fa-solid fa-circle-question fa-3x text-muted mb-3"></i>
+                            <p class="text-muted mb-0">Chưa có thú cưng nào thuộc loài @selectedSpecies đăng ký trên hệ thống.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row" id="petsGrid">
+                            @foreach (var pet in pets)
+                            {
+                                var hasRecord = pet.MedicalRecords.Any();
+                                <div class="col-md-4 mb-4 pet-card-item" data-name="@pet.Name" data-age="@pet.Age">
+                                    <div class="card pet-item-card p-3 @(hasRecord ? "has-record-border" : "no-record-border")">
+                                        <div class="d-flex align-items-center justify-content-between mb-3" style="gap: 8px;">
+                                            <!-- Left side: Pet info -->
+                                            <div class="d-flex align-items-center min-width-0" style="flex: 1.2;">
+                                                <!-- Compact Circular Avatar -->
+                                                <img class="rounded-circle" src="@(string.IsNullOrEmpty(pet.ImageUrl) ? "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=120&h=120&fit=crop" : pet.ImageUrl)" alt="@pet.Name" style="width: 55px; height: 55px; object-fit: cover; border: 2px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.06); margin-right: 12px; flex-shrink: 0;" />
+                                                
+                                                <div class="min-width-0" style="flex: 1;">
+                                                    <h3 class="h6 font-weight-bold text-dark mb-0 text-truncate" style="max-width: 95px;" title="@pet.Name">@pet.Name</h3>
+                                                    <div class="text-muted text-truncate" style="font-size: 0.7rem;"><i class="fa-solid fa-paw" style="margin-right: 4px;"></i>@pet.Breed</div>
+                                                    <div class="text-muted text-truncate" style="font-size: 0.7rem;"><i class="fa-solid fa-cake-candles" style="margin-right: 4px;"></i>@pet.Age</div>
+                                                    
+                                                    <!-- Status Text inside White Background, Black color -->
+                                                    <div class="small font-weight-bold mt-1 text-dark" style="font-size: 0.7rem;">
+                                                        @if (hasRecord)
+                                                        {
+                                                            <span class="text-success" style="color: #2ecc71 !important;"><i class="fa-solid fa-circle" style="font-size: 6px; margin-right: 4px;"></i> Đã có sổ</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-secondary" style="color: #9e918b !important;"><i class="fa-regular fa-circle" style="font-size: 6px; margin-right: 4px;"></i> Chưa có sổ</span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Right side: Owner info -->
+                                            <div class="d-flex align-items-center text-right min-width-0" style="border-left: 1px solid #efece9 !important; padding-left: 12px; height: 55px; flex: 1; justify-content: flex-end;">
+                                                <div class="min-width-0" style="margin-right: 15px; text-align: right;padding-right: 15px;">
+                                                    <span class="d-block text-muted" style="font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;">Chủ nuôi</span>
+                                                    <strong class="text-dark d-block text-truncate" style="max-width: 95px; font-size: 0.75rem;" title="@pet.Customer.FullName">@pet.Customer.FullName</strong>
+                                                    <span class="text-muted d-block" style="font-size: 0.7rem;">@pet.Customer.Phone</span>
+                                                </div>
+                                                <!-- Owner Avatar (Initials bubble) -->
+                                                <div class="rounded-circle d-flex align-items-center justify-content-center text-white font-weight-bold" style="width: 36px; height: 36px; font-size: 0.9rem; flex-shrink: 0; background: linear-gradient(135deg, #ff7e5f, #feb47b) !important; box-shadow: 0 2px 6px rgba(255, 126, 95, 0.2);">
+                                                    @(string.IsNullOrEmpty(pet.Customer.FullName) ? "U" : pet.Customer.FullName.Substring(0, 1).ToUpper())
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Detail Stats Row -->
+                                        <div class="row text-muted small py-2 bg-light rounded-lg text-center mx-0 mb-3" style="background-color: #fcfbfa !important; border: 1px solid #f5f2ef;">
+                                            <div class="col-6 border-right">
+                                                <span class="d-block text-muted" style="font-size: 0.7rem;">Cân nặng</span>
+                                                <strong class="text-dark">@pet.Weight.ToString("0.0") kg</strong>
+                                            </div>
+                                            <div class="col-6">
+                                                <span class="d-block text-muted" style="font-size: 0.7rem;">Lượt khám</span>
+                                                <strong class="text-dark">@pet.MedicalRecords.Count lần</strong>
+                                            </div>
+                                        </div>
+
+                                        <!-- Actions Row -->
+                                        <div class="d-flex gap-2">
+                                            @if (hasRecord)
+                                            {
+                                                <button class="btn btn-outline-primary btn-sm flex-fill py-2 mr-2" style="font-weight: 600; font-size: 0.8rem;" onclick="showHistoryScreen(@pet.PetId, '@pet.Name')">
+                                                    <i class="fa-solid fa-history mr-1"></i>Xem lịch sử
+                                                </button>
+                                                <button class="btn btn-primary btn-sm flex-fill py-2" style="font-weight: 600; font-size: 0.8rem;" onclick="showCreateScreen(@pet.PetId, '@pet.Name', '@pet.Species', @pet.Weight)">
+                                                    <i class="fa-solid fa-plus-circle mr-1"></i>Tạo sổ mới
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <button class="btn btn-orange btn-sm w-100 py-2" style="font-weight: 600; font-size: 0.8rem;" onclick="showCreateScreen(@pet.PetId, '@pet.Name', '@pet.Species', @pet.Weight)">
+                                                    <i class="fa-solid fa-plus-circle mr-1"></i>Tạo sổ y tế
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- SECTION 2: MEDICAL HISTORY TIMELINE SCREEN -->
+    <!-- ========================================================================= -->
+    <div id="petHistorySection" style="display: none;">
+        <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
+            <div>
+                <h2 class="h4 font-weight-bold text-dark mb-1" style="font-family: 'Outfit', sans-serif;">
+                    <i class="fa-solid fa-clock-rotate-left mr-2 text-primary"></i>Lịch sử khám: Bé <span id="historyPetNameHeader"></span>
+                </h2>
+                <p class="text-muted small mb-0">Danh sách tất cả các bệnh lịch sử khám, đơn thuốc và hồ sơ bệnh án được sắp xếp theo thời gian.</p>
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-4 py-2" onclick="goBackToPetsList()">
+                <i class="fa-solid fa-arrow-left mr-1"></i> Quay lại danh sách
+            </button>
+        </div>
+
+        <div class="bg-light-timeline" id="historyTimelineContent">
+            <!-- Timeline items loaded dynamically via JS -->
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- SECTION 3: CREATE MEDICAL RECORD FORM SCREEN -->
+    <!-- ========================================================================= -->
+    <div id="petCreateSection" style="display: none;">
+        <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
+            <div>
+                <h2 class="h4 font-weight-bold text-dark mb-1" style="font-family: 'Outfit', sans-serif;">
+                    <i class="fa-solid fa-file-medical mr-2 text-primary"></i>Tạo hồ sơ y tế: Bé <span id="createPetNameHeader"></span>
+                </h2>
+                <p class="text-muted small mb-0">Điền thông tin chẩn đoán sức khỏe tổng quát và các chi tiết khám sinh học đặc thù theo loài.</p>
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-4 py-2" onclick="goBackToPetsList()">
+                <i class="fa-solid fa-arrow-left mr-1"></i> Quay lại danh sách
+            </button>
+        </div>
+
+        <div class="card border-0 shadow-sm" style="border-radius: 20px;">
+            <div class="card-body p-4">
+                <form id="createRecordForm" method="post">
+                    <input type="hidden" name="petId" id="formPetId" />
+                    
+                    <!-- Part 1: Common Fields -->
+                    <div class="section-title mb-4 pb-2 border-bottom text-primary font-weight-bold">
+                        <i class="fa-solid fa-clipboard-list mr-1"></i>1. Phần thông tin chung (Bắt buộc)
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 form-group">
+                            <label class="form-label font-weight-bold">Ngày khám/Tạo sổ</label>
+                            <input type="text" class="form-control" value="@DateTime.Now.ToString("dd/MM/yyyy")" disabled />
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label class="form-label font-weight-bold">Cân nặng hiện tại (kg) *</label>
+                            <input type="number" step="0.01" class="form-control" name="weight" id="formWeight" required min="0.01" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 form-group">
+                            <label class="form-label font-weight-bold">Trạng thái sức khỏe tổng quan *</label>
+                            <select class="form-control form-select" name="healthStatus" required>
+                                <option value="Khỏe mạnh">Khỏe mạnh</option>
+                                <option value="Cần theo dõi">Cần theo dõi</option>
+                                <option value="Đang ốm">Đang ốm</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group mt-2">
+                        <label class="form-label font-weight-bold">Chẩn đoán / Triệu chứng *</label>
+                        <textarea class="form-control" name="symptoms" rows="3" placeholder="Ví dụ: Bé lười ăn, chảy nước mũi..." required></textarea>
+                    </div>
+                    <div class="form-group mt-2 mb-4">
+                        <label class="form-label font-weight-bold">Hướng xử lý / Kê đơn *</label>
+                        <textarea class="form-control" name="treatment" rows="3" placeholder="Ví dụ: Kê thuốc uống, kiêng ăn đồ lạnh..." required></textarea>
+                    </div>
+
+                    <!-- Part 2: Species Specific Fields (Shown conditionally) -->
+                    <div class="section-title mb-4 pb-2 border-bottom text-primary font-weight-bold">
+                        <i class="fa-solid fa-stethoscope mr-1"></i>2. Thông tin đặc thù theo loài (Chỉ click chọn nhanh)
+                    </div>
+
+                    <!-- DOG & CAT SPECIFIC FIELDS -->
+                    <div id="formDogCatSection" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label class="form-label font-weight-bold">Tình trạng Tiêm phòng</label>
+                                <select class="form-control form-select" name="vaccinationStatus">
+                                    <option value="Chưa tiêm">Chưa tiêm</option>
+                                    <option value="Tiêm mũi 1">Tiêm mũi 1</option>
+                                    <option value="Đã tiêm đầy đủ">Đã tiêm đầy đủ</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label class="form-label font-weight-bold">Kiểm tra Thể chất sơ bộ</label>
+                                <select class="form-control form-select" name="physicalCheck">
+                                    <option value="Bình thường">Bình thường</option>
+                                    <option value="Bệnh ngoài da (Nấm, ghẻ)">Bệnh ngoài da (Nấm, ghẻ)</option>
+                                    <option value="Bệnh tiêu hóa">Bệnh tiêu hóa</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group mt-2">
+                            <label class="form-label font-weight-bold d-block">Phòng ngừa Ký sinh trùng (Ve rận, giun)</label>
+                            <div class="custom-control custom-checkbox custom-control-inline mr-4">
+                                <input type="checkbox" class="custom-control-input" id="preventGiun" name="parasitePrevention" value="Đã tẩy giun đường ruột">
+                                <label class="custom-control-label font-weight-normal text-muted" for="preventGiun" style="cursor: pointer;">Đã tẩy giun đường ruột</label>
+                            </div>
+                            <div class="custom-control custom-checkbox custom-control-inline">
+                                <input type="checkbox" class="custom-control-input" id="preventVe" name="parasitePrevention" value="Đã nhỏ gáy/Uống thuốc trị ve rận">
+                                <label class="custom-control-label font-weight-normal text-muted" for="preventVe" style="cursor: pointer;">Đã nhỏ gáy/Uống thuốc trị ve rận</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TURTLE SPECIFIC FIELDS -->
+                    <div id="formTurtleSection" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label class="form-label font-weight-bold">Tình trạng Mai rùa</label>
+                                <select class="form-control form-select" name="shellStatus">
+                                    <option value="Cứng cáp, khỏe mạnh">Cứng cáp, khỏe mạnh</option>
+                                    <option value="Mềm mai, nấm mai">Mềm mai, nấm mai</option>
+                                    <option value="Xước, nứt mai">Xước, nứt mai</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label class="form-label font-weight-bold">Điều kiện nuôi tại nhà (Khách khai)</label>
+                                <select class="form-control form-select" name="rearingConditions">
+                                    <option value="Có đèn UVB/Phơi nắng tự nhiên">Có đèn UVB/Phơi nắng tự nhiên</option>
+                                    <option value="Nuôi trong nhà không đèn">Nuôi trong nhà không đèn</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group mt-2">
+                            <label class="form-label font-weight-bold d-block">Biểu hiện bất thường</label>
+                            <div class="custom-control custom-checkbox custom-control-inline mr-4">
+                                <input type="checkbox" class="custom-control-input" id="turtleSungMat" name="abnormalSymptoms" value="Sưng nhắm mắt">
+                                <label class="custom-control-label font-weight-normal text-muted" for="turtleSungMat" style="cursor: pointer;">Sưng nhắm mắt</label>
+                            </div>
+                            <div class="custom-control custom-checkbox custom-control-inline mr-4">
+                                <input type="checkbox" class="custom-control-input" id="turtleBoAn" name="abnormalSymptoms" value="Bỏ ăn">
+                                <label class="custom-control-label font-weight-normal text-muted" for="turtleBoAn" style="cursor: pointer;">Bỏ ăn</label>
+                            </div>
+                            <div class="custom-control custom-checkbox custom-control-inline">
+                                <input type="checkbox" class="custom-control-input" id="turtleHaMieng" name="abnormalSymptoms" value="Há miệng thở">
+                                <label class="custom-control-label font-weight-normal text-muted" for="turtleHaMieng" style="cursor: pointer;">Há miệng thở</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- HAMSTER SPECIFIC FIELDS -->
+                    <div id="formHamsterSection" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label class="form-label font-weight-bold d-block mb-3">Kiểm tra Răng cửa</label>
+                                <div class="custom-control custom-radio custom-control-inline mr-4">
+                                    <input type="radio" id="hamsterRangBinhThuong" name="incisorCheck" class="custom-control-input" value="Bình thường" checked>
+                                    <label class="custom-control-label font-weight-normal text-muted" for="hamsterRangBinhThuong" style="cursor: pointer;">Bình thường</label>
+                                </div>
+                                <div class="custom-control custom-radio custom-control-inline">
+                                    <input type="radio" id="hamsterRangDai" name="incisorCheck" class="custom-control-input" value="Quá dài (Cần cắt)">
+                                    <label class="custom-control-label font-weight-normal text-muted" for="hamsterRangDai" style="cursor: pointer;">Quá dài (Cần cắt)</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label class="form-label font-weight-bold">Kiểm tra Lông/Da</label>
+                                <select class="form-control form-select" name="furSkinCheck">
+                                    <option value="Mượt mà">Mượt mà</option>
+                                    <option value="Đang rụng lông">Đang rụng lông</option>
+                                    <option value="Bị nấm, viêm da">Bị nấm, viêm da</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group mt-3">
+                            <label class="form-label font-weight-bold d-block">Dấu hiệu tiêu hóa</label>
+                            <div class="custom-control custom-checkbox custom-control-inline mr-4">
+                                <input type="checkbox" class="custom-control-input" id="hamsterUotDuoi" name="digestiveSigns" value="Ướt đuôi">
+                                <label class="custom-control-label font-weight-normal text-muted" for="hamsterUotDuoi" style="cursor: pointer;">Ướt đuôi (Bệnh nguy hiểm)</label>
+                            </div>
+                            <div class="custom-control custom-checkbox custom-control-inline">
+                                <input type="checkbox" class="custom-control-input" id="hamsterTieuChay" name="digestiveSigns" value="Tiêu chảy">
+                                <label class="custom-control-label font-weight-normal text-muted" for="hamsterTieuChay" style="cursor: pointer;">Tiêu chảy</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex align-items-center justify-content-end gap-3 mt-5 pt-3 border-top">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-5 py-2 mr-3" onclick="goBackToPetsList()">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-primary rounded-pill px-5 py-2" style="font-weight: 600;"><i class="fa-solid fa-save mr-1"></i>Lưu Sổ Y Tế</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/medical-records.css" asp-append-version="true" />
+}
+
+@section Scripts {
+    <script>
+        // Custom Slide-in Toast helper to avoid alert() local says boxes
+        function showNotification(message, type) {
+            var toast = document.createElement('div');
+            toast.className = 'custom-toast ' + (type === 'success' ? 'toast-success' : 'toast-error');
+            toast.innerHTML = '<i class="' + (type === 'success' ? 'fa-solid fa-circle-check' : 'fa-solid fa-triangle-exclamation') + ' mr-2"></i>' + message;
+            
+            var container = document.getElementById('toastContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toastContainer';
+                container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;';
+                document.body.appendChild(container);
+            }
+            
+            container.appendChild(toast);
+            
+            setTimeout(function() {
+                toast.classList.add('visible');
+            }, 10);
+            
+            setTimeout(function() {
+                toast.classList.remove('visible');
+                setTimeout(function() {
+                    toast.remove();
+                }, 300);
+            }, 3000);
+        }
+
+        $(document).ready(function () {
+            // Client-side search logic (Search by Name and Age) without glass icon wrapper
+            $('#petSearchInput').on('keyup', function () {
+                var query = $(this).val().trim().toLowerCase();
+                $('#petsGrid .pet-card-item').each(function () {
+                    var name = ($(this).data('name') || '').toString().toLowerCase();
+                    var age = ($(this).data('age') || '').toString().toLowerCase();
+                    
+                    if (name.includes(query) || age.includes(query)) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            });
+
+            // Form submission logic via AJAX with Toast notification
+            $('#createRecordForm').on('submit', function (e) {
+                e.preventDefault();
+                
+                $.ajax({
+                    url: '/SpaServices/CreateMedicalRecord',
+                    type: 'POST',
+                    data: $(this).serialize(),
+                    success: function (res) {
+                        if (res.success) {
+                            showNotification(res.message, 'success');
+                            setTimeout(function() {
+                                goBackToPetsList();
+                                location.reload();
+                            }, 1000);
+                        } else {
+                            showNotification(res.message, 'error');
+                        }
+                    },
+                    error: function () {
+                        showNotification("Đã xảy ra lỗi khi tạo sổ y tế. Vui lòng thử lại.", 'error');
+                    }
+                });
+            });
+        });
+
+        // View Transition Helpers
+        function showCreateScreen(petId, petName, petSpecies, currentWeight) {
+            $('#formPetId').val(petId);
+            $('#createPetNameHeader').text(petName);
+            $('#formWeight').val(currentWeight);
+
+            // Hide specific form parts
+            $('#formDogCatSection, #formTurtleSection, #formHamsterSection').hide();
+            
+            // Normalize species name to show correct section
+            var species = petSpecies.toLowerCase();
+            if (species === 'chó' || species === 'mèo' || species === 'dog' || species === 'cat') {
+                $('#formDogCatSection').show();
+            } else if (species === 'rùa' || species === 'turtle') {
+                $('#formTurtleSection').show();
+            } else if (species === 'chuột' || species === 'hamster') {
+                $('#formHamsterSection').show();
+            }
+            
+            // Transition Screens
+            $('#petsListSection, #petHistorySection').hide();
+            $('#petCreateSection').fadeIn(200);
+            window.scrollTo(0, 0);
+        }
+
+        function showHistoryScreen(petId, petName) {
+            $('#historyPetNameHeader').text(petName);
+            $('#historyTimelineContent').html('<div class="text-center py-5"><i class="fa-solid fa-spinner fa-spin fa-2x text-muted"></i><p class="text-muted mt-2 mb-0">Đang tải lịch sử...</p></div>');
+            
+            // Transition Screens
+            $('#petsListSection, #petCreateSection').hide();
+            $('#petHistorySection').fadeIn(200);
+            window.scrollTo(0, 0);
+
+            $.ajax({
+                url: '/SpaServices/GetPetMedicalHistory',
+                type: 'GET',
+                data: { petId: petId },
+                success: function (records) {
+                    if (!records || records.length === 0) {
+                        $('#historyTimelineContent').html('<div class="text-center py-5"><i class="fa-solid fa-info-circle fa-2x text-muted mb-2"></i><p class="text-muted mb-0">Không có dữ liệu lịch sử sổ khám bệnh.</p></div>');
+                        return;
+                    }
+                    
+                    var html = '<div class="timeline-container">';
+                    records.forEach(function (rec) {
+                        html += '<div class="timeline-item card border-0 shadow-sm mb-4 p-4">';
+                        html += '  <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">';
+                        html += '    <span class="text-primary font-weight-bold"><i class="fa-solid fa-calendar mr-2"></i>' + rec.dateCreated + '</span>';
+                        html += '    <span class="badge rounded-pill px-3 py-2 ' + (rec.healthStatus === 'Khỏe mạnh' ? 'badge-success' : rec.healthStatus === 'Cần theo dõi' ? 'badge-warning' : 'badge-danger') + '" style="font-size: 0.75rem;">' + rec.healthStatus + '</span>';
+                        html += '  </div>';
+                        html += '  <div class="row mb-3">';
+                        html += '    <div class="col-6"><strong>Cân nặng lúc khám:</strong> <span class="text-dark font-weight-bold">' + rec.weight + ' kg</span></div>';
+                        html += '  </div>';
+                        html += '  <div class="mb-3"><strong>Chẩn đoán/Triệu chứng:</strong>';
+                        html += '    <p class="mb-0 text-secondary bg-white p-3 rounded-lg border-left border-primary mt-2 shadow-sm" style="background-color: #faf9f8 !important; border-left-width: 4px !important;">' + rec.symptoms + '</p>';
+                        html += '  </div>';
+                        html += '  <div class="mb-3"><strong>Hướng xử lý/Kê đơn:</strong>';
+                        html += '    <p class="mb-0 text-secondary bg-white p-3 rounded-lg border-left border-success mt-2 shadow-sm" style="background-color: #faf9f8 !important; border-left-width: 4px !important;">' + rec.treatment + '</p>';
+                        html += '  </div>';
+                        
+                        var hasSpecifics = false;
+                        var specHtml = '  <div class="border-top pt-3 mt-3 bg-light-fields p-3 rounded-lg"><strong class="small text-muted d-block mb-2"><i class="fa-solid fa-clipboard-check mr-1"></i>Chi tiết lâm sàng đặc thù:</strong><div class="row small text-dark">';
+                        
+                        if (rec.vaccinationStatus || rec.parasitePrevention || rec.physicalCheck) {
+                            hasSpecifics = true;
+                            specHtml += '    <div class="col-md-4 mb-2"><strong>Tiêm phòng:</strong> ' + (rec.vaccinationStatus || 'Chưa rõ') + '</div>';
+                            specHtml += '    <div class="col-md-4 mb-2"><strong>Thể chất:</strong> ' + (rec.physicalCheck || 'Bình thường') + '</div>';
+                            specHtml += '    <div class="col-md-4 mb-2"><strong>Ký sinh trùng:</strong> ' + (rec.parasitePrevention || 'Chưa tẩy/nhỏ') + '</div>';
+                        } else if (rec.shellStatus || rec.rearingConditions || rec.abnormalSymptoms) {
+                            hasSpecifics = true;
+                            specHtml += '    <div class="col-md-4 mb-2"><strong>Tình trạng Mai:</strong> ' + (rec.shellStatus || 'Chưa rõ') + '</div>';
+                            specHtml += '    <div class="col-md-4 mb-2"><strong>ĐK nuôi:</strong> ' + (rec.rearingConditions || 'Chưa rõ') + '</div>';
+                            specHtml += '    <div class="col-md-4 mb-2"><strong>Bất thường:</strong> ' + (rec.abnormalSymptoms || 'Không có') + '</div>';
+                        } else if (rec.incisorCheck || rec.furSkinCheck || rec.digestiveSigns) {
+                            hasSpecifics = true;
+                            specHtml += '    <div class="col-md-4 mb-2"><strong>Răng cửa:</strong> ' + (rec.incisorCheck || 'Bình thường') + '</div>';
+                            specHtml += '    <div class="col-md-4 mb-2"><strong>Lông/Da:</strong> ' + (rec.furSkinCheck || 'Mượt mà') + '</div>';
+                            specHtml += '    <div class="col-md-4 mb-2"><strong>Tiêu hóa:</strong> ' + (rec.digestiveSigns || 'Bình thường') + '</div>';
+                        }
+                        
+                        specHtml += '  </div></div>';
+                        if (hasSpecifics) {
+                            html += specHtml;
+                        }
+                        
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                    
+                    $('#historyTimelineContent').html(html);
+                },
+                error: function () {
+                    showNotification("Không thể tải dữ liệu lịch sử khám bệnh.", 'error');
+                    $('#historyTimelineContent').html('<div class="text-center py-5 text-danger"><i class="fa-solid fa-triangle-exclamation fa-2x mb-2"></i><p class="mb-0">Lỗi kết nối máy chủ.</p></div>');
+                }
+            });
+        }
+
+        function goBackToPetsList() {
+            $('#petHistorySection, #petCreateSection').hide();
+            $('#petsListSection').fadeIn(200);
+            window.scrollTo(0, 0);
+        }
+    </script>
+}

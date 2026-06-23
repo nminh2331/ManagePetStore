@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using ManagePetStore.Areas.Customer.Models;
-using ManagePetStore.Areas.Customer.Services;
+using ManagePetStore.Services.Customer;
 using ManagePetStore.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -170,10 +170,16 @@ public class CheckoutController : Controller
                         int petId;
                         if (pet == null)
                         {
+                            var petName = "Pet của " + customer.FullName;
+                            if (petName.Length > 50)
+                            {
+                                petName = petName.Substring(0, 50);
+                            }
+
                             pet = new Pet
                             {
                                 CustomerId = customer.CustomerId,
-                                Name = "Pet của " + customer.FullName,
+                                Name = petName,
                                 Species = "Chó/Mèo",
                                 Breed = "Chưa xác định",
                                 Age = "1 tuổi",
