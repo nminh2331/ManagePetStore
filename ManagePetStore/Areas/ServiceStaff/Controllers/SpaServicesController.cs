@@ -22,6 +22,8 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         private static readonly string[] BlockingHotelStatuses = ["Đã đặt", "Active", "Đang ở"];
         private static readonly string[] EditableCageStatuses = ["Trống", "Đang dọn dẹp", "Bảo trì", "Khóa"];
         private static readonly string[] MaintenanceCageStatuses = ["Đang dọn dẹp", "Bảo trì", "Khóa"];
+        private const decimal MinimumRoomTypeDailyPrice = 150000m;
+        private const decimal MinimumRoomTypeHourlyPrice = 40000m;
 
         private readonly PetStoreManagementContext _context;
         private readonly ILogger<SpaServicesController> _logger;
@@ -2001,15 +2003,38 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         // 6.3. CRUD LOẠI CHUỒNG (ROOM TYPE)
         // =========================================================================
 
+        private static string? ValidateRoomTypePricing(decimal dailyPrice, decimal hourlyPrice)
+        {
+            if (dailyPrice < MinimumRoomTypeDailyPrice)
+            {
+                return "Giá theo ngày không được thấp hơn 150.000đ.";
+            }
+
+            if (hourlyPrice < MinimumRoomTypeHourlyPrice)
+            {
+                return "Giá theo giờ không được thấp hơn 40.000đ.";
+            }
+
+            return null;
+        }
+
         [HttpPost("AddRoomType")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddRoomType(
             string type, string size, int capacity,
             decimal hourlyPrice, decimal dailyPrice,
             bool hasAc, bool hasCamera, bool hasPremiumFood)
         {
-            if (string.IsNullOrWhiteSpace(type) || capacity <= 0 || dailyPrice < 0)
+            if (string.IsNullOrWhiteSpace(type) || capacity <= 0)
             {
                 TempData["HotelError"] = "Thông tin loại chuồng không hợp lệ.";
+                return RedirectToAction(nameof(CageCategories));
+            }
+
+            var pricingError = ValidateRoomTypePricing(dailyPrice, hourlyPrice);
+            if (pricingError != null)
+            {
+                TempData["HotelError"] = pricingError;
                 return RedirectToAction(nameof(CageCategories));
             }
 
@@ -2040,6 +2065,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         [HttpPost("EditRoomType")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> EditRoomType(
             int id, string type, string size, int capacity,
             decimal hourlyPrice, decimal dailyPrice,
@@ -2052,9 +2078,16 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return RedirectToAction(nameof(CageCategories));
             }
 
-            if (string.IsNullOrWhiteSpace(type) || capacity <= 0 || dailyPrice < 0)
+            if (string.IsNullOrWhiteSpace(type) || capacity <= 0)
             {
                 TempData["HotelError"] = "Thông tin không hợp lệ.";
+                return RedirectToAction(nameof(CageCategories));
+            }
+
+            var pricingError = ValidateRoomTypePricing(dailyPrice, hourlyPrice);
+            if (pricingError != null)
+            {
+                TempData["HotelError"] = pricingError;
                 return RedirectToAction(nameof(CageCategories));
             }
 

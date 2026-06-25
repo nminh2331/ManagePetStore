@@ -2096,7 +2096,7 @@
                 <button class="hotel-modal-close" data-bs-dismiss="modal"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="hotel-modal-body">
-                <form method="post" action="/SpaServices/AddRoomType">
+                <form method="post" action="/SpaServices/AddRoomType" class="room-type-form">
                     @Html.AntiForgeryToken()
                     <div class="grid-2">
                         <div class="hform-group">
@@ -2120,11 +2120,11 @@
                     <div class="grid-2">
                         <div class="hform-group">
                             <label class="hform-label">Giá theo ngày (VNĐ) <span class="req">*</span></label>
-                            <input type="number" name="dailyPrice" class="hform-control" placeholder="150000" min="0" required>
+                            <input type="number" name="dailyPrice" class="hform-control" placeholder="150000" min="150000" step="1000" required>
                         </div>
                         <div class="hform-group">
                             <label class="hform-label">Giá theo giờ (VNĐ)</label>
-                            <input type="number" name="hourlyPrice" class="hform-control" placeholder="20000" min="0" value="0">
+                            <input type="number" name="hourlyPrice" class="hform-control" placeholder="40000" min="40000" step="1000" value="40000" required>
                         </div>
                     </div>
 
@@ -2173,7 +2173,7 @@
                 <button class="hotel-modal-close" data-bs-dismiss="modal"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="hotel-modal-body">
-                <form method="post" action="/SpaServices/EditRoomType">
+                <form method="post" action="/SpaServices/EditRoomType" class="room-type-form">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="id" id="edit-rt-id">
                     <div class="grid-2">
@@ -2198,11 +2198,11 @@
                     <div class="grid-2">
                         <div class="hform-group">
                             <label class="hform-label">Giá ngày (VNĐ) <span class="req">*</span></label>
-                            <input type="number" name="dailyPrice" id="edit-rt-daily" class="hform-control" min="0" required>
+                            <input type="number" name="dailyPrice" id="edit-rt-daily" class="hform-control" min="150000" step="1000" required>
                         </div>
                         <div class="hform-group">
                             <label class="hform-label">Giá giờ (VNĐ)</label>
-                            <input type="number" name="hourlyPrice" id="edit-rt-hourly" class="hform-control" min="0">
+                            <input type="number" name="hourlyPrice" id="edit-rt-hourly" class="hform-control" min="40000" step="1000" required>
                         </div>
                     </div>
                     <div class="hform-group">
@@ -2368,6 +2368,9 @@
 
 @section Scripts {
 <script>
+const MIN_ROOM_TYPE_DAILY_PRICE = 150000;
+const MIN_ROOM_TYPE_HOURLY_PRICE = 40000;
+
 // ===== AUTO-DISMISS TOAST =====
 setTimeout(() => {
     document.querySelectorAll('.toast-hotel .alert').forEach(el => {
@@ -2862,21 +2865,29 @@ function updateHealthStatus() {
 
 document.getElementById('ci-pathology').addEventListener('input', updateHealthStatus);
 
+function formatDateTimeLocal(date) {
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return localDate.toISOString().slice(0, 16);
+}
+
 function validateStayDates() {
     const checkInInput = document.getElementById('ci-checkIn');
     const checkOutInput = document.getElementById('ci-checkOut');
     const checkIn = checkInInput.value;
     const checkOut = checkOutInput.value;
+    const now = new Date();
 
     checkInInput.setCustomValidity('');
     checkOutInput.setCustomValidity('');
+    checkInInput.max = formatDateTimeLocal(now);
+    if (checkIn) {
+        checkOutInput.min = checkIn;
+    }
 
     if (checkIn) {
         const checkInDate = new Date(checkIn);
-        const now = new Date();
-        if (checkInDate < new Date(now.getTime() - 24 * 60 * 60 * 1000) ||
-            checkInDate > new Date(now.getTime() + 24 * 60 * 60 * 1000)) {
-            checkInInput.setCustomValidity('Ngày nhận phải nằm trong vòng 24 giờ so với thời điểm hiện tại.');
+        if (checkInDate > now) {
+            checkInInput.setCustomValidity('Ngày nhận chuồng không được sau thời điểm hiện tại.');
         }
     }
 
@@ -2885,8 +2896,8 @@ function validateStayDates() {
         const checkOutDate = new Date(checkOut);
         const stayDays = (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24);
 
-        if (checkOutDate <= checkInDate) {
-            checkOutInput.setCustomValidity('Ngày trả dự kiến phải sau ngày nhận.');
+        if (checkOutDate < checkInDate) {
+            checkOutInput.setCustomValidity('Ngày trả dự kiến không được trước ngày nhận.');
         } else if (stayDays > 365) {
             checkOutInput.setCustomValidity('Thời gian lưu trú dự kiến không được vượt quá 365 ngày.');
         }
@@ -2962,7 +2973,7 @@ function calcStay() {
     const dailyPrice = parseFloat(opt?.dataset?.price || '0');
     const d1 = new Date(checkIn);
     const d2 = new Date(checkOut);
-    if (!validateStayDates() || d2 <= d1) {
+    if (!validateStayDates() || d2 < d1) {
         pricePreview.style.display = 'none';
         return;
     }
@@ -2977,11 +2988,16 @@ function calcStay() {
 
 // ===== SET DEFAULT CHECK-IN DATE =====
 document.addEventListener('DOMContentLoaded', () => {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    document.getElementById('ci-checkIn').value = now.toISOString().slice(0, 16);
-    document.getElementById('ci-checkIn').addEventListener('input', calcStay);
-    document.getElementById('ci-checkOut').addEventListener('input', calcStay);
+    const checkInInput = document.getElementById('ci-checkIn');
+    const checkOutInput = document.getElementById('ci-checkOut');
+    const nowValue = formatDateTimeLocal(new Date());
+    checkInInput.max = nowValue;
+    if (!checkInInput.value || new Date(checkInInput.value) > new Date()) {
+        checkInInput.value = nowValue;
+    }
+    checkOutInput.min = checkInInput.value;
+    checkInInput.addEventListener('input', calcStay);
+    checkOutInput.addEventListener('input', calcStay);
     validateStayDates();
 });
 
@@ -3018,6 +3034,43 @@ function openEditRoomType(id, type, size, capacity, hourly, daily, hasAc, hasCam
     }
     new bootstrap.Modal(document.getElementById('editRoomTypeModal')).show();
 }
+
+function validateRoomTypePriceForm(form) {
+    const dailyInput = form.querySelector('[name="dailyPrice"]');
+    const hourlyInput = form.querySelector('[name="hourlyPrice"]');
+
+    if (!dailyInput || !hourlyInput) return true;
+
+    dailyInput.setCustomValidity('');
+    hourlyInput.setCustomValidity('');
+
+    const dailyPrice = Number(dailyInput.value);
+    const hourlyPrice = Number(hourlyInput.value);
+
+    if (dailyInput.value && dailyPrice < MIN_ROOM_TYPE_DAILY_PRICE) {
+        dailyInput.setCustomValidity('Giá theo ngày không được thấp hơn 150.000đ.');
+    }
+
+    if (hourlyInput.value && hourlyPrice < MIN_ROOM_TYPE_HOURLY_PRICE) {
+        hourlyInput.setCustomValidity('Giá theo giờ không được thấp hơn 40.000đ.');
+    }
+
+    return dailyInput.validity.valid && hourlyInput.validity.valid;
+}
+
+document.querySelectorAll('.room-type-form').forEach(form => {
+    const priceInputs = form.querySelectorAll('[name="dailyPrice"], [name="hourlyPrice"]');
+    priceInputs.forEach(input => {
+        input.addEventListener('input', () => validateRoomTypePriceForm(form));
+    });
+
+    form.addEventListener('submit', event => {
+        if (!validateRoomTypePriceForm(form) || !form.checkValidity()) {
+            event.preventDefault();
+            form.reportValidity();
+        }
+    });
+});
 
 // ===== DELETE ROOM TYPE =====
 function deleteRoomType(id, name) {
