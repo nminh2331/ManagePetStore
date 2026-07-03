@@ -1,3 +1,6 @@
+
+// HÀ HOÀNG HIỆP CODE - PHẦN CHI TIẾT ĐƠN HÀNG --
+
 using System.Security.Claims;
 using ManagePetStore.Areas.Customer.Models;
 using ManagePetStore.Services.Customer;
@@ -24,6 +27,7 @@ public class OrderController : Controller
     [HttpGet]
     public async Task<IActionResult> Index(string? searchTerm, string statusFilter = "all", int page = 1)
     {
+        //lấy thông tin customer đang đăng nhập
         var layout = await BuildSidebarViewModelAsync("orders");
         if (layout == null)
         {
@@ -165,7 +169,7 @@ public class OrderController : Controller
         {
             return RedirectToAction("Login", "Account", new { area = "Customer" });
         }
-
+        // Quay lại Details: query đơn hàng
         var order = await _context.Orders
             .Include(o => o.OrderItems)
             .FirstOrDefaultAsync(o => o.OrderId == id && o.CustomerId == layout.Customer.CustomerId);
@@ -175,7 +179,7 @@ public class OrderController : Controller
             TempData["ErrorMessage"] = "Không tìm thấy đơn hàng hoặc bạn không có quyền xem.";
             return RedirectToAction(nameof(Index));
         }
-
+        // Lấy thêm tên và ảnh sản phẩm
         var productInfo = await LoadProductInfoBySkusAsync(
             order.OrderItems
                 .Select(i => i.ProductSku)
@@ -201,6 +205,7 @@ public class OrderController : Controller
             return null;
         }
 
+        //Query user và customer
         var user = await _context.Users
             .Include(u => u.Role)
             .Include(u => u.Customer)

@@ -1,3 +1,4 @@
+// hà hoàng hiệp code 
 using System.Security.Claims;
 using ManagePetStore.Areas.Customer.Models;
 using ManagePetStore.Services.Customer;
@@ -30,21 +31,25 @@ public class CheckoutController : Controller
     [HttpGet]
     public async Task<IActionResult> Index()
     {
-        var cart = await _cartService.GetCartPageAsync();
+        var cart = await _cartService.GetCartPageAsync(); // Lấy cart
         if (!cart.Items.Any())
         {
             TempData["ErrorMessage"] = "Giỏ hàng trống. Vui lòng thêm sản phẩm trước khi thanh toán.";
             return RedirectToAction("Index", "Cart");
         }
 
-        var customer = await GetCurrentCustomerAsync();
+        var customer = await GetCurrentCustomerAsync();  //Lấy khách hàng hiện tại
+
+
         if (customer == null)
         {
             TempData["ErrorMessage"] = "Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập tài khoản khách hàng.";
             return RedirectToAction("Index", "Cart");
         }
 
-        var model = new CheckoutViewModel
+        var model = new CheckoutViewModel  //Tạo model cho view
+
+
         {
             FullName = customer.FullName,
             Phone = customer.Phone,
@@ -65,6 +70,8 @@ public class CheckoutController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+
+    //Đây là action chốt đơn thật sự.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Confirm(
@@ -79,14 +86,14 @@ public class CheckoutController : Controller
         var trimmedPhone = phone?.Trim() ?? string.Empty;
         var trimmedEmail = email?.Trim() ?? string.Empty;
         var trimmedShippingAddress = shippingAddress?.Trim() ?? string.Empty;
-
+        //Kiểm tra lại cart
         var cart = await _cartService.GetCartPageAsync();
         if (!cart.Items.Any())
         {
             TempData["ErrorMessage"] = "Giỏ hàng trống.";
             return RedirectToAction("Index", "Cart");
         }
-
+        //Kiểm tra customer lần nữa
         var customer = await GetCurrentCustomerAsync();
         if (customer == null)
         {
@@ -137,7 +144,7 @@ public class CheckoutController : Controller
         try
         {
             await using var transaction = await _context.Database.BeginTransactionAsync();
-
+            //Tạo entity Order
             var order = new Order
             {
                 OrderId = orderId,
@@ -152,7 +159,7 @@ public class CheckoutController : Controller
                 Date = DateTime.Now
             };
 
-            _context.Orders.Add(order);
+            _context.Orders.Add(order);  //Đưa entity vào change tracker, chưa save ngay.
 
             foreach (var item in cart.Items)
             {
@@ -227,6 +234,7 @@ public class CheckoutController : Controller
                 {
                     await EnsureProductForOrderItemAsync(item);
                 }
+                //Tạo OrderItem
 
                 _context.OrderItems.Add(new OrderItem
                 {
@@ -247,7 +255,11 @@ public class CheckoutController : Controller
 
             _cartService.ClearCart();
 
-            var successModel = new CheckoutSuccessViewModel
+            //Đây là snapshot dữ liệu để dùng cho: trang success
+           // email xác nhận
+
+
+                        var successModel = new CheckoutSuccessViewModel
             {
                 OrderId = orderId,
                 FullName = trimmedFullName,
@@ -259,6 +271,7 @@ public class CheckoutController : Controller
                 ItemCount = cart.TotalQuantity
             };
 
+            //Gửi email xác nhận
             try
             {
                 await _checkoutEmailService.SendOrderConfirmationAsync(
@@ -274,6 +287,8 @@ public class CheckoutController : Controller
                 TempData["EmailSentWarning"] = "Đơn hàng đã tạo thành công nhưng không gửi được email xác nhận. Vui lòng kiểm tra cấu hình Gmail trong appsettings.json.";
             }
 
+
+            //Lưu dữ liệu success bằng TempData
             TempData["CheckoutSuccess"] = System.Text.Json.JsonSerializer.Serialize(successModel);
 
             if (!string.IsNullOrWhiteSpace(orderNote))
@@ -337,6 +352,8 @@ public class CheckoutController : Controller
         };
     }
 
+
+    //Kiểm tra product tồn tại hay chưa
     private async Task EnsureProductForOrderItemAsync(CartLineItemViewModel item)
     {
         var exists = await _context.Database

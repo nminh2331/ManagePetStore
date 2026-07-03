@@ -1,3 +1,5 @@
+// hà hoàng hiệp code 
+
 using ManagePetStore.Areas.Customer.Models;
 using ManagePetStore.Models;
 using Microsoft.EntityFrameworkCore;
@@ -15,14 +17,15 @@ public class CartProductResolver
 
     public async Task<CartProductInfo?> ResolveAsync(string sku)
     {
-        if (string.IsNullOrWhiteSpace(sku))
+        if (string.IsNullOrWhiteSpace(sku))  //Nếu SKU rỗng thì bỏ ngay.
+
         {
             return null;
         }
 
         try
         {
-            if (sku.StartsWith("SPA-SVC-", StringComparison.OrdinalIgnoreCase))
+            if (sku.StartsWith("SPA-SVC-", StringComparison.OrdinalIgnoreCase))  //nếu SKU bắt đầu bằng SPA-SVC- thì đó là dịch vụ spa,
             {
                 var idString = sku.Substring(8);
                 if (int.TryParse(idString, out int serviceId))

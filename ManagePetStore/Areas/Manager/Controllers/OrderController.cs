@@ -1,3 +1,5 @@
+
+// HÀ HOÀNG HIỆP CODE -- PHẦN DUYỆT / HỦY ĐƠN HÀNG BÊN MANAGER 
 using System.Security.Claims;
 using ManagePetStore.Areas.Manager.Models;
 using ManagePetStore.Models;
@@ -23,10 +25,12 @@ public class OrderController : Controller
     {
         ViewData["ManagerNav"] = "approval";
 
+
+        //Query tất cả đơn hàng
         var allOrders = await _context.Orders
-            .Include(o => o.Customer)
-            .OrderByDescending(o => o.Date)
-            .ToListAsync();
+            .Include(o => o.Customer)  //lấy luôn thông tin khách hàng liên quan
+            .OrderByDescending(o => o.Date)  //đơn mới nhất lên trên.
+            .ToListAsync();  //thực thi query và lấy danh sách.
 
         var visibleOrders = allOrders
             .Where(o => OrderStatusHelper.IsPending(o.Status) || OrderStatusHelper.IsRejected(o.Status) || OrderStatusHelper.IsCancelled(o.Status))
@@ -34,6 +38,7 @@ public class OrderController : Controller
 
         return View(BuildPageModel("approval", visibleOrders, searchTerm, statusFilter, page));
     }
+    //Màn Delivery: giao hàng / hoàn thành
 
     [HttpGet]
     public async Task<IActionResult> Delivery(string? searchTerm, string statusFilter = "all", int page = 1)
@@ -44,19 +49,23 @@ public class OrderController : Controller
             .Include(o => o.Customer)
             .OrderByDescending(o => o.Date)
             .ToListAsync();
-
+        //Chỉ giữ các đơn thuộc nhánh giao hàng
         var visibleOrders = allOrders
             .Where(o => OrderStatusHelper.IsApproved(o.Status) || OrderStatusHelper.IsDelivering(o.Status) || OrderStatusHelper.IsCompleted(o.Status))
             .ToList();
 
-        return View(BuildPageModel("delivery", visibleOrders, searchTerm, statusFilter, page));
+        return View(BuildPageModel("delivery", visibleOrders, searchTerm, statusFilter, page));  //Trả về view
     }
 
-    [HttpPost]
+
+    //Action Approve
+
+
+        [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(string orderId, string? searchTerm, string statusFilter = "all", int page = 1)
     {
-        var order = await _context.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
+        var order = await _context.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);  //Tìm đơn theo OrderId.
         if (order == null)
         {
             TempData["ErrorMessage"] = "Không tìm thấy đơn hàng.";
@@ -79,7 +88,9 @@ public class OrderController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Cancel(string orderId, string cancelReason, string? searchTerm, string statusFilter = "all", int page = 1)
     {
-        if (string.IsNullOrWhiteSpace(cancelReason))
+        if (string.IsNullOrWhiteSpace(cancelReason))  //Kiểm tra lý do từ chối
+
+
         {
             TempData["ErrorMessage"] = "Vui lòng nhập lý do từ chối đơn hàng.";
             return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
@@ -98,7 +109,7 @@ public class OrderController : Controller
             return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
         }
 
-        var managerName = User.FindFirst("FullName")?.Value
+        var managerName = User.FindFirst("FullName")?.Value  //Lấy tên manager đang thao tác
             ?? User.FindFirst(ClaimTypes.Name)?.Value
             ?? "Quản lý";
 
@@ -146,6 +157,8 @@ public class OrderController : Controller
         return $"#{orderId}";
     }
 
+
+    //Đây là hàm build model chung cho cả Index và Delivery.
     private static OrderManagementPageViewModel BuildPageModel(
         string activeTab,
         IEnumerable<Order> visibleOrders,
@@ -158,7 +171,10 @@ public class OrderController : Controller
         var normalizedStatus = string.IsNullOrWhiteSpace(statusFilter) ? "all" : statusFilter.Trim().ToLowerInvariant();
 
         IEnumerable<Order> filteredOrders = sourceOrders;
-
+      
+        
+        
+        //Lọc theo từ khóa
         if (!string.IsNullOrWhiteSpace(normalizedSearch))
         {
             filteredOrders = filteredOrders.Where(o =>
@@ -168,7 +184,7 @@ public class OrderController : Controller
                 (o.Customer?.Phone?.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ?? false) ||
                 o.PaymentMethod.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase));
         }
-
+        //Lọc theo trạng thái tùy tab
         filteredOrders = normalizedStatus switch
         {
             "pending" when activeTab == "approval" => filteredOrders.Where(o => OrderStatusHelper.IsPending(o.Status)),
