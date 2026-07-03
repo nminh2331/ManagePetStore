@@ -1,16 +1,20 @@
-using System.Text.Json;
+
+// HÀ HOÀNG HIỆP CODE
+
 using ManagePetStore.Areas.Customer.Models;
 using ManagePetStore.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using static System.Collections.Specialized.BitVector32;
 
 namespace ManagePetStore.Services.Customer;
 
 public class CartService : ICartService
 {
-    private const string CartSessionKey = "ShoppingCart";
-    private const string VoucherSessionKey = "AppliedVoucher";
+    private const string CartSessionKey = "ShoppingCart";  //Session key dùng để lưu cart
+    private const string VoucherSessionKey = "AppliedVoucher"; // Session key dùng để lưu voucher.
 
-    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IHttpContextAccessor _httpContextAccessor; 
     private readonly CartProductResolver _productResolver;
     private readonly PetStoreManagementContext _context;
 
@@ -43,7 +47,8 @@ public class CartService : ICartService
                 continue;
             }
 
-            viewModel.Items.Add(new CartLineItemViewModel
+            viewModel.Items.Add(new CartLineItemViewModel   //Chuyển dữ liệu đã resolve sang model để render view.
+
             {
                 Sku = product.Sku,
                 Name = product.Name,
@@ -64,6 +69,8 @@ public class CartService : ICartService
             MaxStock = i.MaxStock
         }).ToList());
 
+
+        //Xử lý voucher
         var appliedVoucher = GetAppliedVoucher();
         if (appliedVoucher != null)
         {
