@@ -1,3 +1,4 @@
+
 @model ManagePetStore.Areas.Manager.Models.OrderManagementPageViewModel
 @using ManagePetStore.Areas.Manager.Models
 @{
@@ -304,6 +305,7 @@
                         <td>
                             @if (order.CanApprove && order.CanReject)
                             {
+                                
                                 <div class="manager-action-row">
                                     <form asp-action="Approve" method="post" class="manager-inline-form">
                                         @Html.AntiForgeryToken()

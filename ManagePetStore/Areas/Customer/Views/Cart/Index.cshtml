@@ -1,3 +1,4 @@
+ <!-- hà hoàng hiệp code ; GIAO DIỆN GIỎ HÀNG-->
 @model ManagePetStore.Areas.Customer.Models.CartPageViewModel
 @{
     Layout = "_PetStoreLayout";
@@ -25,6 +26,9 @@
         {
             <div class="cart-alert cart-alert-danger">@TempData["ErrorMessage"]</div>
         }
+
+        
+
 
         @if (Model.Items.Any())
         {
