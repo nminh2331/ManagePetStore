@@ -363,14 +363,18 @@ public class CheckoutController : Controller
         if (!exists)
         {
             var initialStock = Math.Max(0, item.MaxStock - item.Quantity);
+            // Lấy CategoryId mặc định từ database
+            var defaultCategory = await _context.ProductCategories.FirstOrDefaultAsync();
+            int? categoryId = defaultCategory?.CategoryId;
+
             await _context.Database.ExecuteSqlRawAsync(
                 """
-                INSERT INTO Products (Sku, Name, Category, Unit, Stock, MinStock, Price, ImageUrl)
+                INSERT INTO Products (Sku, Name, CategoryId, Unit, Stock, MinStock, Price, ImageUrl)
                 VALUES ({0}, {1}, {2}, {3}, {4}, 0, {5}, {6})
                 """,
                 item.Sku,
                 item.Name,
-                "Online",
+                categoryId,
                 "Cái",
                 initialStock,
                 item.UnitPrice,
