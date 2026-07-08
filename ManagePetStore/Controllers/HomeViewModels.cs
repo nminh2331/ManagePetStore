@@ -35,6 +35,7 @@ public class ProductCardItem
     public string? Badge { get; set; }
     public string BadgeType { get; set; } = "discount";
     public bool InStock { get; set; } = true;
+    public string? TargetSpecies { get; set; }
 }
 
 public class BlogCardItem

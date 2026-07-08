@@ -215,6 +215,7 @@ public class PetController : Controller
         {
             User = user,
             Customer = user.Customer,
+            ActiveNav = "pets",
             Pets = pets,
             OpenCreateModal = TempData["OpenCreateModal"] != null
         };

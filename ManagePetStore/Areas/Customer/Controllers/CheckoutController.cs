@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using ManagePetStore.Areas.Customer.Models;
 using ManagePetStore.Services.Customer;
+using ManagePetStore.Services;
 using ManagePetStore.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -201,15 +202,75 @@ public class CheckoutController : Controller
                         var spaService = await _context.SpaServices.FirstOrDefaultAsync(s => s.ServiceId == serviceId);
                         if (spaService != null)
                         {
-                            var defaultGroomer = await _context.Users.FirstOrDefaultAsync(u => u.RoleId == 3 && u.Status == "Active")
-                                                ?? await _context.Users.FirstOrDefaultAsync(u => u.RoleId == 3)
-                                                ?? await _context.Users.FirstOrDefaultAsync();
-                            int groomerId = defaultGroomer?.UserId ?? 3;
-
-                            var bookingTime = DateTime.Today.AddHours(9);
-                            if (DateTime.Now >= bookingTime)
+                            var activeGroomers = await _context.Users
+                                .Where(u => u.RoleId == 3 && u.Status == "Active")
+                                .ToListAsync();
+                            if (!activeGroomers.Any())
                             {
-                                bookingTime = DateTime.Today.AddDays(1).AddHours(9);
+                                var fallbackGroomer = await _context.Users.FirstOrDefaultAsync(u => u.RoleId == 3)
+                                                     ?? await _context.Users.FirstOrDefaultAsync();
+                                if (fallbackGroomer != null)
+                                {
+                                    activeGroomers.Add(fallbackGroomer);
+                                }
+                            }
+
+                            int finalGroomerId = activeGroomers.FirstOrDefault()?.UserId ?? 3;
+                            DateTime finalBookingTime = DateTime.Today.AddHours(9);
+                            if (DateTime.Now >= finalBookingTime)
+                            {
+                                finalBookingTime = DateTime.Today.AddDays(1).AddHours(9);
+                            }
+
+                            // Ca làm việc khả dụng: 08:00, 09:00, 10:00, 11:00, 13:00, 14:00, 15:00, 16:00
+                            int[] availableHours = { 8, 9, 10, 11, 13, 14, 15, 16 };
+                            bool foundSlot = false;
+                            
+                            // Thử tìm trong 7 ngày tới để có ca rảnh thực tế
+                            for (int dayOffset = 0; dayOffset < 7 && !foundSlot; dayOffset++)
+                            {
+                                var testDate = DateTime.Today.AddDays(dayOffset);
+                                if (dayOffset == 0 && DateTime.Now.Hour >= 16)
+                                {
+                                    continue;
+                                }
+
+                                foreach (var hour in availableHours)
+                                {
+                                    var testDateTime = testDate.AddHours(hour);
+                                    if (testDateTime <= DateTime.Now)
+                                    {
+                                        continue;
+                                    }
+
+                                    foreach (var groomer in activeGroomers)
+                                    {
+                                        var bookingsOnDay = await _context.SpaBookings
+                                            .Include(b => b.Service)
+                                            .Where(b => b.GroomerId == groomer.UserId 
+                                                     && b.DateTime.Date == testDate 
+                                                     && b.SpaStatus != "Cancelled")
+                                            .ToListAsync();
+
+                                        bool isOverlapTest = bookingsOnDay.Any(b => {
+                                            var startE = b.DateTime;
+                                            var endE = b.DateTime.AddMinutes(b.Service?.DurationMinutes ?? 30);
+                                            var startN = testDateTime;
+                                            var endN = testDateTime.AddMinutes(spaService.DurationMinutes);
+                                            return startN < endE && startE < endN;
+                                        });
+
+                                        if (!isOverlapTest)
+                                        {
+                                            finalGroomerId = groomer.UserId;
+                                            finalBookingTime = testDateTime;
+                                            foundSlot = true;
+                                            break;
+                                        }
+                                    }
+
+                                    if (foundSlot) break;
+                                }
                             }
 
                             var bookingStatus = (normalizedPayment == "Tiền mặt") ? "Chưa thanh toán" : "Đã thanh toán";
@@ -219,8 +280,8 @@ public class CheckoutController : Controller
                                 PetId = petId,
                                 CustomerId = customer.CustomerId,
                                 ServiceId = serviceId,
-                                DateTime = bookingTime,
-                                GroomerId = groomerId,
+                                DateTime = finalBookingTime,
+                                GroomerId = finalGroomerId,
                                 Price = spaService.Price,
                                 Status = bookingStatus,
                                 SpaStatus = "|0",
@@ -246,9 +307,6 @@ public class CheckoutController : Controller
                     IsCombo = false
                 });
             }
-
-            customer.LoyaltyPoints += (int)Math.Floor(cart.GrandTotal / 10000m);
-            _context.Entry(customer).State = EntityState.Modified;
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
