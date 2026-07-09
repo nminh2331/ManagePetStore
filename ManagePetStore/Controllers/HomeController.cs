@@ -91,6 +91,64 @@ public class HomeController : Controller
             _logger.LogError(ex, "Không thể tải dữ liệu form đặt Hotel online.");
         }
 
+        // =========================================================================
+        // Blog CMS: Tải 2 danh sách tách biệt từ database
+        // =========================================================================
+        try
+        {
+            // LatestBlogs: 4 bài mới nhất (IsFeatured ưu tiên trước, sau đó CreatedAt giảm dần)
+            model.LatestBlogs = await _context.Blogs
+                .Include(b => b.Author)
+                .Where(b => b.IsPublished)
+                .OrderByDescending(b => b.IsFeatured)
+                .ThenByDescending(b => b.CreatedAt)
+                .Take(4)
+                .Select(b => new BlogSummaryItem
+                {
+                    BlogId    = b.BlogId,
+                    Slug      = b.Slug,
+                    Title     = b.Title,
+                    CoverImage= b.CoverImage,
+                    Category  = b.Category,
+                    IsFeatured= b.IsFeatured,
+                    ViewCount = b.ViewCount,
+                    CreatedAt = b.CreatedAt,
+                    AuthorName= b.Author.FullName,
+                    Excerpt   = b.ContentBody.Length > 140
+                                    ? b.ContentBody.Substring(0, 140)
+                                    : b.ContentBody
+                })
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi tải LatestBlogs từ Database.");
+        }
+
+        try
+        {
+            // PopularBlogs: 5 bài đọc nhiều nhất (ViewCount giảm dần)
+            model.PopularBlogs = await _context.Blogs
+                .Where(b => b.IsPublished)
+                .OrderByDescending(b => b.ViewCount)
+                .Take(5)
+                .Select(b => new BlogSummaryItem
+                {
+                    BlogId    = b.BlogId,
+                    Slug      = b.Slug,
+                    Title     = b.Title,
+                    CoverImage= b.CoverImage,
+                    Category  = b.Category,
+                    ViewCount = b.ViewCount,
+                    CreatedAt = b.CreatedAt
+                })
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi tải PopularBlogs từ Database.");
+        }
+
         if (model.IsFiltered)
         {
             return View(model);
@@ -99,6 +157,7 @@ public class HomeController : Controller
         // Use the full dynamic catalog (including active DB products and Spa Services) instead of static mockup list
         model.BestSellers = catalog;
         return View(model);
+
     }
 
     public IActionResult Privacy()

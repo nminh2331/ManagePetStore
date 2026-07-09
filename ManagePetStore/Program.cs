@@ -74,6 +74,8 @@ builder.Services.AddScoped<ManagePetStore.Services.Customer.ICartService, Manage
 builder.Services.AddScoped<ManagePetStore.Services.Customer.IOrderReviewService, ManagePetStore.Services.Customer.OrderReviewService>();
 builder.Services.AddScoped<ManagePetStore.Services.Customer.ICheckoutEmailService, ManagePetStore.Services.Customer.CheckoutEmailService>();
 builder.Services.AddControllersWithViews();
+builder.Services.AddSignalR();
+
 
 // =========================================================================
 // 4. ĐĂNG KÝ DEPENDENCY INJECTION
@@ -147,6 +149,10 @@ app.UseAuthentication();
 
 // Kích hoạt kiểm tra quyền hạn (Tài khoản đó thuộc Role nào, được vào đâu?)
 app.UseAuthorization();
+
+// Đăng ký map hub cho SignalR
+app.MapHub<ManagePetStore.Hubs.ChatHub>("/chatHub");
+
 
 // =========================================================================
 // 5. CẤU HÌNH ĐỊNH TUYẾN (ROUTING) - CHIA LÃNH ĐỊA CHO CÁC THÀNH VIÊN
