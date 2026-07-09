@@ -36,7 +36,6 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             {
                 var path = context.Request.Path.Value ?? "";
                 if (path.StartsWith("/Admin", StringComparison.OrdinalIgnoreCase) ||
-                    path.StartsWith("/Cashier", StringComparison.OrdinalIgnoreCase) ||
                     path.StartsWith("/Warehouse", StringComparison.OrdinalIgnoreCase) ||
                     path.StartsWith("/Manager", StringComparison.OrdinalIgnoreCase) ||
                     path.StartsWith("/SpaServices", StringComparison.OrdinalIgnoreCase))
