@@ -182,7 +182,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         // =========================================================================
         
         [HttpPost("AddService")]
-        public async Task<IActionResult> AddService(string name, int duration, decimal price)
+        public async Task<IActionResult> AddService(string name, int duration, decimal price, string? targetSpecies)
         {
             if (string.IsNullOrWhiteSpace(name) || duration <= 0 || price < 0)
             {
@@ -201,7 +201,8 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 Name = name.Trim(),
                 DurationMinutes = duration,
                 Price = price,
-                Active = true
+                Active = true,
+                TargetSpecies = string.IsNullOrEmpty(targetSpecies) ? "Tất cả" : targetSpecies.Trim()
             };
 
             _context.SpaServices.Add(service);
@@ -212,7 +213,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         [HttpPost("EditService")]
-        public async Task<IActionResult> EditService(int id, string name, int duration, decimal price)
+        public async Task<IActionResult> EditService(int id, string name, int duration, decimal price, string? targetSpecies)
         {
             var service = await _context.SpaServices.FindAsync(id);
             if (service == null)
@@ -236,6 +237,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             service.Name = name.Trim();
             service.DurationMinutes = duration;
             service.Price = price;
+            service.TargetSpecies = string.IsNullOrEmpty(targetSpecies) ? "Tất cả" : targetSpecies.Trim();
 
             await _context.SaveChangesAsync();
             TempData["SuccessMessage"] = "Cập nhật dịch vụ Spa thành công!";
@@ -371,17 +373,35 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                         cleanAge = cleanAge.Substring(0, 30);
                     }
 
-                    var pet = new Pet
+                    var existingPet = await _context.Pets
+                        .FirstOrDefaultAsync(p => p.CustomerId == customer.CustomerId 
+                                               && p.Name.ToLower() == cleanPetName.ToLower() 
+                                               && p.Status == "Active");
+
+                    Pet pet;
+                    if (existingPet != null)
                     {
-                        CustomerId = customer.CustomerId,
-                        Name = cleanPetName,
-                        Species = cleanSpecies,
-                        Breed = cleanBreed,
-                        Age = cleanAge,
-                        Weight = weight > 0 ? weight : 4.5m,
-                        Status = "Active"
-                    };
-                    _context.Pets.Add(pet);
+                        pet = existingPet;
+                        if (weight > 0)
+                        {
+                            pet.Weight = weight;
+                            _context.Pets.Update(pet);
+                        }
+                    }
+                    else
+                    {
+                        pet = new Pet
+                        {
+                            CustomerId = customer.CustomerId,
+                            Name = cleanPetName,
+                            Species = cleanSpecies,
+                            Breed = cleanBreed,
+                            Age = cleanAge,
+                            Weight = weight > 0 ? weight : 4.5m,
+                            Status = "Active"
+                        };
+                        _context.Pets.Add(pet);
+                    }
                     await _context.SaveChangesAsync();
 
                     int countToday = await _context.SpaQueues.CountAsync(q => q.QueueNumber.StartsWith("WI-") || q.QueueNumber.StartsWith("PEND-WI-"));
@@ -486,13 +506,25 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             }
             DateTime targetBookingDateTime = targetDate.Add(queueItem.ArrivalTime.TimeOfDay);
 
-            // Kiểm tra trùng lịch của Groomer tại khung giờ này (áp dụng cho cả online và offline)
-            bool isOverlap = await _context.SpaBookings
-                .AnyAsync(b => b.GroomerId == groomerId && b.DateTime == targetBookingDateTime && b.SpaStatus != "Cancelled");
+            // Kiểm tra trùng lịch của Groomer tại khung giờ này (áp dụng cho cả online và offline - Interval Overlap Check)
+            var bookedSlotsToday = await _context.SpaBookings
+                .Include(b => b.Service)
+                .Where(b => b.GroomerId == groomerId 
+                         && b.DateTime.Date == targetBookingDateTime.Date 
+                         && b.SpaStatus != "Cancelled")
+                .ToListAsync();
+
+            bool isOverlap = bookedSlotsToday.Any(b => {
+                var existingStart = b.DateTime;
+                var existingEnd = b.DateTime.AddMinutes(b.Service?.DurationMinutes ?? 30);
+                var newStart = targetBookingDateTime;
+                var newEnd = targetBookingDateTime.AddMinutes(service.DurationMinutes);
+                return newStart < existingEnd && existingStart < newEnd;
+            });
 
             if (isOverlap)
             {
-                return Json(new { success = false, message = $"Kỹ thuật viên {groomer.FullName} đã có ca làm việc vào lúc {targetBookingDateTime:HH:mm}. Vui lòng chọn Kỹ thuật viên khác!" });
+                return Json(new { success = false, message = $"Kỹ thuật viên {groomer.FullName} đã có ca làm việc chồng lấp vào lúc {targetBookingDateTime:HH:mm}. Vui lòng chọn Kỹ thuật viên khác!" });
             }
 
             // Check if there is already a booking created online for this slot/pet/service
@@ -662,12 +694,51 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             // Đóng gói lưu lại DB dưới dạng nén
             booking.SpaStatus = string.Join(",", completedIndexes) + "|" + activeIndex;
 
-            // Nếu nhân viên hoàn thành trạng thái chăm sóc thú cưng thì lưu vào bảng StaffTasks
+            // Nếu nhân viên hoàn thành trạng thái chăm sóc thú cưng thì lưu vào bảng StaffTasks và đồng bộ hóa đơn POS
             if (status == "Hoàn thành")
             {
                 await _context.Entry(booking).Reference(b => b.Pet).LoadAsync();
                 await _context.Entry(booking).Reference(b => b.Customer).LoadAsync();
                 await _context.Entry(booking).Reference(b => b.Service).LoadAsync();
+
+                // Đồng bộ hóa hóa đơn sang POS (Tạo Order và OrderItem nếu booking chưa thanh toán và chưa có hóa đơn tương ứng)
+                if (booking.Status == "Chưa thanh toán")
+                {
+                    bool hasExistingOrder = await _context.OrderItems
+                        .AnyAsync(oi => oi.SpaServiceId == booking.ServiceId 
+                                     && oi.Order.CustomerId == booking.CustomerId 
+                                     && oi.Order.Status == "Chờ thanh toán" 
+                                     && oi.Order.Subtotal == booking.Price);
+                    
+                    if (!hasExistingOrder)
+                    {
+                        var orderId = $"ORD-SPA-{bookingId}-{Random.Shared.Next(100, 999)}";
+                        var order = new Order
+                        {
+                            OrderId = orderId,
+                            CustomerId = booking.CustomerId,
+                            Subtotal = booking.Price,
+                            Discount = 0,
+                            Total = booking.Price,
+                            PaymentMethod = "Tiền mặt",
+                            PointsRedeemed = 0,
+                            PointsEarned = (int)Math.Floor(booking.Price / 10000m),
+                            Status = "Chờ thanh toán",
+                            Date = DateTime.Now
+                        };
+                        _context.Orders.Add(order);
+
+                        var orderItem = new OrderItem
+                        {
+                            OrderId = orderId,
+                            SpaServiceId = booking.ServiceId,
+                            Quantity = 1,
+                            Price = booking.Price,
+                            IsCombo = false
+                        };
+                        _context.OrderItems.Add(orderItem);
+                    }
+                }
 
                 string taskId = $"TSK-SPA-{bookingId}";
                 var existingTask = await _context.StaffTasks.FirstOrDefaultAsync(t => t.TaskId == taskId);

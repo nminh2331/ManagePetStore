@@ -1099,6 +1099,7 @@
                             <thead>
                                 <tr>
                                     <th>Tên dịch vụ</th>
+                                    <th class="text-center">Phân loại</th>
                                     <th class="text-center">Thời lượng</th>
                                     <th class="text-end">Đơn giá</th>
                                     <th class="text-center">Trạng thái áp dụng</th>
@@ -1112,6 +1113,11 @@
                                         <td>
                                             <strong>@service.Name</strong>
                                             <span class="service-id-label">MÃ SVC-@service.ServiceId.ToString("D2")</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge" style="background-color: #FAF9F7; color: #FF7815; border: 1px solid #ECE9E5; font-size: 0.75rem; font-weight: 600;">
+                                                @(service.TargetSpecies ?? "Tất cả")
+                                            </span>
                                         </td>
                                         <td class="text-center" style="color: #FF7815; font-weight: 600;">@service.DurationMinutes phút</td>
                                         <td class="text-end" style="font-weight: 700; color: #2D2521;">@service.Price.ToString("N0")đ</td>
@@ -1128,6 +1134,7 @@
                                                         data-name="@service.Name"
                                                         data-duration="@service.DurationMinutes"
                                                         data-price="@service.Price"
+                                                        data-species="@(service.TargetSpecies ?? "Tất cả")"
                                                         style="border-radius: 8px; padding: 4px 8px; font-size: 0.72rem; border-color: #ECE9E5; color: #5D524D;"
                                                         title="Sửa">
                                                     <i class="fa-solid fa-pen"></i>
@@ -1766,6 +1773,17 @@
                         <input type="number" name="price" class="form-control-custom" value="0" min="0" required>
                     </div>
 
+                    <div class="form-group-custom">
+                        <label>Phân loại động vật</label>
+                        <select name="targetSpecies" class="form-control-custom">
+                            <option value="Tất cả">Tất cả</option>
+                            <option value="Chó">Chó</option>
+                            <option value="Mèo">Mèo</option>
+                            <option value="Chuột">Chuột</option>
+                            <option value="Rùa">Rùa</option>
+                        </select>
+                    </div>
+
                     <div class="modal-btn-row">
                         <button type="button" class="btn-custom-cancel" data-bs-dismiss="modal">Hủy bỏ</button>
                         <button type="submit" class="btn-custom-submit">Thêm dịch vụ</button>
@@ -1807,6 +1825,17 @@
                     <div class="form-group-custom">
                         <label>Đơn giá gốc</label>
                         <input type="number" name="price" id="editServicePrice" class="form-control-custom" min="0" required>
+                    </div>
+
+                    <div class="form-group-custom">
+                        <label>Phân loại động vật</label>
+                        <select name="targetSpecies" id="editServiceSpecies" class="form-control-custom">
+                            <option value="Tất cả">Tất cả</option>
+                            <option value="Chó">Chó</option>
+                            <option value="Mèo">Mèo</option>
+                            <option value="Chuột">Chuột</option>
+                            <option value="Rùa">Rùa</option>
+                        </select>
                     </div>
 
                     <div class="modal-btn-row">
@@ -2022,11 +2051,13 @@
                 var name = $(this).data('name');
                 var duration = $(this).data('duration');
                 var price = $(this).data('price');
+                var species = $(this).data('species') || 'Tất cả';
 
                 $('#editServiceId').val(id);
                 $('#editServiceName').val(name);
                 $('#editServiceDuration').val(duration);
                 $('#editServicePrice').val(price);
+                $('#editServiceSpecies').val(species);
 
                 $('#editServiceModal').modal('show');
             });

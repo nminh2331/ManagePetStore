@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace ManagePetStore.Models;
@@ -14,6 +14,8 @@ public partial class SpaService
     public decimal Price { get; set; }
 
     public bool Active { get; set; }
+
+    public string? TargetSpecies { get; set; }
 
     public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 
