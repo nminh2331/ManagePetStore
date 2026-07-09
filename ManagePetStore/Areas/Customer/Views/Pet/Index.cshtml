@@ -30,30 +30,7 @@
 }
 
 <div class="cp-dashboard">
-    <!-- Sidebar -->
-    <aside>
-        <div class="cp-sidebar-card">
-            <div class="cp-sidebar-avatar">
-                @Model.User.FullName.Substring(0, 1).ToUpper()
-            </div>
-            <div class="cp-sidebar-name">@Model.User.FullName</div>
-            <div class="cp-loyalty">
-                @Model.Customer.LoyaltyPoints.ToString("N0") <span>pts</span>
-            </div>
-        </div>
-
-        <nav class="cp-nav">
-            <a asp-area="Customer" asp-controller="Pet" asp-action="Index" class="cp-nav-link active">
-                <i class="bi bi-heart"></i> Hồ sơ thú cưng
-            </a>
-            <a asp-area="Customer" asp-controller="HotelBooking" asp-action="Index" class="cp-nav-link">
-                <i class="bi bi-calendar-event"></i> Lịch hẹn &amp; Khách sạn
-            </a>
-            <a asp-area="Customer" asp-controller="Order" asp-action="Index" class="cp-nav-link">
-                <i class="bi bi-bag"></i> Lịch sử đơn hàng
-            </a>
-        </nav>
-    </aside>
+    @await Html.PartialAsync("_CustomerSidebar", Model)
 
     <!-- Main -->
     <section class="cp-main">
