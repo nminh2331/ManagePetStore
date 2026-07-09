@@ -4,6 +4,7 @@ using Microsoft.Extensions.FileProviders;
 using ManagePetStore.Models;
 using ManagePetStore.Repositories;
 using ManagePetStore.Services;
+using PayOS;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -73,6 +74,15 @@ builder.Services.AddScoped<ManagePetStore.Services.Customer.CartProductResolver>
 builder.Services.AddScoped<ManagePetStore.Services.Customer.ICartService, ManagePetStore.Services.Customer.CartService>();
 builder.Services.AddScoped<ManagePetStore.Services.Customer.IOrderReviewService, ManagePetStore.Services.Customer.OrderReviewService>();
 builder.Services.AddScoped<ManagePetStore.Services.Customer.ICheckoutEmailService, ManagePetStore.Services.Customer.CheckoutEmailService>();
+builder.Services.AddSingleton(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    return new PayOSClient(
+        config["PayOS:ClientId"] ?? "",
+        config["PayOS:ApiKey"] ?? "",
+        config["PayOS:ChecksumKey"] ?? ""
+    );
+});
 builder.Services.AddControllersWithViews();
 
 // =========================================================================

@@ -9,7 +9,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
     {
         public IActionResult Index()
         {
-            return View();
+            return RedirectToAction("Create", "Order");
         }
     }
 }

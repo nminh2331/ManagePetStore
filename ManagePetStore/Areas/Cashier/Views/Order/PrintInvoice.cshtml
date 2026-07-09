@@ -1,0 +1,269 @@
+@model ManagePetStore.Models.Order
+@{
+    Layout = null;
+    var spaBookings = ViewBag.SpaBookings as List<ManagePetStore.Models.SpaBooking> ?? new List<ManagePetStore.Models.SpaBooking>();
+}
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Hóa Đơn Thanh Toán - @Model.OrderId</title>
+    <style>
+        @@page {
+            size: 80mm auto;
+            margin: 0;
+        }
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            width: 74mm;
+            margin: 0 auto;
+            padding: 5mm 0;
+            font-size: 12px;
+            color: #000;
+            line-height: 1.4;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .bold {
+            font-weight: bold;
+        }
+        .header {
+            margin-bottom: 5mm;
+        }
+        .header h1 {
+            font-size: 16px;
+            margin: 0 0 5px 0;
+            text-transform: uppercase;
+        }
+        .header p {
+            margin: 2px 0;
+            font-size: 11px;
+        }
+        .divider {
+            border-top: 1px dashed #000;
+            margin: 3mm 0;
+        }
+        .info-table, .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        .info-table td {
+            padding: 2px 0;
+            vertical-align: top;
+        }
+        .items-table th, .items-table td {
+            padding: 3px 0;
+            text-align: left;
+        }
+        .items-table th {
+            border-bottom: 1px solid #000;
+        }
+        .totals {
+            margin-top: 3mm;
+            font-size: 11px;
+        }
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+        }
+        .footer {
+            margin-top: 5mm;
+            font-size: 11px;
+        }
+        .spa-ticket {
+            border: 1px dashed #000;
+            padding: 3mm;
+            margin-top: 5mm;
+            background: #fff;
+        }
+        .spa-ticket-title {
+            font-size: 13px;
+            font-weight: bold;
+            text-align: center;
+            text-transform: uppercase;
+            margin-bottom: 2mm;
+        }
+        @@media print {
+            body {
+                width: 74mm;
+                margin: 0;
+                padding: 0;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="no-print" style="padding: 10px; background: #f0f0f0; margin-bottom: 15px; text-align: center;">
+        <button onclick="window.print()" style="padding: 8px 16px; font-weight: bold; cursor: pointer;">IN HÓA ĐƠN</button>
+        <button onclick="window.close()" style="padding: 8px 16px; margin-left: 10px; cursor: pointer;">ĐÓNG</button>
+    </div>
+
+    <!-- HÓA ĐƠN CHÍNH -->
+    <div class="header text-center">
+        <h1>PET STORE</h1>
+        <p>Địa chỉ: Thôn 1, Xã Thạch Thất, Hà Nội</p>
+        <p>SĐT: 0862735289</p>
+        <p class="bold">HÓA ĐƠN THANH TOÁN</p>
+    </div>
+
+    <table class="info-table">
+        <tr>
+            <td style="width: 40%;">Mã hóa đơn:</td>
+            <td class="bold">@Model.OrderId</td>
+        </tr>
+        <tr>
+            <td>Ngày mua:</td>
+            <td>@Model.Date.ToString("dd/MM/yyyy HH:mm")</td>
+        </tr>
+        <tr>
+            <td>Khách hàng:</td>
+            <td>@Model.Customer.FullName</td>
+        </tr>
+        <tr>
+            <td>SĐT khách:</td>
+            <td>@Model.Customer.Phone</td>
+        </tr>
+        <tr>
+            <td>Nhân viên:</td>
+            <td>Thu ngân POS</td>
+        </tr>
+    </table>
+
+    <div class="divider"></div>
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th style="width: 50%;">Tên SP/DV</th>
+                <th style="width: 15%; text-align: center;">SL</th>
+                <th style="width: 35%; text-align: right;">Thành tiền</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.OrderItems)
+            {
+                var displayName = item.ProductSku != null ? item.ProductSkuNavigation?.Name : item.SpaService?.Name;
+                <tr>
+                    <td>@displayName</td>
+                    <td style="text-align: center;">@item.Quantity</td>
+                    <td style="text-align: right;">@((item.Price * item.Quantity).ToString("N0"))đ</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="divider"></div>
+
+    <div class="totals">
+        <div class="totals-row">
+            <span>Tạm tính:</span>
+            <span>@(Model.Subtotal.ToString("N0"))đ</span>
+        </div>
+        @if (Model.Discount > 0)
+        {
+            <div class="totals-row">
+                <span>Giảm giá điểm tích lũy (@(Model.PointsRedeemed) điểm):</span>
+                <span>-@(Model.Discount.ToString("N0"))đ</span>
+            </div>
+        }
+        <div class="totals-row bold" style="font-size: 13px;">
+            <span>TỔNG CỘNG:</span>
+            <span>@(Model.Total.ToString("N0"))đ</span>
+        </div>
+        <div class="divider"></div>
+        <div class="totals-row">
+            <span>Phương thức:</span>
+            <span class="bold">@Model.PaymentMethod</span>
+        </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="totals" style="font-size: 10px;">
+        <div class="totals-row">
+            <span>Điểm tích lũy cũ:</span>
+            <span>@(Model.Customer.LoyaltyPoints - Model.PointsEarned + Model.PointsRedeemed)</span>
+        </div>
+        <div class="totals-row">
+            <span>Điểm tiêu (giảm giá):</span>
+            <span>-@Model.PointsRedeemed</span>
+        </div>
+        <div class="totals-row">
+            <span>Điểm nhận thêm từ đơn:</span>
+            <span>+@Model.PointsEarned</span>
+        </div>
+        <div class="divider"></div>
+        <div class="totals-row bold" style="font-size: 11px;">
+            <span>Tổng điểm mới:</span>
+            <span>@Model.Customer.LoyaltyPoints</span>
+        </div>
+    </div>
+
+    <div class="footer text-center">
+        <p class="bold">CẢM ƠN QUÝ KHÁCH & HẸN GẶP LẠI!</p>
+        <p>Chăm sóc thú cưng như người thân</p>
+    </div>
+
+    <!-- PHIẾU DỊCH VỤ SPA (NẾU CÓ) -->
+    @if (spaBookings.Any())
+    {
+        @foreach (var booking in spaBookings)
+        {
+            <div class="divider" style="border-top: 2px dashed #000; margin: 6mm 0;"></div>
+            <div class="spa-ticket">
+                <div class="spa-ticket-title">PHIẾU DỊCH VỤ SPA</div>
+                <table class="info-table">
+                    <tr>
+                        <td style="width: 40%;">Mã hóa đơn:</td>
+                        <td class="bold">@Model.OrderId</td>
+                    </tr>
+                    <tr>
+                        <td>Dịch vụ:</td>
+                        <td class="bold">@booking.Service.Name</td>
+                    </tr>
+                    <tr>
+                        <td>Khách hàng:</td>
+                        <td>@Model.Customer.FullName</td>
+                    </tr>
+                    <tr>
+                        <td>Tên Pet:</td>
+                        <td class="bold">@booking.Pet.Name (@booking.Pet.Species)</td>
+                    </tr>
+                    <tr>
+                        <td>Cân nặng Pet:</td>
+                        <td>@(booking.Pet.Weight)kg</td>
+                    </tr>
+                    <tr>
+                        <td>Groomer:</td>
+                        <td class="bold">@booking.Groomer.FullName</td>
+                    </tr>
+                    <tr>
+                        <td>Giờ hẹn:</td>
+                        <td class="bold" style="font-size: 13px;">@booking.DateTime.ToString("HH:mm - dd/MM/yyyy")</td>
+                    </tr>
+                </table>
+                <div class="text-center" style="margin-top: 4mm; font-size: 10px;">
+                    <p class="bold">VUI LÒNG MANG PHIẾU NÀY ĐẾN PHÒNG SPA</p>
+                </div>
+            </div>
+        }
+    }
+
+    <script>
+        window.onload = function() {
+            window.print();
+        };
+    </script>
+</body>
+</html>

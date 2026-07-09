@@ -33,6 +33,7 @@ public class OrderListItemViewModel
     public bool CanConfirmReceived { get; set; }
     public bool CanReview { get; set; }
     public bool HasReviewed { get; set; }
+    public bool CanCancel { get; set; }
 }
 
 public class OrderDetailPageViewModel : CustomerSidebarViewModel
@@ -54,6 +55,7 @@ public class OrderDetailViewModel
     public string? CancelReason { get; set; }
     public DateTime? CanceledAt { get; set; }
     public bool CanConfirmReceived { get; set; }
+    public bool CanCancel { get; set; }
     public List<OrderDetailItemViewModel> Items { get; set; } = [];
 }
 
