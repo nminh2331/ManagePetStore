@@ -4,6 +4,7 @@ using Microsoft.Extensions.FileProviders;
 using ManagePetStore.Models;
 using ManagePetStore.Repositories;
 using ManagePetStore.Services;
+using PayOS;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -36,7 +37,6 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             {
                 var path = context.Request.Path.Value ?? "";
                 if (path.StartsWith("/Admin", StringComparison.OrdinalIgnoreCase) ||
-                    path.StartsWith("/Cashier", StringComparison.OrdinalIgnoreCase) ||
                     path.StartsWith("/Warehouse", StringComparison.OrdinalIgnoreCase) ||
                     path.StartsWith("/Manager", StringComparison.OrdinalIgnoreCase) ||
                     path.StartsWith("/SpaServices", StringComparison.OrdinalIgnoreCase))
@@ -73,6 +73,15 @@ builder.Services.AddScoped<ManagePetStore.Services.Customer.CartProductResolver>
 builder.Services.AddScoped<ManagePetStore.Services.Customer.ICartService, ManagePetStore.Services.Customer.CartService>();
 builder.Services.AddScoped<ManagePetStore.Services.Customer.IOrderReviewService, ManagePetStore.Services.Customer.OrderReviewService>();
 builder.Services.AddScoped<ManagePetStore.Services.Customer.ICheckoutEmailService, ManagePetStore.Services.Customer.CheckoutEmailService>();
+builder.Services.AddSingleton(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    return new PayOSClient(
+        config["PayOS:ClientId"] ?? "",
+        config["PayOS:ApiKey"] ?? "",
+        config["PayOS:ChecksumKey"] ?? ""
+    );
+});
 builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
 
@@ -167,5 +176,24 @@ app.MapControllerRoute(
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+// =========================================================================
+// TỰ ĐỘNG CẬP NHẬT DATABASE SCHEMA (CHO CẢ NHÓM)
+// =========================================================================
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<PetStoreManagementContext>();
+    try
+    {
+        // Chạy câu lệnh SQL an toàn để thêm cột TargetSpecies nếu chưa tồn tại
+        context.Database.ExecuteSqlRaw(
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = N'TargetSpecies' AND Object_ID = Object_ID(N'SpaServices')) " +
+            "ALTER TABLE SpaServices ADD TargetSpecies NVARCHAR(50) NULL;");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[DB Update Error] Không thể tự động cập nhật Database: {ex.Message}");
+    }
+}
 
 app.Run();

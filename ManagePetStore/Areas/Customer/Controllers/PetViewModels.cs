@@ -1,9 +1,7 @@
 namespace ManagePetStore.Areas.Customer.Controllers;
 
-public class PetProfilePageViewModel
+public class PetProfilePageViewModel : ManagePetStore.Areas.Customer.Models.CustomerSidebarViewModel
 {
-    public ManagePetStore.Models.User User { get; set; } = null!;
-    public ManagePetStore.Models.Customer Customer { get; set; } = null!;
     public List<ManagePetStore.Models.Pet> Pets { get; set; } = [];
     public PetFormModel? EditPet { get; set; }
     public bool OpenCreateModal { get; set; }

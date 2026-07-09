@@ -39,10 +39,6 @@
                                     {
                                         <li><a class="dropdown-item text-primary" asp-area="Admin" asp-controller="Home" asp-action="Index" style="font-weight: 500;">Bảng quản trị</a></li>
                                     }
-                                    else if (User.IsInRole("cashier"))
-                                    {
-                                        <li><a class="dropdown-item text-primary" asp-area="Cashier" asp-controller="Home" asp-action="Index" style="font-weight: 500;">Trang thu ngân</a></li>
-                                    }
                                     else if (User.IsInRole("service"))
                                     {
                                         <li><a class="dropdown-item text-primary" href="/SpaServices" style="font-weight: 500;">Trang dịch vụ</a></li>
