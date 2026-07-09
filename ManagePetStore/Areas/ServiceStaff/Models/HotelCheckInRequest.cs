@@ -69,6 +69,8 @@ public sealed class HotelCheckInRequest : IValidatableObject
 
     public int? ExistingPetId { get; set; }
 
+    public int? HotelBookingId { get; set; }
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         var validReceptionModes = new[] { MedicalRecordMode, NoMedicalRecordMode };
