@@ -61,9 +61,60 @@
 
 <!-- Best Selling Products -->
 <section class="ps-section" id="best-sellers">
-    <div class="ps-section-header">
-        <h2 class="ps-section-title">Sản phẩm bán chạy</h2>
-        <a href="#categories" class="ps-filter-btn" aria-label="Lọc theo danh mục"><i class="bi bi-funnel"></i></a>
+    <div class="ps-section-header" style="flex-wrap: wrap; gap: 15px; align-items: center; display: flex; justify-content: space-between; width: 100%;">
+        <h2 class="ps-section-title" style="margin: 0;">Sản phẩm & Dịch vụ</h2>
+        
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: #5D524D;">Thú cưng:</span>
+            <form method="get" asp-controller="Home" asp-action="Index" id="speciesFilterForm" style="margin: 0; display: inline-block;">
+                <input type="hidden" name="search" value="@Model.SearchKeyword" />
+                <input type="hidden" name="category" value="@Model.SelectedCategorySlug" />
+                <select name="species" onchange="document.getElementById('speciesFilterForm').submit();" 
+                        style="border: 1px solid #ECE9E5; border-radius: 8px; padding: 6px 12px; font-size: 0.85rem; font-weight: 600; color: #2D2521; outline: none; background-color: #FFFFFF; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                    @if (ViewBag.SelectedSpecies == "Chó")
+                    {
+                        <option value="Tất cả">Tất cả</option>
+                        <option value="Chó" selected>Chó</option>
+                        <option value="Mèo">Mèo</option>
+                        <option value="Chuột">Chuột</option>
+                        <option value="Rùa">Rùa</option>
+                    }
+                    else if (ViewBag.SelectedSpecies == "Mèo")
+                    {
+                        <option value="Tất cả">Tất cả</option>
+                        <option value="Chó">Chó</option>
+                        <option value="Mèo" selected>Mèo</option>
+                        <option value="Chuột">Chuột</option>
+                        <option value="Rùa">Rùa</option>
+                    }
+                    else if (ViewBag.SelectedSpecies == "Chuột")
+                    {
+                        <option value="Tất cả">Tất cả</option>
+                        <option value="Chó">Chó</option>
+                        <option value="Mèo">Mèo</option>
+                        <option value="Chuột" selected>Chuột</option>
+                        <option value="Rùa">Rùa</option>
+                    }
+                    else if (ViewBag.SelectedSpecies == "Rùa")
+                    {
+                        <option value="Tất cả">Tất cả</option>
+                        <option value="Chó">Chó</option>
+                        <option value="Mèo">Mèo</option>
+                        <option value="Chuột">Chuột</option>
+                        <option value="Rùa" selected>Rùa</option>
+                    }
+                    else
+                    {
+                        <option value="Tất cả" selected>Tất cả</option>
+                        <option value="Chó">Chó</option>
+                        <option value="Mèo">Mèo</option>
+                        <option value="Chuột">Chuột</option>
+                        <option value="Rùa">Rùa</option>
+                    }
+                </select>
+            </form>
+            <a href="#categories" class="ps-filter-btn" aria-label="Lọc theo danh mục" style="padding: 6px 12px; border: 1px solid #ECE9E5; border-radius: 8px; color: #5D524D; display: inline-flex; align-items: center; justify-content: center;"><i class="bi bi-funnel"></i></a>
+        </div>
     </div>
     @if (Model.IsFiltered && Model.BestSellers.Count == 0)
     {

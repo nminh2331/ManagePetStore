@@ -58,6 +58,8 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<SpaBooking> SpaBookings { get; set; }
 
+    public virtual DbSet<SpaReview> SpaReviews { get; set; }
+
     public virtual DbSet<SpaQueue> SpaQueues { get; set; }
 
     public virtual DbSet<SpaService> SpaServices { get; set; }
@@ -515,6 +517,7 @@ public partial class PetStoreManagementContext : DbContext
             entity.Property(e => e.DurationMinutes).HasDefaultValue(30);
             entity.Property(e => e.Name).HasMaxLength(150);
             entity.Property(e => e.Price).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.TargetSpecies).HasMaxLength(50);
         });
 
         modelBuilder.Entity<StaffProfile>(entity =>
@@ -675,6 +678,17 @@ public partial class PetStoreManagementContext : DbContext
             entity.Property(e => e.Status).HasDefaultValue(true);
             entity.Property(e => e.Type).HasMaxLength(20);
             entity.Property(e => e.Value).HasColumnType("decimal(18, 2)");
+        });
+
+        modelBuilder.Entity<SpaReview>(entity =>
+        {
+            entity.HasKey(e => e.ReviewId);
+            entity.Property(e => e.Comment).HasMaxLength(1000);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.HasOne(d => d.Booking).WithOne()
+                .HasForeignKey<SpaReview>(d => d.BookingId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_SpaReviews_SpaBookings");
         });
 
         OnModelCreatingPartial(modelBuilder);

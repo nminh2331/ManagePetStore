@@ -1075,7 +1075,6 @@ namespace ManagePetStore.Areas.Customer.Controllers
             return roleName.ToLowerInvariant() switch
             {
                 "admin"     => RedirectToAction("Index", "Home", new { area = "Admin" }),
-                "cashier"   => RedirectToAction("Index", "Home", new { area = "Cashier" }),
                 "service"   => Redirect("/SpaServices"), // Redirect directly to SpaServices operational dashboard
                 "warehouse" => RedirectToAction("Index", "Home", new { area = "Warehouse" }),
                 "manager"   => RedirectToAction("Index", "Order", new { area = "Manager" }),
@@ -1089,8 +1088,6 @@ namespace ManagePetStore.Areas.Customer.Controllers
         {
             if (User.IsInRole("admin"))
                 return RedirectToAction("Index", "Home", new { area = "Admin" });
-            if (User.IsInRole("cashier"))
-                return RedirectToAction("Index", "Home", new { area = "Cashier" });
             if (User.IsInRole("service"))
             {
                 return Redirect("/SpaServices"); // Redirect directly to SpaServices operational dashboard
