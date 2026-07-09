@@ -120,10 +120,27 @@
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="orderId" value="@order.OrderId" />
                     <input type="hidden" name="returnAction" value="Details" />
-                    <button type="submit" class="co-btn-received">Xác nhận đã nhận hàng</button>
+                    <button type="submit" class="co-btn-received">
+                        <i class="bi bi-paw-fill"></i> Xác nhận đã nhận hàng
+                    </button>
                 </form>
+            }
+            @if (order.CanCancel)
+            {
+                <button type="button" 
+                        class="co-btn-cancel js-open-cancel-order" 
+                        data-order-id="@order.OrderId" 
+                        data-display-id="@order.DisplayOrderId">
+                    <i class="bi bi-x-circle"></i> Hủy đơn hàng
+                </button>
             }
             <a asp-area="" asp-controller="Home" asp-action="Index" class="co-btn-review">Tiếp tục mua sắm</a>
         </div>
     </section>
 </div>
+
+@await Html.PartialAsync("_CancelOrderModal", new ManagePetStore.Areas.Customer.Models.OrderHistoryPageViewModel { SearchTerm = "", StatusFilter = "all", Page = 1 })
+
+@section Scripts {
+    <script src="~/js/customer-orders.js" asp-append-version="true"></script>
+}

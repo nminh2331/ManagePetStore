@@ -29,6 +29,8 @@ public class OrderController : Controller
         //Query tất cả đơn hàng
         var allOrders = await _context.Orders
             .Include(o => o.Customer)  //lấy luôn thông tin khách hàng liên quan
+            .Include(o => o.OrderItems).ThenInclude(oi => oi.ProductSkuNavigation)
+            .Include(o => o.OrderItems).ThenInclude(oi => oi.SpaService)
             .OrderByDescending(o => o.Date)  //đơn mới nhất lên trên.
             .ToListAsync();  //thực thi query và lấy danh sách.
 
@@ -47,6 +49,8 @@ public class OrderController : Controller
 
         var allOrders = await _context.Orders
             .Include(o => o.Customer)
+            .Include(o => o.OrderItems).ThenInclude(oi => oi.ProductSkuNavigation)
+            .Include(o => o.OrderItems).ThenInclude(oi => oi.SpaService)
             .OrderByDescending(o => o.Date)
             .ToListAsync();
         //Chỉ giữ các đơn thuộc nhánh giao hàng
@@ -232,6 +236,33 @@ public class OrderController : Controller
     private static OrderManagementListItemViewModel MapOrder(Order order)
     {
         var statusKey = OrderStatusHelper.ResolveStatusKey(order.Status);
+        var statusLabel = OrderStatusHelper.DisplayLabel(order.Status);
+
+        if (statusKey == "pending" && order.PaymentMethod == "Thanh toán online")
+        {
+            statusLabel = "ĐÃ THANH TOÁN ONLINE, CHỜ XỬ LÝ";
+        }
+
+        // Tạo chuỗi mô tả sản phẩm
+        var itemsList = new List<string>();
+        foreach (var item in order.OrderItems)
+        {
+            string itemName = "Sản phẩm";
+            if (item.ProductSkuNavigation != null)
+            {
+                itemName = item.ProductSkuNavigation.Name;
+            }
+            else if (item.SpaService != null)
+            {
+                itemName = item.SpaService.Name;
+            }
+            else if (!string.IsNullOrEmpty(item.ProductSku))
+            {
+                itemName = item.ProductSku;
+            }
+            itemsList.Add($"{itemName} (x{item.Quantity})");
+        }
+        var itemsSummary = string.Join(", ", itemsList);
 
         return new OrderManagementListItemViewModel
         {
@@ -243,11 +274,14 @@ public class OrderController : Controller
             Total = order.Total,
             PaymentMethod = order.PaymentMethod,
             StatusKey = statusKey,
-            StatusLabel = OrderStatusHelper.DisplayLabel(order.Status),
+            StatusLabel = statusLabel,
             CancelReason = order.CancelReason,
             CanApprove = statusKey == "pending",
             CanReject = statusKey == "pending",
-            CanShip = statusKey == "approved"
+            CanShip = statusKey == "approved",
+            CanceledAt = order.CanceledAt,
+            CanceledBy = order.CanceledBy,
+            ItemsSummary = itemsSummary
         };
     }
 }

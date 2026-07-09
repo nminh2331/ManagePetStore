@@ -215,8 +215,21 @@
                                                         <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
                                                         <input type="hidden" name="statusFilter" value="@Model.StatusFilter" />
                                                         <input type="hidden" name="page" value="@Model.Page" />
-                                                        <button type="submit" class="co-btn-received">Đã nhận hàng</button>
+                                                        <button type="submit" class="co-btn-received">
+                                                            <i class="bi bi-paw-fill"></i> Đã nhận hàng
+                                                        </button>
                                                     </form>
+                                                }
+
+                                                @if (order.CanCancel)
+                                                {
+                                                    <button type="button" 
+                                                            class="co-btn-cancel js-open-cancel-order" 
+                                                            data-order-id="@order.OrderId" 
+                                                            data-display-id="@order.DisplayOrderId"
+                                                            onclick="event.stopPropagation();">
+                                                        <i class="bi bi-x-circle"></i> Hủy đơn
+                                                    </button>
                                                 }
 
                                                 <a asp-action="Details"
@@ -282,6 +295,7 @@
 </div>
 
 @await Html.PartialAsync("_ReviewModal", Model)
+@await Html.PartialAsync("_CancelOrderModal", Model)
 
 @section Scripts {
     <script src="~/js/customer-orders.js" asp-append-version="true"></script>
