@@ -26,7 +26,7 @@ public class HotelBookingController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? searchTerm, string statusFilter = "all", int page = 1)
     {
         var layout = await BuildSidebarViewModelAsync("appointments");
         if (layout == null)
@@ -44,13 +44,61 @@ public class HotelBookingController : Controller
             .ThenByDescending(b => b.HotelBookingId)
             .ToListAsync();
 
+        var mappedBookings = bookings.Select(MapToListItem).ToList();
+        var normalizedSearch = searchTerm?.Trim() ?? "";
+        var normalizedStatus = string.IsNullOrWhiteSpace(statusFilter)
+            ? "all"
+            : statusFilter.Trim().ToLowerInvariant();
+
+        IEnumerable<HotelBookingListItemViewModel> filteredBookings = mappedBookings;
+
+        if (!string.IsNullOrWhiteSpace(normalizedSearch))
+        {
+            filteredBookings = filteredBookings.Where(b =>
+                b.DisplayBookingId.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+                b.PetName.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+                b.CageId.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+                b.RoomTypeName.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+                b.Status.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase));
+        }
+
+        filteredBookings = normalizedStatus switch
+        {
+            "reserved" => filteredBookings.Where(b => b.StatusKey == "reserved"),
+            "active" => filteredBookings.Where(b => b.StatusKey == "active"),
+            "completed" => filteredBookings.Where(b => b.StatusKey == "completed"),
+            "cancelled" => filteredBookings.Where(b => b.StatusKey == "cancelled"),
+            _ => filteredBookings
+        };
+
+        var filteredBookingList = filteredBookings.ToList();
+        var currentPage = page < 1 ? 1 : page;
+        var pageSize = new HotelBookingHistoryPageViewModel().PageSize;
+        var totalFilteredItems = filteredBookingList.Count;
+        var totalPages = totalFilteredItems == 0 ? 0 : (int)Math.Ceiling(totalFilteredItems / (double)pageSize);
+
+        if (totalPages > 0 && currentPage > totalPages)
+        {
+            currentPage = totalPages;
+        }
+
         var model = new HotelBookingHistoryPageViewModel
         {
             User = layout.User,
             Customer = layout.Customer,
             ActiveNav = layout.ActiveNav,
-            Bookings = bookings.Select(MapToListItem).ToList()
+            Bookings = mappedBookings,
+            SearchTerm = normalizedSearch,
+            StatusFilter = normalizedStatus,
+            Page = totalPages == 0 ? 1 : currentPage,
+            TotalFilteredItems = totalFilteredItems,
+            TotalPages = totalPages
         };
+
+        model.VisibleBookings = filteredBookingList
+            .Skip((model.Page - 1) * model.PageSize)
+            .Take(model.PageSize)
+            .ToList();
 
         return View(model);
     }
@@ -177,7 +225,7 @@ public class HotelBookingController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Cancel(int id)
+    public async Task<IActionResult> Cancel(int id, string? searchTerm, string statusFilter = "all", int page = 1)
     {
         var customer = await GetCurrentCustomerAsync();
         if (customer == null)
@@ -194,26 +242,26 @@ public class HotelBookingController : Controller
         if (booking == null)
         {
             TempData["ErrorMessage"] = "Không tìm thấy lịch đặt phòng hoặc bạn không có quyền hủy.";
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
         }
 
         if (!string.Equals(booking.Status, "Đã đặt", StringComparison.OrdinalIgnoreCase))
         {
             TempData["ErrorMessage"] = "Chỉ có thể hủy lịch đang ở trạng thái Đã đặt.";
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
         }
 
         if (booking.CheckInDate.Date <= DateTime.Today)
         {
             TempData["ErrorMessage"] = "Không thể hủy online vào hoặc sau ngày nhận phòng. Vui lòng liên hệ cửa hàng.";
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
         }
 
         booking.Status = "Đã hủy";
         await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] = $"Đã hủy lịch Hotel của {booking.Pet.Name}.";
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
     }
 
     private IActionResult BookingError(string message)
