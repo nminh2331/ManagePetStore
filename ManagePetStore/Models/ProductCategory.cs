@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace ManagePetStore.Models;
@@ -15,5 +15,6 @@ public partial class ProductCategory
 
     public virtual ICollection<Product> Products { get; set; } = new List<Product>();
 
-    public virtual ICollection<Supplier> Suppliers { get; set; } = new List<Supplier>();
+    public virtual ICollection<SupplierCategory> SupplierCategories { get; set; } = new List<SupplierCategory>();
 }
+

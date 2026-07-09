@@ -29,6 +29,10 @@ public partial class User
 
     public virtual Role Role { get; set; } = null!;
 
+    public virtual ICollection<RoomMaintenanceLog> RoomMaintenanceLogCreatedByUsers { get; set; } = new List<RoomMaintenanceLog>();
+
+    public virtual ICollection<RoomMaintenanceLog> RoomMaintenanceLogEndedByUsers { get; set; } = new List<RoomMaintenanceLog>();
+
     public virtual ICollection<SpaBooking> SpaBookings { get; set; } = new List<SpaBooking>();
 
     public virtual StaffProfile? StaffProfile { get; set; }
