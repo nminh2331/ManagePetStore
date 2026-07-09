@@ -456,7 +456,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 .Include(b => b.Pet)
                 .Include(b => b.Groomer)
                 .Include(b => b.Service)
-                .Where(b => b.Notes.Contains(orderId))
+                .Where(b => b.Notes != null && b.Notes.Contains(orderId))
                 .ToListAsync();
 
             ViewBag.SpaBookings = spaBookings;
