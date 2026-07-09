@@ -13,7 +13,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
 
             return RedirectToAction("Create", "Order");
 
-            return NotFound("Chức năng Cashier đã bị loại bỏ.");
+           
 
         }
     }

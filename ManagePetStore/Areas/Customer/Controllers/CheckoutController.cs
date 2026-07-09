@@ -470,8 +470,8 @@ public class CheckoutController : Controller
                         try
                         {
                             bool isPaid = false;
-                            string payOsStatus = Request.Query["status"];
-                            string payOsCancel = Request.Query["cancel"];
+                            string? payOsStatus = Request.Query["status"];
+                            string? payOsCancel = Request.Query["cancel"];
 
                             if (payOsCancel == "true" || payOsStatus == "CANCELLED")
                             {
@@ -631,9 +631,9 @@ public class CheckoutController : Controller
                 INSERT INTO Products (Sku, Name, CategoryId, Unit, Stock, MinStock, Price, ImageUrl)
                 VALUES ({0}, {1}, {2}, {3}, {4}, 0, {5}, {6})
                 """,
-                item.Sku,
-                item.Name,
-                categoryId,
+                item.Sku ?? string.Empty,
+                item.Name ?? string.Empty,
+                (object?)categoryId ?? DBNull.Value,
                 "Cái",
                 initialStock,
                 item.UnitPrice,
