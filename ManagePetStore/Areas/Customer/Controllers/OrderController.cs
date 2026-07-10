@@ -150,9 +150,96 @@ public class OrderController : Controller
         }
 
         order.Status = "Đã hoàn thành";
+
+        // Đồng bộ trạng thái thanh toán của các Spa Booking đi kèm đơn hàng (nếu có)
+        var spaBookings = await _context.SpaBookings
+            .Where(sb => sb.CustomerId == layout.Customer.CustomerId && sb.Notes != null && sb.Notes.Contains(orderId))
+            .ToListAsync();
+
+        foreach (var booking in spaBookings)
+        {
+            booking.Status = "Đã thanh toán";
+        }
+
         await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] = $"Đơn hàng {FormatDisplayOrderId(orderId)} đã được xác nhận nhận hàng.";
+        return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Cancel(string orderId, string cancelReason, string? returnAction, string? searchTerm, string statusFilter = "all", int page = 1)
+    {
+        if (string.IsNullOrWhiteSpace(orderId))
+        {
+            TempData["ErrorMessage"] = "Không xác định được đơn hàng cần hủy.";
+            return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);
+        }
+
+        if (string.IsNullOrWhiteSpace(cancelReason))
+        {
+            TempData["ErrorMessage"] = "Vui lòng chọn hoặc nhập lý do hủy đơn.";
+            return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);
+        }
+
+        var layout = await BuildSidebarViewModelAsync("orders");
+        if (layout == null)
+        {
+            return RedirectToAction("Login", "Account", new { area = "Customer" });
+        }
+
+        var order = await _context.Orders
+            .Include(o => o.OrderItems)
+            .FirstOrDefaultAsync(o => o.OrderId == orderId && o.CustomerId == layout.Customer.CustomerId);
+
+        if (order == null)
+        {
+            TempData["ErrorMessage"] = "Không tìm thấy đơn hàng hoặc bạn không có quyền thao tác.";
+            return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);
+        }
+
+        var statusKey = OrderStatusHelper.ResolveStatusKey(order.Status);
+        if (statusKey != "pending")
+        {
+            TempData["ErrorMessage"] = "Chỉ có thể hủy đơn hàng ở trạng thái chờ xử lý hoặc chờ thanh toán.";
+            return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);
+        }
+
+        // Hoàn lại số lượng tồn kho cho sản phẩm
+        foreach (var item in order.OrderItems)
+        {
+            if (!string.IsNullOrEmpty(item.ProductSku))
+            {
+                var product = await _context.Products.FirstOrDefaultAsync(p => p.Sku == item.ProductSku);
+                if (product != null)
+                {
+                    product.Stock += item.Quantity;
+                    _context.Entry(product).State = EntityState.Modified;
+                }
+            }
+        }
+
+        // Hủy các Spa Booking đi kèm đơn hàng (nếu có)
+        var spaBookings = await _context.SpaBookings
+            .Where(sb => sb.CustomerId == layout.Customer.CustomerId && sb.Notes != null && sb.Notes.Contains(orderId))
+            .ToListAsync();
+
+        foreach (var booking in spaBookings)
+        {
+            booking.Status = "Đã hủy";
+            _context.Entry(booking).State = EntityState.Modified;
+        }
+
+        order.Status = "Đã hủy";
+        order.CancelReason = cancelReason.Trim();
+        order.CanceledBy = layout.Customer.FullName;
+        order.CanceledAt = DateTime.Now;
+
+        _context.Entry(order).State = EntityState.Modified;
+        await _context.SaveChangesAsync();
+
+        TempData["SuccessMessage"] = $"Đơn hàng {FormatDisplayOrderId(orderId)} đã được hủy thành công.";
         return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);
     }
 
@@ -228,6 +315,12 @@ public class OrderController : Controller
     {
         var statusKey = OrderStatusHelper.ResolveStatusKey(order.Status);
         var hasReviewed = reviewedOrderIds.Contains(order.OrderId);
+        var statusLabel = OrderStatusHelper.FormatStatusLabel(statusKey, order.Status);
+
+        if (statusKey == "pending" && order.PaymentMethod == "Thanh toán online")
+        {
+            statusLabel = "ĐÃ THANH TOÁN ONLINE, CHỜ XỬ LÝ";
+        }
 
         return new OrderListItemViewModel
         {
@@ -235,12 +328,13 @@ public class OrderController : Controller
             DisplayOrderId = FormatDisplayOrderId(order.OrderId),
             OrderDate = order.Date,
             Total = order.Total,
-            Status = OrderStatusHelper.FormatStatusLabel(statusKey, order.Status),
+            Status = statusLabel,
             StatusKey = statusKey,
             CancelReason = order.CancelReason,
             CanConfirmReceived = statusKey == "delivering",
             CanReview = statusKey == "completed" && !hasReviewed,
-            HasReviewed = hasReviewed
+            HasReviewed = hasReviewed,
+            CanCancel = statusKey == "pending"
         };
     }
 
@@ -249,6 +343,12 @@ public class OrderController : Controller
         IReadOnlyDictionary<string, (string Name, string? ImageUrl)> productInfo)
     {
         var statusKey = OrderStatusHelper.ResolveStatusKey(order.Status);
+        var statusLabel = OrderStatusHelper.FormatStatusLabel(statusKey, order.Status);
+
+        if (statusKey == "pending" && order.PaymentMethod == "Thanh toán online")
+        {
+            statusLabel = "ĐÃ THANH TOÁN ONLINE, CHỜ XỬ LÝ";
+        }
 
         return new OrderDetailViewModel
         {
@@ -259,11 +359,12 @@ public class OrderController : Controller
             Discount = order.Discount,
             Total = order.Total,
             PaymentMethod = order.PaymentMethod,
-            Status = OrderStatusHelper.FormatStatusLabel(statusKey, order.Status),
+            Status = statusLabel,
             StatusKey = statusKey,
             CancelReason = order.CancelReason,
             CanceledAt = order.CanceledAt,
             CanConfirmReceived = statusKey == "delivering",
+            CanCancel = statusKey == "pending",
             Items = order.OrderItems.Select(item =>
             {
                 var sku = item.ProductSku ?? "";

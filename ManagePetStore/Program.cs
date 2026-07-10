@@ -4,6 +4,7 @@ using Microsoft.Extensions.FileProviders;
 using ManagePetStore.Models;
 using ManagePetStore.Repositories;
 using ManagePetStore.Services;
+using PayOS;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -36,7 +37,6 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             {
                 var path = context.Request.Path.Value ?? "";
                 if (path.StartsWith("/Admin", StringComparison.OrdinalIgnoreCase) ||
-                    path.StartsWith("/Cashier", StringComparison.OrdinalIgnoreCase) ||
                     path.StartsWith("/Warehouse", StringComparison.OrdinalIgnoreCase) ||
                     path.StartsWith("/Manager", StringComparison.OrdinalIgnoreCase) ||
                     path.StartsWith("/SpaServices", StringComparison.OrdinalIgnoreCase))
@@ -73,7 +73,18 @@ builder.Services.AddScoped<ManagePetStore.Services.Customer.CartProductResolver>
 builder.Services.AddScoped<ManagePetStore.Services.Customer.ICartService, ManagePetStore.Services.Customer.CartService>();
 builder.Services.AddScoped<ManagePetStore.Services.Customer.IOrderReviewService, ManagePetStore.Services.Customer.OrderReviewService>();
 builder.Services.AddScoped<ManagePetStore.Services.Customer.ICheckoutEmailService, ManagePetStore.Services.Customer.CheckoutEmailService>();
+builder.Services.AddSingleton(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    return new PayOSClient(
+        config["PayOS:ClientId"] ?? "",
+        config["PayOS:ApiKey"] ?? "",
+        config["PayOS:ChecksumKey"] ?? ""
+    );
+});
 builder.Services.AddControllersWithViews();
+builder.Services.AddSignalR();
+
 
 // =========================================================================
 // 4. ĐĂNG KÝ DEPENDENCY INJECTION
@@ -147,6 +158,10 @@ app.UseAuthentication();
 
 // Kích hoạt kiểm tra quyền hạn (Tài khoản đó thuộc Role nào, được vào đâu?)
 app.UseAuthorization();
+
+// Đăng ký map hub cho SignalR
+app.MapHub<ManagePetStore.Hubs.ChatHub>("/chatHub");
+
 
 // =========================================================================
 // 5. CẤU HÌNH ĐỊNH TUYẾN (ROUTING) - CHIA LÃNH ĐỊA CHO CÁC THÀNH VIÊN

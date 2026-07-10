@@ -1,0 +1,69 @@
+@model ManagePetStore.Areas.Customer.Models.OrderHistoryPageViewModel
+
+<div class="co-modal-backdrop" id="cancelOrderModal" style="display: none;">
+    <div class="co-modal-card" style="max-width: 500px;">
+        <div class="co-modal-header">
+            <h2 class="co-modal-title">Hủy Đơn Hàng</h2>
+            <button type="button" class="co-modal-close js-close-cancel" aria-label="Đóng">&times;</button>
+        </div>
+        <div class="co-modal-body">
+            <div class="co-modal-order-info" style="margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9;">
+                Bạn có chắc chắn muốn hủy đơn hàng <strong id="cancelDisplayOrderId" style="color: var(--primary-color, #ea580c);">#OD-xxxx</strong>?
+            </div>
+            
+            <form id="cancelOrderForm" asp-action="Cancel" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="orderId" id="cancelOrderIdField" value="" />
+                <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+                <input type="hidden" name="statusFilter" value="@Model.StatusFilter" />
+                <input type="hidden" name="page" value="@Model.Page" />
+                <input type="hidden" name="returnAction" id="cancelReturnActionField" value="Index" />
+
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.9rem; color: #334155;">Vui lòng chọn lý do hủy đơn hàng:</label>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #475569; cursor: pointer;">
+                            <input type="radio" name="cancelReasonPreset" value="Muốn thay đổi địa chỉ giao hàng" checked />
+                            Muốn thay đổi địa chỉ giao hàng
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #475569; cursor: pointer;">
+                            <input type="radio" name="cancelReasonPreset" value="Muốn nhập/thay đổi mã Voucher" />
+                            Muốn nhập/thay đổi mã Voucher
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #475569; cursor: pointer;">
+                            <input type="radio" name="cancelReasonPreset" value="Muốn thay đổi sản phẩm (size, màu sắc, số lượng, hoặc thêm/bớt sản phẩm)" />
+                            Muốn thay đổi sản phẩm (size, màu sắc, số lượng...)
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #475569; cursor: pointer;">
+                            <input type="radio" name="cancelReasonPreset" value="Tìm thấy giá rẻ hơn ở nơi khác" />
+                            Tìm thấy giá rẻ hơn ở nơi khác
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #475569; cursor: pointer;">
+                            <input type="radio" name="cancelReasonPreset" value="Không còn nhu cầu mua nữa" />
+                            Không còn nhu cầu mua nữa
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #475569; cursor: pointer;">
+                            <input type="radio" name="cancelReasonPreset" id="radioReasonOther" value="Khác" />
+                            Khác (Nhập lý do chi tiết bên dưới)
+                        </label>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label for="cancelReasonText" style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.9rem; color: #334155;">Lý do chi tiết (bắt buộc nếu chọn Khác):</label>
+                    <textarea name="cancelReason" 
+                              id="cancelReasonText" 
+                              rows="3" 
+                              style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; font-size: 0.85rem; resize: none; outline: none; font-family: inherit;"
+                              placeholder="Nhập lý do chi tiết hủy đơn hàng của bạn..."></textarea>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" class="co-btn-secondary js-close-cancel" style="padding: 8px 16px; border-radius: 20px; font-size: 0.85rem;">Hủy bỏ</button>
+                    <button type="submit" class="co-btn-received" style="background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%); box-shadow: 0 4px 6px -1px rgba(225, 29, 72, 0.2); padding: 8px 20px; border-radius: 20px; font-size: 0.85rem;">Xác nhận hủy đơn</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

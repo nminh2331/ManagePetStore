@@ -1,0 +1,269 @@
+@model ManagePetStore.Models.Blog
+@{
+    Layout = "_ManagerLayout";
+    ViewData["Title"] = "Chỉnh sửa bài viết";
+    ViewData["ManagerNav"] = "blogs";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item">
+                    <a asp-area="Manager" asp-controller="Blogs" asp-action="Index">Quản lý Blog</a>
+                </li>
+                <li class="breadcrumb-item active">Chỉnh sửa #@Model.BlogId</li>
+            </ol>
+        </nav>
+        <h2 class="fw-bold mb-0" style="color: var(--admin-text-primary);">🖊️ Chỉnh sửa bài viết</h2>
+    </div>
+    <div class="d-flex gap-2">
+        @if (Model.IsPublished)
+        {
+            <a href="/Blog/@Model.Slug" target="_blank" class="btn btn-outline-success">
+                <i class="bi bi-eye me-1"></i> Xem trước
+            </a>
+        }
+        <a asp-area="Manager" asp-controller="Blogs" asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Quay lại
+        </a>
+    </div>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger alert-dismissible fade show mb-4">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <strong>Vui lòng kiểm tra lại:</strong>
+        <ul class="mb-0 mt-2">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<form asp-area="Manager" asp-controller="Blogs" asp-action="Edit" asp-route-id="@Model.BlogId"
+      method="post" enctype="multipart/form-data" id="blogEditForm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="BlogId" />
+    <input type="hidden" asp-for="AuthorId" />
+    <input type="hidden" asp-for="CreatedAt" />
+    <input type="hidden" asp-for="ViewCount" />
+
+    <div class="row g-4">
+        <!-- Cột chính -->
+        <div class="col-lg-8">
+            <!-- Tiêu đề -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <label asp-for="Title" class="form-label fw-semibold">
+                        Tiêu đề bài viết <span class="text-danger">*</span>
+                    </label>
+                    <input asp-for="Title" class="form-control form-control-lg"
+                           placeholder="Nhập tiêu đề bài viết..." />
+                    <span asp-validation-for="Title" class="text-danger small"></span>
+                </div>
+            </div>
+
+            <!-- Slug -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <label asp-for="Slug" class="form-label fw-semibold">
+                        Slug (URL thân thiện)
+                        <span class="badge bg-warning text-dark ms-2">Thay đổi sẽ ảnh hưởng đến URL</span>
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text text-muted">/blog/</span>
+                        <input asp-for="Slug" class="form-control font-monospace" />
+                    </div>
+                    <span asp-validation-for="Slug" class="text-danger small"></span>
+                </div>
+            </div>
+
+            <!-- Nội dung (CKEditor 5) -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom py-3">
+                    <span class="fw-semibold">Nội dung bài viết <span class="text-danger">*</span></span>
+                </div>
+                <div class="card-body p-0">
+                    <textarea asp-for="ContentBody" id="contentBodyEditor"
+                              style="display:none;">@Model.ContentBody</textarea>
+                    <div id="editor-container" style="min-height: 450px; border-radius: 0 0 8px 8px;"></div>
+                </div>
+                <span asp-validation-for="ContentBody" class="text-danger small px-3 pb-2 d-block"></span>
+            </div>
+        </div>
+
+        <!-- Cột phụ -->
+        <div class="col-lg-4">
+            <!-- Thông tin -->
+            <div class="card border-0 shadow-sm mb-4" style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);">
+                <div class="card-body">
+                    <p class="mb-1 text-muted small">Tác giả</p>
+                    <p class="fw-semibold mb-2">@(Model.Author?.FullName ?? "N/A")</p>
+                    <p class="mb-1 text-muted small">Ngày tạo</p>
+                    <p class="fw-semibold mb-2">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</p>
+                    <p class="mb-1 text-muted small">Lượt xem</p>
+                    <p class="fw-semibold mb-0 text-primary">@Model.ViewCount.ToString("N0") lượt xem</p>
+                </div>
+            </div>
+
+            <!-- Cài đặt xuất bản -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom py-3">
+                    <span class="fw-semibold">⚙️ Cài đặt xuất bản</span>
+                </div>
+                <div class="card-body">
+                    <div class="form-check form-switch mb-3">
+                        <input asp-for="IsPublished" class="form-check-input" role="switch" id="isPublishedSwitch" />
+                        <label class="form-check-label fw-semibold" for="isPublishedSwitch">Đăng bài</label>
+                        <div class="form-text">Bật để hiển thị công khai</div>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input asp-for="IsFeatured" class="form-check-input" role="switch" id="isFeaturedSwitch" />
+                        <label class="form-check-label fw-semibold" for="isFeaturedSwitch">⭐ Bài nổi bật</label>
+                        <div class="form-text">Ưu tiên lên đầu trang chủ</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thể loại -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom py-3">
+                    <span class="fw-semibold">🏷️ Phân loại</span>
+                </div>
+                <div class="card-body">
+                    <label asp-for="Category" class="form-label fw-semibold">Thể loại</label>
+                    <select asp-for="Category" class="form-select">
+                        <option value="">— Chọn thể loại —</option>
+                        <option value="Dinh dưỡng">Dinh dưỡng</option>
+                        <option value="Sức khỏe">Sức khỏe</option>
+                        <option value="Làm đẹp">Làm đẹp</option>
+                        <option value="Huấn luyện">Huấn luyện</option>
+                        <option value="Tin tức">Tin tức</option>
+                        <option value="Mẹo & Thủ thuật">Mẹo & Thủ thuật</option>
+                        <option value="Dịch vụ">Dịch vụ</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Ảnh bìa -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom py-3">
+                    <span class="fw-semibold">🖼️ Ảnh bìa</span>
+                </div>
+                <div class="card-body">
+                    <!-- Ảnh hiện tại -->
+                    @if (!string.IsNullOrEmpty(Model.CoverImage))
+                    {
+                        <div class="mb-3" id="currentCoverWrapper">
+                            <p class="text-muted small mb-1">Ảnh bìa hiện tại:</p>
+                            <img src="@Model.CoverImage" alt="Ảnh bìa"
+                                 style="width:100%;height:150px;object-fit:cover;border-radius:8px;" />
+                        </div>
+                    }
+                    <!-- Preview ảnh mới -->
+                    <div id="coverPreview" class="mb-3 d-none">
+                        <p class="text-muted small mb-1">Ảnh bìa mới:</p>
+                        <img id="coverPreviewImg" src="" alt="Preview"
+                             style="width:100%;height:150px;object-fit:cover;border-radius:8px;" />
+                    </div>
+                    <input type="file" name="coverImageFile" id="coverImageFile" accept="image/*"
+                           class="form-control" onchange="previewCoverImage(this)" />
+                    <div class="form-text">Upload ảnh mới để thay thế ảnh hiện tại. JPG, PNG, WEBP (≤5MB)</div>
+                </div>
+            </div>
+
+            <!-- Nút lưu -->
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-floppy me-2"></i>Lưu thay đổi
+                </button>
+                <a asp-area="Manager" asp-controller="Blogs" asp-action="Index"
+                   class="btn btn-outline-secondary">Hủy</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <script src="https://cdn.ckeditor.com/ckeditor5/43.3.1/ckeditor5.umd.js"></script>
+    <link rel="stylesheet" href="https://cdn.ckeditor.com/ckeditor5/43.3.1/ckeditor5.css" />
+    <script>
+        const { ClassicEditor, Essentials, Bold, Italic, Underline, Strikethrough,
+            Paragraph, Heading, Link,
+            Image, ImageUpload, ImageCaption, ImageStyle, ImageToolbar, ImageResize, SimpleUploadAdapter,
+            BlockQuote, List, Indent, MediaEmbed,
+            Table, TableToolbar, HorizontalLine, FontColor, FontBackgroundColor,
+            FontSize, FontFamily, Alignment, Code, CodeBlock } = CKEDITOR;
+
+        let editorInstance;
+        ClassicEditor.create(document.querySelector('#editor-container'), {
+            plugins: [
+                Essentials, Bold, Italic, Underline, Strikethrough,
+                Paragraph, Heading, Link, BlockQuote, List, Indent,
+                // Image plugins — bật đầy đủ để hỗ trợ upload & resize
+                Image, ImageUpload, ImageCaption, ImageStyle, ImageToolbar, ImageResize, SimpleUploadAdapter,
+                MediaEmbed, Table, TableToolbar, HorizontalLine,
+                FontColor, FontBackgroundColor, FontSize, FontFamily, Alignment,
+                Code, CodeBlock
+            ],
+            toolbar: {
+                items: [
+                    'heading', '|', 'fontFamily', 'fontSize', '|',
+                    'bold', 'italic', 'underline', 'strikethrough', '|',
+                    'fontColor', 'fontBackgroundColor', '|', 'alignment', '|',
+                    'bulletedList', 'numberedList', 'outdent', 'indent', '|',
+                    'link', 'uploadImage', 'blockQuote', 'insertTable', 'mediaEmbed', '|',
+                    'code', 'codeBlock', 'horizontalLine', '|', 'undo', 'redo'
+                ]
+            },
+            image: {
+                toolbar: [
+                    'imageStyle:inline', 'imageStyle:block', 'imageStyle:side', '|',
+                    'toggleImageCaption', 'imageTextAlternative', '|',
+                    'resizeImage'
+                ],
+                resizeOptions: [
+                    { name: 'resizeImage:original', value: null, label: 'Gốc' },
+                    { name: 'resizeImage:25',  value: '25',  label: '25%' },
+                    { name: 'resizeImage:50',  value: '50',  label: '50%' },
+                    { name: 'resizeImage:75',  value: '75',  label: '75%' },
+                    { name: 'resizeImage:100', value: '100', label: '100%' }
+                ]
+            },
+            simpleUpload: {
+                // URL của action UploadImage trong BlogsController
+                uploadUrl: '/Manager/Blogs/UploadImage',
+                // Gửi cookie để xác thực
+                withCredentials: true
+            },
+            initialData: document.querySelector('#contentBodyEditor').value,
+            language: 'vi'
+        }).then(editor => {
+            editorInstance = editor;
+        }).catch(console.error);
+
+
+        document.querySelector('#blogEditForm').addEventListener('submit', function (e) {
+            if (editorInstance) {
+                document.querySelector('#contentBodyEditor').value = editorInstance.getData();
+            }
+        });
+
+        function previewCoverImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    document.getElementById('coverPreviewImg').src = e.target.result;
+                    document.getElementById('coverPreview').classList.remove('d-none');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    </script>
+}

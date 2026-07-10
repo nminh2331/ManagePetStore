@@ -22,6 +22,7 @@ public class CheckoutSuccessViewModel
     public string PaymentMethod { get; set; } = "";
     public decimal Total { get; set; }
     public int ItemCount { get; set; }
+    public bool IsPaid { get; set; }
 }
 
 public class AppliedVoucherSession
