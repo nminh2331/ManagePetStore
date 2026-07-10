@@ -91,6 +91,7 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<SpaReview> SpaReviews { get; set; }
 
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         var builder = new ConfigurationBuilder()
