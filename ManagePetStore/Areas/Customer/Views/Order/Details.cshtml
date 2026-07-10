@@ -134,6 +134,21 @@
                     <i class="bi bi-x-circle"></i> Hủy đơn hàng
                 </button>
             }
+            @if (order.StatusKey == "completed")
+            {
+                @if (ViewBag.HasReturnRequest == true)
+                {
+                    <button type="button" class="co-btn-secondary" disabled style="opacity: 0.7; cursor: not-allowed;">
+                        <i class="bi bi-arrow-counterclockwise"></i> Đang xử lý trả hàng
+                    </button>
+                }
+                else
+                {
+                    <a href="/Customer/Account/Profile?tab=return&orderId=@order.OrderId" class="co-btn-received" style="background-color: #ef4444; border-color: #ef4444; text-decoration: none;">
+                        <i class="bi bi-arrow-counterclockwise"></i> Trả hàng / Hoàn tiền
+                    </a>
+                }
+            }
             <a asp-area="" asp-controller="Home" asp-action="Index" class="co-btn-review">Tiếp tục mua sắm</a>
         </div>
     </section>

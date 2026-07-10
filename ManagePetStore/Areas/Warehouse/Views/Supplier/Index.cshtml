@@ -52,11 +52,11 @@
                                 </td>
                                 <td>@item.Address</td>
                                 <td>
-                                    @if (item.SupplierCategories != null && item.SupplierCategories.Any())
+                                    @if (item.Categories != null && item.Categories.Any())
                                     {
-                                        foreach (var cat in item.SupplierCategories)
+                                        foreach (var cat in item.Categories)
                                         {
-                                            <span class="badge bg-info text-dark mb-1">@cat.Category.Name</span>
+                                            <span class="badge bg-info text-dark mb-1">@cat.Name</span>
                                         }
                                     }
                                     else

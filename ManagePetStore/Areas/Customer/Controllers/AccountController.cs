@@ -801,11 +801,73 @@ namespace ManagePetStore.Areas.Customer.Controllers
             var user = await _context.Users
                 .Include(u => u.Role)
                 .Include(u => u.Customer)
+                    .ThenInclude(c => c.Wallets)
+                        .ThenInclude(w => w.WalletTransactions)
                 .FirstOrDefaultAsync(u => u.UserId == userId);
 
             if (user == null)
             {
                 return RedirectToAction("Login");
+            }
+
+            if (user.Customer != null)
+            {
+                var wallet = user.Customer.Wallets.FirstOrDefault();
+                if (wallet == null)
+                {
+                    wallet = new Wallet
+                    {
+                        CustomerId = user.Customer.CustomerId,
+                        Balance = 0,
+                        Status = "Active",
+                        CreatedAt = DateTime.Now,
+                        UpdatedAt = DateTime.Now
+                    };
+                    _context.Wallets.Add(wallet);
+                    await _context.SaveChangesAsync();
+                    user.Customer.Wallets.Add(wallet);
+                }
+
+                if (wallet.WalletTransactions != null)
+                {
+                    wallet.WalletTransactions = wallet.WalletTransactions.OrderByDescending(t => t.TransactionDate).ToList();
+                }
+
+                // Query ReturnRequests
+                var returnRequests = await _context.ReturnRequests
+                    .Include(r => r.ReturnRequestItems)
+                    .Where(r => r.CustomerId == user.Customer.CustomerId)
+                    .OrderByDescending(r => r.CreatedAt)
+                    .ToListAsync();
+                ViewBag.ReturnRequests = returnRequests;
+
+                // Query Completed & Eligible Orders
+                var activeReturnRequestOrderIds = returnRequests
+                    .Select(r => r.OrderId)
+                    .ToHashSet();
+
+                var allOrders = await _context.Orders
+                    .Include(o => o.OrderItems)
+                    .Where(o => o.CustomerId == user.Customer.CustomerId)
+                    .OrderByDescending(o => o.Date)
+                    .ToListAsync();
+
+                var eligibleOrders = allOrders
+                    .Where(o => OrderStatusHelper.ResolveStatusKey(o.Status) == "completed" && !activeReturnRequestOrderIds.Contains(o.OrderId))
+                    .ToList();
+                ViewBag.EligibleOrders = eligibleOrders;
+
+                // Query Products Name & Image for return items
+                var allSkus = eligibleOrders.SelectMany(o => o.OrderItems.Select(oi => oi.ProductSku))
+                    .Concat(returnRequests.SelectMany(r => r.ReturnRequestItems.Select(ri => ri.Sku)))
+                    .Where(s => !string.IsNullOrEmpty(s))
+                    .Distinct()
+                    .ToList();
+
+                var productDict = await _context.Products
+                    .Where(p => allSkus.Contains(p.Sku))
+                    .ToDictionaryAsync(p => p.Sku, p => new Tuple<string, string?>(p.Name, p.ImageUrl));
+                ViewBag.ProductInfo = productDict;
             }
 
             return View(user);
@@ -1099,6 +1161,189 @@ namespace ManagePetStore.Areas.Customer.Controllers
             
             // Mặc định là customer hoặc vai trò khác -> về Trang chủ của Home ngoài Area
             return RedirectToAction("Index", "Home", new { area = "" });
+        }
+
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateReturnRequest(
+            string orderId, 
+            string reason, 
+            List<string> selectedSkus, 
+            Dictionary<string, int> returnQuantities,
+            List<IFormFile>? evidenceFiles,
+            IFormFile? evidenceVideo)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+            {
+                return RedirectToAction("Login");
+            }
+
+            int userId = int.Parse(userIdClaim.Value);
+            var customer = await _context.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
+            if (customer == null)
+            {
+                TempData["ErrorMessage"] = "Không tìm thấy hồ sơ khách hàng.";
+                return Redirect("/Customer/Account/Profile?tab=return");
+            }
+
+            if (string.IsNullOrWhiteSpace(orderId) || string.IsNullOrWhiteSpace(reason) || selectedSkus == null || !selectedSkus.Any())
+            {
+                TempData["ErrorMessage"] = "Vui lòng chọn ít nhất một sản phẩm và nhập lý do trả hàng.";
+                return Redirect("/Customer/Account/Profile?tab=return");
+            }
+
+            if (evidenceFiles == null || !evidenceFiles.Any() || evidenceFiles.All(f => f == null || f.Length == 0))
+            {
+                TempData["ErrorMessage"] = "Vui lòng cung cấp ít nhất 1 ảnh minh chứng.";
+                return Redirect("/Customer/Account/Profile?tab=return");
+            }
+
+            if (evidenceFiles.Count > 3)
+            {
+                TempData["ErrorMessage"] = "Chỉ được phép tải lên tối đa 3 ảnh minh chứng.";
+                return Redirect("/Customer/Account/Profile?tab=return");
+            }
+
+            if (evidenceVideo == null || evidenceVideo.Length == 0)
+            {
+                TempData["ErrorMessage"] = "Vui lòng cung cấp 1 video đập hộp sản phẩm để chứng minh.";
+                return Redirect("/Customer/Account/Profile?tab=return");
+            }
+
+            var order = await _context.Orders
+                .Include(o => o.OrderItems)
+                .FirstOrDefaultAsync(o => o.OrderId == orderId && o.CustomerId == customer.CustomerId);
+
+            if (order == null)
+            {
+                TempData["ErrorMessage"] = "Không tìm thấy đơn hàng tương ứng.";
+                return Redirect("/Customer/Account/Profile?tab=return");
+            }
+
+            if (OrderStatusHelper.ResolveStatusKey(order.Status) != "completed")
+            {
+                TempData["ErrorMessage"] = "Chỉ có thể yêu cầu trả hàng đối với đơn hàng đã giao thành công.";
+                return Redirect("/Customer/Account/Profile?tab=return");
+            }
+
+            var existingRequest = await _context.ReturnRequests
+                .FirstOrDefaultAsync(r => r.OrderId == orderId && r.Status != "OnlineRejected" && r.Status != "PhysicalRejected");
+            if (existingRequest != null)
+            {
+                TempData["ErrorMessage"] = "Đơn hàng này đã có yêu cầu trả hàng đang được xử lý.";
+                return Redirect("/Customer/Account/Profile?tab=return");
+            }
+
+            // Save upload files
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+            var imageUrls = new List<string>();
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "returns");
+            if (!Directory.Exists(uploadsFolder))
+            {
+                Directory.CreateDirectory(uploadsFolder);
+            }
+
+            foreach (var file in evidenceFiles)
+            {
+                if (file.Length == 0) continue;
+
+                var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+                if (!allowedExtensions.Contains(ext))
+                {
+                    TempData["ErrorMessage"] = "Định dạng ảnh không hợp lệ. Chỉ chấp nhận .jpg, .jpeg, .png, .webp.";
+                    return Redirect("/Customer/Account/Profile?tab=return");
+                }
+
+                if (file.Length > 5 * 1024 * 1024)
+                {
+                    TempData["ErrorMessage"] = "Dung lượng mỗi ảnh không được vượt quá 5MB.";
+                    return Redirect("/Customer/Account/Profile?tab=return");
+                }
+
+                var fileName = Guid.NewGuid().ToString() + ext;
+                var filePath = Path.Combine(uploadsFolder, fileName);
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }
+                imageUrls.Add("/uploads/returns/" + fileName);
+            }
+
+            if (!imageUrls.Any())
+            {
+                TempData["ErrorMessage"] = "Không tải lên được ảnh minh chứng nào hợp lệ.";
+                return Redirect("/Customer/Account/Profile?tab=return");
+            }
+
+            // Save video
+            var allowedVideoExtensions = new[] { ".mp4", ".mov", ".webm" };
+            var videoExt = Path.GetExtension(evidenceVideo.FileName).ToLowerInvariant();
+            if (!allowedVideoExtensions.Contains(videoExt))
+            {
+                TempData["ErrorMessage"] = "Định dạng video không hợp lệ. Chỉ chấp nhận .mp4, .mov, .webm.";
+                return Redirect("/Customer/Account/Profile?tab=return");
+            }
+
+            if (evidenceVideo.Length > 20 * 1024 * 1024)
+            {
+                TempData["ErrorMessage"] = "Dung lượng video đập hộp không được vượt quá 20MB.";
+                return Redirect("/Customer/Account/Profile?tab=return");
+            }
+
+            var videoFileName = Guid.NewGuid().ToString() + videoExt;
+            var videoFilePath = Path.Combine(uploadsFolder, videoFileName);
+            using (var stream = new FileStream(videoFilePath, FileMode.Create))
+            {
+                await evidenceVideo.CopyToAsync(stream);
+            }
+            var videoUrl = "/uploads/returns/" + videoFileName;
+
+            decimal refundAmount = 0;
+            var requestItems = new List<ReturnRequestItem>();
+
+            foreach (var sku in selectedSkus)
+            {
+                var orderItem = order.OrderItems.FirstOrDefault(oi => oi.ProductSku == sku);
+                if (orderItem == null)
+                {
+                    TempData["ErrorMessage"] = $"Sản phẩm {sku} không thuộc đơn hàng này.";
+                    return Redirect("/Customer/Account/Profile?tab=return");
+                }
+
+                if (!returnQuantities.TryGetValue(sku, out var qty) || qty <= 0 || qty > orderItem.Quantity)
+                {
+                    TempData["ErrorMessage"] = $"Số lượng trả lại cho sản phẩm {sku} không hợp lệ.";
+                    return Redirect("/Customer/Account/Profile?tab=return");
+                }
+
+                refundAmount += qty * orderItem.Price;
+                requestItems.Add(new ReturnRequestItem
+                {
+                    Sku = sku,
+                    Quantity = qty,
+                    RefundPrice = orderItem.Price
+                });
+            }
+
+            var returnRequest = new ReturnRequest
+            {
+                OrderId = orderId,
+                CustomerId = customer.CustomerId,
+                Reason = reason.Trim(),
+                Status = "Submitted",
+                RefundAmount = refundAmount,
+                CreatedAt = DateTime.Now,
+                Notes = "IMAGES:" + string.Join(";", imageUrls) + "|VIDEO:" + videoUrl,
+                ReturnRequestItems = requestItems
+            };
+
+            _context.ReturnRequests.Add(returnRequest);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Gửi yêu cầu trả hàng / hoàn tiền thành công! Vui lòng chờ nhân viên duyệt online.";
+            return Redirect("/Customer/Account/Profile?tab=return");
         }
     }
 }
