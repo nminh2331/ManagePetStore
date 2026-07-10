@@ -1,4 +1,3 @@
-
 using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +23,10 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<Cage> Cages { get; set; }
 
+    public virtual DbSet<ChatMessage> ChatMessages { get; set; }
+
+    public virtual DbSet<ChatSession> ChatSessions { get; set; }
+
     public virtual DbSet<Consumable> Consumables { get; set; }
 
     public virtual DbSet<Customer> Customers { get; set; }
@@ -33,9 +36,6 @@ public partial class PetStoreManagementContext : DbContext
     public virtual DbSet<HotelBooking> HotelBookings { get; set; }
 
     public virtual DbSet<InventoryBatch> InventoryBatches { get; set; }
-
-    public virtual DbSet<InventoryBatch> InventoryBatchs { get => InventoryBatches; set => InventoryBatches = value; }
-
 
     public virtual DbSet<MedicalRecord> MedicalRecords { get; set; }
 
@@ -52,6 +52,10 @@ public partial class PetStoreManagementContext : DbContext
     public virtual DbSet<Product> Products { get; set; }
 
     public virtual DbSet<ProductCategory> ProductCategories { get; set; }
+
+    public virtual DbSet<ReturnRequest> ReturnRequests { get; set; }
+
+    public virtual DbSet<ReturnRequestItem> ReturnRequestItems { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
 
@@ -77,17 +81,28 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<Supplier> Suppliers { get; set; }
 
-    public virtual DbSet<SupplierCategory> SupplierCategories { get; set; }
-
     public virtual DbSet<User> Users { get; set; }
 
-    public virtual DbSet<ChatSession> ChatSessions { get; set; }
-    public virtual DbSet<ChatMessage> ChatMessages { get; set; }
+    public virtual DbSet<Voucher> Vouchers { get; set; }
+
+    public virtual DbSet<Wallet> Wallets { get; set; }
+
+    public virtual DbSet<WalletTransaction> WalletTransactions { get; set; }
+
     public virtual DbSet<SpaReview> SpaReviews { get; set; }
 
 
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        var builder = new ConfigurationBuilder()
+        .SetBasePath(Directory.GetCurrentDirectory())
+        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+        IConfigurationRoot configuration = builder.Build();
+        optionsBuilder.UseSqlServer(configuration.GetConnectionString("DefaultConnection"));
+    }
+    //#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+    //        => optionsBuilder.UseSqlServer("Server= DESKTOP-S7IL3CT\\SQLEXPRESS;Database= PetStoreManagement;Trusted_Connection=True; TrustServerCertificate=True;");
 
-    public virtual DbSet<Voucher> Vouchers { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -107,26 +122,23 @@ public partial class PetStoreManagementContext : DbContext
         {
             entity.HasIndex(e => e.Slug, "UQ_Blogs_Slug").IsUnique();
 
-            entity.Property(e => e.Category).HasMaxLength(100);
+            entity.Property(e => e.Category).HasMaxLength(250);
             entity.Property(e => e.CoverImage)
                 .HasMaxLength(255)
                 .IsUnicode(false);
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
-            entity.Property(e => e.IsFeatured).HasDefaultValue(false);
             entity.Property(e => e.Slug)
                 .HasMaxLength(255)
                 .IsUnicode(false);
             entity.Property(e => e.Title).HasMaxLength(255);
-            entity.Property(e => e.ViewCount).HasDefaultValue(0);
 
             entity.HasOne(d => d.Author).WithMany(p => p.Blogs)
                 .HasForeignKey(d => d.AuthorId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Blogs_Users");
         });
-
 
         modelBuilder.Entity<BookingAddon>(entity =>
         {
@@ -155,6 +167,48 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasOne(d => d.RoomType).WithMany(p => p.Cages)
                 .HasForeignKey(d => d.RoomTypeId)
                 .HasConstraintName("FK_Cages_RoomTypes");
+        });
+
+        modelBuilder.Entity<ChatMessage>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__ChatMess__3214EC07A5D82E73");
+
+            entity.Property(e => e.SentAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.Sender).WithMany(p => p.ChatMessages)
+                .HasForeignKey(d => d.SenderId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ChatMessages_Sender");
+
+            entity.HasOne(d => d.Session).WithMany(p => p.ChatMessages)
+                .HasForeignKey(d => d.SessionId)
+                .HasConstraintName("FK_ChatMessages_ChatSessions");
+        });
+
+        modelBuilder.Entity<ChatSession>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__ChatSess__3214EC07C23F327D");
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.LastMessageAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.Status)
+                .HasMaxLength(20)
+                .HasDefaultValue("Waiting");
+
+            entity.HasOne(d => d.Customer).WithMany(p => p.ChatSessionCustomers)
+                .HasForeignKey(d => d.CustomerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ChatSessions_Customer");
+
+            entity.HasOne(d => d.Manager).WithMany(p => p.ChatSessionManagers)
+                .HasForeignKey(d => d.ManagerId)
+                .HasConstraintName("FK_ChatSessions_Manager");
         });
 
         modelBuilder.Entity<Consumable>(entity =>
@@ -199,13 +253,10 @@ public partial class PetStoreManagementContext : DbContext
         {
             entity.HasKey(e => e.LogId);
 
-            entity.HasIndex(e => e.HotelBookingId, "IX_FoodDiaryLogs_HotelBookingId");
-
             entity.Property(e => e.LogId).HasMaxLength(50);
             entity.Property(e => e.Amount).HasMaxLength(50);
             entity.Property(e => e.CageId).HasMaxLength(20);
             entity.Property(e => e.FoodType).HasMaxLength(100);
-            entity.Property(e => e.OccurredAt).HasColumnType("datetime");
             entity.Property(e => e.PetName).HasMaxLength(50);
             entity.Property(e => e.PhotoUrl)
                 .HasMaxLength(500)
@@ -218,10 +269,6 @@ public partial class PetStoreManagementContext : DbContext
                 .HasForeignKey(d => d.CageId)
                 .HasConstraintName("FK_FoodDiaryLogs_Cages");
 
-            entity.HasOne(d => d.HotelBooking).WithMany(p => p.FoodDiaryLogs)
-                .HasForeignKey(d => d.HotelBookingId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("FK_FoodDiaryLogs_HotelBookings");
         });
 
         modelBuilder.Entity<HotelBooking>(entity =>
@@ -229,15 +276,11 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasIndex(e => e.CageId, "IX_HotelBookings_CageId");
 
             entity.Property(e => e.BaseDailyPrice).HasColumnType("decimal(18, 2)");
-            entity.Property(e => e.ActualCheckInAt).HasColumnType("datetime");
-            entity.Property(e => e.ActualCheckOutAt).HasColumnType("datetime");
             entity.Property(e => e.CageId).HasMaxLength(20);
             entity.Property(e => e.CheckInDate).HasColumnType("datetime");
             entity.Property(e => e.CheckOutDate).HasColumnType("datetime");
             entity.Property(e => e.Discount).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.FinalAmount).HasColumnType("decimal(18, 2)");
-            entity.Property(e => e.ScheduledCheckInDate).HasColumnType("datetime");
-            entity.Property(e => e.ScheduledCheckOutDate).HasColumnType("datetime");
             entity.Property(e => e.Status).HasMaxLength(30);
             entity.Property(e => e.Subtotal).HasColumnType("decimal(18, 2)");
 
@@ -258,7 +301,7 @@ public partial class PetStoreManagementContext : DbContext
 
         modelBuilder.Entity<InventoryBatch>(entity =>
         {
-            entity.HasKey(e => e.BatchId).HasName("PK__Inventor__5D55CE58B72515AF");
+            entity.HasKey(e => e.BatchId).HasName("PK__Inventor__5D55CE58B0A7AAA7");
 
             entity.ToTable("InventoryBatch");
 
@@ -276,9 +319,7 @@ public partial class PetStoreManagementContext : DbContext
 
         modelBuilder.Entity<MedicalRecord>(entity =>
         {
-            entity.HasKey(e => e.RecordId).HasName("PK__MedicalR__FBDF78E9E466D61C");
-
-            entity.HasIndex(e => e.HotelBookingId, "IX_MedicalRecords_HotelBookingId");
+            entity.HasKey(e => e.RecordId).HasName("PK__MedicalR__FBDF78E9DFF9CF17");
 
             entity.Property(e => e.AbnormalSymptoms).HasMaxLength(500);
             entity.Property(e => e.DateCreated)
@@ -299,10 +340,6 @@ public partial class PetStoreManagementContext : DbContext
                 .HasForeignKey(d => d.PetId)
                 .HasConstraintName("FK_MedicalRecords_Pets");
 
-            entity.HasOne(d => d.HotelBooking).WithMany(p => p.MedicalRecords)
-                .HasForeignKey(d => d.HotelBookingId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("FK_MedicalRecords_HotelBookings");
         });
 
         modelBuilder.Entity<Order>(entity =>
@@ -399,8 +436,6 @@ public partial class PetStoreManagementContext : DbContext
         {
             entity.HasKey(e => e.TimelineId);
 
-            entity.HasIndex(e => e.HotelBookingId, "IX_PetBioTimelines_HotelBookingId");
-
             entity.Property(e => e.Date).HasColumnType("datetime");
             entity.Property(e => e.Title).HasMaxLength(100);
             entity.Property(e => e.Type).HasMaxLength(30);
@@ -409,10 +444,6 @@ public partial class PetStoreManagementContext : DbContext
                 .HasForeignKey(d => d.PetId)
                 .HasConstraintName("FK_PetBioTimelines_Pets");
 
-            entity.HasOne(d => d.HotelBooking).WithMany(p => p.PetBioTimelines)
-                .HasForeignKey(d => d.HotelBookingId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("FK_PetBioTimelines_HotelBookings");
         });
 
         modelBuilder.Entity<Product>(entity =>
@@ -441,6 +472,55 @@ public partial class PetStoreManagementContext : DbContext
 
             entity.Property(e => e.Description).HasMaxLength(500);
             entity.Property(e => e.Name).HasMaxLength(150);
+        });
+
+        modelBuilder.Entity<ReturnRequest>(entity =>
+        {
+            entity.HasKey(e => e.RequestId).HasName("PK__ReturnRe__33A8517A2099838E");
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.Property(e => e.OrderId).HasMaxLength(50);
+            entity.Property(e => e.ProcessedAt).HasColumnType("datetime");
+            entity.Property(e => e.Reason).HasMaxLength(500);
+            entity.Property(e => e.RefundAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Status)
+                .HasMaxLength(50)
+                .HasDefaultValue("Pending");
+
+            entity.HasOne(d => d.Customer).WithMany(p => p.ReturnRequests)
+                .HasForeignKey(d => d.CustomerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ReturnRequests_Customers");
+
+            entity.HasOne(d => d.Order).WithMany(p => p.ReturnRequests)
+                .HasForeignKey(d => d.OrderId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ReturnRequests_Orders");
+
+            entity.HasOne(d => d.ProcessedByNavigation).WithMany(p => p.ReturnRequests)
+                .HasForeignKey(d => d.ProcessedBy)
+                .HasConstraintName("FK_ReturnRequests_ProcessedBy");
+        });
+
+        modelBuilder.Entity<ReturnRequestItem>(entity =>
+        {
+            entity.HasKey(e => e.ReturnItemId).HasName("PK__ReturnRe__8D87CD3AA9EB4100");
+
+            entity.Property(e => e.RefundPrice).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Sku).HasMaxLength(50);
+
+            entity.HasOne(d => d.Request).WithMany(p => p.ReturnRequestItems)
+                .HasForeignKey(d => d.RequestId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ReturnRequestItems_Requests");
+
+            entity.HasOne(d => d.SkuNavigation).WithMany(p => p.ReturnRequestItems)
+                .HasForeignKey(d => d.Sku)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ReturnRequestItems_Products");
         });
 
         modelBuilder.Entity<Role>(entity =>
@@ -550,6 +630,7 @@ public partial class PetStoreManagementContext : DbContext
             entity.Property(e => e.DurationMinutes).HasDefaultValue(30);
             entity.Property(e => e.Name).HasMaxLength(150);
             entity.Property(e => e.Price).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.TargetSpecies).HasMaxLength(50);
         });
 
         modelBuilder.Entity<StaffProfile>(entity =>
@@ -645,32 +726,33 @@ public partial class PetStoreManagementContext : DbContext
                 .HasForeignKey(d => d.StockMovementId)
                 .HasConstraintName("FK_StockMovementDetails_StockMovements");
         });
+
         modelBuilder.Entity<Supplier>(entity =>
         {
-            entity.HasKey(e => e.SupplierId).HasName("PK__Supplier__4BE666B4E6FC80CF");
+            entity.HasKey(e => e.SupplierId).HasName("PK__Supplier__4BE666B4DFD220C6");
 
             entity.Property(e => e.Address).HasMaxLength(500);
             entity.Property(e => e.Email).HasMaxLength(255);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.Name).HasMaxLength(255);
             entity.Property(e => e.Phone).HasMaxLength(50);
-        });
 
-        modelBuilder.Entity<SupplierCategory>(entity =>
-        {
-            entity.HasKey(e => new { e.SupplierId, e.CategoryId }).HasName("PK__Supplier__EA76F51427683A03");
-
-            entity.ToTable("SupplierCategories");
-
-            entity.HasOne(d => d.Supplier).WithMany(p => p.SupplierCategories)
-                .HasForeignKey(d => d.SupplierId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__SupplierC__Suppl__59C55456");
-
-            entity.HasOne(d => d.Category).WithMany(p => p.SupplierCategories)
-                .HasForeignKey(d => d.CategoryId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__SupplierC__Categ__5AB9788F");
+            entity.HasMany(d => d.Categories).WithMany(p => p.Suppliers)
+                .UsingEntity<Dictionary<string, object>>(
+                    "SupplierCategory",
+                    r => r.HasOne<ProductCategory>().WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.ClientSetNull)
+                        .HasConstraintName("FK__SupplierC__Categ__318258D2"),
+                    l => l.HasOne<Supplier>().WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.ClientSetNull)
+                        .HasConstraintName("FK__SupplierC__Suppl__308E3499"),
+                    j =>
+                    {
+                        j.HasKey("SupplierId", "CategoryId").HasName("PK__Supplier__EA76F51437B9F7D5");
+                        j.ToTable("SupplierCategories");
+                    });
         });
 
         modelBuilder.Entity<User>(entity =>
@@ -712,59 +794,51 @@ public partial class PetStoreManagementContext : DbContext
             entity.Property(e => e.Value).HasColumnType("decimal(18, 2)");
         });
 
-        modelBuilder.Entity<ChatSession>(entity =>
+        modelBuilder.Entity<Wallet>(entity =>
         {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("Waiting");
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnType("datetime");
-            entity.Property(e => e.LastMessageAt).HasDefaultValueSql("(getdate())").HasColumnType("datetime");
+            entity.HasKey(e => e.WalletId).HasName("PK__Wallets__84D4F90E074A6B11");
 
-            entity.HasOne(d => d.Customer)
-                .WithMany()
+            entity.Property(e => e.Balance).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.Status)
+                .HasMaxLength(50)
+                .HasDefaultValue("Active");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.Customer).WithMany(p => p.Wallets)
                 .HasForeignKey(d => d.CustomerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_ChatSessions_Customer");
-
-            entity.HasOne(d => d.Manager)
-                .WithMany()
-                .HasForeignKey(d => d.ManagerId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_ChatSessions_Manager");
+                .HasConstraintName("FK_Wallets_Customer");
         });
 
-        modelBuilder.Entity<ChatMessage>(entity =>
+        modelBuilder.Entity<WalletTransaction>(entity =>
         {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.MessageText).IsRequired();
-            entity.Property(e => e.SentAt).HasDefaultValueSql("(getdate())").HasColumnType("datetime");
+            entity.HasKey(e => e.TransactionId).HasName("PK__WalletTr__55433A6B13CEEFE4");
 
-            entity.HasOne(d => d.ChatSession)
-                .WithMany(p => p.ChatMessages)
-                .HasForeignKey(d => d.SessionId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("FK_ChatMessages_ChatSessions");
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Description).HasMaxLength(255);
+            entity.Property(e => e.OrderId).HasMaxLength(50);
+            entity.Property(e => e.TransactionDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.Type).HasMaxLength(50);
 
-            entity.HasOne(d => d.Sender)
-                .WithMany()
-                .HasForeignKey(d => d.SenderId)
+            entity.HasOne(d => d.Order).WithMany(p => p.WalletTransactions)
+                .HasForeignKey(d => d.OrderId)
+                .HasConstraintName("FK_WalletTransactions_Orders");
+
+            entity.HasOne(d => d.Wallet).WithMany(p => p.WalletTransactions)
+                .HasForeignKey(d => d.WalletId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_ChatMessages_Sender");
-        });
-
-                modelBuilder.Entity<SpaReview>(entity =>
-        {
-            entity.HasKey(e => e.ReviewId);
-            entity.Property(e => e.Comment).HasMaxLength(1000);
-            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
-            entity.HasOne(d => d.Booking).WithOne()
-                .HasForeignKey<SpaReview>(d => d.BookingId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_SpaReviews_SpaBookings");
+                .HasConstraintName("FK_WalletTransactions_Wallets");
         });
 
         OnModelCreatingPartial(modelBuilder);
     }
-
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
 }

@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
 
+using System.ComponentModel.DataAnnotations;
+
 namespace ManagePetStore.Models;
 
 public partial class SpaReview
 {
+    [Key]
     public int ReviewId { get; set; }
 
     public int BookingId { get; set; }

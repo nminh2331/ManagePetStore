@@ -27,9 +27,13 @@ public partial class Customer
 
     public virtual ICollection<Pet> Pets { get; set; } = new List<Pet>();
 
+    public virtual ICollection<ReturnRequest> ReturnRequests { get; set; } = new List<ReturnRequest>();
+
     public virtual ICollection<SpaBooking> SpaBookings { get; set; } = new List<SpaBooking>();
 
     public virtual ICollection<StaffTask> StaffTasks { get; set; } = new List<StaffTask>();
 
     public virtual User? User { get; set; }
+
+    public virtual ICollection<Wallet> Wallets { get; set; } = new List<Wallet>();
 }
