@@ -1,0 +1,364 @@
+@model ManagePetStore.Areas.Customer.Models.WalletPageViewModel
+@{
+    ViewData["Title"] = "Ví điện tử";
+    Layout = "/Views/Shared/_PetStoreLayout.cshtml";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/customer-pets.css" asp-append-version="true" />
+    <style>
+        .wallet-card {
+            background: linear-gradient(135deg, #3d2314 0%, #2c1810 100%);
+            color: #fff;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(61, 35, 20, 0.15);
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .wallet-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            background: rgba(249, 115, 22, 0.15);
+            pointer-events: none;
+        }
+        .wallet-balance-label {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 8px;
+        }
+        .wallet-balance-amount {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: #f97316;
+            margin-bottom: 12px;
+        }
+        .wallet-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .wallet-status.active {
+            color: #4ade80;
+            background: rgba(74, 222, 128, 0.1);
+        }
+        .wallet-status.locked {
+            color: #f87171;
+            background: rgba(248, 113, 113, 0.1);
+        }
+        .btn-deposit {
+            background-color: #f97316;
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-weight: 700;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 14px rgba(249, 115, 22, 0.3);
+        }
+        .btn-deposit:hover {
+            background-color: #ea580c;
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+        }
+        .transaction-card {
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 4px 24px rgba(61, 35, 20, 0.06);
+            overflow: hidden;
+        }
+        .transaction-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #f3f4f6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .transaction-title {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #3d2314;
+            margin: 0;
+        }
+        .table-transactions th {
+            font-weight: 700;
+            color: #6b7280;
+            border-bottom: 2px solid #f3f4f6;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            padding: 16px 24px;
+        }
+        .table-transactions td {
+            padding: 18px 24px;
+            vertical-align: middle;
+            color: #374151;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .table-transactions tr:last-child td {
+            border-bottom: none;
+        }
+        .badge-type {
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+        }
+        .badge-deposit {
+            background-color: #dcfce7;
+            color: #15803d;
+        }
+        .badge-payment {
+            background-color: #fef3c7;
+            color: #d97706;
+        }
+        .badge-refund {
+            background-color: #dbeafe;
+            color: #1d4ed8;
+        }
+        .amount-positive {
+            color: #16a34a;
+            font-weight: 700;
+        }
+        .amount-negative {
+            color: #dc2626;
+            font-weight: 700;
+        }
+        .modal-wallet-content {
+            border-radius: 24px;
+            border: none;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+        }
+        .modal-wallet-header {
+            background: linear-gradient(135deg, #3d2314 0%, #2c1810 100%);
+            color: #fff;
+            border-bottom: none;
+            padding: 24px;
+        }
+        .modal-wallet-header .btn-close {
+            filter: invert(1);
+        }
+        .modal-wallet-body {
+            padding: 30px 24px;
+        }
+        .modal-wallet-footer {
+            border-top: none;
+            padding: 16px 24px 24px;
+        }
+        .deposit-input {
+            border-radius: 12px;
+            border: 2px solid #e5e7eb;
+            padding: 14px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #3d2314;
+            transition: all 0.2s;
+        }
+        .deposit-input:focus {
+            border-color: #f97316;
+            box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.15);
+        }
+        .cp-toast {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            padding: 16px 24px;
+            border-radius: 12px;
+            color: #fff;
+            font-weight: 600;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            z-index: 1050;
+            animation: slideIn 0.3s ease forwards;
+        }
+        .cp-toast.success { background: #10b981; }
+        .cp-toast.error { background: #ef4444; }
+        @@keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="cp-toast success" id="walletToast">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="cp-toast error" id="walletToast">@TempData["Error"]</div>
+}
+
+<div class="cp-dashboard">
+    @await Html.PartialAsync("_CustomerSidebar", Model)
+
+    <!-- Main Content -->
+    <section class="cp-main">
+        <div class="cp-main-header">
+            <div>
+                <h1 class="cp-main-title">Ví điện tử</h1>
+                <p class="cp-main-subtitle">Quản lý số dư, thực hiện nạp tiền và theo dõi lịch sử giao dịch của bạn</p>
+            </div>
+        </div>
+
+        <!-- Wallet Info Card -->
+        <div class="wallet-card">
+            <div class="row align-items-center">
+                <div class="col-md-7">
+                    <div class="wallet-balance-label">Số dư khả dụng</div>
+                    <div class="wallet-balance-amount">@Model.Wallet.Balance.ToString("N0") <span style="font-size: 1.5rem;">VNĐ</span></div>
+                    <div>
+                        @if (Model.Wallet.Status == "Active")
+                        {
+                            <span class="wallet-status active">
+                                <i class="bi bi-patch-check-fill"></i> Tài khoản hoạt động
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="wallet-status locked">
+                                <i class="bi bi-lock-fill"></i> Đang tạm khóa
+                            </span>
+                        }
+                    </div>
+                </div>
+                <div class="col-md-5 text-md-end mt-4 mt-md-0">
+                    <button type="button" class="btn btn-deposit btn-lg" data-bs-toggle="modal" data-bs-target="#depositModal">
+                        <i class="bi bi-plus-circle-fill"></i> Nạp tiền vào ví
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transaction History -->
+        <div class="transaction-card">
+            <div class="transaction-header">
+                <h3 class="transaction-title"><i class="bi bi-clock-history me-2"></i>Lịch sử giao dịch</h3>
+            </div>
+            <div class="p-0">
+                <div class="table-responsive">
+                    <table class="table table-transactions table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Mã GD</th>
+                                <th>Thời Gian</th>
+                                <th>Loại</th>
+                                <th>Số Tiền</th>
+                                <th>Nội Dung</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Wallet.WalletTransactions != null && Model.Wallet.WalletTransactions.Any())
+                            {
+                                foreach (var trans in Model.Wallet.WalletTransactions)
+                                {
+                                    <tr>
+                                        <td class="fw-semibold" style="color: #6b7280;">#@trans.TransactionId</td>
+                                        <td>@trans.TransactionDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                        <td>
+                                            @if (trans.Type == "Deposit")
+                                            {
+                                                <span class="badge-type badge-deposit"><i class="bi bi-arrow-down-left-circle-fill me-1"></i>Nạp Tiền</span>
+                                            }
+                                            else if (trans.Type == "Payment")
+                                            {
+                                                <span class="badge-type badge-payment"><i class="bi bi-arrow-up-right-circle-fill me-1"></i>Thanh Toán</span>
+                                            }
+                                            else if (trans.Type == "Refund")
+                                            {
+                                                <span class="badge-type badge-refund"><i class="bi bi-reply-fill me-1"></i>Hoàn Tiền</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">@trans.Type</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (trans.Type == "Deposit" || trans.Type == "Refund" || trans.Amount > 0)
+                                            {
+                                                <span class="amount-positive">+@trans.Amount.ToString("N0") đ</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="amount-negative">-@trans.Amount.ToString("N0") đ</span>
+                                            }
+                                        </td>
+                                        <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@trans.Description">
+                                            @trans.Description
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">
+                                        <i class="bi bi-receipt-cutoff d-block mb-3" style="font-size: 3rem; color: #cbd5e1;"></i>
+                                        Chưa có giao dịch phát sinh nào từ tài khoản này.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Modal Nạp Tiền -->
+<div class="modal fade" id="depositModal" tabindex="-1" aria-labelledby="depositModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-wallet-content">
+            <form asp-area="Customer" asp-controller="Wallet" asp-action="Deposit" method="post">
+                <div class="modal-header modal-wallet-header">
+                    <h5 class="modal-title fw-bold" id="depositModalLabel"><i class="bi bi-wallet2 me-2"></i>Nạp Tiền Vào Ví</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body modal-wallet-body">
+                    <div class="alert alert-warning mb-4" role="alert" style="border-radius: 12px; font-size: 0.9rem;">
+                        <i class="bi bi-shield-lock-fill me-2"></i>Giao dịch nạp tiền được xử lý bảo mật tự động thông qua cổng thanh toán an toàn <strong>PayOS</strong>.
+                    </div>
+                    <div class="mb-3">
+                        <label for="amount" class="form-label fw-bold text-muted" style="font-size: 0.85rem; text-transform: uppercase;">Số tiền cần nạp (VNĐ)</label>
+                        <input type="number" class="form-control deposit-input" id="amount" name="amount" min="10000" step="10000" placeholder="Ví dụ: 100000" required>
+                        <div class="form-text mt-2"><i class="bi bi-info-circle me-1"></i>Số tiền nạp tối thiểu là <strong>10,000 VNĐ</strong>.</div>
+                    </div>
+                </div>
+                <div class="modal-footer modal-wallet-footer">
+                    <button type="button" class="btn btn-light px-4 py-2 fw-semibold" data-bs-dismiss="modal" style="border-radius: 10px;">Hủy</button>
+                    <button type="submit" class="btn btn-deposit px-4 py-2" style="border-radius: 10px;">Xác nhận nạp tiền</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Auto-dismiss toast after 4 seconds
+        setTimeout(function () {
+            var toast = document.getElementById('walletToast');
+            if (toast) {
+                toast.style.transition = 'opacity 0.5s ease';
+                toast.style.opacity = '0';
+                setTimeout(function () {
+                    toast.remove();
+                }, 500);
+            }
+        }, 4000);
+    </script>
+}

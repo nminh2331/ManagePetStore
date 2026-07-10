@@ -145,6 +145,17 @@ public class CheckoutController : Controller
             return RedirectToAction(nameof(Index));
         }
 
+        Wallet? customerWallet = null;
+        if (normalizedPayment == "Ví điện tử")
+        {
+            customerWallet = await _context.Wallets.FirstOrDefaultAsync(w => w.CustomerId == customer.CustomerId);
+            if (customerWallet == null || customerWallet.Balance < cart.GrandTotal)
+            {
+                TempData["ErrorMessage"] = "Số dư ví điện tử không đủ để thanh toán. Vui lòng chọn phương thức khác hoặc nạp thêm tiền.";
+                return RedirectToAction(nameof(Index));
+            }
+        }
+
         long orderCode = 0;
         string orderId;
         if (normalizedPayment == "Thanh toán online")
@@ -157,7 +168,7 @@ public class CheckoutController : Controller
         {
             orderId = $"ORD-{DateTime.Now:yyyyMMddHHmmss}-{Random.Shared.Next(1000, 9999)}";
         }
-        var status = normalizedPayment == "Tiền mặt" ? "Chờ xử lý" : "Chờ thanh toán";
+        var status = (normalizedPayment == "Tiền mặt" || normalizedPayment == "Ví điện tử") ? "Chờ xử lý" : "Chờ thanh toán";
 
         try
         {
@@ -352,7 +363,22 @@ public class CheckoutController : Controller
             customer.LoyaltyPoints += (int)Math.Floor(cart.GrandTotal / 10000m);
             _context.Entry(customer).State = EntityState.Modified;
 
+            if (normalizedPayment == "Ví điện tử" && customerWallet != null)
+            {
+                customerWallet.Balance -= cart.GrandTotal;
+                customerWallet.UpdatedAt = DateTime.Now;
+                _context.Entry(customerWallet).State = EntityState.Modified;
 
+                _context.WalletTransactions.Add(new WalletTransaction
+                {
+                    WalletId = customerWallet.WalletId,
+                    Amount = -cart.GrandTotal,
+                    Type = "Payment",
+                    Description = $"Thanh toán đơn hàng {orderId}",
+                    OrderId = orderId,
+                    TransactionDate = DateTime.Now
+                });
+            }
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
@@ -607,6 +633,7 @@ public class CheckoutController : Controller
         {
             "Cash" => "Tiền mặt",
             "PayOS" => "Thanh toán online",
+            "Wallet" => "Ví điện tử",
             _ => null
         };
     }

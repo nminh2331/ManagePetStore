@@ -1,10 +1,8 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
 
 namespace ManagePetStore.Models;
 
-/// <summary>
-/// Đại diện cho tin nhắn chat trong một ChatSession
-/// </summary>
 public partial class ChatMessage
 {
     public int Id { get; set; }
@@ -15,10 +13,9 @@ public partial class ChatMessage
 
     public string MessageText { get; set; } = null!;
 
-    public DateTime SentAt { get; set; } = DateTime.Now;
-
-    // Navigation properties
-    public virtual ChatSession ChatSession { get; set; } = null!;
+    public DateTime SentAt { get; set; }
 
     public virtual User Sender { get; set; } = null!;
+
+    public virtual ChatSession Session { get; set; } = null!;
 }
