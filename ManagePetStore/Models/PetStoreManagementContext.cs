@@ -89,8 +89,13 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<Voucher> Vouchers { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseSqlServer("Server= DESKTOP-0NF6T35;Database= PetStoreManagement;Trusted_Connection=True; TrustServerCertificate=True;");
+   // protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+   // {
+   //     if (!optionsBuilder.IsConfigured)
+   //     {
+  //          optionsBuilder.UseSqlServer("Server= DESKTOP-0NF6T35;Database= PetStoreManagement;Trusted_Connection=True; TrustServerCertificate=True;");
+ //       }
+  //  }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

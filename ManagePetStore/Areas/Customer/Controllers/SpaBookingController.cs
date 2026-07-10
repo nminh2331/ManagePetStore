@@ -34,7 +34,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
         }
 
         [HttpGet("History")]
-        public async Task<IActionResult> History()
+        public async Task<IActionResult> History(string? searchTerm, string statusFilter = "all", int page = 1)
         {
             var layout = await BuildSidebarViewModelAsync("spabooking");
             if (layout == null)
@@ -50,6 +50,47 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 .OrderByDescending(b => b.DateTime)
                 .ToListAsync();
 
+            // Lọc kết quả tìm kiếm và trạng thái trong bộ nhớ
+            var normalizedSearch = searchTerm?.Trim() ?? "";
+            var normalizedStatus = string.IsNullOrWhiteSpace(statusFilter) ? "all" : statusFilter.Trim().ToLowerInvariant();
+
+            IEnumerable<SpaBooking> filteredBookings = bookings;
+
+            if (!string.IsNullOrWhiteSpace(normalizedSearch))
+            {
+                filteredBookings = filteredBookings.Where(b =>
+                    b.BookingId.ToString().Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+                    (b.Service?.Name ?? "").Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+                    (b.Pet?.Name ?? "").Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
+                    (b.Groomer?.FullName ?? "").Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)
+                );
+            }
+
+            filteredBookings = normalizedStatus switch
+            {
+                "pending" => filteredBookings.Where(b => b.SpaStatus == "0" || b.SpaStatus.EndsWith("|0")),
+                "inprogress" => filteredBookings.Where(b => b.SpaStatus != "Cancelled" && b.SpaStatus != "4" && !b.SpaStatus.EndsWith("|4") && b.SpaStatus != "0" && !b.SpaStatus.EndsWith("|0")),
+                "completed" => filteredBookings.Where(b => b.SpaStatus == "4" || b.SpaStatus.EndsWith("|4")),
+                "cancelled" => filteredBookings.Where(b => b.SpaStatus == "Cancelled"),
+                _ => filteredBookings
+            };
+
+            var filteredList = filteredBookings.ToList();
+            var currentPage = page < 1 ? 1 : page;
+            var totalFilteredItems = filteredList.Count;
+            var pageSize = 5;
+            var totalPages = totalFilteredItems == 0 ? 0 : (int)Math.Ceiling(totalFilteredItems / (double)pageSize);
+
+            if (totalPages > 0 && currentPage > totalPages)
+            {
+                currentPage = totalPages;
+            }
+
+            var visibleBookings = filteredList
+                .Skip((currentPage - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
             // Lấy danh sách ID các booking đã được đánh giá
             var reviewedBookingIds = await _context.SpaReviews
                 .Where(r => bookings.Select(b => b.BookingId).Contains(r.BookingId))
@@ -63,7 +104,14 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 User = layout.User,
                 Customer = layout.Customer,
                 ActiveNav = "spabooking",
-                Bookings = bookings
+                Bookings = bookings,
+                VisibleBookings = visibleBookings,
+                SearchTerm = normalizedSearch,
+                StatusFilter = normalizedStatus,
+                Page = totalPages == 0 ? 1 : currentPage,
+                PageSize = pageSize,
+                TotalFilteredItems = totalFilteredItems,
+                TotalPages = totalPages
             };
 
             return View(model);
@@ -287,9 +335,15 @@ namespace ManagePetStore.Areas.Customer.Controllers
             }
         }
     }
-
     public class SpaBookingHistoryPageViewModel : ManagePetStore.Areas.Customer.Models.CustomerSidebarViewModel
     {
         public List<SpaBooking> Bookings { get; set; } = [];
+        public List<SpaBooking> VisibleBookings { get; set; } = [];
+        public string? SearchTerm { get; set; }
+        public string StatusFilter { get; set; } = "all";
+        public int Page { get; set; } = 1;
+        public int PageSize { get; set; } = 5;
+        public int TotalFilteredItems { get; set; }
+        public int TotalPages { get; set; }
     }
 }
