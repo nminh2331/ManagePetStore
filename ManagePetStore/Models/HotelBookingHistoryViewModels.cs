@@ -74,9 +74,13 @@ public class HotelBookingCareHistoryItem
     public DateTime? OccurredAt { get; set; }
     public string LegacyTime { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public string ActivityType { get; set; } = "General";
+    public string Title { get; set; } = "Nhật ký chăm sóc";
     public string FoodType { get; set; } = string.Empty;
     public string Amount { get; set; } = string.Empty;
     public string? PhotoUrl { get; set; }
+    public string? MediaUrl { get; set; }
+    public string? MediaType { get; set; }
     public string? Note { get; set; }
     public string StaffName { get; set; } = string.Empty;
 }

@@ -136,20 +136,25 @@
             {
                 <div class="hbh-care-table-wrap">
                     <table class="hbh-care-table">
-                        <thead><tr><th>Thời gian</th><th>Thức ăn</th><th>Khẩu phần</th><th>Tình trạng</th><th>Nhân viên</th><th>Ảnh</th></tr></thead>
+                        <thead><tr><th>Thời gian</th><th>Hoạt động</th><th>Tình trạng</th><th>Ăn uống</th><th>Nhân viên</th><th>Media</th></tr></thead>
                         <tbody>
                         @foreach (var log in Model.CareLogs)
                         {
                             <tr>
                                 <td>@(log.OccurredAt?.ToString("dd/MM/yyyy HH:mm") ?? log.LegacyTime)</td>
-                                <td>@log.FoodType</td>
-                                <td>@log.Amount</td>
+                                <td><strong>@log.Title</strong><small class="hbh-care-type">@log.ActivityType</small></td>
                                 <td>@log.Status</td>
+                                <td>@log.FoodType · @log.Amount</td>
                                 <td>@log.StaffName</td>
                                 <td>
-                                    @if (!string.IsNullOrWhiteSpace(log.PhotoUrl))
+                                    @if (log.MediaType == "Video" && !string.IsNullOrWhiteSpace(log.MediaUrl))
                                     {
-                                        <a href="@log.PhotoUrl" target="_blank" rel="noopener" class="hbh-care-photo-link"><img src="@log.PhotoUrl" alt="Ảnh nhật ký chăm sóc" class="hbh-care-photo" /></a>
+                                        <video class="hbh-care-video" controls preload="metadata"><source src="@log.MediaUrl" /></video>
+                                    }
+                                    else if (!string.IsNullOrWhiteSpace(log.MediaUrl ?? log.PhotoUrl))
+                                    {
+                                        var imageUrl = log.MediaUrl ?? log.PhotoUrl;
+                                        <a href="@imageUrl" target="_blank" rel="noopener" class="hbh-care-photo-link"><img src="@imageUrl" alt="Ảnh nhật ký chăm sóc" class="hbh-care-photo" /></a>
                                     }
                                     else
                                     {

@@ -56,7 +56,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_MedicalRecords_H
 
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_FoodDiaryLogs_HotelBookings')
     ALTER TABLE dbo.FoodDiaryLogs WITH CHECK ADD CONSTRAINT FK_FoodDiaryLogs_HotelBookings
-        FOREIGN KEY (HotelBookingId) REFERENCES dbo.HotelBookings(HotelBookingId) ON DELETE SET NULL;
+        FOREIGN KEY (HotelBookingId) REFERENCES dbo.HotelBookings(HotelBookingId) ON DELETE NO ACTION;
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_PetBioTimelines_HotelBookingId' AND object_id = OBJECT_ID(N'dbo.PetBioTimelines'))
     CREATE INDEX IX_PetBioTimelines_HotelBookingId ON dbo.PetBioTimelines(HotelBookingId);

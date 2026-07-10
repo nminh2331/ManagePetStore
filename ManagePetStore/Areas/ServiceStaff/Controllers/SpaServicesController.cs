@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
+using ManagePetStore.Hubs;
 using ManagePetStore.Models;
 using ManagePetStore.Areas.ServiceStaff.Models;
 using ManagePetStore.Services;
@@ -28,15 +30,21 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
         private readonly PetStoreManagementContext _context;
         private readonly IHotelBookingHistoryService _historyService;
+        private readonly IHotelCareMediaService _hotelCareMediaService;
+        private readonly IHubContext<HotelCareHub> _hotelCareHub;
         private readonly ILogger<SpaServicesController> _logger;
 
         public SpaServicesController(
             PetStoreManagementContext context,
             IHotelBookingHistoryService historyService,
+            IHotelCareMediaService hotelCareMediaService,
+            IHubContext<HotelCareHub> hotelCareHub,
             ILogger<SpaServicesController> logger)
         {
             _context = context;
             _historyService = historyService;
+            _hotelCareMediaService = hotelCareMediaService;
+            _hotelCareHub = hotelCareHub;
             _logger = logger;
         }
 
@@ -1250,6 +1258,174 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return View(
                 "~/Areas/ServiceStaff/Views/SpaServices/HotelHistoryDetails.cshtml",
                 new StaffHotelBookingDetailPageViewModel { Booking = booking });
+        }
+
+        [HttpPost("HotelCareLog")]
+        [ValidateAntiForgeryToken]
+        [RequestSizeLimit(55 * 1024 * 1024)]
+        public async Task<IActionResult> CreateHotelCareLog(HotelCareLogRequest request)
+        {
+            var allowedActivityTypes = new[]
+            {
+                "General", "Feeding", "Health", "Exercise", "Hygiene", "Medication", "CameraSnapshot"
+            };
+
+            if (!allowedActivityTypes.Contains(request.ActivityType, StringComparer.OrdinalIgnoreCase))
+            {
+                ModelState.AddModelError(nameof(request.ActivityType), "Loại hoạt động không hợp lệ.");
+            }
+
+            var booking = await _context.HotelBookings
+                .Include(item => item.Pet)
+                .Include(item => item.Customer)
+                .FirstOrDefaultAsync(item => item.HotelBookingId == request.HotelBookingId);
+
+            if (booking == null)
+            {
+                return NotFound();
+            }
+
+            if (!string.Equals(booking.Status, "Active", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(booking.Status, "Đang ở", StringComparison.OrdinalIgnoreCase))
+            {
+                ModelState.AddModelError(string.Empty, "Chỉ có thể cập nhật nhật ký cho booking đang lưu trú.");
+            }
+
+            var occurredAt = request.OccurredAt ?? DateTime.Now;
+            var earliestAllowed = (booking.ActualCheckInAt ?? booking.CheckInDate).AddHours(-1);
+            if (occurredAt > DateTime.Now.AddMinutes(5) || occurredAt < earliestAllowed)
+            {
+                ModelState.AddModelError(nameof(request.OccurredAt), "Thời gian nhật ký phải thuộc lượt lưu trú và không được ở tương lai.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                TempData["HotelCareError"] = ModelState.Values
+                    .SelectMany(value => value.Errors)
+                    .Select(error => error.ErrorMessage)
+                    .FirstOrDefault() ?? "Thông tin nhật ký không hợp lệ.";
+                return RedirectToAction(nameof(HotelHistoryDetails), new { id = request.HotelBookingId });
+            }
+
+            HotelCareMediaResult? media = null;
+            try
+            {
+                media = await _hotelCareMediaService.SaveAsync(booking.HotelBookingId, request.MediaFile);
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["HotelCareError"] = ex.Message;
+                return RedirectToAction(nameof(HotelHistoryDetails), new { id = request.HotelBookingId });
+            }
+
+            var staffUserId = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedUserId)
+                ? parsedUserId
+                : (int?)null;
+            var staffName = User.FindFirstValue("FullName") ?? User.Identity?.Name ?? "Nhân viên";
+            var safeTitle = request.Title.Trim();
+            var safeStatus = request.Status.Trim();
+            var safeNote = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+            var notificationMessage = BuildCareNotificationMessage(safeStatus, safeNote);
+            var notificationTitle = $"{booking.Pet.Name}: {safeTitle}";
+            if (notificationTitle.Length > 180)
+            {
+                notificationTitle = notificationTitle[..177] + "...";
+            }
+
+            var careLog = new FoodDiaryLog
+            {
+                LogId = $"FD-{Guid.NewGuid():N}",
+                PetName = booking.Pet.Name,
+                CageId = booking.CageId,
+                HotelBookingId = booking.HotelBookingId,
+                ActivityType = request.ActivityType,
+                Title = safeTitle,
+                Status = safeStatus,
+                FoodType = string.IsNullOrWhiteSpace(request.FoodType) ? "Không áp dụng" : request.FoodType.Trim(),
+                Amount = string.IsNullOrWhiteSpace(request.Amount) ? "Không áp dụng" : request.Amount.Trim(),
+                PhotoUrl = media?.MediaType == "Image" ? media.PublicUrl : null,
+                MediaUrl = media?.PublicUrl,
+                MediaType = media?.MediaType,
+                Note = safeNote,
+                Time = occurredAt.ToString("HH:mm"),
+                OccurredAt = occurredAt,
+                StaffName = staffName,
+                IsVisibleToCustomer = request.IsVisibleToCustomer,
+                CreatedByUserId = staffUserId
+            };
+
+            _context.FoodDiaryLogs.Add(careLog);
+            _context.PetBioTimelines.Add(new PetBioTimeline
+            {
+                PetId = booking.PetId,
+                HotelBookingId = booking.HotelBookingId,
+                Date = occurredAt,
+                Title = safeTitle.Length > 100 ? safeTitle[..100] : safeTitle,
+                Type = "HotelDailyCare",
+                Description = notificationMessage
+            });
+
+            CustomerNotification? notification = null;
+            if (request.IsVisibleToCustomer)
+            {
+                notification = new CustomerNotification
+                {
+                    CustomerId = booking.CustomerId,
+                    HotelBookingId = booking.HotelBookingId,
+                    Type = "DailyCare",
+                    Title = notificationTitle,
+                    Message = notificationMessage,
+                    LinkUrl = $"/Customer/HotelBooking/Details/{booking.HotelBookingId}",
+                    CreatedAt = DateTime.Now
+                };
+                _context.CustomerNotifications.Add(notification);
+            }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                await _hotelCareMediaService.DeleteAsync(media?.PublicUrl);
+                _logger.LogError(ex, "Cannot save daily care log for hotel booking {HotelBookingId}.", booking.HotelBookingId);
+                TempData["HotelCareError"] = "Không thể lưu nhật ký lúc này. Vui lòng thử lại.";
+                return RedirectToAction(nameof(HotelHistoryDetails), new { id = booking.HotelBookingId });
+            }
+
+            if (notification != null)
+            {
+                try
+                {
+                    await _hotelCareHub.Clients
+                        .Group(HotelCareHub.GroupName(booking.CustomerId))
+                        .SendAsync("CareLogUpdated", new
+                        {
+                            notificationId = notification.NotificationId,
+                            bookingId = booking.HotelBookingId,
+                            petName = booking.Pet.Name,
+                            title = notification.Title,
+                            message = notification.Message,
+                            mediaUrl = media?.PublicUrl,
+                            mediaType = media?.MediaType,
+                            occurredAt,
+                            linkUrl = notification.LinkUrl
+                        });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Daily care log was saved but realtime delivery failed for customer {CustomerId}.", booking.CustomerId);
+                }
+            }
+
+            TempData["HotelCareSuccess"] = $"Đã cập nhật nhật ký chăm sóc của {booking.Pet.Name}.";
+            return RedirectToAction(nameof(HotelHistoryDetails), new { id = booking.HotelBookingId });
+        }
+
+        private static string BuildCareNotificationMessage(string status, string? note)
+        {
+            var message = string.IsNullOrWhiteSpace(note) ? status : $"{status}. {note}";
+            return message.Length > 500 ? message[..497] + "..." : message;
         }
 
         private static string ResolveHotelStatusKey(string? status)

@@ -111,6 +111,7 @@ builder.Services.AddScoped<ManagePetStore.Repositories.Warehouse.IStockMovementR
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IProductCategoryService, ProductCategoryService>();
 builder.Services.AddScoped<IHotelBookingHistoryService, HotelBookingHistoryService>();
+builder.Services.AddScoped<IHotelCareMediaService, HotelCareMediaService>();
 builder.Services.AddScoped<ManagePetStore.Services.Warehouse.IInventoryBatchService, ManagePetStore.Services.Warehouse.InventoryBatchService>();
 builder.Services.AddScoped<ManagePetStore.Services.Warehouse.IStockMovementService, ManagePetStore.Services.Warehouse.StockMovementService>();
 builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
@@ -171,6 +172,7 @@ app.UseAuthorization();
 
 // Đăng ký map hub cho SignalR
 app.MapHub<ManagePetStore.Hubs.ChatHub>("/chatHub");
+app.MapHub<ManagePetStore.Hubs.HotelCareHub>("/hotelCareHub");
 
 
 // =========================================================================
@@ -213,6 +215,27 @@ using (var scope = app.Services.CreateScope())
             IF COL_LENGTH(N'dbo.FoodDiaryLogs', N'OccurredAt') IS NULL
                 ALTER TABLE dbo.FoodDiaryLogs ADD OccurredAt DATETIME NULL;
 
+            IF COL_LENGTH(N'dbo.FoodDiaryLogs', N'ActivityType') IS NULL
+                ALTER TABLE dbo.FoodDiaryLogs ADD ActivityType NVARCHAR(30) NOT NULL
+                    CONSTRAINT DF_FoodDiaryLogs_ActivityType DEFAULT N'General';
+
+            IF COL_LENGTH(N'dbo.FoodDiaryLogs', N'Title') IS NULL
+                ALTER TABLE dbo.FoodDiaryLogs ADD Title NVARCHAR(150) NOT NULL
+                    CONSTRAINT DF_FoodDiaryLogs_Title DEFAULT N'Nhật ký chăm sóc';
+
+            IF COL_LENGTH(N'dbo.FoodDiaryLogs', N'MediaUrl') IS NULL
+                ALTER TABLE dbo.FoodDiaryLogs ADD MediaUrl NVARCHAR(500) NULL;
+
+            IF COL_LENGTH(N'dbo.FoodDiaryLogs', N'MediaType') IS NULL
+                ALTER TABLE dbo.FoodDiaryLogs ADD MediaType NVARCHAR(30) NULL;
+
+            IF COL_LENGTH(N'dbo.FoodDiaryLogs', N'IsVisibleToCustomer') IS NULL
+                ALTER TABLE dbo.FoodDiaryLogs ADD IsVisibleToCustomer BIT NOT NULL
+                    CONSTRAINT DF_FoodDiaryLogs_IsVisibleToCustomer DEFAULT 1;
+
+            IF COL_LENGTH(N'dbo.FoodDiaryLogs', N'CreatedByUserId') IS NULL
+                ALTER TABLE dbo.FoodDiaryLogs ADD CreatedByUserId INT NULL;
+
             IF COL_LENGTH(N'dbo.HotelBookings', N'ScheduledCheckInDate') IS NULL
                 ALTER TABLE dbo.HotelBookings ADD ScheduledCheckInDate DATETIME NULL;
 
@@ -224,6 +247,26 @@ using (var scope = app.Services.CreateScope())
 
             IF COL_LENGTH(N'dbo.HotelBookings', N'ActualCheckOutAt') IS NULL
                 ALTER TABLE dbo.HotelBookings ADD ActualCheckOutAt DATETIME NULL;
+
+            IF OBJECT_ID(N'dbo.CustomerNotifications', N'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.CustomerNotifications (
+                    NotificationId BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_CustomerNotifications PRIMARY KEY,
+                    CustomerId INT NOT NULL,
+                    HotelBookingId INT NULL,
+                    [Type] NVARCHAR(30) NOT NULL CONSTRAINT DF_CustomerNotifications_Type DEFAULT N'DailyCare',
+                    Title NVARCHAR(180) NOT NULL,
+                    [Message] NVARCHAR(500) NOT NULL,
+                    LinkUrl NVARCHAR(500) NULL,
+                    IsRead BIT NOT NULL CONSTRAINT DF_CustomerNotifications_IsRead DEFAULT 0,
+                    CreatedAt DATETIME NOT NULL CONSTRAINT DF_CustomerNotifications_CreatedAt DEFAULT GETDATE(),
+                    ReadAt DATETIME NULL,
+                    CONSTRAINT FK_CustomerNotifications_Customers FOREIGN KEY (CustomerId)
+                        REFERENCES dbo.Customers(CustomerId) ON DELETE CASCADE,
+                    CONSTRAINT FK_CustomerNotifications_HotelBookings FOREIGN KEY (HotelBookingId)
+                        REFERENCES dbo.HotelBookings(HotelBookingId) ON DELETE SET NULL
+                );
+            END;
 
             EXEC(N'
                 UPDATE dbo.HotelBookings
@@ -253,7 +296,7 @@ using (var scope = app.Services.CreateScope())
 
             IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_FoodDiaryLogs_HotelBookings')
                 ALTER TABLE dbo.FoodDiaryLogs WITH CHECK ADD CONSTRAINT FK_FoodDiaryLogs_HotelBookings
-                    FOREIGN KEY (HotelBookingId) REFERENCES dbo.HotelBookings(HotelBookingId) ON DELETE SET NULL;
+                    FOREIGN KEY (HotelBookingId) REFERENCES dbo.HotelBookings(HotelBookingId) ON DELETE NO ACTION;
 
             IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_PetBioTimelines_HotelBookingId' AND object_id = OBJECT_ID(N'dbo.PetBioTimelines'))
                 CREATE INDEX IX_PetBioTimelines_HotelBookingId ON dbo.PetBioTimelines(HotelBookingId);
@@ -263,6 +306,13 @@ using (var scope = app.Services.CreateScope())
 
             IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_FoodDiaryLogs_HotelBookingId' AND object_id = OBJECT_ID(N'dbo.FoodDiaryLogs'))
                 CREATE INDEX IX_FoodDiaryLogs_HotelBookingId ON dbo.FoodDiaryLogs(HotelBookingId);
+
+            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_FoodDiaryLogs_Booking_OccurredAt' AND object_id = OBJECT_ID(N'dbo.FoodDiaryLogs'))
+                CREATE INDEX IX_FoodDiaryLogs_Booking_OccurredAt ON dbo.FoodDiaryLogs(HotelBookingId, OccurredAt DESC);
+
+            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_CustomerNotifications_Customer_Unread_CreatedAt' AND object_id = OBJECT_ID(N'dbo.CustomerNotifications'))
+                CREATE INDEX IX_CustomerNotifications_Customer_Unread_CreatedAt
+                    ON dbo.CustomerNotifications(CustomerId, IsRead, CreatedAt DESC);
 
             IF OBJECT_ID(N'dbo.SpaReviews', N'U') IS NULL
             BEGIN

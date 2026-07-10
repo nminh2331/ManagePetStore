@@ -98,7 +98,8 @@ public class HotelBookingHistoryService : IHotelBookingHistoryService
         var careLogs = await _context.FoodDiaryLogs
             .AsNoTracking()
             .Where(log =>
-                log.HotelBookingId == booking.HotelBookingId ||
+                (log.HotelBookingId == booking.HotelBookingId &&
+                 (!customerId.HasValue || log.IsVisibleToCustomer)) ||
                 (log.HotelBookingId == null &&
                  log.OccurredAt.HasValue &&
                  log.CageId == booking.CageId &&
@@ -113,9 +114,13 @@ public class HotelBookingHistoryService : IHotelBookingHistoryService
                 OccurredAt = log.OccurredAt,
                 LegacyTime = log.Time,
                 Status = log.Status,
+                ActivityType = log.ActivityType,
+                Title = log.Title,
                 FoodType = log.FoodType,
                 Amount = log.Amount,
                 PhotoUrl = log.PhotoUrl,
+                MediaUrl = log.MediaUrl,
+                MediaType = log.MediaType,
                 Note = log.Note,
                 StaffName = log.StaffName
             })
