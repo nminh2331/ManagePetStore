@@ -11,6 +11,7 @@
 @section Styles {
     <link rel="stylesheet" href="~/css/customer-pets.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/customer-hotel-bookings.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/hotel-booking-history.css" asp-append-version="true" />
 }
 
 @if (TempData["SuccessMessage"] != null)
@@ -138,6 +139,11 @@
                             </div>
                         </div>
                         <div class="hb-card-action">
+                            <a asp-action="Details"
+                               asp-route-id="@booking.HotelBookingId"
+                               class="hb-btn-primary">
+                                Xem chi tiết
+                            </a>
                             @if (booking.CanCancel)
                             {
                                 <form asp-action="Cancel" method="post" onsubmit="return confirm('Bạn chắc chắn muốn hủy lịch đặt phòng này?');">
@@ -154,6 +160,32 @@
                     </article>
                 }
             </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <nav class="hbh-pagination" aria-label="Phân trang lịch sử lưu trú">
+                    @if (Model.HasPreviousPage)
+                    {
+                        <a asp-action="Index" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-page="@(Model.Page - 1)" aria-label="Trang trước"><i class="bi bi-chevron-left"></i></a>
+                    }
+                    @for (var pageNumber = 1; pageNumber <= Model.TotalPages; pageNumber++)
+                    {
+                        if (pageNumber == Model.Page)
+                        {
+                            <span>@pageNumber</span>
+                        }
+                        else
+                        {
+                            <a asp-action="Index" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-page="@pageNumber">@pageNumber</a>
+                        }
+                    }
+                    @if (Model.HasNextPage)
+                    {
+                        <a asp-action="Index" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-page="@(Model.Page + 1)" aria-label="Trang sau"><i class="bi bi-chevron-right"></i></a>
+                    }
+                </nav>
+            }
+        }
         }
     </section>
 </div>

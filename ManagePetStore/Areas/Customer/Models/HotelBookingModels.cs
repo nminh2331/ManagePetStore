@@ -91,3 +91,8 @@ public class HotelBookingListItemViewModel
     public string StatusKey { get; set; } = "";
     public bool CanCancel { get; set; }
 }
+
+public class HotelBookingDetailPageViewModel : CustomerSidebarViewModel
+{
+    public ManagePetStore.Models.HotelBookingHistoryDetailViewModel Booking { get; set; } = new();
+}

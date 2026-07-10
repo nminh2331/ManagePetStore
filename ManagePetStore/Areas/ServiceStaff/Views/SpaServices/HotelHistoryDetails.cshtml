@@ -1,0 +1,24 @@
+@model ManagePetStore.Areas.ServiceStaff.Models.StaffHotelBookingDetailPageViewModel
+
+@{
+    Layout = "~/Areas/ServiceStaff/Views/Shared/_ServiceLayout.cshtml";
+    ViewData["Title"] = $"Chi tiết {Model.Booking.DisplayBookingId}";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/customer-hotel-bookings.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/hotel-booking-history.css" asp-append-version="true" />
+}
+
+<div class="container-fluid py-3">
+    <div class="hbh-page-header">
+        <div>
+            <a href="/SpaServices/HotelHistory?petId=@Model.Booking.PetId" class="hbh-back-link"><i class="fa-solid fa-arrow-left"></i> Lịch sử của @Model.Booking.PetName</a>
+            <h1>Chi tiết lần lưu trú</h1>
+            <p>Booking, hoạt động chăm sóc và hồ sơ sức khỏe được truy vết trên cùng một màn hình.</p>
+        </div>
+    </div>
+
+    @await Html.PartialAsync("_HotelBookingHistoryDetail", Model.Booking)
+</div>

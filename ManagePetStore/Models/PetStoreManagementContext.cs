@@ -89,9 +89,6 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<Voucher> Vouchers { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseSqlServer("Server= DESKTOP-0NF6T35;Database= PetStoreManagement;Trusted_Connection=True; TrustServerCertificate=True;");
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Banner>(entity =>
@@ -202,10 +199,13 @@ public partial class PetStoreManagementContext : DbContext
         {
             entity.HasKey(e => e.LogId);
 
+            entity.HasIndex(e => e.HotelBookingId, "IX_FoodDiaryLogs_HotelBookingId");
+
             entity.Property(e => e.LogId).HasMaxLength(50);
             entity.Property(e => e.Amount).HasMaxLength(50);
             entity.Property(e => e.CageId).HasMaxLength(20);
             entity.Property(e => e.FoodType).HasMaxLength(100);
+            entity.Property(e => e.OccurredAt).HasColumnType("datetime");
             entity.Property(e => e.PetName).HasMaxLength(50);
             entity.Property(e => e.PhotoUrl)
                 .HasMaxLength(500)
@@ -217,6 +217,11 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasOne(d => d.Cage).WithMany(p => p.FoodDiaryLogs)
                 .HasForeignKey(d => d.CageId)
                 .HasConstraintName("FK_FoodDiaryLogs_Cages");
+
+            entity.HasOne(d => d.HotelBooking).WithMany(p => p.FoodDiaryLogs)
+                .HasForeignKey(d => d.HotelBookingId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_FoodDiaryLogs_HotelBookings");
         });
 
         modelBuilder.Entity<HotelBooking>(entity =>
@@ -224,11 +229,15 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasIndex(e => e.CageId, "IX_HotelBookings_CageId");
 
             entity.Property(e => e.BaseDailyPrice).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.ActualCheckInAt).HasColumnType("datetime");
+            entity.Property(e => e.ActualCheckOutAt).HasColumnType("datetime");
             entity.Property(e => e.CageId).HasMaxLength(20);
             entity.Property(e => e.CheckInDate).HasColumnType("datetime");
             entity.Property(e => e.CheckOutDate).HasColumnType("datetime");
             entity.Property(e => e.Discount).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.FinalAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.ScheduledCheckInDate).HasColumnType("datetime");
+            entity.Property(e => e.ScheduledCheckOutDate).HasColumnType("datetime");
             entity.Property(e => e.Status).HasMaxLength(30);
             entity.Property(e => e.Subtotal).HasColumnType("decimal(18, 2)");
 
@@ -269,6 +278,8 @@ public partial class PetStoreManagementContext : DbContext
         {
             entity.HasKey(e => e.RecordId).HasName("PK__MedicalR__FBDF78E9E466D61C");
 
+            entity.HasIndex(e => e.HotelBookingId, "IX_MedicalRecords_HotelBookingId");
+
             entity.Property(e => e.AbnormalSymptoms).HasMaxLength(500);
             entity.Property(e => e.DateCreated)
                 .HasDefaultValueSql("(getdate())")
@@ -287,6 +298,11 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasOne(d => d.Pet).WithMany(p => p.MedicalRecords)
                 .HasForeignKey(d => d.PetId)
                 .HasConstraintName("FK_MedicalRecords_Pets");
+
+            entity.HasOne(d => d.HotelBooking).WithMany(p => p.MedicalRecords)
+                .HasForeignKey(d => d.HotelBookingId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_MedicalRecords_HotelBookings");
         });
 
         modelBuilder.Entity<Order>(entity =>
@@ -383,6 +399,8 @@ public partial class PetStoreManagementContext : DbContext
         {
             entity.HasKey(e => e.TimelineId);
 
+            entity.HasIndex(e => e.HotelBookingId, "IX_PetBioTimelines_HotelBookingId");
+
             entity.Property(e => e.Date).HasColumnType("datetime");
             entity.Property(e => e.Title).HasMaxLength(100);
             entity.Property(e => e.Type).HasMaxLength(30);
@@ -390,6 +408,11 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasOne(d => d.Pet).WithMany(p => p.PetBioTimelines)
                 .HasForeignKey(d => d.PetId)
                 .HasConstraintName("FK_PetBioTimelines_Pets");
+
+            entity.HasOne(d => d.HotelBooking).WithMany(p => p.PetBioTimelines)
+                .HasForeignKey(d => d.HotelBookingId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_PetBioTimelines_HotelBookings");
         });
 
         modelBuilder.Entity<Product>(entity =>

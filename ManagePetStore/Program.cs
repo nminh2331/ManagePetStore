@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using ManagePetStore.Models;
@@ -12,8 +13,16 @@ var builder = WebApplication.CreateBuilder(args);
 // =========================================================================
 // 1. CẤU HÌNH CƠ SỞ DỮ LIỆU (ENTITY FRAMEWORK CORE)
 // =========================================================================
+var configuredConnection = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured.");
+var sqlConnection = new SqlConnectionStringBuilder(configuredConnection)
+{
+    ConnectTimeout = 5,
+    ConnectRetryCount = 0
+};
+
 builder.Services.AddDbContext<PetStoreManagementContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(sqlConnection.ConnectionString, sqlOptions => sqlOptions.CommandTimeout(15)));
 
 // =========================================================================
 // 2. CẤU HÌNH XÁC THỰC & PHÂN QUYỀN (COOKIE AUTHENTICATION)
@@ -101,6 +110,7 @@ builder.Services.AddScoped<ManagePetStore.Repositories.Warehouse.IStockMovementR
 // Warehouse services
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IProductCategoryService, ProductCategoryService>();
+builder.Services.AddScoped<IHotelBookingHistoryService, HotelBookingHistoryService>();
 builder.Services.AddScoped<ManagePetStore.Services.Warehouse.IInventoryBatchService, ManagePetStore.Services.Warehouse.InventoryBatchService>();
 builder.Services.AddScoped<ManagePetStore.Services.Warehouse.IStockMovementService, ManagePetStore.Services.Warehouse.StockMovementService>();
 builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
@@ -185,10 +195,92 @@ using (var scope = app.Services.CreateScope())
     var context = scope.ServiceProvider.GetRequiredService<PetStoreManagementContext>();
     try
     {
-        // Chạy câu lệnh SQL an toàn để thêm cột TargetSpecies nếu chưa tồn tại
-        context.Database.ExecuteSqlRaw(
-            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE Name = N'TargetSpecies' AND Object_ID = Object_ID(N'SpaServices')) " +
-            "ALTER TABLE SpaServices ADD TargetSpecies NVARCHAR(50) NULL;");
+        using var schemaUpdateCancellation = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        // Đồng bộ các phần schema bổ sung theo cách idempotent cho database hiện tại.
+        await context.Database.ExecuteSqlRawAsync("""
+            IF COL_LENGTH(N'dbo.SpaServices', N'TargetSpecies') IS NULL
+                ALTER TABLE dbo.SpaServices ADD TargetSpecies NVARCHAR(50) NULL;
+
+            IF COL_LENGTH(N'dbo.PetBioTimelines', N'HotelBookingId') IS NULL
+                ALTER TABLE dbo.PetBioTimelines ADD HotelBookingId INT NULL;
+
+            IF COL_LENGTH(N'dbo.MedicalRecords', N'HotelBookingId') IS NULL
+                ALTER TABLE dbo.MedicalRecords ADD HotelBookingId INT NULL;
+
+            IF COL_LENGTH(N'dbo.FoodDiaryLogs', N'HotelBookingId') IS NULL
+                ALTER TABLE dbo.FoodDiaryLogs ADD HotelBookingId INT NULL;
+
+            IF COL_LENGTH(N'dbo.FoodDiaryLogs', N'OccurredAt') IS NULL
+                ALTER TABLE dbo.FoodDiaryLogs ADD OccurredAt DATETIME NULL;
+
+            IF COL_LENGTH(N'dbo.HotelBookings', N'ScheduledCheckInDate') IS NULL
+                ALTER TABLE dbo.HotelBookings ADD ScheduledCheckInDate DATETIME NULL;
+
+            IF COL_LENGTH(N'dbo.HotelBookings', N'ScheduledCheckOutDate') IS NULL
+                ALTER TABLE dbo.HotelBookings ADD ScheduledCheckOutDate DATETIME NULL;
+
+            IF COL_LENGTH(N'dbo.HotelBookings', N'ActualCheckInAt') IS NULL
+                ALTER TABLE dbo.HotelBookings ADD ActualCheckInAt DATETIME NULL;
+
+            IF COL_LENGTH(N'dbo.HotelBookings', N'ActualCheckOutAt') IS NULL
+                ALTER TABLE dbo.HotelBookings ADD ActualCheckOutAt DATETIME NULL;
+
+            EXEC(N'
+                UPDATE dbo.HotelBookings
+                SET ScheduledCheckInDate = COALESCE(ScheduledCheckInDate, CheckInDate),
+                    ScheduledCheckOutDate = COALESCE(ScheduledCheckOutDate, CheckOutDate),
+                    ActualCheckInAt = CASE
+                        WHEN ActualCheckInAt IS NULL AND Status IN (N''Active'', N''Đang ở'', N''Đã trả'') THEN CheckInDate
+                        ELSE ActualCheckInAt
+                    END,
+                    ActualCheckOutAt = CASE
+                        WHEN ActualCheckOutAt IS NULL AND Status = N''Đã trả'' THEN CheckOutDate
+                        ELSE ActualCheckOutAt
+                    END
+                WHERE ScheduledCheckInDate IS NULL
+                   OR ScheduledCheckOutDate IS NULL
+                   OR (ActualCheckInAt IS NULL AND Status IN (N''Active'', N''Đang ở'', N''Đã trả''))
+                   OR (ActualCheckOutAt IS NULL AND Status = N''Đã trả'');
+            ');
+
+            IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PetBioTimelines_HotelBookings')
+                ALTER TABLE dbo.PetBioTimelines WITH CHECK ADD CONSTRAINT FK_PetBioTimelines_HotelBookings
+                    FOREIGN KEY (HotelBookingId) REFERENCES dbo.HotelBookings(HotelBookingId) ON DELETE SET NULL;
+
+            IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_MedicalRecords_HotelBookings')
+                ALTER TABLE dbo.MedicalRecords WITH CHECK ADD CONSTRAINT FK_MedicalRecords_HotelBookings
+                    FOREIGN KEY (HotelBookingId) REFERENCES dbo.HotelBookings(HotelBookingId) ON DELETE SET NULL;
+
+            IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_FoodDiaryLogs_HotelBookings')
+                ALTER TABLE dbo.FoodDiaryLogs WITH CHECK ADD CONSTRAINT FK_FoodDiaryLogs_HotelBookings
+                    FOREIGN KEY (HotelBookingId) REFERENCES dbo.HotelBookings(HotelBookingId) ON DELETE SET NULL;
+
+            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_PetBioTimelines_HotelBookingId' AND object_id = OBJECT_ID(N'dbo.PetBioTimelines'))
+                CREATE INDEX IX_PetBioTimelines_HotelBookingId ON dbo.PetBioTimelines(HotelBookingId);
+
+            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_MedicalRecords_HotelBookingId' AND object_id = OBJECT_ID(N'dbo.MedicalRecords'))
+                CREATE INDEX IX_MedicalRecords_HotelBookingId ON dbo.MedicalRecords(HotelBookingId);
+
+            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_FoodDiaryLogs_HotelBookingId' AND object_id = OBJECT_ID(N'dbo.FoodDiaryLogs'))
+                CREATE INDEX IX_FoodDiaryLogs_HotelBookingId ON dbo.FoodDiaryLogs(HotelBookingId);
+
+            IF OBJECT_ID(N'dbo.SpaReviews', N'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.SpaReviews (
+                    ReviewId INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_SpaReviews PRIMARY KEY,
+                    BookingId INT NOT NULL,
+                    ServiceId INT NOT NULL,
+                    GroomerId INT NOT NULL,
+                    RatingStar INT NOT NULL,
+                    Comment NVARCHAR(1000) NULL,
+                    CreatedAt DATETIME NOT NULL CONSTRAINT DF_SpaReviews_CreatedAt DEFAULT GETDATE(),
+                    CONSTRAINT FK_SpaReviews_SpaBookings FOREIGN KEY (BookingId)
+                        REFERENCES dbo.SpaBookings(BookingId),
+                    CONSTRAINT CK_SpaReviews_RatingStar CHECK (RatingStar BETWEEN 1 AND 5)
+                );
+                CREATE UNIQUE INDEX UX_SpaReviews_BookingId ON dbo.SpaReviews(BookingId);
+            END;
+            """, schemaUpdateCancellation.Token);
     }
     catch (Exception ex)
     {

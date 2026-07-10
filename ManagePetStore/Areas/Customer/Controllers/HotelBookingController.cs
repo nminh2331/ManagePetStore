@@ -2,6 +2,7 @@ using System.Data;
 using System.Security.Claims;
 using ManagePetStore.Areas.Customer.Models;
 using ManagePetStore.Models;
+using ManagePetStore.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,13 +16,16 @@ public class HotelBookingController : Controller
     private static readonly string[] BlockingStatuses = ["Đã đặt", "Active", "Đang ở"];
 
     private readonly PetStoreManagementContext _context;
+    private readonly IHotelBookingHistoryService _historyService;
     private readonly ILogger<HotelBookingController> _logger;
 
     public HotelBookingController(
         PetStoreManagementContext context,
+        IHotelBookingHistoryService historyService,
         ILogger<HotelBookingController> logger)
     {
         _context = context;
+        _historyService = historyService;
         _logger = logger;
     }
 
@@ -102,6 +106,30 @@ public class HotelBookingController : Controller
             .ToList();
 
         return View(model);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Details(int id)
+    {
+        var layout = await BuildSidebarViewModelAsync("appointments");
+        if (layout == null)
+        {
+            return RedirectToAction("Login", "Account", new { area = "Customer" });
+        }
+
+        var booking = await _historyService.GetDetailAsync(id, layout.Customer.CustomerId);
+        if (booking == null)
+        {
+            return NotFound();
+        }
+
+        return View(new HotelBookingDetailPageViewModel
+        {
+            User = layout.User,
+            Customer = layout.Customer,
+            ActiveNav = layout.ActiveNav,
+            Booking = booking
+        });
     }
 
     [HttpPost]
@@ -189,13 +217,15 @@ public class HotelBookingController : Controller
             var discount = decimal.Round(subtotal * discountRate, 0, MidpointRounding.AwayFromZero);
             var finalAmount = subtotal - discount;
 
-            _context.HotelBookings.Add(new HotelBooking
+            var booking = new HotelBooking
             {
                 CageId = cage.CageId,
                 PetId = pet.PetId,
                 CustomerId = customer.CustomerId,
                 CheckInDate = checkIn,
                 CheckOutDate = checkOut,
+                ScheduledCheckInDate = checkIn,
+                ScheduledCheckOutDate = checkOut,
                 StayDays = stayDays,
                 BaseDailyPrice = roomType.DailyPrice,
                 Subtotal = subtotal,
@@ -203,6 +233,17 @@ public class HotelBookingController : Controller
                 FinalAmount = finalAmount,
                 EarnedPoints = 0,
                 Status = "Đã đặt"
+            };
+
+            _context.HotelBookings.Add(booking);
+            _context.PetBioTimelines.Add(new PetBioTimeline
+            {
+                PetId = pet.PetId,
+                HotelBooking = booking,
+                Date = DateTime.Now,
+                Title = "Đặt phòng Hotel",
+                Type = "HotelBookingCreated",
+                Description = $"Khách hàng đặt chuồng {cage.CageId} từ {checkIn:dd/MM/yyyy} đến {checkOut:dd/MM/yyyy}."
             });
 
             await _context.SaveChangesAsync();
@@ -259,6 +300,15 @@ public class HotelBookingController : Controller
         }
 
         booking.Status = "Đã hủy";
+        _context.PetBioTimelines.Add(new PetBioTimeline
+        {
+            PetId = booking.PetId,
+            HotelBookingId = booking.HotelBookingId,
+            Date = DateTime.Now,
+            Title = "Hủy lịch lưu trú",
+            Type = "HotelBookingCancelled",
+            Description = "Khách hàng đã hủy lịch đặt phòng qua hệ thống."
+        });
         await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] = $"Đã hủy lịch Hotel của {booking.Pet.Name}.";
@@ -337,13 +387,16 @@ public class HotelBookingController : Controller
             PetName = booking.Pet.Name,
             CageId = booking.CageId,
             RoomTypeName = booking.Cage.RoomType.Type,
-            CheckInDate = booking.CheckInDate,
-            CheckOutDate = booking.CheckOutDate ?? booking.CheckInDate.AddDays(booking.StayDays),
+            CheckInDate = booking.ScheduledCheckInDate ?? booking.CheckInDate,
+            CheckOutDate = booking.ScheduledCheckOutDate
+                ?? booking.CheckOutDate
+                ?? booking.CheckInDate.AddDays(booking.StayDays),
             StayDays = booking.StayDays,
             FinalAmount = booking.FinalAmount,
             Status = booking.Status,
             StatusKey = statusKey,
-            CanCancel = statusKey == "reserved" && booking.CheckInDate.Date > DateTime.Today
+            CanCancel = statusKey == "reserved" &&
+                (booking.ScheduledCheckInDate ?? booking.CheckInDate).Date > DateTime.Today
         };
     }
 
