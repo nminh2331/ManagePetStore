@@ -266,6 +266,8 @@ public class OrderController : Controller
             TempData["ErrorMessage"] = "Không tìm thấy đơn hàng hoặc bạn không có quyền xem.";
             return RedirectToAction(nameof(Index));
         }
+
+        ViewBag.HasReturnRequest = await _context.ReturnRequests.AnyAsync(r => r.OrderId == id);
         // Lấy thêm tên và ảnh sản phẩm
         var productInfo = await LoadProductInfoBySkusAsync(
             order.OrderItems

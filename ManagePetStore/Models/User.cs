@@ -25,7 +25,15 @@ public partial class User
 
     public virtual ICollection<Blog> Blogs { get; set; } = new List<Blog>();
 
+    public virtual ICollection<ChatMessage> ChatMessages { get; set; } = new List<ChatMessage>();
+
+    public virtual ICollection<ChatSession> ChatSessionCustomers { get; set; } = new List<ChatSession>();
+
+    public virtual ICollection<ChatSession> ChatSessionManagers { get; set; } = new List<ChatSession>();
+
     public virtual Customer? Customer { get; set; }
+
+    public virtual ICollection<ReturnRequest> ReturnRequests { get; set; } = new List<ReturnRequest>();
 
     public virtual Role Role { get; set; } = null!;
 

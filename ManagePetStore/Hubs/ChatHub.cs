@@ -80,7 +80,7 @@ public class ChatHub : Hub
             // Lưu ChatMessage vào DB
             var chatMsg = new ChatMessage
             {
-                ChatSession = session,
+                Session = session,
                 SenderId = senderId,
                 MessageText = message,
                 SentAt = DateTime.Now

@@ -104,6 +104,12 @@
                                 <span class="checkout-payment-icon vnpay"><i class="bi bi-qr-code-scan"></i></span>
                                 <span class="checkout-payment-name">Thanh toán online</span>
                             </label>
+
+                            <label class="checkout-payment-card @(Model.PaymentMethod == "Wallet" ? "active" : "")">
+                                <input type="radio" name="paymentMethod" value="Wallet" @(Model.PaymentMethod == "Wallet" ? "checked" : null) />
+                                <span class="checkout-payment-icon"><i class="bi bi-wallet2 text-primary"></i></span>
+                                <span class="checkout-payment-name">Ví điện tử</span>
+                            </label>
                         </div>
                     </div>
                 </form>

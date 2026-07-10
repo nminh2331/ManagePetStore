@@ -42,7 +42,7 @@ namespace ManagePetStore.Services.Hosted
                     {
                         var context = scope.ServiceProvider.GetRequiredService<PetStoreManagementContext>();
                         
-                        var expiringBatches = await context.InventoryBatchs
+                        var expiringBatches = await context.InventoryBatches
                             .Include(b => b.ProductSkuNavigation)
                             .Where(b => b.CurrentQuantity > 0 && b.ExpiryDate <= DateTime.Now.AddDays(30))
                             .ToListAsync(stoppingToken);

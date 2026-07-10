@@ -75,7 +75,7 @@ public class ChatApiController : ControllerBase
             // Lấy 50 tin nhắn gần nhất của customerId này
             var messages = await _context.ChatMessages
                 .Include(m => m.Sender)
-                .Where(m => m.ChatSession.CustomerId == customerId)
+                .Where(m => m.Session.CustomerId == customerId)
                 .OrderByDescending(m => m.SentAt)
                 .Take(50)
                 .ToListAsync();
