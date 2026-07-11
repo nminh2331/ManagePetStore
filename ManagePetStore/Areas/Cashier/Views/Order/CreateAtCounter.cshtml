@@ -78,7 +78,7 @@
         <div class="pos-header" style="padding-top: 0; border-top: none;">
             <div class="pos-search-box">
                 <i class="bi bi-search"></i>
-                <input type="text" id="posSearchProduct" placeholder="Tìm sản phẩm, dịch vụ spa (Gõ tên hoặc SKU)..." autocomplete="off" />
+                <input type="text" id="posSearchProduct" placeholder="Tìm sản phẩm (Gõ tên hoặc SKU)..." autocomplete="off" />
                 <div class="pos-search-results" id="posProductResults" style="display: none;"></div>
             </div>
         </div>
@@ -86,7 +86,6 @@
         <div class="pos-cart-section">
             <div class="pos-tabs">
                 <button class="pos-tab active" data-target="cart-products">Sản phẩm (<span id="countProducts">0</span>)</button>
-                <button class="pos-tab" data-target="cart-spa">Dịch vụ Spa (<span id="countSpa">0</span>)</button>
                 <button class="pos-tab" data-target="cart-hotel">Hotel chờ thu (<span id="countHotel">0</span>)</button>
             </div>
 
@@ -103,26 +102,11 @@
                     <!-- Sẽ load danh sách sản phẩm vào đây -->
                 </div>
             </div>
-
-            <!-- Tab Spa -->
-            <div class="pos-tab-content" id="cart-spa">
-                <div class="pos-empty-state" id="emptySpa">
-                    <i class="bi bi-scissors"></i>
-                    <p>Chưa có dịch vụ Spa nào</p>
-                </div>
-                <div class="pos-cart-list" id="listSpa"></div>
-                
-                <h4 style="margin-top: 24px; margin-bottom: 16px; font-size: 16px; font-weight: 800;">Danh Sách Dịch Vụ Spa</h4>
-                <div id="allSpasList" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                    <!-- Sẽ load danh sách spa vào đây -->
-                </div>
-            </div>
-
             <!-- Tab Hotel chờ thu -->
             <div class="pos-tab-content" id="cart-hotel">
                 <div class="pos-empty-state" id="emptyHotel">
                     <i class="bi bi-building-check"></i>
-                    <p>Chưa có bảng kê Hotel trong đơn</p>
+                    <p>Chưa có Hotel hoặc Spa liên kết trong đơn</p>
                 </div>
                 <div class="pos-cart-list" id="listHotel"></div>
 
@@ -170,11 +154,7 @@
                         <span class="stat-value" id="lblCustomerPoints">150</span>
                     </div>
                 </div>
-                <!-- Pet Selector cho Spa -->
-                <div class="customer-pets-section" id="customerPetsSection" style="display: none;">
-                    <label>Chọn thú cưng (Cho dịch vụ Spa):</label>
-                    <select id="posSelectPet" class="pos-select"></select>
-                </div>
+
             </div>
         </div>
 
@@ -254,50 +234,7 @@
     </div>
 </div>
 
-<!-- Modal Thiết Lập Dịch Vụ Spa -->
-<div class="pos-modal-overlay" id="spaSetupModal">
-    <div class="pos-modal-card">
-        <div class="pos-modal-header">
-            <h3>Chi tiết Dịch vụ Spa</h3>
-            <button class="btn-pos-close" id="btnCloseSpaSetup"><i class="bi bi-x"></i></button>
-        </div>
-        <div class="pos-modal-body">
-            <p id="spaSetupServiceName" style="font-weight: 700; color: var(--admin-primary); font-size: 18px; margin-bottom: 16px;"></p>
-            <input type="hidden" id="spaSetupServiceId" />
-            <input type="hidden" id="spaSetupBasePrice" />
 
-            <div class="pos-form-group">
-                <label>Cân nặng thú cưng (kg) <span class="text-danger">*</span></label>
-                <div class="weight-input-wrapper">
-                    <input type="number" id="spaSetupWeight" class="pos-input" step="0.1" min="0" placeholder="VD: 5.5" />
-                    <span class="weight-unit">kg</span>
-                </div>
-                <small class="text-muted">Giá sẽ được tính toán lại dựa trên cân nặng.</small>
-            </div>
-
-            <div class="pos-form-group">
-                <label>Groomer thực hiện <span class="text-danger">*</span></label>
-                <select id="spaSetupGroomer" class="pos-select">
-                    <option value="">-- Chọn Groomer --</option>
-                </select>
-            </div>
-
-            <div class="pos-form-group">
-                <label>Giờ hẹn <span class="text-danger">*</span></label>
-                <input type="time" id="spaSetupTime" class="pos-input" />
-            </div>
-
-            <div class="spa-calculated-price">
-                <span>Thành tiền:</span>
-                <strong id="spaSetupCalculatedPrice">0đ</strong>
-            </div>
-        </div>
-        <div class="pos-modal-footer">
-            <button class="btn-pos-secondary" id="btnCancelSpaSetup">Hủy</button>
-            <button class="btn-pos-primary" id="btnSaveSpaSetup">Thêm vào giỏ</button>
-        </div>
-    </div>
-</div>
 
 <!-- Modal Danh Sách Đơn Tạm -->
 <div class="pos-modal-overlay" id="heldOrdersModal">

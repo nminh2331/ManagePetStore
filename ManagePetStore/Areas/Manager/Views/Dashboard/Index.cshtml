@@ -1,0 +1,1117 @@
+@model ManagePetStore.Areas.Manager.Models.DashboardSummaryViewModel
+@{
+    Layout = "_ManagerLayout";
+    ViewData["Title"] = "Thống kê & Báo cáo";
+}
+
+<style>
+    :root {
+        --kpi-gradient-blue: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        --kpi-gradient-green: linear-gradient(135deg, #10b981 0%, #047857 100%);
+        --kpi-gradient-red: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+        --kpi-gradient-purple: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+        --kpi-gradient-amber: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
+        --kpi-gradient-indigo: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+        --card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 5px -1px rgba(0, 0, 0, 0.03);
+        --transition-base: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .dashboard-container {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        padding-bottom: 40px;
+    }
+
+    .filter-card {
+        background: #fff;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: var(--card-shadow);
+        border: 1px solid var(--admin-border);
+    }
+
+    .filter-btn-group .btn {
+        border-radius: 10px;
+        padding: 8px 16px;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: var(--transition-base);
+    }
+
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+    }
+
+    .kpi-card {
+        border-radius: 16px;
+        padding: 24px;
+        color: #fff;
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--card-shadow);
+        transition: var(--transition-base);
+        cursor: pointer;
+    }
+
+    .kpi-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.15);
+    }
+
+    .kpi-card::before {
+        content: '';
+        position: absolute;
+        width: 150px;
+        height: 150px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 50%;
+        top: -30px;
+        right: -30px;
+        transition: var(--transition-base);
+    }
+
+    .kpi-card:hover::before {
+        transform: scale(1.2);
+    }
+
+    .kpi-card-title {
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.85;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+
+    .kpi-card-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 0;
+        white-space: nowrap;
+    }
+
+    .kpi-blue { background: var(--kpi-gradient-blue); }
+    .kpi-green { background: var(--kpi-gradient-green); }
+    .kpi-red { background: var(--kpi-gradient-red); }
+    .kpi-purple { background: var(--kpi-gradient-purple); }
+    .kpi-amber { background: var(--kpi-gradient-amber); }
+    .kpi-indigo { background: var(--kpi-gradient-indigo); }
+
+    .chart-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 24px;
+    }
+
+    @@media (max-width: 992px) {
+        .chart-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .chart-card {
+        background: #fff;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: var(--card-shadow);
+        border: 1px solid var(--admin-border);
+        transition: var(--transition-base);
+    }
+
+    .chart-card:hover {
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    .chart-card-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 12px;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 320px;
+        width: 100%;
+    }
+
+    .chart-container-small {
+        position: relative;
+        height: 260px;
+        width: 100%;
+    }
+
+    .detail-section {
+        background: #fff;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: var(--card-shadow);
+        border: 1px solid var(--admin-border);
+        min-height: 200px;
+        scroll-margin-top: 20px;
+    }
+
+    .detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 15px;
+    }
+
+    .detail-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .table-responsive {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid #f1f5f9;
+    }
+
+    .table-modern {
+        margin-bottom: 0;
+    }
+
+    .table-modern th {
+        background-color: #f8fafc;
+        color: #475569;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 14px 16px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .table-modern td {
+        padding: 14px 16px;
+        color: #334155;
+        font-size: 0.9rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .table-modern tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .table-modern tbody tr {
+        transition: var(--transition-base);
+    }
+
+    .table-modern tbody tr:hover {
+        background-color: #f8fafc;
+    }
+
+    .badge-paid {
+        background-color: #d1fae5;
+        color: #065f46;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.75rem;
+    }
+
+    .badge-pill-outline {
+        border: 1px solid #e2e8f0;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        color: #64748b;
+    }
+
+    .loader-container {
+        display: none;
+        justify-content: center;
+        align-items: center;
+        padding: 40px 0;
+    }
+
+    .empty-placeholder {
+        text-align: center;
+        padding: 40px 20px;
+        color: #64748b;
+    }
+
+    .empty-placeholder svg {
+        margin-bottom: 12px;
+        opacity: 0.5;
+    }
+</style>
+
+<div class="dashboard-container">
+    <!-- Header Page -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h1 class="h3 font-weight-700 mb-1" style="color: #0f172a;">Dashboard & Thống kê</h1>
+            <p class="text-muted mb-0">Xem kết quả hệ thống, doanh số, dòng tiền và phân tích dữ liệu thực tế.</p>
+        </div>
+        <div class="text-muted text-sm">
+            <span>Kỳ báo cáo: <strong>@Model.FromDate.ToString("dd/MM/yyyy")</strong> - <strong>@Model.ToDate.ToString("dd/MM/yyyy")</strong></span>
+        </div>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="filter-card">
+        <form method="get" id="filterForm" class="row align-items-end g-3">
+            <div class="col-md-3 col-sm-6">
+                <label class="form-label font-weight-600 text-sm">Từ ngày</label>
+                <input type="date" name="fromDate" id="fromDateInput" class="form-control" value="@ViewBag.FromDate" />
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <label class="form-label font-weight-600 text-sm">Đến ngày</label>
+                <input type="date" name="toDate" id="toDateInput" class="form-control" value="@ViewBag.ToDate" />
+            </div>
+            <div class="col-md-4 col-sm-12">
+                <label class="form-label font-weight-600 text-sm">Chọn nhanh</label>
+                <div class="filter-btn-group d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary flex-grow-1" onclick="setDateRange(7)">7 ngày</button>
+                    <button type="button" class="btn btn-outline-secondary flex-grow-1" onclick="setDateRange(30)">30 ngày</button>
+                    <button type="button" class="btn btn-outline-secondary flex-grow-1" onclick="setDateRange('month')">Tháng này</button>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-12">
+                <button type="submit" class="btn btn-primary w-100" style="border-radius: 10px; padding: 9px 12px; font-weight: 600;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="me-2 d-inline-block">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>Lọc báo cáo
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- KPI Grid -->
+    <div class="kpi-grid">
+        <div class="kpi-card kpi-blue" onclick="fetchCashFlowDetails('in', 'Tổng dòng tiền vào (Doanh thu thực thu)')">
+            <div class="kpi-card-title">Doanh số (Doanh thu)</div>
+            <div class="kpi-card-value">@Model.TotalRevenue.ToString("C0", new System.Globalization.CultureInfo("vi-VN"))</div>
+            <span class="text-sm opacity-85 mt-2 d-inline-block">Click để xem chi tiết tiền vào</span>
+        </div>
+        <div class="kpi-card kpi-green" onclick="fetchCashFlowDetails('in', 'Tổng dòng tiền vào')">
+            <div class="kpi-card-title">Dòng tiền vào (Cash In)</div>
+            <div class="kpi-card-value">@Model.CashIn.ToString("C0", new System.Globalization.CultureInfo("vi-VN"))</div>
+            <span class="text-sm opacity-85 mt-2 d-inline-block">Doanh số thu từ đơn hàng</span>
+        </div>
+        <div class="kpi-card kpi-red" onclick="fetchCashFlowDetails('out', 'Tổng dòng tiền ra (Chi phí nhập kho)')">
+            <div class="kpi-card-title">Dòng tiền ra (Cash Out)</div>
+            <div class="kpi-card-value">@Model.CashOut.ToString("C0", new System.Globalization.CultureInfo("vi-VN"))</div>
+            <span class="text-sm opacity-85 mt-2 d-inline-block">Click để xem chi tiết tiền ra</span>
+        </div>
+        <div class="kpi-card @(Model.NetCashFlow >= 0 ? "kpi-indigo" : "kpi-amber")" onclick="fetchCashFlowDetails('in', 'Xem dòng tiền')">
+            <div class="kpi-card-title">Dòng tiền ròng</div>
+            <div class="kpi-card-value">@Model.NetCashFlow.ToString("C0", new System.Globalization.CultureInfo("vi-VN"))</div>
+            <span class="text-sm opacity-85 mt-2 d-inline-block">Cash In - Cash Out</span>
+        </div>
+        <div class="kpi-card kpi-purple" onclick="fetchRevenueDetails('Product', 'Chi tiết đơn hàng Sản phẩm')">
+            <div class="kpi-card-title">Tổng đơn hàng hoàn thành</div>
+            <div class="kpi-card-value">@Model.TotalOrders đơn</div>
+            <span class="text-sm opacity-85 mt-2 d-inline-block">Click để xem đơn sản phẩm</span>
+        </div>
+        <div class="kpi-card kpi-amber" id="blogCard">
+            <div class="kpi-card-title">Lượt xem Blog</div>
+            <div class="kpi-card-value">@Model.TotalBlogViews.ToString("N0")</div>
+            <span class="text-sm opacity-85 mt-2 d-inline-block">Tổng tương tác bài viết</span>
+        </div>
+    </div>
+
+    <!-- Charts Row 1 -->
+    <div class="chart-grid">
+        <!-- Xu hướng -->
+        <div class="chart-card">
+            <div class="chart-card-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: #3b82f6;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                Xu hướng Doanh số & Chi phí nhập kho (Click điểm mốc để xem chi tiết)
+            </div>
+            <div class="chart-container">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Cơ cấu doanh số -->
+        <div class="chart-card">
+            <div class="chart-card-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: #10b981;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.003 9.003 0 1020.945 13H11V3.055z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                </svg>
+                Cơ cấu doanh thu (Click phân mục)
+            </div>
+            <div class="chart-container-small d-flex align-items-center justify-content-center">
+                <canvas id="structureChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 2 -->
+    <div class="row g-4">
+        <!-- Dịch vụ hot -->
+        <div class="col-md-6">
+            <div class="chart-card">
+                <div class="chart-card-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: #8b5cf6;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                    </svg>
+                    Top 5 Dịch vụ Spa được đặt nhiều nhất
+                </div>
+                <div class="chart-container">
+                    <canvas id="topSpaChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <!-- Phòng khách sạn hot -->
+        <div class="col-md-6">
+            <div class="chart-card">
+                <div class="chart-card-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: #6366f1;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    Top 5 Loại phòng được đặt nhiều nhất
+                </div>
+                <div class="chart-container">
+                    <canvas id="topHotelChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 3 - Blog Hot -->
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="chart-card">
+                <div class="chart-card-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: #f59e0b;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    Top 5 Blog được đọc nhiều nhất
+                </div>
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="topBlogsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Drill-down Details Section -->
+    <div class="detail-section" id="detailSection">
+        <div class="detail-header">
+            <div>
+                <span class="detail-title" id="detailSectionTitle">Chi Tiết Dữ Liệu Thực Tế</span>
+                <p class="text-muted text-sm mb-0 mt-1" id="detailSectionSub">Bấm vào biểu đồ hoặc chỉ số KPI ở trên để tải bảng thống kê chi tiết thực tế của hạng mục.</p>
+            </div>
+            <div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="clearDetails()" style="border-radius: 8px;">Thu gọn</button>
+            </div>
+        </div>
+
+        <div class="loader-container" id="detailLoader">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+
+        <div class="empty-placeholder" id="detailEmpty">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+            </svg>
+            <p class="mb-0 font-weight-500">Chưa có dữ liệu nào được chọn.</p>
+            <p class="text-muted text-xs">Hãy click vào một điểm mốc hoặc chuyên mục trên biểu đồ để xem chi tiết giao dịch.</p>
+        </div>
+
+        <div id="detailTableContainer" style="display: none;">
+            <div class="table-responsive">
+                <table class="table table-modern align-middle" id="detailTable">
+                    <thead id="detailTableHeader">
+                        <!-- Headers Dynamic -->
+                    </thead>
+                    <tbody id="detailTableBody">
+                        <!-- Data Dynamic -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- CDN Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        // Lấy parameters từ ViewBag / Model
+        const fromDateVal = '@ViewBag.FromDate';
+        const toDateVal = '@ViewBag.ToDate';
+
+        // Biến lưu các đối tượng chart
+        let trendChartObj = null;
+        let structureChartObj = null;
+        let topSpaChartObj = null;
+        let topHotelChartObj = null;
+        let topBlogsChartObj = null;
+
+        $(document).ready(function () {
+            loadAllCharts();
+
+            // Gán sự kiện click cho thẻ blog
+            $('#blogCard').click(function() {
+                // Hiển thị top blog đọc nhiều nhất ở bảng chi tiết
+                showTopBlogsList();
+            });
+        });
+
+        // Chọn nhanh ngày
+        function setDateRange(days) {
+            const today = new Date();
+            let fromDate = new Date();
+
+            if (days === 'month') {
+                fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
+            } else {
+                fromDate.setDate(today.getDate() - (days - 1));
+            }
+
+            // Định dạng yyyy-MM-dd
+            const formatDate = (date) => {
+                const yyyy = date.getFullYear();
+                const mm = String(date.getMonth() + 1).padStart(2, '0');
+                const dd = String(date.getDate()).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
+            };
+
+            $('#fromDateInput').val(formatDate(fromDate));
+            $('#toDateInput').val(formatDate(today));
+            $('#filterForm').submit();
+        }
+
+        // Tải toàn bộ biểu đồ
+        function loadAllCharts() {
+            $.ajax({
+                url: '/Manager/Dashboard/GetChartData',
+                data: { fromDate: fromDateVal, toDate: toDateVal },
+                type: 'GET',
+                success: function (res) {
+                    initTrendChart(res.trend);
+                    initStructureChart(res.structure);
+                    initTopSpaChart(res.topSpa);
+                    initTopHotelChart(res.topHotel);
+                    initTopBlogsChart(res.topBlogs);
+                },
+                error: function (err) {
+                    console.error('Không thể tải dữ liệu biểu đồ', err);
+                }
+            });
+        }
+
+        // Định dạng tiền tệ VND
+        function formatVND(value) {
+            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+        }
+
+        // Định dạng ngày giờ
+        function formatDateString(jsonDate) {
+            if (!jsonDate) return '';
+            const d = new Date(jsonDate);
+            return d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // 1. Biểu đồ xu hướng Doanh số & Chi phí nhập kho
+        function initTrendChart(data) {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            
+            const labels = data.map(item => item.label);
+            const revenues = data.map(item => item.value);
+            const imports = data.map(item => item.value2);
+
+            trendChartObj = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Doanh số (VND)',
+                            data: revenues,
+                            backgroundColor: 'rgba(59, 130, 246, 0.75)',
+                            borderColor: '#3b82f6',
+                            borderWidth: 2,
+                            borderRadius: 6,
+                            order: 2
+                        },
+                        {
+                            label: 'Chi phí Nhập kho (VND)',
+                            data: imports,
+                            type: 'line',
+                            data: imports,
+                            borderColor: '#ef4444',
+                            borderWidth: 3,
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            fill: false,
+                            tension: 0.3,
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + formatVND(context.raw);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatVND(value).replace(' ₫', '').trim();
+                                }
+                            }
+                        }
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const dateStr = labels[index];
+                            fetchRevenueByDate(dateStr);
+                        }
+                    }
+                }
+            });
+        }
+
+        // 2. Biểu đồ cơ cấu doanh số
+        function initStructureChart(data) {
+            const ctx = document.getElementById('structureChart').getContext('2d');
+            const total = data.product + data.spa + data.hotel;
+            
+            structureChartObj = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Sản phẩm', 'Spa', 'Khách sạn'],
+                    datasets: [{
+                        data: [data.product, data.spa, data.hotel],
+                        backgroundColor: ['#3b82f6', '#8b5cf6', '#6366f1'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const percent = total > 0 ? ((context.raw / total) * 100).toFixed(1) : 0;
+                                    return context.label + ': ' + formatVND(context.raw) + ' (' + percent + '%)';
+                                }
+                            }
+                        }
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const categories = ['Product', 'Spa', 'Hotel'];
+                            const categoryLabels = ['Sản phẩm', 'Spa', 'Khách sạn'];
+                            fetchRevenueDetails(categories[index], `Chi tiết doanh thu mảng: ${categoryLabels[index]}`);
+                        }
+                    }
+                }
+            });
+        }
+
+        // 3. Top Spa
+        function initTopSpaChart(data) {
+            const ctx = document.getElementById('topSpaChart').getContext('2d');
+            
+            topSpaChartObj = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(i => i.name),
+                    datasets: [{
+                        label: 'Số lượt đặt (lần)',
+                        data: data.map(i => i.usageCount),
+                        backgroundColor: 'rgba(139, 92, 246, 0.75)',
+                        borderColor: '#8b5cf6',
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                footer: function(tooltipItems) {
+                                    const item = data[tooltipItems[0].dataIndex];
+                                    return 'Doanh số: ' + formatVND(item.totalRevenue);
+                                }
+                            }
+                        }
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const idx = elements[0].index;
+                            const service = data[idx];
+                            fetchServiceDetails('Spa', service.serviceId, `Chi tiết đặt lịch dịch vụ: ${service.name}`);
+                        }
+                    }
+                }
+            });
+        }
+
+        // 4. Top Hotel
+        function initTopHotelChart(data) {
+            const ctx = document.getElementById('topHotelChart').getContext('2d');
+            
+            topHotelChartObj = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(i => i.name),
+                    datasets: [{
+                        label: 'Số lượng đặt (phòng x ngày)',
+                        data: data.map(i => i.usageCount),
+                        backgroundColor: 'rgba(99, 102, 241, 0.75)',
+                        borderColor: '#6366f1',
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                footer: function(tooltipItems) {
+                                    const item = data[tooltipItems[0].dataIndex];
+                                    return 'Doanh số: ' + formatVND(item.totalRevenue);
+                                }
+                            }
+                        }
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const idx = elements[0].index;
+                            const service = data[idx];
+                            fetchServiceDetails('Hotel', service.serviceId, `Chi tiết đặt phòng loại: ${service.name}`);
+                        }
+                    }
+                }
+            });
+        }
+
+        // 5. Top Blogs
+        function initTopBlogsChart(data) {
+            const ctx = document.getElementById('topBlogsChart').getContext('2d');
+            
+            topBlogsChartObj = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(i => i.title.length > 25 ? i.title.substring(0, 25) + '...' : i.title),
+                    datasets: [{
+                        label: 'Lượt xem (views)',
+                        data: data.map(i => i.viewCount),
+                        backgroundColor: 'rgba(245, 158, 11, 0.75)',
+                        borderColor: '#f59e0b',
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const idx = elements[0].index;
+                            const blog = data[idx];
+                            fetchBlogDetails(blog.blogId);
+                        }
+                    }
+                }
+            });
+        }
+
+        // =========================================================================
+        // AJAX FETCH FUNCTIONS
+        // =========================================================================
+
+        function startLoading(title) {
+            $('#detailSectionTitle').text(title);
+            $('#detailSectionSub').text('Đang tải dữ liệu thực tế...');
+            $('#detailEmpty').hide();
+            $('#detailTableContainer').hide();
+            $('#detailLoader').css('display', 'flex');
+            
+            // Cuộn mượt mà tới phần chi tiết
+            document.getElementById('detailSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function endLoading(hasData) {
+            $('#detailLoader').hide();
+            if (hasData) {
+                $('#detailTableContainer').fadeIn(300);
+                $('#detailSectionSub').text('Lấy dữ liệu thực tế thành công từ hệ thống.');
+            } else {
+                $('#detailEmpty').fadeIn(300);
+                $('#detailSectionSub').text('Không tìm thấy dữ liệu phù hợp trong kỳ.');
+            }
+        }
+
+        function clearDetails() {
+            $('#detailTableContainer').hide();
+            $('#detailLoader').hide();
+            $('#detailEmpty').show();
+            $('#detailSectionTitle').text('Chi Tiết Dữ Liệu Thực Tế');
+            $('#detailSectionSub').text('Bấm vào biểu đồ hoặc chỉ số KPI ở trên để tải bảng thống kê chi tiết thực tế.');
+        }
+
+        // Lấy chi tiết doanh thu theo mảng
+        function fetchRevenueDetails(category, title) {
+            startLoading(title);
+
+            $.ajax({
+                url: '/Manager/Dashboard/GetRevenueDetails',
+                data: { category: category, fromDate: fromDateVal, toDate: toDateVal },
+                type: 'GET',
+                success: function (res) {
+                    if (res && res.length > 0) {
+                        let header = `
+                            <tr>
+                                <th>Mã đơn hàng</th>
+                                <th>Khách hàng</th>
+                                <th>Ngày giao dịch</th>
+                                <th>Giá trị đơn hàng</th>
+                                <th>PT Thanh toán</th>
+                                <th>Hành động</th>
+                            </tr>
+                        `;
+                        $('#detailTableHeader').html(header);
+
+                        let rows = '';
+                        res.forEach(item => {
+                            rows += `
+                                <tr>
+                                    <td><strong class="text-primary">${item.orderId}</strong></td>
+                                    <td>${item.customerName}</td>
+                                    <td>${formatDateString(item.orderDate)}</td>
+                                    <td><strong style="color: var(--admin-primary);">${formatVND(item.total)}</strong></td>
+                                    <td><span class="badge-pill-outline">${item.paymentMethod}</span></td>
+                                    <td>
+                                        <a href="/Manager/Order/Details?id=${item.orderId}" class="btn btn-sm btn-light border" style="border-radius: 8px;">
+                                            Xem hóa đơn
+                                        </a>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                        $('#detailTableBody').html(rows);
+                        endLoading(true);
+                    } else {
+                        endLoading(false);
+                    }
+                },
+                error: function () {
+                    endLoading(false);
+                }
+            });
+        }
+
+        // Lấy chi tiết doanh thu theo Ngày
+        function fetchRevenueByDate(dateStr) {
+            startLoading(`Danh sách đơn hàng ngày: ${dateStr}`);
+
+            $.ajax({
+                url: '/Manager/Dashboard/GetRevenueByDateDetails',
+                data: { dateStr: dateStr },
+                type: 'GET',
+                success: function (res) {
+                    if (res && res.length > 0) {
+                        let header = `
+                            <tr>
+                                <th>Mã đơn hàng</th>
+                                <th>Khách hàng</th>
+                                <th>Thời gian</th>
+                                <th>Giá trị đơn hàng</th>
+                                <th>PT Thanh toán</th>
+                                <th>Hành động</th>
+                            </tr>
+                        `;
+                        $('#detailTableHeader').html(header);
+
+                        let rows = '';
+                        res.forEach(item => {
+                            rows += `
+                                <tr>
+                                    <td><strong class="text-primary">${item.orderId}</strong></td>
+                                    <td>${item.customerName}</td>
+                                    <td>${formatDateString(item.orderDate)}</td>
+                                    <td><strong style="color: var(--admin-primary);">${formatVND(item.total)}</strong></td>
+                                    <td><span class="badge-pill-outline">${item.paymentMethod}</span></td>
+                                    <td>
+                                        <a href="/Manager/Order/Details?id=${item.orderId}" class="btn btn-sm btn-light border" style="border-radius: 8px;">
+                                            Xem hóa đơn
+                                        </a>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                        $('#detailTableBody').html(rows);
+                        endLoading(true);
+                    } else {
+                        endLoading(false);
+                    }
+                },
+                error: function () {
+                    endLoading(false);
+                }
+            });
+        }
+
+        // Lấy chi tiết dòng tiền (In / Out)
+        function fetchCashFlowDetails(type, title) {
+            startLoading(title);
+
+            $.ajax({
+                url: '/Manager/Dashboard/GetCashFlowDetails',
+                data: { type: type, fromDate: fromDateVal, toDate: toDateVal },
+                type: 'GET',
+                success: function (res) {
+                    if (res && res.length > 0) {
+                        let header = `
+                            <tr>
+                                <th>Mã đối chiếu</th>
+                                <th>Phân loại</th>
+                                <th>Nguồn</th>
+                                <th>Ngày giao dịch</th>
+                                <th>Số tiền</th>
+                                <th>Mô tả chi tiết</th>
+                                <th>Hành động</th>
+                            </tr>
+                        `;
+                        $('#detailTableHeader').html(header);
+
+                        let rows = '';
+                        res.forEach(item => {
+                            const isOut = item.type.includes('Out');
+                            const amountColor = isOut ? 'text-danger' : 'text-success';
+                            const amountPrefix = isOut ? '-' : '+';
+                            
+                            // Link hành động tùy thuộc vào Nguồn
+                            let actionLink = '';
+                            if (item.source === 'Đơn hàng') {
+                                actionLink = `/Manager/Order/Details?id=${item.referenceId}`;
+                            } else if (item.source === 'Nhập kho') {
+                                actionLink = `/Manager/Warehouse/Details?id=${item.referenceId}`;
+                            }
+
+                            rows += `
+                                <tr>
+                                    <td><strong class="text-primary">${item.referenceId}</strong></td>
+                                    <td><span class="badge ${isOut ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success'}" style="padding: 4px 8px; border-radius: 6px;">${item.type}</span></td>
+                                    <td><span class="badge bg-secondary-subtle text-secondary" style="padding: 4px 8px; border-radius: 6px;">${item.source}</span></td>
+                                    <td>${formatDateString(item.date)}</td>
+                                    <td><strong class="${amountColor}">${amountPrefix} ${formatVND(item.amount)}</strong></td>
+                                    <td><span class="text-xs text-muted">${item.description}</span></td>
+                                    <td>
+                                        ${actionLink ? `<a href="${actionLink}" class="btn btn-sm btn-light border" style="border-radius: 8px;">Chi tiết</a>` : 'N/A'}
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                        $('#detailTableBody').html(rows);
+                        endLoading(true);
+                    } else {
+                        endLoading(false);
+                    }
+                },
+                error: function () {
+                    endLoading(false);
+                }
+            });
+        }
+
+        // Lấy chi tiết đặt Dịch vụ
+        function fetchServiceDetails(type, serviceId, title) {
+            startLoading(title);
+
+            $.ajax({
+                url: '/Manager/Dashboard/GetServiceDetails',
+                data: { type: type, serviceId: serviceId, fromDate: fromDateVal, toDate: toDateVal },
+                type: 'GET',
+                success: function (res) {
+                    if (res && res.length > 0) {
+                        let header = `
+                            <tr>
+                                <th>Đơn hàng</th>
+                                <th>Khách hàng đặt</th>
+                                <th>Thời gian đơn hàng</th>
+                                <th>Doanh số dịch vụ</th>
+                                <th>PT Thanh toán</th>
+                                <th>Ghi chú / Số lượng</th>
+                                <th>Hành động</th>
+                            </tr>
+                        `;
+                        $('#detailTableHeader').html(header);
+
+                        let rows = '';
+                        res.forEach(item => {
+                            rows += `
+                                <tr>
+                                    <td><strong class="text-primary">${item.orderId}</strong></td>
+                                    <td>${item.customerName}</td>
+                                    <td>${formatDateString(item.orderDate)}</td>
+                                    <td><strong style="color: var(--admin-primary);">${formatVND(item.total)}</strong></td>
+                                    <td><span class="badge-pill-outline">${item.paymentMethod}</span></td>
+                                    <td><span class="text-xs text-muted font-weight-600">${item.status}</span></td>
+                                    <td>
+                                        <a href="/Manager/Order/Details?id=${item.orderId}" class="btn btn-sm btn-light border" style="border-radius: 8px;">
+                                            Hóa đơn gốc
+                                        </a>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                        $('#detailTableBody').html(rows);
+                        endLoading(true);
+                    } else {
+                        endLoading(false);
+                    }
+                },
+                error: function () {
+                    endLoading(false);
+                }
+            });
+        }
+
+        // Lấy chi tiết Blog cụ thể
+        function fetchBlogDetails(blogId) {
+            startLoading(`Đang truy vấn thông tin bài viết...`);
+
+            $.ajax({
+                url: '/Manager/Dashboard/GetBlogDetails',
+                data: { blogId: blogId },
+                type: 'GET',
+                success: function (res) {
+                    if (res) {
+                        $('#detailSectionTitle').text(`Xem thống kê bài viết: ${res.title}`);
+                        let header = `
+                            <tr>
+                                <th>Mã Blog</th>
+                                <th>Tiêu đề bài viết</th>
+                                <th>Tác giả</th>
+                                <th>Chuyên mục</th>
+                                <th>Lượt đọc (Views)</th>
+                                <th>Ngày khởi tạo</th>
+                                <th>Hành động</th>
+                            </tr>
+                        `;
+                        $('#detailTableHeader').html(header);
+
+                        let rows = `
+                            <tr>
+                                <td><strong>#${res.blogId}</strong></td>
+                                <td><span class="font-weight-700 text-dark">${res.title}</span></td>
+                                <td>${res.authorName}</td>
+                                <td><span class="badge bg-info-subtle text-info" style="padding: 4px 8px; border-radius: 6px;">${res.category}</span></td>
+                                <td><strong class="text-warning">${res.viewCount.toLocaleString()} lượt xem</strong></td>
+                                <td>${formatDateString(res.createdAt)}</td>
+                                <td>
+                                    <a href="/Manager/Blogs/Edit?id=${res.blogId}" class="btn btn-sm btn-light border" style="border-radius: 8px;">
+                                        Chỉnh sửa blog
+                                    </a>
+                                </td>
+                            </tr>
+                        `;
+                        $('#detailTableBody').html(rows);
+                        endLoading(true);
+                    } else {
+                        endLoading(false);
+                    }
+                },
+                error: function () {
+                    endLoading(false);
+                }
+            });
+        }
+
+        // Hiển thị danh sách top blog hot ở bảng dưới
+        function showTopBlogsList() {
+            startLoading('Xếp hạng Top bài viết Blog có lượt xem nhiều nhất');
+            $.ajax({
+                url: '/Manager/Dashboard/GetChartData',
+                data: { fromDate: fromDateVal, toDate: toDateVal },
+                type: 'GET',
+                success: function (res) {
+                    const blogs = res.topBlogs;
+                    if (blogs && blogs.length > 0) {
+                        let header = `
+                            <tr>
+                                <th>Mã Blog</th>
+                                <th>Tiêu đề bài viết</th>
+                                <th>Tác giả</th>
+                                <th>Chuyên mục</th>
+                                <th>Lượt đọc (Views)</th>
+                                <th>Ngày đăng</th>
+                                <th>Hành động</th>
+                            </tr>
+                        `;
+                        $('#detailTableHeader').html(header);
+
+                        let rows = '';
+                        blogs.forEach(blog => {
+                            rows += `
+                                <tr>
+                                    <td><strong>#${blog.blogId}</strong></td>
+                                    <td><span class="font-weight-600 text-dark">${blog.title}</span></td>
+                                    <td>${blog.authorName}</td>
+                                    <td><span class="badge bg-info-subtle text-info" style="padding: 4px 8px; border-radius: 6px;">${blog.category}</span></td>
+                                    <td><strong class="text-warning">${blog.viewCount.toLocaleString()} views</strong></td>
+                                    <td>${formatDateString(blog.createdAt)}</td>
+                                    <td>
+                                        <a href="/Manager/Blogs/Edit?id=${blog.blogId}" class="btn btn-sm btn-light border" style="border-radius: 8px;">
+                                            Sửa bài
+                                        </a>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                        $('#detailTableBody').html(rows);
+                        endLoading(true);
+                    } else {
+                        endLoading(false);
+                    }
+                },
+                error: function() {
+                    endLoading(false);
+                }
+            });
+        }
+    </script>
+}

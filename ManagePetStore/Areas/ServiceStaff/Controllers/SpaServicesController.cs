@@ -739,7 +739,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                             Total = booking.Price,
                             PaymentMethod = "Tiền mặt",
                             PointsRedeemed = 0,
-                            PointsEarned = (int)Math.Floor(booking.Price / 10000m),
+                            PointsEarned = 10,
                             Status = "Chờ thanh toán",
                             Date = DateTime.Now
                         };

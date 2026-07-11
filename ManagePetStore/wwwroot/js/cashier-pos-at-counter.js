@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Màn hình POS - Cashier
  */
 document.addEventListener('DOMContentLoaded', function () {
@@ -60,6 +60,21 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             currentCustomer = JSON.parse(savedCustomer);
             renderCustomerInfo();
+
+            // Refresh customer data from server to get latest points/tier
+            if (currentCustomer && currentCustomer.phone) {
+                fetch(`/Cashier/Order/SearchCustomers?q=${encodeURIComponent(currentCustomer.phone)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success && data.data && data.data.length > 0) {
+                            const freshCustomer = data.data.find(c => c.customerId === currentCustomer.customerId) || data.data[0];
+                            currentCustomer = freshCustomer;
+                            localStorage.setItem('pos_current_customer', JSON.stringify(currentCustomer));
+                            renderCustomerInfo();
+                        }
+                    })
+                    .catch(err => console.error("Error refreshing customer", err));
+            }
         } catch(e) {}
     }
 
@@ -75,25 +90,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     updateHeldCount();
 
-    // === LOAD TẤT CẢ SPA SERVICES ===
-    async function loadAllSpas() {
-        try {
-            const res = await fetch('/Cashier/Order/GetAllSpas');
-            const data = await res.json();
-            if (data.success && data.data) {
-                const list = document.getElementById('allSpasList');
-                if (list) {
-                    list.innerHTML = data.data.map(s => `
-                        <div class="pos-spa-item" onclick="handleSelectProduct('Spa', '${s.id}', '${s.name}', ${s.price}, 999)">
-                            <span class="pos-spa-item-name">${s.name}</span>
-                            <span class="pos-spa-item-price">${formatCurrency(s.price)}</span>
-                        </div>
-                    `).join('');
-                }
-            }
-        } catch(err) {}
-    }
-    loadAllSpas();
+    // === LOAD TẤT CẢ SPA SERVICES REMOVED ===
 
     // === LOAD TẤT CẢ SẢN PHẨM ===
     async function loadAllProducts() {
@@ -285,14 +282,15 @@ document.addEventListener('DOMContentLoaded', function () {
     inputSearchProduct.addEventListener('input', (e) => searchProduct(e.target.value));
 
     function renderProductResults(items) {
-        if (items.length === 0) {
+        const productsOnly = items.filter(item => item.type === 'Product');
+        if (productsOnly.length === 0) {
             resultBoxProduct.innerHTML = '<div class="pos-search-item"><div class="pos-search-item-info"><span>Không tìm thấy kết quả.</span></div></div>';
         } else {
-            resultBoxProduct.innerHTML = items.map(item => `
+            resultBoxProduct.innerHTML = productsOnly.map(item => `
                 <div class="pos-search-item" onclick="handleSelectProduct('${item.type}', '${item.id}', '${item.name}', ${item.price}, ${item.stock})">
                     <div class="pos-search-item-info">
                         <strong>${item.name}</strong>
-                        <span>${item.type === 'Product' ? 'Sản phẩm - SKU: ' + item.id + ' (Tồn: ' + item.stock + ')' : 'Dịch vụ Spa'}</span>
+                        <span>Sản phẩm - SKU: ${item.id} (Tồn: ${item.stock})</span>
                     </div>
                     <div class="pos-search-item-price">${formatCurrency(item.price)}</div>
                 </div>
@@ -308,12 +306,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (type === 'Product') {
             addToCartProduct(id, name, price);
-        } else if (type === 'Spa') {
-            if (!currentCustomer) {
-                alert("Vui lòng chọn hoặc thêm khách hàng trước khi đặt lịch Spa.");
-                return;
-            }
-            openSpaSetupModal(id, name, price);
         }
     };
 
@@ -387,18 +379,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('lblCustomerTier').textContent = currentCustomer.membershipTier;
         document.getElementById('lblCustomerPoints').textContent = currentCustomer.loyaltyPoints;
 
-        // Render Pet Selector
-        const petSelect = document.getElementById('posSelectPet');
-        const petSection = document.getElementById('customerPetsSection');
-        
-        if (currentCustomer.pets && currentCustomer.pets.length > 0) {
-            petSelect.innerHTML = '<option value="">-- Chọn thú cưng --</option>' + 
-                currentCustomer.pets.map(p => `<option value="${p.petId}">${p.name} (${p.species}) - ${p.weight}kg</option>`).join('');
-            petSection.style.display = 'block';
-        } else {
-            petSelect.innerHTML = '<option value="">-- Khách chưa có thú cưng (đăng ký mới) --</option>';
-            petSection.style.display = 'block';
-        }
+        // Pet selector logic removed
 
         document.getElementById('lblCustomerPointsVal').textContent = currentCustomer.loyaltyPoints;
         const totalAmount = cart.reduce((acc, curr) => acc + curr.total, 0);
@@ -420,112 +401,6 @@ document.addEventListener('DOMContentLoaded', function () {
         cart = cart.filter(c => c.type !== 'Spa' && c.type !== 'Hotel');
         saveCartLocally();
         renderCart();
-    });
-
-    // === SPA SETUP MODAL ===
-    const spaModal = document.getElementById('spaSetupModal');
-    let tempSpaService = null;
-
-    function openSpaSetupModal(id, name, basePrice) {
-        tempSpaService = { id, name, basePrice };
-        
-        document.getElementById('spaSetupServiceName').textContent = name;
-        document.getElementById('spaSetupServiceId').value = id;
-        document.getElementById('spaSetupBasePrice').value = basePrice;
-        document.getElementById('spaSetupCalculatedPrice').textContent = formatCurrency(basePrice);
-        
-        // Set weight if pet selected
-        const petSelect = document.getElementById('posSelectPet');
-        if (petSelect && petSelect.value) {
-            const petId = parseInt(petSelect.value);
-            const pet = currentCustomer.pets.find(p => p.petId === petId);
-            if (pet) {
-                document.getElementById('spaSetupWeight').value = pet.weight;
-            }
-        } else {
-            document.getElementById('spaSetupWeight').value = '';
-        }
-
-        // Set Default Time
-        const now = new Date();
-        now.setMinutes(now.getMinutes() + 30); // Default to 30 mins from now
-        document.getElementById('spaSetupTime').value = now.toTimeString().substring(0,5);
-
-        // Fetch Groomers
-        fetchGroomers();
-
-        spaModal.style.display = 'flex';
-    }
-
-    async function fetchGroomers() {
-        const today = new Date().toISOString().split('T')[0];
-        try {
-            const res = await fetch(`/Cashier/Order/GetGroomers?date=${today}`);
-            const data = await res.json();
-            if (data.success) {
-                const select = document.getElementById('spaSetupGroomer');
-                select.innerHTML = '<option value="">-- Bất kỳ Groomer nào --</option>' + 
-                    data.data.map(g => `<option value="${g.userId}">${g.fullName}</option>`).join('');
-            }
-        } catch (err) {
-            console.error("Lỗi lấy groomer:", err);
-        }
-    }
-
-    // Tính lại giá khi nhập cân nặng (Giả lập: Trên 5kg +20k)
-    document.getElementById('spaSetupWeight').addEventListener('input', (e) => {
-        const w = parseFloat(e.target.value) || 0;
-        let price = parseFloat(document.getElementById('spaSetupBasePrice').value);
-        if (w > 5) {
-            price += 20000; // Extra charge
-        }
-        document.getElementById('spaSetupCalculatedPrice').textContent = formatCurrency(price);
-    });
-
-    document.getElementById('btnCloseSpaSetup').addEventListener('click', () => spaModal.style.display = 'none');
-    document.getElementById('btnCancelSpaSetup').addEventListener('click', () => spaModal.style.display = 'none');
-
-    document.getElementById('btnSaveSpaSetup').addEventListener('click', () => {
-        const weight = parseFloat(document.getElementById('spaSetupWeight').value) || 0;
-        const groomerId = document.getElementById('spaSetupGroomer').value;
-        const time = document.getElementById('spaSetupTime').value;
-
-        if (weight <= 0) {
-            alert("Vui lòng nhập cân nặng hợp lệ.");
-            return;
-        }
-
-        let price = parseFloat(document.getElementById('spaSetupBasePrice').value);
-        if (weight > 5) price += 20000;
-
-        const petSelect = document.getElementById('posSelectPet');
-        const petId = petSelect && petSelect.value ? parseInt(petSelect.value) : null;
-
-        if (!petId) {
-            alert("Vui lòng chọn Thú cưng cho dịch vụ Spa ở khung Khách hàng.");
-            return;
-        }
-
-        // Construct Date Time
-        const today = new Date().toISOString().split('T')[0];
-        const appointmentTime = `${today}T${time}:00`;
-
-        cart.push({
-            type: 'Spa',
-            id: tempSpaService.id,
-            name: tempSpaService.name,
-            quantity: 1,
-            price: price,
-            total: price,
-            petId: petId,
-            petWeight: weight,
-            groomerId: groomerId ? parseInt(groomerId) : null,
-            appointmentTime: appointmentTime
-        });
-
-        saveCartLocally();
-        renderCart();
-        spaModal.style.display = 'none';
     });
 
     // === QUICK REGISTER MODAL ===
@@ -687,71 +562,50 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function renderCart() {
         const listProducts = document.getElementById('listProducts');
-        const listSpa = document.getElementById('listSpa');
         const listHotel = document.getElementById('listHotel');
         const emptyProducts = document.getElementById('emptyProducts');
-        const emptySpa = document.getElementById('emptySpa');
         const emptyHotel = document.getElementById('emptyHotel');
 
         const products = cart.map((c, idx) => ({ ...c, originalIndex: idx })).filter(c => c.type === 'Product');
         const spas = cart.map((c, idx) => ({ ...c, originalIndex: idx })).filter(c => c.type === 'Spa');
         const hotels = cart.map((c, idx) => ({ ...c, originalIndex: idx })).filter(c => c.type === 'Hotel');
 
-        document.getElementById('countProducts').textContent = products.length;
-        document.getElementById('countSpa').textContent = spas.length;
+        const countProductsEl = document.getElementById('countProducts');
+        if (countProductsEl) countProductsEl.textContent = products.length;
 
         // Render Products
         if (products.length === 0) {
-            emptyProducts.style.display = '';
-            listProducts.innerHTML = '';
+            if (emptyProducts) emptyProducts.style.display = '';
+            if (listProducts) listProducts.innerHTML = '';
         } else {
-            emptyProducts.style.display = 'none';
-            listProducts.innerHTML = products.map(p => `
-                <div class="pos-cart-item">
-                    <div class="pos-item-icon"><i class="bi bi-box"></i></div>
-                    <div class="pos-item-details">
-                        <div class="pos-item-name">${p.name}</div>
-                        <div class="pos-item-meta">${formatCurrency(p.price)}</div>
+            if (emptyProducts) emptyProducts.style.display = 'none';
+            if (listProducts) {
+                listProducts.innerHTML = products.map(p => `
+                    <div class="pos-cart-item">
+                        <div class="pos-item-icon"><i class="bi bi-box"></i></div>
+                        <div class="pos-item-details">
+                            <div class="pos-item-name">${p.name}</div>
+                            <div class="pos-item-meta">${formatCurrency(p.price)}</div>
+                        </div>
+                        <div class="pos-qty-control">
+                            <button class="pos-qty-btn" onclick="changeQty(${p.originalIndex}, -1)">-</button>
+                            <input type="text" class="pos-qty-input" value="${p.quantity}" readonly />
+                            <button class="pos-qty-btn" onclick="changeQty(${p.originalIndex}, 1)">+</button>
+                        </div>
+                        <div class="pos-item-price">${formatCurrency(p.total)}</div>
+                        <button class="btn-remove-item" onclick="removeItem(${p.originalIndex})"><i class="bi bi-trash"></i></button>
                     </div>
-                    <div class="pos-qty-control">
-                        <button class="pos-qty-btn" onclick="changeQty(${p.originalIndex}, -1)">-</button>
-                        <input type="text" class="pos-qty-input" value="${p.quantity}" readonly />
-                        <button class="pos-qty-btn" onclick="changeQty(${p.originalIndex}, 1)">+</button>
-                    </div>
-                    <div class="pos-item-price">${formatCurrency(p.total)}</div>
-                    <button class="btn-remove-item" onclick="removeItem(${p.originalIndex})"><i class="bi bi-trash"></i></button>
-                </div>
-            `).join('');
+                `).join('');
+            }
         }
 
-        // Render Spa
-        if (spas.length === 0) {
-            emptySpa.style.display = 'block';
-            listSpa.innerHTML = '';
-        } else {
-            emptySpa.style.display = 'none';
-            listSpa.innerHTML = spas.map(s => {
-                const timeStr = s.appointmentTime ? new Date(s.appointmentTime).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'}) : 'Chưa chọn';
-                return `
-                <div class="pos-cart-item">
-                    <div class="pos-item-icon"><i class="bi bi-scissors"></i></div>
-                    <div class="pos-item-details">
-                        <div class="pos-item-name">${s.name}</div>
-                        <div class="pos-item-meta">Giờ: ${timeStr} | Bé: ${s.petWeight}kg</div>
-                    </div>
-                    <div class="pos-item-price">${formatCurrency(s.total)}</div>
-                    <button class="btn-remove-item" onclick="removeItem(${s.originalIndex})"><i class="bi bi-trash"></i></button>
-                </div>
-            `}).join('');
-        }
-
-        // Render Hotel checkout statements
-        if (hotels.length === 0) {
+        // Render Hotel checkout statements and their linked completed Spa services.
+        if (hotels.length === 0 && spas.length === 0) {
             emptyHotel.style.display = 'block';
             listHotel.innerHTML = '';
         } else {
             emptyHotel.style.display = 'none';
-            listHotel.innerHTML = hotels.map(h => `
+            const hotelRows = hotels.map(h => `
                 <div class="pos-cart-item">
                     <div class="pos-item-icon"><i class="bi bi-building-check"></i></div>
                     <div class="pos-item-details">
@@ -761,7 +615,19 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="pos-item-price">${formatCurrency(h.total)}</div>
                     <button class="btn-remove-item" onclick="removeItem(${h.originalIndex})"><i class="bi bi-trash"></i></button>
                 </div>
-            `).join('');
+            `);
+            const spaRows = spas.map(s => `
+                <div class="pos-cart-item">
+                    <div class="pos-item-icon"><i class="bi bi-scissors"></i></div>
+                    <div class="pos-item-details">
+                        <div class="pos-item-name">${s.name}</div>
+                        <div class="pos-item-meta">Spa liên kết | Pet: ${s.petName || ''}</div>
+                    </div>
+                    <div class="pos-item-price">${formatCurrency(s.total)}</div>
+                    <button class="btn-remove-item" onclick="removeItem(${s.originalIndex})"><i class="bi bi-trash"></i></button>
+                </div>
+            `);
+            listHotel.innerHTML = [...hotelRows, ...spaRows].join('');
         }
 
         // Calculate Totals
@@ -1009,12 +875,6 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const petSelect = document.getElementById('posSelectPet');
-        if (!petSelect || !petSelect.value) {
-            alert("Vui lòng chọn Thú cưng cho khách hàng trước khi tạo đơn và thanh toán!");
-            return;
-        }
-        
         // Trigger payment method change to set default cash value
         const evt = new Event('change');
         document.getElementById('posPaymentMethod').dispatchEvent(evt);
