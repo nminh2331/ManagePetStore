@@ -20,11 +20,13 @@ public class SupplierController : Controller
 {
     private readonly ISupplierService _supplierService;
     private readonly IProductCategoryService _categoryService;
+    private readonly IProductService _productService;
 
-    public SupplierController(ISupplierService supplierService, IProductCategoryService categoryService)
+    public SupplierController(ISupplierService supplierService, IProductCategoryService categoryService, IProductService productService)
     {
         _supplierService = supplierService;
         _categoryService = categoryService;
+        _productService  = productService;
     }
 
     public async Task<IActionResult> Index()
@@ -37,21 +39,29 @@ public class SupplierController : Controller
     {
         var categories = (await _categoryService.GetCategorySummary()).Categories;
         ViewBag.Categories = new MultiSelectList(categories, "CategoryId", "Name");
+        var allProducts = await _productService.GetProductSummary("", "active");
+        ViewBag.AllProducts = allProducts.Products;
+        ViewBag.SelectedProductSkus = new List<string>();
         return View();
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(Supplier supplier, List<int> categoryIds)
+    public async Task<IActionResult> Create(Supplier supplier, List<int> categoryIds, List<string>? productSkus)
     {
         if (ModelState.IsValid)
         {
             await _supplierService.AddSupplierAsync(supplier, categoryIds);
+            if (productSkus != null && productSkus.Any())
+                await _supplierService.UpdateSupplierProductsAsync(supplier.SupplierId, productSkus);
             TempData["SuccessMessage"] = "Thêm nhà cung cấp thành công!";
             return RedirectToAction(nameof(Index));
         }
         var categories = (await _categoryService.GetCategorySummary()).Categories;
         ViewBag.Categories = new MultiSelectList(categories, "CategoryId", "Name", categoryIds);
+        var allProducts = await _productService.GetProductSummary("", "active");
+        ViewBag.AllProducts = allProducts.Products;
+        ViewBag.SelectedProductSkus = productSkus ?? new List<string>();
         return View(supplier);
     }
 
@@ -63,24 +73,32 @@ public class SupplierController : Controller
         var categories = (await _categoryService.GetCategorySummary()).Categories;
         var selectedCategoryIds = supplier.Categories.Select(c => c.CategoryId).ToList();
         ViewBag.Categories = new MultiSelectList(categories, "CategoryId", "Name", selectedCategoryIds);
-        
+
+        var allProducts = await _productService.GetProductSummary("", "active");
+        ViewBag.AllProducts = allProducts.Products;
+        ViewBag.SelectedProductSkus = await _supplierService.GetSupplierProductSkusAsync(id);
+
         return View(supplier);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, Supplier supplier, List<int> categoryIds)
+    public async Task<IActionResult> Edit(int id, Supplier supplier, List<int> categoryIds, List<string>? productSkus)
     {
         if (id != supplier.SupplierId) return NotFound();
 
         if (ModelState.IsValid)
         {
             await _supplierService.UpdateSupplierAsync(supplier, categoryIds);
+            await _supplierService.UpdateSupplierProductsAsync(supplier.SupplierId, productSkus ?? new List<string>());
             TempData["SuccessMessage"] = "Cập nhật nhà cung cấp thành công!";
             return RedirectToAction(nameof(Index));
         }
         var categories = (await _categoryService.GetCategorySummary()).Categories;
         ViewBag.Categories = new MultiSelectList(categories, "CategoryId", "Name", categoryIds);
+        var allProducts = await _productService.GetProductSummary("", "active");
+        ViewBag.AllProducts = allProducts.Products;
+        ViewBag.SelectedProductSkus = productSkus ?? new List<string>();
         return View(supplier);
     }
 

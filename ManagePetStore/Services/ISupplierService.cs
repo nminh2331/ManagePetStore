@@ -12,4 +12,7 @@ public interface ISupplierService
     Task AddSupplierAsync(Supplier supplier, List<int> categoryIds);
     Task UpdateSupplierAsync(Supplier supplier, List<int> categoryIds);
     Task DeleteSupplierAsync(int id);
+    Task UpdateSupplierProductsAsync(int supplierId, List<string> productSkus);
+    Task<List<string>> GetSupplierProductSkusAsync(int supplierId);
+    Task<IEnumerable<Supplier>> GetSuppliersByProductSkuAsync(string sku);
 }

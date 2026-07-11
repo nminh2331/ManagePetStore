@@ -85,4 +85,40 @@ public class SupplierRepository : ISupplierRepository
 
         await _context.SaveChangesAsync();
     }
+
+    public async Task AssignProductsToSupplierAsync(int supplierId, List<string> productSkus)
+    {
+        // Xóa các liên kết cũ
+        var existing = _context.SupplierProducts.Where(sp => sp.SupplierId == supplierId);
+        _context.SupplierProducts.RemoveRange(existing);
+
+        // Thêm các liên kết mới
+        if (productSkus != null && productSkus.Any())
+        {
+            foreach (var sku in productSkus.Distinct())
+            {
+                _context.SupplierProducts.Add(new SupplierProduct
+                {
+                    SupplierId = supplierId,
+                    ProductSku = sku
+                });
+            }
+        }
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<List<string>> GetSupplierProductSkusAsync(int supplierId)
+    {
+        return await _context.SupplierProducts
+            .Where(sp => sp.SupplierId == supplierId)
+            .Select(sp => sp.ProductSku)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<Supplier>> GetSuppliersByProductSkuAsync(string sku)
+    {
+        return await _context.Suppliers
+            .Where(s => s.IsActive && s.SupplierProducts.Any(sp => sp.ProductSku == sku))
+            .ToListAsync();
+    }
 }

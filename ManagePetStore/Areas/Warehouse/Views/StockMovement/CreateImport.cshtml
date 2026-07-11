@@ -38,7 +38,8 @@
                 <label for="ProductSku" class="form-label fw-bold">
                     <span class="badge bg-warning text-dark rounded-circle me-1">2</span> Sản phẩm <span class="text-danger">*</span>
                 </label>
-                <select id="ProductSku" name="ProductSku" class="form-select" style="border-radius: 8px;" required>
+                <select id="ProductSku" name="ProductSku" class="form-select" style="border-radius: 8px;"
+                        required onchange="onProductChange(this.value)">
                     <option value="">-- Đang tải... --</option>
                 </select>
                 <div class="form-text text-muted">Chỉ hiển thị sản phẩm thuộc danh mục đã chọn.</div>
@@ -52,7 +53,9 @@
                 <select id="SupplierId" name="SupplierId" class="form-select" style="border-radius: 8px;">
                     <option value="">-- Không chọn --</option>
                 </select>
-                <div class="form-text text-muted">Chỉ hiển thị nhà cung cấp có đăng ký danh mục trên.</div>
+                <div id="supplierHint" class="form-text text-muted">
+                    Chỉ hiển thị nhà cung cấp đã đăng ký cung cấp sản phẩm này.
+                </div>
             </div>
 
             @* Số lượng & Giá nhập *@
@@ -104,9 +107,15 @@
 
             if (!categoryId) return;
 
-            // Load song song: sản phẩm + nhà cung cấp
+            // Chỉ load sản phẩm — NCC sẽ load sau khi chọn sản phẩm
             loadProducts(categoryId);
-            loadSuppliers(categoryId);
+        }
+
+        function onProductChange(sku) {
+            // Ẩn NCC cũ, rồi load NCC theo SKU
+            document.getElementById('supplierSection').style.display = 'none';
+            if (!sku) return;
+            loadSuppliersByProduct(sku);
         }
 
         function loadProducts(categoryId) {
@@ -137,24 +146,31 @@
                 });
         }
 
-        function loadSuppliers(categoryId) {
+        function loadSuppliersByProduct(sku) {
             var supplierSelect = document.getElementById('SupplierId');
-            document.getElementById('supplierSection').style.display = 'block';
+            var supplierSection = document.getElementById('supplierSection');
+            var hint = document.getElementById('supplierHint');
+
+            supplierSection.style.display = 'block';
             supplierSelect.innerHTML = '<option value="">Đang tải nhà cung cấp...</option>';
 
-            fetch('/Warehouse/StockMovement/GetSuppliersByCategory?categoryId=' + categoryId)
+            fetch('/Warehouse/StockMovement/GetSuppliersByProduct?sku=' + encodeURIComponent(sku))
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
-                    supplierSelect.innerHTML = '<option value="">-- Không chọn --</option>';
                     if (data && data.length > 0) {
+                        supplierSelect.innerHTML = '<option value="">-- Không chọn --</option>';
                         data.forEach(function(s) {
                             var opt = document.createElement('option');
                             opt.value = s.supplierId;
                             opt.text = s.name;
                             supplierSelect.appendChild(opt);
                         });
+                        hint.innerHTML = '✅ Hiển thị <strong>' + data.length + '</strong> nhà cung cấp đã đăng ký sản phẩm này.';
+                        hint.className = 'form-text text-success';
                     } else {
-                        supplierSelect.innerHTML = '<option value="">-- Chưa có nhà cung cấp cho danh mục này --</option>';
+                        supplierSelect.innerHTML = '<option value="">-- Chưa có nhà cung cấp đăng ký sản phẩm này --</option>';
+                        hint.innerHTML = '⚠️ Chưa có nhà cung cấp nào đăng ký cung cấp sản phẩm này. Bạn có thể bỏ trống để không chọn.';
+                        hint.className = 'form-text text-warning';
                     }
                 })
                 .catch(function(err) {

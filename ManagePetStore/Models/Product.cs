@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace ManagePetStore.Models;
@@ -27,6 +27,11 @@ public partial class Product
 
     public bool IsDeleted { get; set; }
 
+    public string? Description { get; set; }
+
+    /// <summary>Loại thú cưng phù hợp: Chó, Mèo, Chim, Cá, Thỏ, Hamster, Tất cả, v.v.</summary>
+    public string? AnimalType { get; set; }
+
     public decimal CostPrice { get; set; }
 
     public virtual ProductCategory? Category { get; set; }
@@ -34,6 +39,8 @@ public partial class Product
     public virtual ICollection<InventoryBatch> InventoryBatches { get; set; } = new List<InventoryBatch>();
 
     public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+
+    public virtual ICollection<SupplierProduct> SupplierProducts { get; set; } = new List<SupplierProduct>();
 
     public virtual ICollection<ReturnRequestItem> ReturnRequestItems { get; set; } = new List<ReturnRequestItem>();
 

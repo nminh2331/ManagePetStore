@@ -60,6 +60,40 @@
                     <label class="form-check-label" asp-for="IsActive">Đang hoạt động</label>
                 </div>
 
+                @{
+                    var selectedSkus = (ViewBag.SelectedProductSkus as List<string>) ?? new List<string>();
+                }
+                <div class="mb-4">
+                    <label class="form-label fw-bold">
+                        <i class="fas fa-box me-1 text-success"></i>
+                        Sản phẩm cụ thể NCC này cung cấp
+                        <span class="text-muted fw-normal small ms-1">(tùy chọn — để trống = cung cấp tất cả theo danh mục)</span>
+                    </label>
+                    <div class="border rounded-3 p-3" style="max-height:220px;overflow-y:auto;background:#f9fafb;">
+                        <input type="text" id="prodSearch" class="form-control form-control-sm mb-2"
+                               placeholder="🔍 Tìm nhanh sản phẩm..." oninput="filterProducts(this.value)" />
+                        <div id="prodList">
+                        @foreach (var p in ViewBag.AllProducts as IEnumerable<ManagePetStore.Models.Product> ?? Enumerable.Empty<ManagePetStore.Models.Product>())
+                        {
+                            var isChecked = selectedSkus.Contains(p.Sku);
+                            <div class="form-check prod-item" data-name="@p.Name.ToLower()">
+                                <input class="form-check-input" type="checkbox"
+                                       name="productSkus" value="@p.Sku"
+                                       id="prod_@p.Sku" @(isChecked ? "checked" : "") />
+                                <label class="form-check-label" for="prod_@p.Sku">
+                                    <span class="fw-semibold">@p.Name</span>
+                                    <span class="text-muted small ms-1">(@p.Sku)</span>
+                                </label>
+                            </div>
+                        }
+                        </div>
+                    </div>
+                    <div class="form-text text-muted mt-1">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Khi tạo đơn nhập, NCC này sẽ được ưu tiên hiển thị cho các sản phẩm đã chọn.
+                    </div>
+                </div>
+
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Lưu thông tin</button>
                     <a asp-action="Index" class="btn btn-light border">Hủy bỏ</a>
@@ -71,4 +105,12 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        function filterProducts(query) {
+            const q = query.toLowerCase();
+            document.querySelectorAll('.prod-item').forEach(el => {
+                el.style.display = el.dataset.name.includes(q) ? '' : 'none';
+            });
+        }
+    </script>
 }
