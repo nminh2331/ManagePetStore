@@ -178,6 +178,30 @@ public class HotelBookingController : Controller
                 return BookingError("Loại phòng đã chọn hiện không còn hoạt động.");
             }
 
+            HotelFoodOption? foodOption = null;
+            var foodPlanType = request.FoodPlanType?.Trim() ?? "OwnerProvided";
+            if (foodPlanType == "HotelFood")
+            {
+                if (!request.FoodOptionId.HasValue)
+                {
+                    return BookingError("Vui lòng chọn gói thức ăn của Hotel.");
+                }
+
+                foodOption = await _context.HotelFoodOptions
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(option => option.FoodOptionId == request.FoodOptionId && option.Active);
+                if (foodOption == null ||
+                    (!string.Equals(foodOption.TargetSpecies, "Tất cả", StringComparison.OrdinalIgnoreCase) &&
+                     !string.Equals(foodOption.TargetSpecies, pet.Species, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return BookingError("Gói thức ăn không phù hợp với thú cưng đã chọn.");
+                }
+            }
+            else if (foodPlanType != "OwnerProvided")
+            {
+                return BookingError("Hình thức thức ăn không hợp lệ.");
+            }
+
             var petHasConflict = await _context.HotelBookings.AnyAsync(b =>
                 b.PetId == petId &&
                 BlockingStatuses.Contains(b.Status) &&
@@ -215,7 +239,13 @@ public class HotelBookingController : Controller
             var subtotal = roomType.DailyPrice * stayDays;
             var discountRate = ResolveDiscountRate(customer.MembershipTier);
             var discount = decimal.Round(subtotal * discountRate, 0, MidpointRounding.AwayFromZero);
-            var finalAmount = subtotal - discount;
+            var foodPricePerDay = foodOption == null
+                ? 0
+                : roomType.HasPremiumFood && foodOption.IsIncludedWithPremiumRoom
+                    ? 0
+                    : foodOption.PricePerDay;
+            var foodTotal = foodPricePerDay * stayDays;
+            var finalAmount = subtotal - discount + foodTotal;
 
             var booking = new HotelBooking
             {
@@ -236,6 +266,21 @@ public class HotelBookingController : Controller
             };
 
             _context.HotelBookings.Add(booking);
+            _context.HotelBookingFoodPlans.Add(new HotelBookingFoodPlan
+            {
+                HotelBooking = booking,
+                FoodOptionId = foodOption?.FoodOptionId,
+                PlanType = foodOption == null ? "OwnerProvided" : "HotelFood",
+                FoodNameSnapshot = foodOption?.Name ?? "Chủ nuôi tự chuẩn bị",
+                PricePerDaySnapshot = foodPricePerDay,
+                PortionGrams = foodOption?.DefaultPortionGrams ?? 0,
+                MealsPerDay = foodOption?.MealsPerDay ?? 0,
+                FeedingInstructions = string.IsNullOrWhiteSpace(request.FeedingInstructions) ? null : request.FeedingInstructions.Trim(),
+                AllergyNotes = string.IsNullOrWhiteSpace(request.AllergyNotes) ? null : request.AllergyNotes.Trim(),
+                ChargeableDays = stayDays,
+                TotalAmount = foodTotal,
+                CreatedAt = DateTime.Now
+            });
             _context.PetBioTimelines.Add(new PetBioTimeline
             {
                 PetId = pet.PetId,

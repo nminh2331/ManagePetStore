@@ -31,4 +31,10 @@ public class HotelCareLogRequest
     public bool IsVisibleToCustomer { get; set; } = true;
 
     public IFormFile? MediaFile { get; set; }
+
+    public string? MealType { get; set; }
+    [Range(0, 10000)] public decimal? ServedGrams { get; set; }
+    [Range(0, 100)] public int? ConsumedPercent { get; set; }
+    public bool IsExtraCharge { get; set; }
+    [Range(0, 100000000)] public decimal ExtraChargeAmount { get; set; }
 }

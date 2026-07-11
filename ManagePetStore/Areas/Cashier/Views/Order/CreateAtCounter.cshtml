@@ -87,6 +87,7 @@
             <div class="pos-tabs">
                 <button class="pos-tab active" data-target="cart-products">Sản phẩm (<span id="countProducts">0</span>)</button>
                 <button class="pos-tab" data-target="cart-spa">Dịch vụ Spa (<span id="countSpa">0</span>)</button>
+                <button class="pos-tab" data-target="cart-hotel">Hotel chờ thu (<span id="countHotel">0</span>)</button>
             </div>
 
             <!-- Tab Sản Phẩm -->
@@ -115,6 +116,18 @@
                 <div id="allSpasList" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                     <!-- Sẽ load danh sách spa vào đây -->
                 </div>
+            </div>
+
+            <!-- Tab Hotel chờ thu -->
+            <div class="pos-tab-content" id="cart-hotel">
+                <div class="pos-empty-state" id="emptyHotel">
+                    <i class="bi bi-building-check"></i>
+                    <p>Chưa có bảng kê Hotel trong đơn</p>
+                </div>
+                <div class="pos-cart-list" id="listHotel"></div>
+
+                <h4 style="margin-top: 24px; margin-bottom: 16px; font-size: 16px; font-weight: 800;">Danh sách Hotel chờ thu</h4>
+                <div id="allHotelPending" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;"></div>
             </div>
         </div>
     </div>

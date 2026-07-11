@@ -112,6 +112,7 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IProductCategoryService, ProductCategoryService>();
 builder.Services.AddScoped<IHotelBookingHistoryService, HotelBookingHistoryService>();
 builder.Services.AddScoped<IHotelCareMediaService, HotelCareMediaService>();
+builder.Services.AddScoped<IHotelCheckoutService, HotelCheckoutService>();
 builder.Services.AddScoped<ManagePetStore.Services.Warehouse.IInventoryBatchService, ManagePetStore.Services.Warehouse.InventoryBatchService>();
 builder.Services.AddScoped<ManagePetStore.Services.Warehouse.IStockMovementService, ManagePetStore.Services.Warehouse.StockMovementService>();
 builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();

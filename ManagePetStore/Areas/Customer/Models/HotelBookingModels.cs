@@ -20,6 +20,17 @@ public class HotelBookingRequest : IValidatableObject
     [DataType(DataType.Date)]
     public DateTime? CheckOutDate { get; set; }
 
+    [Required, StringLength(30)]
+    public string FoodPlanType { get; set; } = "OwnerProvided";
+
+    public int? FoodOptionId { get; set; }
+
+    [StringLength(1000)]
+    public string? FeedingInstructions { get; set; }
+
+    [StringLength(1000)]
+    public string? AllergyNotes { get; set; }
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (!CheckInDate.HasValue || !CheckOutDate.HasValue)

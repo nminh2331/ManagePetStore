@@ -36,6 +36,17 @@
 <div class="hbh-detail-grid">
     <div class="hbh-detail-main">
         <section class="hbh-section">
+            <div class="hbh-section-heading"><div><h3><i class="bi bi-cup-straw"></i> Kế hoạch ăn</h3></div></div>
+            <dl class="hbh-data-list">
+                <div><dt>Gói thức ăn</dt><dd>@Model.FoodPlanName</dd></div>
+                <div><dt>Khẩu phần</dt><dd>@Model.FoodPortionGrams g · @Model.FoodMealsPerDay bữa/ngày</dd></div>
+                <div><dt>Giá/ngày</dt><dd>@Model.FoodPricePerDay.ToString("N0")đ</dd></div>
+                <div><dt>Hướng dẫn</dt><dd>@(Model.FeedingInstructions ?? "Không có")</dd></div>
+                <div><dt>Dị ứng/lưu ý</dt><dd>@(Model.FoodAllergyNotes ?? "Không ghi nhận")</dd></div>
+            </dl>
+        </section>
+
+        <section class="hbh-section">
             <div class="hbh-section-heading">
                 <div>
                     <h3><i class="bi bi-clock-history"></i> Hoạt động trong lần lưu trú</h3>
@@ -144,7 +155,11 @@
                                 <td>@(log.OccurredAt?.ToString("dd/MM/yyyy HH:mm") ?? log.LegacyTime)</td>
                                 <td><strong>@log.Title</strong><small class="hbh-care-type">@log.ActivityType</small></td>
                                 <td>@log.Status</td>
-                                <td>@log.FoodType · @log.Amount</td>
+                                <td>
+                                    @log.FoodType · @log.Amount
+                                    @if (!string.IsNullOrWhiteSpace(log.MealType)) { <small class="hbh-care-type">Bữa @log.MealType · đã ăn @(log.ConsumedPercent?.ToString() ?? "—")%</small> }
+                                    @if (log.IsExtraCharge) { <small class="hbh-care-type">Phụ phí: @log.ExtraChargeAmount.ToString("N0")đ</small> }
+                                </td>
                                 <td>@log.StaffName</td>
                                 <td>
                                     @if (log.MediaType == "Video" && !string.IsNullOrWhiteSpace(log.MediaUrl))

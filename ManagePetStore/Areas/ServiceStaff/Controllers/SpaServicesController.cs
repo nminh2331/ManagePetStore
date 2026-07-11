@@ -32,6 +32,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         private readonly IHotelBookingHistoryService _historyService;
         private readonly IHotelCareMediaService _hotelCareMediaService;
         private readonly IHubContext<HotelCareHub> _hotelCareHub;
+        private readonly IHotelCheckoutService _hotelCheckoutService;
         private readonly ILogger<SpaServicesController> _logger;
 
         public SpaServicesController(
@@ -39,12 +40,14 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             IHotelBookingHistoryService historyService,
             IHotelCareMediaService hotelCareMediaService,
             IHubContext<HotelCareHub> hotelCareHub,
+            IHotelCheckoutService hotelCheckoutService,
             ILogger<SpaServicesController> logger)
         {
             _context = context;
             _historyService = historyService;
             _hotelCareMediaService = hotelCareMediaService;
             _hotelCareHub = hotelCareHub;
+            _hotelCheckoutService = hotelCheckoutService;
             _logger = logger;
         }
 
@@ -1275,9 +1278,15 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 ModelState.AddModelError(nameof(request.ActivityType), "Loại hoạt động không hợp lệ.");
             }
 
+            if (request.IsExtraCharge && request.ExtraChargeAmount <= 0)
+            {
+                ModelState.AddModelError(nameof(request.ExtraChargeAmount), "Phụ phí bữa ăn phải lớn hơn 0.");
+            }
+
             var booking = await _context.HotelBookings
                 .Include(item => item.Pet)
                 .Include(item => item.Customer)
+                .Include(item => item.FoodPlan)
                 .FirstOrDefaultAsync(item => item.HotelBookingId == request.HotelBookingId);
 
             if (booking == null)
@@ -1341,8 +1350,12 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 ActivityType = request.ActivityType,
                 Title = safeTitle,
                 Status = safeStatus,
-                FoodType = string.IsNullOrWhiteSpace(request.FoodType) ? "Không áp dụng" : request.FoodType.Trim(),
-                Amount = string.IsNullOrWhiteSpace(request.Amount) ? "Không áp dụng" : request.Amount.Trim(),
+                FoodType = string.IsNullOrWhiteSpace(request.FoodType)
+                    ? booking.FoodPlan?.FoodNameSnapshot ?? "Không áp dụng"
+                    : request.FoodType.Trim(),
+                Amount = request.ServedGrams.HasValue
+                    ? $"{request.ServedGrams:0.##} g"
+                    : string.IsNullOrWhiteSpace(request.Amount) ? "Không áp dụng" : request.Amount.Trim(),
                 PhotoUrl = media?.MediaType == "Image" ? media.PublicUrl : null,
                 MediaUrl = media?.PublicUrl,
                 MediaType = media?.MediaType,
@@ -1351,7 +1364,13 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 OccurredAt = occurredAt,
                 StaffName = staffName,
                 IsVisibleToCustomer = request.IsVisibleToCustomer,
-                CreatedByUserId = staffUserId
+                CreatedByUserId = staffUserId,
+                FoodPlanId = request.ActivityType == "Feeding" ? booking.FoodPlan?.FoodPlanId : null,
+                MealType = string.IsNullOrWhiteSpace(request.MealType) ? null : request.MealType.Trim(),
+                ServedGrams = request.ServedGrams,
+                ConsumedPercent = request.ConsumedPercent,
+                IsExtraCharge = request.IsExtraCharge,
+                ExtraChargeAmount = request.IsExtraCharge ? request.ExtraChargeAmount : 0
             };
 
             _context.FoodDiaryLogs.Add(careLog);
@@ -2019,6 +2038,8 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             var booking = await _context.HotelBookings
                 .Include(b => b.Cage)
                 .Include(b => b.Pet)
+                .Include(b => b.CheckoutStatement)
+                    .ThenInclude(statement => statement!.Order)
                 .FirstOrDefaultAsync(b => b.HotelBookingId == bookingId);
 
             if (booking == null)
@@ -2031,11 +2052,22 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return Json(new { success = false, message = "Chỉ có thể trả chuồng cho lượt lưu trú đang hoạt động." });
             }
 
+            var checkout = booking.CheckoutStatement;
+            if (checkout?.OrderId == null)
+            {
+                return Json(new { success = false, message = "Booking chưa được chốt chi phí hoặc chưa được thu ngân tạo hóa đơn." });
+            }
+
+            if (checkout.Order?.Status != "Chờ xử lý" && checkout.Order?.Status != "Đã thanh toán")
+            {
+                return Json(new { success = false, message = "Hóa đơn Hotel chưa thanh toán thành công." });
+            }
+
             booking.Status = "Đã trả";
             booking.ScheduledCheckInDate ??= booking.CheckInDate;
             booking.ScheduledCheckOutDate ??= booking.CheckOutDate;
             booking.ActualCheckInAt ??= booking.CheckInDate;
-            booking.ActualCheckOutAt = DateTime.Now;
+            booking.ActualCheckOutAt = checkout.CheckoutAt;
             booking.CheckOutDate = booking.ActualCheckOutAt;
 
             var staff = GetCurrentStaffSnapshot();
@@ -2051,12 +2083,45 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             if (booking.Cage != null)
             {
-                booking.Cage.Status = "Trống";
+                booking.Cage.Status = "Đang dọn dẹp";
             }
+
+            checkout.Status = "Paid";
+            checkout.PaidAt = DateTime.Now;
 
             await _context.SaveChangesAsync();
 
-            return Json(new { success = true, message = $"Đã trả chuồng cho {booking.Pet?.Name ?? "thú cưng"}!" });
+            return Json(new { success = true, message = $"Đã hoàn tất trả {booking.Pet?.Name ?? "thú cưng"}; chuồng chuyển sang chờ dọn dẹp." });
+        }
+
+        [HttpGet("HotelCheckoutPreview/{bookingId:int}")]
+        public async Task<IActionResult> HotelCheckoutPreview(int bookingId)
+        {
+            var preview = await _hotelCheckoutService.GetPreviewAsync(bookingId);
+            return preview == null
+                ? Json(new { success = false, message = "Không tìm thấy booking Hotel." })
+                : Json(new { success = true, data = preview });
+        }
+
+        [HttpPost("PrepareHotelCheckout")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> PrepareHotelCheckout(PrepareHotelCheckoutRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return Json(new { success = false, message = "Chi phí phát sinh không hợp lệ." });
+            }
+
+            try
+            {
+                var staff = GetCurrentStaffSnapshot();
+                var preview = await _hotelCheckoutService.PrepareAsync(request, staff.UserId, staff.Name);
+                return Json(new { success = true, message = "Đã chốt chi phí và gửi sang quầy thu ngân.", data = preview });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
         }
 
         [HttpPost("CancelOnlineHotelBooking")]

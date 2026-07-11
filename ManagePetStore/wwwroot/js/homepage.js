@@ -9,6 +9,11 @@
     const checkOut = document.getElementById('hotelCheckOut');
     const totalEl = document.getElementById('hotelTotal');
     const nightsEl = document.getElementById('hotelNights');
+    const foodPlanType = document.getElementById('hotelFoodPlanType');
+    const foodOption = document.getElementById('hotelFoodOption');
+    const foodOptionWrap = document.getElementById('hotelFoodOptionWrap');
+    const foodDescription = document.getElementById('hotelFoodDescription');
+    const foodTotalEl = document.getElementById('hotelFoodTotal');
     const dayInMilliseconds = 24 * 60 * 60 * 1000;
 
     function openHotelModal() {
@@ -131,8 +136,30 @@
 
         const subtotal = dailyPrice * nights;
         const discounted = subtotal * (1 - discountPercent / 100);
-        totalEl.textContent = formatCurrency(discounted);
+        const selectedFood = foodOption?.options[foodOption.selectedIndex];
+        const premiumRoom = selected?.dataset.premiumFood === 'true';
+        const includedWithPremium = selectedFood?.dataset.includedPremium === 'true';
+        const foodDailyPrice = foodPlanType?.value === 'HotelFood'
+            ? (premiumRoom && includedWithPremium ? 0 : parseFloat(selectedFood?.dataset.price) || 0)
+            : 0;
+        const foodTotal = foodDailyPrice * nights;
+        totalEl.textContent = formatCurrency(discounted + foodTotal);
+        if (foodTotalEl) foodTotalEl.textContent = foodDailyPrice === 0 && foodPlanType?.value === 'HotelFood'
+            ? 'Đã bao gồm'
+            : formatCurrency(foodTotal);
         if (nightsEl) nightsEl.textContent = nights + ' đêm';
+    }
+
+    function updateFoodPlan() {
+        const useHotelFood = foodPlanType?.value === 'HotelFood';
+        if (foodOptionWrap) foodOptionWrap.hidden = !useHotelFood;
+        if (foodOption) foodOption.required = useHotelFood;
+        const selectedFood = foodOption?.options[foodOption.selectedIndex];
+        if (foodDescription && useHotelFood && selectedFood?.value) {
+            const detail = selectedFood.dataset.description || 'Gói thức ăn Hotel';
+            foodDescription.textContent = `${detail} · ${selectedFood.dataset.portion || 0}g/bữa · ${selectedFood.dataset.meals || 0} bữa/ngày`;
+        }
+        updateTotal();
     }
 
     document.querySelectorAll('.open-hotel-modal, #btnBookHotel, .ps-hotel-banner').forEach(function (el) {
@@ -160,6 +187,9 @@
     updateTotal();
 
     if (roomSelect) roomSelect.addEventListener('change', updateTotal);
+    if (foodPlanType) foodPlanType.addEventListener('change', updateFoodPlan);
+    if (foodOption) foodOption.addEventListener('change', updateFoodPlan);
+    updateFoodPlan();
     if (checkIn) {
         checkIn.addEventListener('change', function () {
             checkIn.setCustomValidity('');

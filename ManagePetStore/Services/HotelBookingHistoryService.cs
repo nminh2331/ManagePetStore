@@ -33,6 +33,7 @@ public class HotelBookingHistoryService : IHotelBookingHistoryService
             .Include(booking => booking.Cage)
                 .ThenInclude(cage => cage.RoomType)
             .Include(booking => booking.BookingAddons)
+            .Include(booking => booking.FoodPlan)
             .Where(booking => booking.HotelBookingId == hotelBookingId);
 
         if (customerId.HasValue)
@@ -121,6 +122,11 @@ public class HotelBookingHistoryService : IHotelBookingHistoryService
                 PhotoUrl = log.PhotoUrl,
                 MediaUrl = log.MediaUrl,
                 MediaType = log.MediaType,
+                MealType = log.MealType,
+                ServedGrams = log.ServedGrams,
+                ConsumedPercent = log.ConsumedPercent,
+                IsExtraCharge = log.IsExtraCharge,
+                ExtraChargeAmount = log.ExtraChargeAmount,
                 Note = log.Note,
                 StaffName = log.StaffName
             })
@@ -160,6 +166,12 @@ public class HotelBookingHistoryService : IHotelBookingHistoryService
             HasAc = booking.Cage.RoomType.HasAc,
             HasCamera = booking.Cage.RoomType.HasCamera,
             HasPremiumFood = booking.Cage.RoomType.HasPremiumFood,
+            FoodPlanName = booking.FoodPlan?.FoodNameSnapshot ?? "Chủ nuôi tự chuẩn bị",
+            FoodPricePerDay = booking.FoodPlan?.PricePerDaySnapshot ?? 0,
+            FoodPortionGrams = booking.FoodPlan?.PortionGrams ?? 0,
+            FoodMealsPerDay = booking.FoodPlan?.MealsPerDay ?? 0,
+            FeedingInstructions = booking.FoodPlan?.FeedingInstructions,
+            FoodAllergyNotes = booking.FoodPlan?.AllergyNotes,
             Addons = booking.BookingAddons
                 .OrderBy(addon => addon.AddonId)
                 .Select(addon => new HotelBookingAddonHistoryItem

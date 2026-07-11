@@ -41,6 +41,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let cart = []; // Mảng chứa PosCartItemDto
     let currentCustomer = null;
     let selectedPetId = null;
+    let completedSpaBookings = [];
+    let readyHotelCheckouts = [];
 
     // Lấy giỏ hàng tạm từ LocalStorage nếu có
     const savedCart = localStorage.getItem('pos_cart');
@@ -118,6 +120,116 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     loadAllProducts();
 
+    async function loadCompletedSpaBookingsForHotel() {
+        try {
+            const res = await fetch('/Cashier/Order/GetCompletedSpaBookings');
+            const data = await res.json();
+            completedSpaBookings = data.success && data.data ? data.data : [];
+        } catch (err) {
+            console.error('Lỗi lấy Spa liên kết Hotel:', err);
+            completedSpaBookings = [];
+        }
+    }
+
+    async function loadReadyHotelCheckouts() {
+        const list = document.getElementById('allHotelPending');
+        if (!list) return;
+
+        try {
+            const res = await fetch('/Cashier/Order/GetReadyHotelCheckouts');
+            const data = await res.json();
+            const rows = data.success && data.data ? data.data : [];
+            readyHotelCheckouts = rows;
+            document.getElementById('countHotel').textContent = rows.length;
+
+            list.innerHTML = rows.length ? rows.map(item => {
+                return `<div class="pos-spa-item" style="padding:16px;border:1px solid var(--pos-border);border-radius:8px;background:#fff;display:grid;gap:8px;align-items:stretch;height:auto;cursor:default;">
+                    <div style="display:flex;justify-content:space-between;gap:8px;"><strong>HB#${item.hotelBookingId}</strong><small>${item.preparedAt}</small></div>
+                    <div style="font-size:12px;text-align:left;"><div><strong>Khách:</strong> ${item.customerName} (${item.customerPhone})</div><div><strong>Pet:</strong> ${item.petName}</div><div><strong>Phòng:</strong> ${item.roomTypeName} · ${item.cageId}</div></div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><strong style="color:#ef4444;">${formatCurrency(item.total)}</strong><button class="btn-pos-primary" style="padding:5px 9px;font-size:11px;" onclick="handleSelectHotelCheckout(${item.hotelCheckoutId})"><i class="bi bi-plus-circle"></i> Thu tiền</button></div>
+                </div>`;
+            }).join('') : '<p style="color:var(--pos-text-muted);font-size:13px;">Không có bảng kê Hotel nào đang chờ thu.</p>';
+        } catch (err) {
+            console.error('Lỗi lấy bảng kê Hotel:', err);
+            readyHotelCheckouts = [];
+            list.innerHTML = '<p style="color:var(--pos-danger);font-size:13px;">Không thể tải danh sách Hotel.</p>';
+        }
+    }
+
+    window.handleSelectHotelCheckout = async function (hotelCheckoutId) {
+        const item = readyHotelCheckouts.find(row => row.hotelCheckoutId === hotelCheckoutId);
+        if (!item) {
+            alert('Bảng kê Hotel không còn trong danh sách chờ thu. Vui lòng tải lại.');
+            await loadReadyHotelCheckouts();
+            return;
+        }
+
+        if (currentCustomer && cart.length > 0 && currentCustomer.customerId !== item.customerId) {
+            if (!confirm(`Giỏ hiện thuộc ${currentCustomer.fullName}. Chuyển sang ${item.customerName} và xóa giỏ cũ?`)) return;
+            clearCurrentCartAndCustomer();
+        }
+
+        if (!completedSpaBookings.length && (item.linkedSpaBookingIds || []).length) {
+            await loadCompletedSpaBookingsForHotel();
+        }
+        const linkedSpaBookings = (item.linkedSpaBookingIds || [])
+            .map(spaId => completedSpaBookings.find(row => row.bookingId === spaId))
+            .filter(Boolean);
+        if (linkedSpaBookings.length !== (item.linkedSpaBookingIds || []).length) {
+            alert('Chưa tải đủ dịch vụ Spa liên kết. Vui lòng thử lại để tránh thiếu khoản thu.');
+            return;
+        }
+
+        currentCustomer = {
+            customerId: item.customerId,
+            fullName: item.customerName,
+            phone: item.customerPhone,
+            membershipTier: 'Thành viên',
+            loyaltyPoints: 0,
+            pets: [{ petId: item.petId, name: item.petName, species: '', weight: item.petWeight || 0 }]
+        };
+        renderCustomerInfo();
+        const petSelect = document.getElementById('posSelectPet');
+        if (petSelect) petSelect.value = String(item.petId);
+
+        cart = cart.filter(row => !(row.type === 'Hotel' && row.hotelCheckoutId === item.hotelCheckoutId));
+        cart.push({
+            type: 'Hotel',
+            id: String(item.roomTypeId),
+            name: `Hotel ${item.roomTypeName} - ${item.petName}`,
+            quantity: 1,
+            price: item.total,
+            total: item.total,
+            petId: item.petId,
+            petName: item.petName,
+            hotelCheckoutId: item.hotelCheckoutId
+        });
+
+        linkedSpaBookings.forEach(spa => {
+            if (cart.some(row => row.type === 'Spa' && row.bookingId === spa.bookingId)) return;
+            cart.push({
+                type: 'Spa',
+                id: String(spa.serviceId),
+                name: spa.serviceName,
+                quantity: 1,
+                price: spa.price,
+                total: spa.price,
+                petId: spa.petId,
+                petName: spa.petName,
+                petWeight: spa.petWeight || 0,
+                groomerId: spa.groomerId,
+                appointmentTime: new Date().toISOString(),
+                bookingId: spa.bookingId
+            });
+        });
+
+        saveCartLocally();
+        renderCart();
+    };
+
+    loadCompletedSpaBookingsForHotel();
+    loadReadyHotelCheckouts();
+
     // === TABS LOGIC ===
     const tabs = document.querySelectorAll('.pos-tab');
     const tabContents = document.querySelectorAll('.pos-tab-content');
@@ -128,7 +240,9 @@ document.addEventListener('DOMContentLoaded', function () {
             tabContents.forEach(tc => tc.classList.remove('active'));
             
             tab.classList.add('active');
-            document.getElementById(tab.getAttribute('data-target')).classList.add('active');
+            const targetId = tab.getAttribute('data-target');
+            document.getElementById(targetId).classList.add('active');
+            if (targetId === 'cart-hotel') loadReadyHotelCheckouts();
         });
     });
 
@@ -302,8 +416,8 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('chkUsePoints').checked = false;
         renderCustomerInfo();
         
-        // Remove Spa items from cart because they require a customer
-        cart = cart.filter(c => c.type !== 'Spa');
+        // Spa and Hotel items are tied to a specific customer and pet.
+        cart = cart.filter(c => c.type !== 'Spa' && c.type !== 'Hotel');
         saveCartLocally();
         renderCart();
     });
@@ -574,11 +688,14 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderCart() {
         const listProducts = document.getElementById('listProducts');
         const listSpa = document.getElementById('listSpa');
+        const listHotel = document.getElementById('listHotel');
         const emptyProducts = document.getElementById('emptyProducts');
         const emptySpa = document.getElementById('emptySpa');
+        const emptyHotel = document.getElementById('emptyHotel');
 
         const products = cart.map((c, idx) => ({ ...c, originalIndex: idx })).filter(c => c.type === 'Product');
         const spas = cart.map((c, idx) => ({ ...c, originalIndex: idx })).filter(c => c.type === 'Spa');
+        const hotels = cart.map((c, idx) => ({ ...c, originalIndex: idx })).filter(c => c.type === 'Hotel');
 
         document.getElementById('countProducts').textContent = products.length;
         document.getElementById('countSpa').textContent = spas.length;
@@ -626,6 +743,25 @@ document.addEventListener('DOMContentLoaded', function () {
                     <button class="btn-remove-item" onclick="removeItem(${s.originalIndex})"><i class="bi bi-trash"></i></button>
                 </div>
             `}).join('');
+        }
+
+        // Render Hotel checkout statements
+        if (hotels.length === 0) {
+            emptyHotel.style.display = 'block';
+            listHotel.innerHTML = '';
+        } else {
+            emptyHotel.style.display = 'none';
+            listHotel.innerHTML = hotels.map(h => `
+                <div class="pos-cart-item">
+                    <div class="pos-item-icon"><i class="bi bi-building-check"></i></div>
+                    <div class="pos-item-details">
+                        <div class="pos-item-name">${h.name}</div>
+                        <div class="pos-item-meta">Bảng kê #${h.hotelCheckoutId} | Pet: ${h.petName}</div>
+                    </div>
+                    <div class="pos-item-price">${formatCurrency(h.total)}</div>
+                    <button class="btn-remove-item" onclick="removeItem(${h.originalIndex})"><i class="bi bi-trash"></i></button>
+                </div>
+            `).join('');
         }
 
         // Calculate Totals
@@ -737,15 +873,21 @@ document.addEventListener('DOMContentLoaded', function () {
     // === CALCULATE PAYMENT REAL-TIME ===
     function recalculatePayment() {
         const subtotal = cart.reduce((acc, curr) => acc + curr.total, 0);
+        const hasHotelItem = cart.some(item => item.type === 'Hotel');
+        const usePointsCheckbox = document.getElementById('chkUsePoints');
         let discount = 0;
         let pointsUsed = 0;
 
-        if (currentCustomer) {
+        usePointsCheckbox.disabled = hasHotelItem;
+        usePointsCheckbox.title = hasHotelItem ? 'Điểm thành viên chưa áp dụng cho hóa đơn có Hotel' : '';
+        if (hasHotelItem) usePointsCheckbox.checked = false;
+
+        if (currentCustomer && !hasHotelItem) {
             const maxDiscountPoints = Math.floor(subtotal / 500);
             const pointsToUse = Math.min(currentCustomer.loyaltyPoints, maxDiscountPoints);
             document.getElementById('lblMaxDiscountVal').textContent = formatCurrency(pointsToUse * 500);
 
-            if (document.getElementById('chkUsePoints').checked) {
+            if (usePointsCheckbox.checked) {
                 pointsUsed = pointsToUse;
                 discount = pointsUsed * 500;
             }
@@ -954,6 +1096,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     // Clear POS state
                     clearCurrentCartAndCustomer();
+                    loadCompletedSpaBookingsForHotel();
+                    loadReadyHotelCheckouts();
                 }
             } else {
                 alert(data.message || "Lỗi tạo đơn hàng.");
