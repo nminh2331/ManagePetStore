@@ -53,6 +53,9 @@
                     <a class="ps-admin-link" asp-area="Cashier" asp-controller="Order" asp-action="Create" style="color: #f97316; font-weight: 700; white-space: nowrap; margin-left: 15px;">
                         <i class="bi bi-shop"></i> Quầy thu ngân
                     </a>
+                    <a class="ps-admin-link" asp-area="Cashier" asp-controller="Order" asp-action="CreateAtCounter" style="color: #10b981; font-weight: 700; white-space: nowrap; margin-left: 15px;">
+                        <i class="bi bi-plus-circle"></i> Tạo đơn tại quầy
+                    </a>
                 }
 
                 @if (User.IsInRole("admin"))
