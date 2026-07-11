@@ -110,7 +110,7 @@
     <div class="header text-center">
         <h1>PET STORE</h1>
         <p>Địa chỉ: Thôn 1, Xã Thạch Thất, Hà Nội</p>
-        <p>SĐT: 0862735289</p>
+        <p>SĐT: 0915793038</p>
         <p class="bold">HÓA ĐƠN THANH TOÁN</p>
     </div>
 
@@ -170,7 +170,7 @@
         @if (Model.Discount > 0)
         {
             <div class="totals-row">
-                <span>Giảm giá điểm tích lũy (@(Model.PointsRedeemed) điểm):</span>
+                <span>Giảm giá voucher:</span>
                 <span>-@(Model.Discount.ToString("N0"))đ</span>
             </div>
         }
@@ -187,23 +187,27 @@
 
     <div class="divider"></div>
 
-    <div class="totals" style="font-size: 10px;">
+    @{
+        string voucherCodeStr = "Không áp dụng voucher";
+        if (Model.Discount > 0) {
+            if (Model.CancelReason != null && Model.CancelReason.StartsWith("VOUCHER:")) {
+                voucherCodeStr = Model.CancelReason.Substring(8);
+            } else {
+                voucherCodeStr = "Voucher giảm giá";
+            }
+        }
+    }
+    <div class="totals" style="font-size: 11px;">
         <div class="totals-row">
-            <span>Điểm tích lũy cũ:</span>
-            <span>@(Model.Customer.LoyaltyPoints - Model.PointsEarned + Model.PointsRedeemed)</span>
-        </div>
-        <div class="totals-row">
-            <span>Điểm tiêu (giảm giá):</span>
-            <span>-@Model.PointsRedeemed</span>
-        </div>
-        <div class="totals-row">
-            <span>Điểm nhận thêm từ đơn:</span>
-            <span>+@Model.PointsEarned</span>
-        </div>
-        <div class="divider"></div>
-        <div class="totals-row bold" style="font-size: 11px;">
-            <span>Tổng điểm mới:</span>
-            <span>@Model.Customer.LoyaltyPoints</span>
+            <span>Voucher áp dụng:</span>
+            @if (Model.Discount > 0)
+            {
+                <span class="bold">@voucherCodeStr (-@(Model.Discount.ToString("N0"))đ)</span>
+            }
+            else
+            {
+                <span>Không áp dụng voucher</span>
+            }
         </div>
     </div>
 
@@ -250,9 +254,6 @@
                         <td class="bold" style="font-size: 13px;">@booking.DateTime.ToString("HH:mm - dd/MM/yyyy")</td>
                     </tr>
                 </table>
-                <div class="text-center" style="margin-top: 4mm; font-size: 10px;">
-                    <p class="bold">VUI LÒNG MANG PHIẾU NÀY ĐẾN PHÒNG SPA</p>
-                </div>
             </div>
         }
     }

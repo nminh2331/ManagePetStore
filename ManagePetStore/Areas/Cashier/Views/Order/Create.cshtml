@@ -8,53 +8,29 @@
 }
 
 <div class="pos-container">
-    <!-- Cột trái: Tìm kiếm Sản phẩm & Dịch vụ -->
+    <!-- Cột trái: Danh sách lịch Spa chờ thu tiền -->
     <div class="pos-left">
         <div class="pos-header" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px;">
-            <h2 style="margin: 0;">Tạo Đơn Hàng Mới</h2>
+            <h2 style="margin: 0;"><i class="bi bi-cash-stack"></i> Danh Sách Chờ Thu</h2>
             <button class="btn-pos-outline" id="btnShowHeldOrders" style="padding: 8px 16px; font-size: 14px;">
                 <i class="bi bi-clock-history"></i> Đơn lưu tạm (<span id="heldOrderCount">0</span>)
             </button>
         </div>
-        <div class="pos-header" style="padding-top: 0; border-top: none;">
-            <div class="pos-search-box">
-                <i class="bi bi-search"></i>
-                <input type="text" id="posSearchProduct" placeholder="Tìm sản phẩm, dịch vụ spa (Gõ tên hoặc SKU)..." autocomplete="off" />
-                <div class="pos-search-results" id="posProductResults" style="display: none;"></div>
-            </div>
-        </div>
 
         <div class="pos-cart-section">
             <div class="pos-tabs">
-                <button class="pos-tab active" data-target="cart-products">Sản phẩm (<span id="countProducts">0</span>)</button>
-                <button class="pos-tab" data-target="cart-spa">Dịch vụ Spa (<span id="countSpa">0</span>)</button>
+                <button class="pos-tab active" data-target="cart-spa-pending" id="tabSpaPendingBtn">Spa Chờ Thu (<span id="countSpaPending">0</span>)</button>
+                <!-- Thành viên khác sẽ thêm tab Hotel và Chuồng ở đây -->
             </div>
 
-            <!-- Tab Sản Phẩm -->
-            <div class="pos-tab-content active" id="cart-products">
-                <div class="pos-empty-state" id="emptyProducts" style="display:none;">
-                    <i class="bi bi-box-seam"></i>
-                    <p>Chưa có sản phẩm nào trong đơn</p>
+            <!-- Tab Spa Chờ Thu -->
+            <div class="pos-tab-content active" id="cart-spa-pending" style="padding: 16px 24px 24px 24px;">
+                <div class="pos-empty-state" id="emptySpaPending">
+                    <i class="bi bi-calendar-check"></i>
+                    <p>Không có lịch hẹn Spa nào cần thu tiền</p>
                 </div>
-                <div class="pos-cart-list" id="listProducts"></div>
-
-                <h4 style="margin-top: 24px; margin-bottom: 16px; font-size: 16px; font-weight: 800;">Danh Sách Sản Phẩm</h4>
-                <div id="allProductsList" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                    <!-- Sẽ load danh sách sản phẩm vào đây -->
-                </div>
-            </div>
-
-            <!-- Tab Spa -->
-            <div class="pos-tab-content" id="cart-spa">
-                <div class="pos-empty-state" id="emptySpa">
-                    <i class="bi bi-scissors"></i>
-                    <p>Chưa có dịch vụ Spa nào</p>
-                </div>
-                <div class="pos-cart-list" id="listSpa"></div>
-                
-                <h4 style="margin-top: 24px; margin-bottom: 16px; font-size: 16px; font-weight: 800;">Danh Sách Dịch Vụ Spa</h4>
-                <div id="allSpasList" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                    <!-- Sẽ load danh sách spa vào đây -->
+                <div id="listSpaPending" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-height: 520px; overflow-y: auto; padding: 4px;">
+                    <!-- Lịch spa cần thu sẽ được load vào đây -->
                 </div>
             </div>
         </div>
@@ -65,13 +41,10 @@
         <!-- Khu vực Khách hàng -->
         <div class="pos-customer-card">
             <div class="pos-customer-search">
-                <div class="input-with-icon">
+                <div class="input-with-icon" style="width: 100%;">
                     <i class="bi bi-person-bounding-box"></i>
                     <input type="text" id="posSearchCustomer" placeholder="Tìm Khách Hàng (SĐT, Tên KH, Tên Pet)..." autocomplete="off" />
                 </div>
-                <button class="btn-pos-secondary" id="btnShowQuickRegister" title="Đăng ký nhanh">
-                    <i class="bi bi-person-plus"></i>
-                </button>
                 <div class="pos-search-results" id="posCustomerResults" style="display: none;"></div>
             </div>
 
@@ -88,22 +61,20 @@
                         <i class="bi bi-x-circle"></i>
                     </button>
                 </div>
-                <div class="customer-stats">
-                    <div class="stat-item">
-                        <span class="stat-label">Hạng</span>
-                        <span class="stat-value" id="lblCustomerTier">Vàng</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Điểm</span>
-                        <span class="stat-value" id="lblCustomerPoints">150</span>
-                    </div>
-                </div>
-                <!-- Pet Selector cho Spa -->
-                <div class="customer-pets-section" id="customerPetsSection" style="display: none;">
-                    <label>Chọn thú cưng (Cho dịch vụ Spa):</label>
-                    <select id="posSelectPet" class="pos-select"></select>
+
+
+
+                <!-- Thông tin ca Spa thanh toán -->
+                <div class="spa-booking-summary" id="spaBookingSummary" style="display: none; margin-top: 12px; padding: 12px; background: #fffbeb; border-radius: 8px; border: 1px solid #fef3c7;">
+                    <p style="margin: 0; font-size: 13px; color: #b45309; font-weight: 700; margin-bottom: 4px;"><i class="bi bi-scissors"></i> Ca Spa: <span id="lblSpaBookingService" style="font-weight: 500;">Dịch vụ</span></p>
+                    <p style="margin: 0; font-size: 13px; color: #b45309; font-weight: 700;"><i class="bi bi-heart"></i> Thú cưng: <span id="lblSpaBookingPet" style="font-weight: 500;">Tên thú cưng</span></p>
                 </div>
             </div>
+        <!-- Chi tiết đơn hàng -->
+        <div class="pos-customer-card" id="cartItemsCard" style="display: none; padding: 16px; margin-bottom: 16px;">
+            <h4 style="margin-top: 0; margin-bottom: 12px; font-size: 15px; font-weight: 800; color: var(--admin-primary);"><i class="bi bi-cart3"></i> Chi tiết đơn hàng</h4>
+            <div class="pos-cart-list" id="listProducts" style="max-height: 200px; overflow-y: auto;"></div>
+            <span id="emptyProducts" style="display: none;"></span> <!-- Placeholder to prevent JS errors -->
         </div>
 
         <!-- Khu vực Tổng tiền -->
@@ -118,14 +89,7 @@
                 <strong class="total-amount" id="lblTotal">0đ</strong>
             </div>
 
-            <!-- Tích hợp điểm tích lũy -->
-            <div class="pos-loyalty-section" id="loyaltyGroup" style="margin-top: 12px; display: none; padding: 12px; background: #eff6ff; border-radius: 12px; border: 1px solid #bfdbfe; margin-bottom: 12px;">
-                <label style="font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px; margin-bottom: 4px; cursor: pointer;">
-                    <input type="checkbox" id="chkUsePoints" style="width:16px; height:16px; cursor:pointer;" />
-                    Dùng điểm giảm giá (1đ = 500đ)
-                </label>
-                <span style="font-size:12px; color:#1e40af; display: block;">Khách hàng có: <strong id="lblCustomerPointsVal">0</strong> điểm. Giảm tối đa: <strong id="lblMaxDiscountVal">0đ</strong></span>
-            </div>
+
 
             <!-- Payment logic moved to modal -->
             
@@ -141,91 +105,9 @@
     </div>
 </div>
 
-<!-- Modal Đăng Ký Nhanh -->
-<div class="pos-modal-overlay" id="quickRegisterModal">
-    <div class="pos-modal-card">
-        <div class="pos-modal-header">
-            <h3>Đăng ký Khách Hàng mới</h3>
-            <button class="btn-pos-close" id="btnCloseRegisterModal"><i class="bi bi-x"></i></button>
-        </div>
-        <div class="pos-modal-body">
-            <div id="regFormError" class="pos-form-error-banner" style="display:none;"></div>
-            <div class="pos-form-group">
-                <label>Tên Khách Hàng <span class="text-danger">*</span></label>
-                <input type="text" id="regCustomerName" class="pos-input" placeholder="Nhập tên khách hàng" />
-                <span class="pos-field-error" id="errRegCustomerName"></span>
-            </div>
-            <div class="pos-form-group">
-                <label>Số Điện Thoại <span class="text-danger">*</span></label>
-                <input type="tel" id="regPhone" class="pos-input" placeholder="Nhập số điện thoại" />
-                <span class="pos-field-error" id="errRegPhone"></span>
-            </div>
-            <hr />
-            <div class="pos-form-group">
-                <label>Tên Thú Cưng (Nếu có)</label>
-                <input type="text" id="regPetName" class="pos-input" placeholder="Nhập tên thú cưng" />
-                <span class="pos-field-error" id="errRegPetName"></span>
-            </div>
-            <div class="pos-form-group">
-                <label>Loại Thú Cưng</label>
-                <select id="regPetType" class="pos-select">
-                    <option value="Chó">Chó</option>
-                    <option value="Mèo">Mèo</option>
-                    <option value="Khác">Khác</option>
-                </select>
-            </div>
-        </div>
-        <div class="pos-modal-footer">
-            <button class="btn-pos-secondary" id="btnCancelRegister">Hủy</button>
-            <button class="btn-pos-primary" id="btnSaveRegister">Lưu & Chọn</button>
-        </div>
-    </div>
-</div>
 
-<!-- Modal Thiết Lập Dịch Vụ Spa -->
-<div class="pos-modal-overlay" id="spaSetupModal">
-    <div class="pos-modal-card">
-        <div class="pos-modal-header">
-            <h3>Chi tiết Dịch vụ Spa</h3>
-            <button class="btn-pos-close" id="btnCloseSpaSetup"><i class="bi bi-x"></i></button>
-        </div>
-        <div class="pos-modal-body">
-            <p id="spaSetupServiceName" style="font-weight: 700; color: var(--admin-primary); font-size: 18px; margin-bottom: 16px;"></p>
-            <input type="hidden" id="spaSetupServiceId" />
-            <input type="hidden" id="spaSetupBasePrice" />
 
-            <div class="pos-form-group">
-                <label>Cân nặng thú cưng (kg) <span class="text-danger">*</span></label>
-                <div class="weight-input-wrapper">
-                    <input type="number" id="spaSetupWeight" class="pos-input" step="0.1" min="0" placeholder="VD: 5.5" />
-                    <span class="weight-unit">kg</span>
-                </div>
-                <small class="text-muted">Giá sẽ được tính toán lại dựa trên cân nặng.</small>
-            </div>
 
-            <div class="pos-form-group">
-                <label>Groomer thực hiện <span class="text-danger">*</span></label>
-                <select id="spaSetupGroomer" class="pos-select">
-                    <option value="">-- Chọn Groomer --</option>
-                </select>
-            </div>
-
-            <div class="pos-form-group">
-                <label>Giờ hẹn <span class="text-danger">*</span></label>
-                <input type="time" id="spaSetupTime" class="pos-input" />
-            </div>
-
-            <div class="spa-calculated-price">
-                <span>Thành tiền:</span>
-                <strong id="spaSetupCalculatedPrice">0đ</strong>
-            </div>
-        </div>
-        <div class="pos-modal-footer">
-            <button class="btn-pos-secondary" id="btnCancelSpaSetup">Hủy</button>
-            <button class="btn-pos-primary" id="btnSaveSpaSetup">Thêm vào giỏ</button>
-        </div>
-    </div>
-</div>
 
 <!-- Modal Danh Sách Đơn Tạm -->
 <div class="pos-modal-overlay" id="heldOrdersModal">
@@ -253,9 +135,27 @@
             <button class="btn-pos-close" id="btnClosePaymentModal"><i class="bi bi-x"></i></button>
         </div>
         <div class="pos-modal-body">
+             <div class="summary-row" style="margin-bottom: 8px; font-size: 14px; color: var(--pos-text-muted);">
+                <span>Tạm tính:</span>
+                <span id="lblModalSubtotal">0đ</span>
+            </div>
+            <div class="summary-row" id="rowModalDiscount" style="margin-bottom: 8px; font-size: 14px; color: var(--pos-danger); display: none;">
+                <span>Giảm giá (Voucher):</span>
+                <span id="lblModalDiscount">-0đ</span>
+            </div>
             <div class="summary-row highlight" style="margin-bottom: 16px;">
                 <span style="font-size: 16px;">Tổng thanh toán:</span>
                 <strong class="total-amount" id="lblModalTotal" style="font-size: 24px; color: var(--pos-primary);">0đ</strong>
+            </div>
+
+            <!-- Áp dụng Voucher -->
+            <div class="pos-form-group" style="margin-top: 12px; margin-bottom: 16px;">
+                <label>Mã giảm giá (Voucher)</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="txtVoucherCode" class="pos-input" placeholder="Nhập mã voucher (VD: PET20)" style="text-transform: uppercase;" autocomplete="off" />
+                    <button class="btn-pos-primary" id="btnApplyVoucher" style="white-space: nowrap; padding: 0 16px;">Áp dụng</button>
+                </div>
+                <div id="voucherMessage" style="font-size: 13px; margin-top: 4px; display: none;"></div>
             </div>
 
             <div class="pos-form-group" style="margin-top: 12px;">
@@ -263,7 +163,6 @@
                 <select id="posPaymentMethod" class="pos-select">
                     <option value="Tiền mặt">Tiền mặt</option>
                     <option value="Thanh toán online">Thanh toán online (PayOS)</option>
-                    <option value="Tiền mặt + Online">Tiền mặt + Online</option>
                 </select>
             </div>
 
@@ -303,24 +202,35 @@
 }
 </style>
 
-<!-- Modal Thông báo thành công -->
-<div class="pos-modal-overlay" id="posSuccessModal">
-    <div class="pos-modal-card" style="max-width: 400px; text-align: center;">
-        <div class="pos-modal-header" style="justify-content: center;">
-            <h3 style="margin: 0; color: var(--pos-success);"><i class="bi bi-check-circle-fill"></i> Thanh toán thành công</h3>
+<!-- Modal Thông báo thanh toán thành công và Hiện hóa đơn -->
+<div class="pos-modal-overlay" id="posSuccessModal" style="display: none; align-items: center; justify-content: center; z-index: 1060;">
+    <div class="pos-modal" style="width: 420px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);">
+        <!-- Header -->
+        <div style="background: #10b981; color: white; padding: 20px; text-align: center; border-top-left-radius: 16px; border-top-right-radius: 16px;">
+            <div style="font-size: 40px; line-height: 1; margin-bottom: 8px;"><i class="bi bi-check-circle-fill"></i></div>
+            <h3 style="margin: 0; font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Thanh toán thành công!</h3>
+            <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Đơn hàng đã được lưu trữ thành công</p>
         </div>
-        <div class="pos-modal-body" style="padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 12px;">
-            <p style="margin: 0; font-size: 15px;">Đơn hàng <strong id="lblSuccessOrderId">OD-XXXX</strong> đã được thanh toán hoàn tất.</p>
+
+        <!-- Body (Receipt scroll area) -->
+        <div style="flex-grow: 1; overflow-y: auto; padding: 20px; background: #f9fafb;">
+            <!-- Receipt Container mimicking print receipt -->
+            <div id="printReceiptContent" style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; font-family: 'Courier New', Courier, monospace; font-size: 12px; color: #111827; line-height: 1.4; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                <!-- Dữ liệu hóa đơn sẽ được render động bằng JS vào đây -->
+            </div>
         </div>
-        <div class="pos-modal-footer" style="justify-content: center; gap: 12px;">
-            <button class="btn-pos-primary" id="btnSuccessPrint" style="padding: 10px 20px;">
-                <i class="bi bi-printer"></i> In hóa đơn
+
+        <!-- Footer Actions -->
+        <div style="padding: 16px 20px; background: white; border-top: 1px solid #f3f4f6; display: flex; gap: 12px; justify-content: flex-end;">
+            <button class="btn-pos-outline" id="btnSuccessPDF" style="padding: 10px 20px; font-size: 14px; font-weight: 700; border-radius: 8px; flex-grow: 1; border: 1px solid #d1d5db; background: white; color: #374151;">
+                <i class="bi bi-file-earmark-pdf"></i> Xuất PDF
             </button>
-            <button class="btn-pos-secondary" id="btnSuccessClose" style="padding: 10px 20px;">Đóng</button>
+            <button class="btn-pos-primary" id="btnSuccessClose" style="padding: 10px 20px; font-size: 14px; font-weight: 700; border-radius: 8px; flex-grow: 1;">XÁC NHẬN &amp; ĐÓNG</button>
         </div>
     </div>
 </div>
 
 @section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="~/js/cashier-pos.js"></script>
 }
