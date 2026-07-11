@@ -15,6 +15,8 @@ public partial class SpaService
 
     public bool Active { get; set; }
 
+    public string? TargetSpecies { get; set; }
+
     public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 
     public virtual ICollection<SpaBooking> SpaBookings { get; set; } = new List<SpaBooking>();

@@ -21,7 +21,7 @@ public class InventoryBatchRepository : IInventoryBatchRepository
 
     public async Task<IEnumerable<InventoryBatch>> GetBatchesByProductSku(string productSku)
     {
-        return await _context.InventoryBatchs
+        return await _context.InventoryBatches
             .Where(b => b.ProductSku == productSku)
             .OrderByDescending(b => b.ReceivedDate)
             .ToListAsync();
@@ -29,27 +29,27 @@ public class InventoryBatchRepository : IInventoryBatchRepository
 
     public async Task<InventoryBatch?> GetBatchById(int batchId)
     {
-        return await _context.InventoryBatchs.FindAsync(batchId);
+        return await _context.InventoryBatches.FindAsync(batchId);
     }
 
     public async Task AddBatch(InventoryBatch batch)
     {
-        _context.InventoryBatchs.Add(batch);
+        _context.InventoryBatches.Add(batch);
         await _context.SaveChangesAsync();
     }
 
     public async Task UpdateBatch(InventoryBatch batch)
     {
-        _context.InventoryBatchs.Update(batch);
+        _context.InventoryBatches.Update(batch);
         await _context.SaveChangesAsync();
     }
 
     public async Task DeleteBatch(int batchId)
     {
-        var batch = await _context.InventoryBatchs.FindAsync(batchId);
+        var batch = await _context.InventoryBatches.FindAsync(batchId);
         if (batch is not null)
         {
-            _context.InventoryBatchs.Remove(batch);
+            _context.InventoryBatches.Remove(batch);
             await _context.SaveChangesAsync();
         }
     }

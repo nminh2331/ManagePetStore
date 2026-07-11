@@ -1,3 +1,4 @@
+ <!-- hà hoàng hiệp code , GIAO DIỆN KHI THANH TOÁN THÀNH CÔNG  -->
 @model ManagePetStore.Areas.Customer.Models.CheckoutSuccessViewModel
 @{
     Layout = "_PetStoreLayout";
@@ -49,7 +50,7 @@
             }
         </div>
 
-        @if (Model.PaymentMethod != "Tiền mặt")
+        @if (Model.PaymentMethod != "Tiền mặt" && !Model.IsPaid)
         {
             <div class="checkout-success-note">
                 Đơn hàng ở trạng thái <strong>Chờ thanh toán</strong>. Vui lòng hoàn tất thanh toán qua @Model.PaymentMethod.

@@ -18,22 +18,21 @@ public class SupplierRepository : ISupplierRepository
     public async Task<IEnumerable<Supplier>> GetAllSuppliersAsync()
     {
         return await _context.Suppliers
-            .Include(s => s.SupplierCategories)
-                .ThenInclude(sc => sc.Category)
+            .Include(s => s.Categories)
             .ToListAsync();
     }
 
     public async Task<Supplier?> GetSupplierByIdAsync(int id)
     {
         return await _context.Suppliers
-            .Include(s => s.SupplierCategories)
+            .Include(s => s.Categories)
             .FirstOrDefaultAsync(s => s.SupplierId == id);
     }
 
     public async Task<IEnumerable<Supplier>> GetSuppliersByCategoryAsync(int categoryId)
     {
         return await _context.Suppliers
-            .Where(s => s.IsActive && s.SupplierCategories.Any(sc => sc.CategoryId == categoryId))
+            .Where(s => s.IsActive && s.Categories.Any(c => c.CategoryId == categoryId))
             .ToListAsync();
     }
 
@@ -55,9 +54,10 @@ public class SupplierRepository : ISupplierRepository
         if (supplier != null)
         {
             // Instead of hard delete, maybe soft delete? Or hard delete if no relations.
-            // Let's do hard delete for now, but handle related SupplierCategories
-            var relatedCategories = _context.SupplierCategories.Where(sc => sc.SupplierId == id);
-            _context.SupplierCategories.RemoveRange(relatedCategories);
+            // Entity Framework will automatically handle the many-to-many join table deletion
+            // when we remove the supplier if cascade delete is configured, or we can clear categories.
+            await _context.Entry(supplier).Collection(s => s.Categories).LoadAsync();
+            supplier.Categories.Clear();
             
             _context.Suppliers.Remove(supplier);
             await _context.SaveChangesAsync();
@@ -66,20 +66,21 @@ public class SupplierRepository : ISupplierRepository
 
     public async Task AssignCategoriesToSupplierAsync(int supplierId, List<int> categoryIds)
     {
-        var existingLinks = await _context.SupplierCategories
-            .Where(sc => sc.SupplierId == supplierId)
-            .ToListAsync();
-            
-        _context.SupplierCategories.RemoveRange(existingLinks);
+        var supplier = await _context.Suppliers.Include(s => s.Categories).FirstOrDefaultAsync(s => s.SupplierId == supplierId);
+        if (supplier == null) return;
 
-        if (categoryIds != null && categoryIds.Any())
+        supplier.Categories.Clear();
+
+        if (categoryIds != null)
         {
-            var newLinks = categoryIds.Select(cId => new SupplierCategory
+            foreach (var categoryId in categoryIds)
             {
-                SupplierId = supplierId,
-                CategoryId = cId
-            });
-            _context.SupplierCategories.AddRange(newLinks);
+                var category = await _context.ProductCategories.FindAsync(categoryId);
+                if (category != null)
+                {
+                    supplier.Categories.Add(category);
+                }
+            }
         }
 
         await _context.SaveChangesAsync();

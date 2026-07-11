@@ -34,6 +34,7 @@ public class HotelBookingController : Controller
             return RedirectToAction("Login", "Account", new { area = "Customer" });
         }
 
+        // Tải lịch đặt khách sạn
         var bookings = await _context.HotelBookings
             .AsNoTracking()
             .Include(b => b.Pet)

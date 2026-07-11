@@ -69,6 +69,8 @@ public sealed class HotelCheckInRequest : IValidatableObject
 
     public int? ExistingPetId { get; set; }
 
+    public int? HotelBookingId { get; set; }
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         var validReceptionModes = new[] { MedicalRecordMode, NoMedicalRecordMode };
@@ -111,10 +113,10 @@ public sealed class HotelCheckInRequest : IValidatableObject
 
         if (CheckInDate.HasValue && CheckOutDate.HasValue)
         {
-            if (CheckOutDate.Value <= CheckInDate.Value)
+            if (CheckOutDate.Value < CheckInDate.Value)
             {
                 yield return new ValidationResult(
-                    "Ngày trả dự kiến phải sau ngày nhận.",
+                    "Ngày trả dự kiến không được trước ngày nhận.",
                     new[] { nameof(CheckOutDate) });
             }
             else if ((CheckOutDate.Value - CheckInDate.Value).TotalDays > 365)
@@ -125,11 +127,10 @@ public sealed class HotelCheckInRequest : IValidatableObject
             }
         }
 
-        if (CheckInDate.HasValue &&
-            (CheckInDate.Value < DateTime.Now.AddDays(-1) || CheckInDate.Value > DateTime.Now.AddDays(1)))
+        if (CheckInDate.HasValue && CheckInDate.Value > DateTime.Now)
         {
             yield return new ValidationResult(
-                "Ngày nhận phải nằm trong vòng 24 giờ so với thời điểm hiện tại.",
+                "Ngày nhận chuồng không được sau thời điểm hiện tại.",
                 new[] { nameof(CheckInDate) });
         }
     }

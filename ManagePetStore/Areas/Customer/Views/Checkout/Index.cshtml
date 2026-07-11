@@ -1,3 +1,4 @@
+ <!-- hà hoàng hiệp code : GIAO DIỆN ĐẶT HÀNG-->
 @model ManagePetStore.Areas.Customer.Models.CheckoutViewModel
 @{
     Layout = "_PetStoreLayout";
@@ -98,10 +99,16 @@
                                 <span class="checkout-payment-name">Tiền mặt</span>
                             </label>
 
-                            <label class="checkout-payment-card @(Model.PaymentMethod == "VNPay" ? "active" : "")">
-                                <input type="radio" name="paymentMethod" value="VNPay" @(Model.PaymentMethod == "VNPay" ? "checked" : null) />
-                                <span class="checkout-payment-icon vnpay">VN</span>
-                                <span class="checkout-payment-name">VNPay</span>
+                            <label class="checkout-payment-card @(Model.PaymentMethod == "PayOS" ? "active" : "")">
+                                <input type="radio" name="paymentMethod" value="PayOS" @(Model.PaymentMethod == "PayOS" ? "checked" : null) />
+                                <span class="checkout-payment-icon vnpay"><i class="bi bi-qr-code-scan"></i></span>
+                                <span class="checkout-payment-name">Thanh toán online</span>
+                            </label>
+
+                            <label class="checkout-payment-card @(Model.PaymentMethod == "Wallet" ? "active" : "")">
+                                <input type="radio" name="paymentMethod" value="Wallet" @(Model.PaymentMethod == "Wallet" ? "checked" : null) />
+                                <span class="checkout-payment-icon"><i class="bi bi-wallet2 text-primary"></i></span>
+                                <span class="checkout-payment-name">Ví điện tử</span>
                             </label>
                         </div>
                     </div>

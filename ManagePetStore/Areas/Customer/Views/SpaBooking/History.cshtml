@@ -1,0 +1,595 @@
+@model ManagePetStore.Areas.Customer.Controllers.SpaBookingHistoryPageViewModel
+@using ManagePetStore.Models
+@{
+    Layout = "/Views/Shared/_PetStoreLayout.cshtml";
+    ViewData["Title"] = "Lịch đặt hẹn Spa";
+    var reviewedIds = ViewBag.ReviewedBookingIds as List<int> ?? new List<int>();
+
+    var showingFrom = Model.TotalFilteredItems == 0 ? 0 : ((Model.Page - 1) * Model.PageSize) + 1;
+    var showingTo = Math.Min(Model.Page * Model.PageSize, Model.TotalFilteredItems);
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/customer-pets.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/customer-hotel-bookings.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/customer-orders.css" asp-append-version="true" />
+    <style>
+        .spa-table-card {
+            border: 1px solid #ECE9E5;
+            border-radius: 18px;
+            background-color: #FFFFFF;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.01);
+        }
+
+        .spa-badge {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 8px;
+        }
+
+        .star-item.active {
+            color: #FFB800;
+            transition: 0.2s;
+        }
+        
+        .progress-step-item.step-completed h6 {
+            color: #2D2521 !important;
+        }
+        .progress-step-item.step-completed .step-circle {
+            border-color: #FF7815 !important;
+            background-color: #FF7815 !important;
+        }
+        
+        .progress-step-item.step-active h6 {
+            color: #FF7815 !important;
+            position: relative;
+        }
+        .progress-step-item.step-active h6::after {
+            content: "ĐANG LÀM";
+            font-size: 0.52rem;
+            background-color: #FFF2E6;
+            color: #FF7815;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 8px;
+            font-weight: 700;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .progress-step-item.step-active .step-circle {
+            border-color: #FF7815 !important;
+            box-shadow: 0 0 0 4px #FFF2E6;
+        }
+
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 25px;
+            border-top: 1px solid #ECE9E5;
+            background-color: #FAF9F7;
+        }
+        .pg-btn {
+            border: 1px solid #ECE9E5;
+            background-color: #FFFFFF;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #5D524D;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .pg-btn:hover:not(:disabled) {
+            border-color: #FF7815;
+            color: #FF7815;
+        }
+        .pg-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .pg-info {
+            font-size: 0.85rem;
+            color: #9E918B;
+        }
+    </style>
+}
+
+<div class="cp-dashboard" style="font-family: 'Outfit', sans-serif;">
+    @await Html.PartialAsync("_CustomerSidebar", Model)
+
+    <section class="cp-main">
+        <div class="cp-main-header">
+            <div>
+                <h1 class="cp-main-title">Lịch hẹn Spa chăm sóc</h1>
+                <p class="cp-main-subtitle">Theo dõi trạng thái và tiến trình làm đẹp của thú cưng.</p>
+            </div>
+            <a asp-area="" asp-controller="Product" asp-action="Spa" class="cp-btn-add text-decoration-none" style="background-color: #FF7815;">
+                <i class="bi bi-calendar2-plus"></i> Đặt lịch Spa mới
+            </a>
+        </div>
+
+        <!-- Spa History Table Card -->
+        <div class="spa-table-card mt-3">
+            @if (!Model.Bookings.Any())
+            {
+                <div class="co-empty">
+                    <i class="bi bi-calendar2-x"></i>
+                    <p>Bạn chưa có lịch hẹn đặt Spa nào.</p>
+                    <a asp-area="" asp-controller="Product" asp-action="Spa" class="co-btn-review" style="background-color: #FF7815; border: none; color: white; text-decoration: none; padding: 10px 20px; border-radius: 10px;">Đặt lịch ngay</a>
+                </div>
+            }
+            else
+            {
+                <div class="co-filter-bar">
+                    <form asp-action="History" method="get" class="co-filter-form">
+                        <div class="co-filter-field co-filter-search">
+                            <label class="co-filter-label" for="searchTerm">Tìm lịch hẹn</label>
+                            <input type="text"
+                                   id="searchTerm"
+                                   name="searchTerm"
+                                   value="@Model.SearchTerm"
+                                   class="co-filter-input"
+                                   placeholder="Mã lịch, dịch vụ, tên bé..." />
+                        </div>
+
+                        <div class="co-filter-field co-filter-status">
+                            <label class="co-filter-label" for="statusFilter">Trạng thái</label>
+                            <select id="statusFilter" name="statusFilter" class="co-filter-select">
+                                @if (Model.StatusFilter == "all")
+                                {
+                                    <option value="all" selected>Tất cả</option>
+                                }
+                                else
+                                {
+                                    <option value="all">Tất cả</option>
+                                }
+
+                                @if (Model.StatusFilter == "pending")
+                                {
+                                    <option value="pending" selected>Đang chờ</option>
+                                }
+                                else
+                                {
+                                    <option value="pending">Đang chờ</option>
+                                }
+
+                                @if (Model.StatusFilter == "inprogress")
+                                {
+                                    <option value="inprogress" selected>Đang thực hiện</option>
+                                }
+                                else
+                                {
+                                    <option value="inprogress">Đang thực hiện</option>
+                                }
+
+                                @if (Model.StatusFilter == "completed")
+                                {
+                                    <option value="completed" selected>Hoàn thành</option>
+                                }
+                                else
+                                {
+                                    <option value="completed">Hoàn thành</option>
+                                }
+
+                                @if (Model.StatusFilter == "cancelled")
+                                {
+                                    <option value="cancelled" selected>Đã hủy</option>
+                                }
+                                else
+                                {
+                                    <option value="cancelled">Đã hủy</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="co-filter-actions">
+                            <button type="submit" class="co-btn-review" style="background-color: #FF7815; border: none; color: white;">Lọc lịch hẹn</button>
+                            @if (!string.IsNullOrWhiteSpace(Model.SearchTerm) || Model.StatusFilter != "all")
+                            {
+                                <a asp-action="History" class="co-btn-reset">Xóa lọc</a>
+                            }
+                        </div>
+                    </form>
+
+                    <div class="co-filter-summary">
+                        @if (Model.TotalFilteredItems > 0)
+                        {
+                            <span>Hiển thị @showingFrom-@showingTo trên @Model.TotalFilteredItems lịch hẹn</span>
+                        }
+                        else
+                        {
+                            <span>Không có lịch hẹn phù hợp với bộ lọc.</span>
+                        }
+                    </div>
+                </div>
+
+                @if (Model.VisibleBookings.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;" id="spaBookingTable">
+                            <thead style="background-color: #FAF9F7; font-size: 0.72rem; letter-spacing: 0.8px; text-transform: uppercase;">
+                                <tr>
+                                    <th class="py-3 ps-4" style="color: #9E918B; font-weight: 700;">Mã & Dịch vụ</th>
+                                    <th class="py-3" style="color: #9E918B; font-weight: 700;">Giờ hẹn</th>
+                                    <th class="py-3 text-end" style="color: #9E918B; font-weight: 700;">Tổng tiền</th>
+                                    <th class="py-3 text-center" style="color: #9E918B; font-weight: 700;">Groomer</th>
+                                    <th class="py-3 text-center" style="color: #9E918B; font-weight: 700;">Thực hiện</th>
+                                    <th class="py-3 text-center" style="color: #9E918B; font-weight: 700;">Thanh toán</th>
+                                    <th class="py-3 text-center pe-4" style="color: #9E918B; font-weight: 700;">Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody id="spaTableBody">
+                                @foreach (var booking in Model.VisibleBookings)
+                                {
+                                    var hasReviewed = reviewedIds.Contains(booking.BookingId);
+                                    var isFinished = booking.SpaStatus == "4" || booking.SpaStatus.EndsWith("|4");
+                                    var isCancelled = booking.SpaStatus == "Cancelled";
+
+                                    <tr class="spa-booking-row">
+                                        <td class="py-3 ps-4">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; border-radius: 10px; font-size: 1.1rem; background-color: #FFF9E6; color: #FF7815 !important;">
+                                                    ✂️
+                                                </div>
+                                                <div>
+                                                    <span style="font-size: 0.72rem; font-weight: 700; color: #9E918B; display: block;">MÃ LỊCH: #@booking.BookingId</span>
+                                                    <strong class="d-block" style="color: #2D2521;">@booking.Service?.Name</strong>
+                                                    <span class="text-muted" style="font-size: 0.78rem; display: block;">Bé: <b>@booking.Pet?.Name</b> (@booking.Pet?.Species)</span>
+                                                    @if (isCancelled && !string.IsNullOrEmpty(booking.Notes))
+                                                    {
+                                                        <span class="text-danger d-block mt-1" style="font-size: 0.75rem; font-weight: 600; max-width: 250px; white-space: normal; line-height: 1.3;">
+                                                            <i class="bi bi-exclamation-circle-fill"></i> @booking.Notes
+                                                        </span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="py-3">@booking.DateTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                        <td class="py-3 text-end" style="font-weight: 700; color: #2D2521;">@booking.Price.ToString("N0")đ</td>
+                                        <td class="py-3 text-center">@booking.Groomer?.FullName</td>
+                                        <td class="py-3 text-center">
+                                            @if (isCancelled)
+                                            {
+                                                <span class="badge bg-danger-subtle text-danger spa-badge">Đã hủy</span>
+                                            }
+                                            else if (isFinished)
+                                            {
+                                                <span class="badge bg-success-subtle text-success spa-badge">Hoàn thành</span>
+                                            }
+                                            else if (booking.SpaStatus == "0" || booking.SpaStatus.EndsWith("|0"))
+                                            {
+                                                <span class="badge bg-secondary-subtle text-secondary spa-badge">Đang chờ</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning-subtle text-warning spa-badge" style="background-color: #FFF2E6; color: #FF7815 !important;">Làm việc</span>
+                                            }
+                                        </td>
+                                        <td class="py-3 text-center">
+                                            @if (booking.Status == "Đã thanh toán" || booking.Status == "Success")
+                                            {
+                                                <span class="badge bg-success-subtle text-success spa-badge">Đã thu</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary-subtle text-secondary spa-badge">Chờ thu</span>
+                                            }
+                                        </td>
+                                        <td class="py-3 text-center pe-4">
+                                            <div class="d-flex gap-1 justify-content-center">
+                                                @if (!isCancelled)
+                                                {
+                                                    <button class="btn btn-sm btn-outline-warning btn-view-progress" 
+                                                            data-id="@booking.BookingId"
+                                                            style="border-radius: 8px; font-weight: 600; font-size: 0.78rem; padding: 4px 10px; border-color: #FFE6CC; color: #FF7815;">
+                                                        Xem ca
+                                                    </button>
+                                                }
+
+                                                @if (isFinished && !hasReviewed)
+                                                {
+                                                    <button class="btn btn-sm btn-warning btn-rate-service" 
+                                                            data-id="@booking.BookingId"
+                                                            style="border-radius: 8px; font-weight: 700; font-size: 0.78rem; padding: 4px 10px; color: white; background-color: #FF7815; border: none;">
+                                                        Đánh giá
+                                                    </button>
+                                                }
+                                                else if (hasReviewed)
+                                                {
+                                                    <span class="text-success" style="font-size: 0.78rem; font-weight: 600;"><i class="bi bi-check2"></i> Đã đánh giá</span>
+                                                }
+
+                                                @if (!isFinished && !isCancelled && booking.DateTime > DateTime.Now.AddHours(2))
+                                                {
+                                                    <button class="btn btn-sm btn-outline-danger btn-cancel-booking" 
+                                                            data-id="@booking.BookingId"
+                                                            style="border-radius: 8px; font-weight: 600; font-size: 0.78rem; padding: 4px 10px;">
+                                                        Hủy
+                                                    </button>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-search display-4 text-light d-block mb-3"></i>
+                        Không có lịch hẹn nào phù hợp với bộ lọc tìm kiếm.
+                    </div>
+                }
+
+                <!-- Server-Side Pagination UI -->
+                @if (Model.TotalPages > 1)
+                {
+                    <div class="pagination-container">
+                        @if (Model.Page > 1)
+                        {
+                            <a href="@Url.Action("History", new { searchTerm = Model.SearchTerm, statusFilter = Model.StatusFilter, page = Model.Page - 1 })" class="pg-btn text-decoration-none d-inline-flex align-items-center">
+                                <i class="bi bi-chevron-left me-1"></i> Trang trước
+                            </a>
+                        }
+                        else
+                        {
+                            <button class="pg-btn" disabled><i class="bi bi-chevron-left me-1"></i> Trang trước</button>
+                        }
+
+                        <span class="pg-info">Trang @Model.Page / @Model.TotalPages</span>
+
+                        @if (Model.Page < Model.TotalPages)
+                        {
+                            <a href="@Url.Action("History", new { searchTerm = Model.SearchTerm, statusFilter = Model.StatusFilter, page = Model.Page + 1 })" class="pg-btn text-decoration-none d-inline-flex align-items-center">
+                                Trang sau <i class="bi bi-chevron-right ms-1"></i>
+                            </a>
+                        }
+                        else
+                        {
+                            <button class="pg-btn" disabled>Trang sau <i class="bi bi-chevron-right ms-1"></i></button>
+                        }
+                    </div>
+                }
+            }
+        </div>
+    </section>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: THEO DÕI TIẾN ĐỘ THỜI GIAN THỰC -->
+<!-- ========================================== -->
+<div class="modal fade" id="progressModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 20px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+            <div class="modal-header border-0 pb-0 pt-4 px-4" style="position: relative;">
+                <h5 class="modal-title font-weight-bold" style="font-weight: 700; color: #2D2521;">Tiến độ chăm sóc của bé</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="font-size: 0.8rem;"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="text-center mb-4">
+                    <h6 class="text-muted" id="progressServiceName" style="font-weight: 600; font-size: 0.95rem;">Dịch vụ</h6>
+                    <span class="badge bg-warning-subtle text-warning px-3 py-2 mt-2" id="progressBookingDate" style="border-radius: 8px; font-weight: 600; font-size: 0.75rem; background-color: #FFF2E6; color: #FF7815 !important;">Giờ hẹn</span>
+                </div>
+
+                <!-- Timeline UI -->
+                <div class="progress-timeline" style="position: relative; padding-left: 45px; margin-top: 20px;">
+                    <div style="position: absolute; left: 18px; top: 10px; bottom: 10px; width: 3px; background-color: #ECE9E5;"></div>
+                    
+                    <div class="progress-step-item mb-4" id="step-0" style="position: relative;">
+                        <div class="step-circle" style="position: absolute; left: -36px; top: 2px; width: 20px; height: 20px; border-radius: 50%; border: 3px solid #ECE9E5; background-color: #FFFFFF; transition: 0.3s;"></div>
+                        <h6 class="mb-1" style="font-weight: 700; color: #9E918B;">1. Tiếp nhận thú cưng</h6>
+                        <p class="text-muted mb-0" style="font-size: 0.75rem;">Nhân viên tiếp nhận bé và đưa vào khu chờ.</p>
+                    </div>
+
+                    <div class="progress-step-item mb-4" id="step-1" style="position: relative;">
+                        <div class="step-circle" style="position: absolute; left: -36px; top: 2px; width: 20px; height: 20px; border-radius: 50%; border: 3px solid #ECE9E5; background-color: #FFFFFF; transition: 0.3s;"></div>
+                        <h6 class="mb-1" style="font-weight: 700; color: #9E918B;">2. Tắm rửa & Sấy lông</h6>
+                        <p class="text-muted mb-0" style="font-size: 0.75rem;">Rửa trôi bụi bẩn, làm sạch lông và chải sấy chuyên sâu.</p>
+                    </div>
+
+                    <div class="progress-step-item mb-4" id="step-2" style="position: relative;">
+                        <div class="step-circle" style="position: absolute; left: -36px; top: 2px; width: 20px; height: 20px; border-radius: 50%; border: 3px solid #ECE9E5; background-color: #FFFFFF; transition: 0.3s;"></div>
+                        <h6 class="mb-1" style="font-weight: 700; color: #9E918B;">3. Cắt & Tỉa tạo kiểu</h6>
+                        <p class="text-muted mb-0" style="font-size: 0.75rem;">Cắt tỉa lông, tạo mẫu theo yêu cầu khách hàng.</p>
+                    </div>
+
+                    <div class="progress-step-item mb-4" id="step-3" style="position: relative;">
+                        <div class="step-circle" style="position: absolute; left: -36px; top: 2px; width: 20px; height: 20px; border-radius: 50%; border: 3px solid #ECE9E5; background-color: #FFFFFF; transition: 0.3s;"></div>
+                        <h6 class="mb-1" style="font-weight: 700; color: #9E918B;">4. Massage thư giãn</h6>
+                        <p class="text-muted mb-0" style="font-size: 0.75rem;">Bé được massage thả lỏng các cơ toàn thân.</p>
+                    </div>
+
+                    <div class="progress-step-item" id="step-4" style="position: relative;">
+                        <div class="step-circle" style="position: absolute; left: -36px; top: 2px; width: 20px; height: 20px; border-radius: 50%; border: 3px solid #ECE9E5; background-color: #FFFFFF; transition: 0.3s;"></div>
+                        <h6 class="mb-1" style="font-weight: 700; color: #9E918B;">5. Hoàn thành & Bàn giao</h6>
+                        <p class="text-muted mb-0" style="font-size: 0.75rem;">Bé yêu đã sẵn sàng về với chủ nhân.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: ĐÁNH GIÁ DỊCH VỤ SPA -->
+<!-- ========================================== -->
+<div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 20px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+            <div class="modal-header border-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title font-weight-bold" style="font-weight: 700; color: #2D2521;">Đánh giá chất lượng dịch vụ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="reviewForm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="bookingId" id="reviewBookingId">
+                    
+                    <div class="text-center mb-4">
+                        <label class="d-block text-muted mb-2" style="font-size: 0.9rem; font-weight: 600;">Mức độ hài lòng của bạn</label>
+                        <div class="star-rating d-flex justify-content-center gap-2" style="font-size: 2rem; cursor: pointer; color: #ECE9E5;">
+                            <span class="star-item" data-value="1">★</span>
+                            <span class="star-item" data-value="2">★</span>
+                            <span class="star-item" data-value="3">★</span>
+                            <span class="star-item" data-value="4">★</span>
+                            <span class="star-item" data-value="5">★</span>
+                        </div>
+                        <input type="hidden" name="ratingStar" id="ratingStarValue" value="5">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label text-muted" style="font-size: 0.85rem; font-weight: 600;">Góp ý hoặc bình luận khác (Tùy chọn)</label>
+                        <textarea name="comment" class="form-control" rows="3" placeholder="Nhập cảm nhận của bạn về thái độ phục vụ hoặc kết quả dịch vụ..." style="border-radius: 12px; border-color: #ECE9E5; outline: none; font-size: 0.88rem;"></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary w-50" data-bs-dismiss="modal" style="border-radius: 12px; font-weight: 600;">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-warning w-50" style="border-radius: 12px; font-weight: 700; color: white; background-color: #FF7815; border: none;">Gửi đánh giá</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden AntiForgery Token Form -->
+<form id="antiForgeryForm" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+
+            // ==========================================
+            // SPA PROGRESS POLLING (UC-31)
+            // ==========================================
+            var activeBookingId = 0;
+            var progressInterval = null;
+
+            function loadProgressData() {
+                if (!activeBookingId) return;
+                
+                $.get('/Customer/SpaBooking/GetProgress', { bookingId: activeBookingId }, function (res) {
+                    if (res.success) {
+                        $('#progressServiceName').text(res.serviceName);
+                        $('#progressBookingDate').text('Lịch hẹn: ' + res.bookingDate);
+
+                        $('.progress-step-item').removeClass('step-completed step-active');
+                        
+                        if (res.isCancelled) {
+                            $('#progressServiceName').html(res.serviceName + ' <span class="text-danger">(ĐÃ HỦY)</span>');
+                            return;
+                        }
+
+                        res.completedIndexes.forEach(function (idx) {
+                            $('#step-' + idx).addClass('step-completed');
+                        });
+
+                        $('#step-' + res.activeIndex).removeClass('step-completed').addClass('step-active');
+                    }
+                });
+            }
+
+            $('.btn-view-progress').click(function () {
+                activeBookingId = $(this).data('id');
+                loadProgressData();
+                $('#progressModal').modal('show');
+                progressInterval = setInterval(loadProgressData, 5000);
+            });
+
+            $('#progressModal').on('hidden.bs.modal', function () {
+                activeBookingId = 0;
+                if (progressInterval) {
+                    clearInterval(progressInterval);
+                }
+            });
+
+            // ==========================================
+            // CUSTOMER BOOKING CANCELLATION (UC-32)
+            // ==========================================
+            $('.btn-cancel-booking').click(function () {
+                var bookingId = $(this).data('id');
+                var reason = prompt('Vui lòng nhập lý do hủy lịch hẹn của bạn:');
+                
+                if (reason === null) return;
+                
+                if (!reason.trim()) {
+                    alert('Lý do hủy không được để trống.');
+                    return;
+                }
+
+                var token = $('#antiForgeryForm input[name="__RequestVerificationToken"]').val();
+
+                $.post('/Customer/SpaBooking/Cancel', { 
+                    bookingId: bookingId, 
+                    reason: reason,
+                    __RequestVerificationToken: token
+                }, function (res) {
+                    if (res.success) {
+                        alert(res.message);
+                        window.location.reload();
+                    } else {
+                        alert('Lỗi: ' + res.message);
+                    }
+                });
+            });
+
+            // ==========================================
+            // SERVICE RATING & REVIEW (UC-25)
+            // ==========================================
+            $('.star-item').hover(
+                function () {
+                    var hoverVal = $(this).data('value');
+                    $('.star-item').each(function () {
+                        var val = $(this).data('value');
+                        if (val <= hoverVal) $(this).addClass('active');
+                        else $(this).removeClass('active');
+                    });
+                },
+                function () {
+                    var selectedVal = $('#ratingStarValue').val();
+                    $('.star-item').each(function () {
+                        var val = $(this).data('value');
+                        if (val <= selectedVal) $(this).addClass('active');
+                        else $(this).removeClass('active');
+                    });
+                }
+            );
+
+            $('.star-item').click(function () {
+                var val = $(this).data('value');
+                $('#ratingStarValue').val(val);
+            });
+
+            $('.btn-rate-service').click(function () {
+                var id = $(this).data('id');
+                $('#reviewBookingId').val(id);
+                $('#ratingStarValue').val(5);
+                $('.star-item').addClass('active');
+                $('#reviewModal').modal('show');
+            });
+
+            $('#reviewForm').submit(function (e) {
+                e.preventDefault();
+                
+                var data = $(this).serialize();
+                $.post('/Customer/SpaBooking/SubmitReview', data, function (res) {
+                    if (res.success) {
+                        alert(res.message);
+                        $('#reviewModal').modal('hide');
+                        window.location.reload();
+                    } else {
+                        alert('Lỗi: ' + res.message);
+                    }
+                });
+            });
+        });
+    </script>
+}

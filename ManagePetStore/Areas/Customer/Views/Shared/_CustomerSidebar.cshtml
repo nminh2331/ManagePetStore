@@ -27,6 +27,13 @@
                 <i class="bi bi-chevron-right ms-auto"></i>
             }
         </a>
+        <a href="/Customer/SpaBooking/History" class="@NavClass("spabooking")">
+            <i class="bi bi-scissors"></i> Lịch hẹn Spa
+            @if (Model.ActiveNav == "spabooking")
+            {
+                <i class="bi bi-chevron-right ms-auto"></i>
+            }
+        </a>
         <a asp-area="Customer" asp-controller="Order" asp-action="Index" class="@NavClass("orders")">
             <i class="bi bi-bag"></i> Lịch sử đơn hàng
             @if (Model.ActiveNav == "orders")
@@ -34,6 +41,5 @@
                 <i class="bi bi-chevron-right ms-auto"></i>
             }
         </a>
-        
     </nav>
 </aside>

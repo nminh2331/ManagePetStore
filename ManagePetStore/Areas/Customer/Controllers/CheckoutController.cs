@@ -1,11 +1,16 @@
+// hà hoàng hiệp code 
 using System.Security.Claims;
 using ManagePetStore.Areas.Customer.Models;
 using ManagePetStore.Services.Customer;
+using ManagePetStore.Services;
 using ManagePetStore.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
+using PayOS;
+using PayOS.Models;
+using PayOS.Models.V2.PaymentRequests;
 
 namespace ManagePetStore.Areas.Customer.Controllers;
 
@@ -16,35 +21,42 @@ public class CheckoutController : Controller
     private readonly ICartService _cartService;
     private readonly PetStoreManagementContext _context;
     private readonly ICheckoutEmailService _checkoutEmailService;
+    private readonly PayOSClient _payOS;
 
     public CheckoutController(
         ICartService cartService,
         PetStoreManagementContext context,
-        ICheckoutEmailService checkoutEmailService)
+        ICheckoutEmailService checkoutEmailService,
+        PayOSClient payOS)
     {
         _cartService = cartService;
         _context = context;
         _checkoutEmailService = checkoutEmailService;
+        _payOS = payOS;
     }
 
     [HttpGet]
     public async Task<IActionResult> Index()
     {
-        var cart = await _cartService.GetCartPageAsync();
+        var cart = await _cartService.GetCartPageAsync(); // Lấy cart
         if (!cart.Items.Any())
         {
             TempData["ErrorMessage"] = "Giỏ hàng trống. Vui lòng thêm sản phẩm trước khi thanh toán.";
             return RedirectToAction("Index", "Cart");
         }
 
-        var customer = await GetCurrentCustomerAsync();
+        var customer = await GetCurrentCustomerAsync();  //Lấy khách hàng hiện tại
+
+
         if (customer == null)
         {
             TempData["ErrorMessage"] = "Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập tài khoản khách hàng.";
             return RedirectToAction("Index", "Cart");
         }
 
-        var model = new CheckoutViewModel
+        var model = new CheckoutViewModel  //Tạo model cho view
+
+
         {
             FullName = customer.FullName,
             Phone = customer.Phone,
@@ -65,6 +77,8 @@ public class CheckoutController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+
+    //Đây là action chốt đơn thật sự.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Confirm(
@@ -79,14 +93,14 @@ public class CheckoutController : Controller
         var trimmedPhone = phone?.Trim() ?? string.Empty;
         var trimmedEmail = email?.Trim() ?? string.Empty;
         var trimmedShippingAddress = shippingAddress?.Trim() ?? string.Empty;
-
+        //Kiểm tra lại cart
         var cart = await _cartService.GetCartPageAsync();
         if (!cart.Items.Any())
         {
             TempData["ErrorMessage"] = "Giỏ hàng trống.";
             return RedirectToAction("Index", "Cart");
         }
-
+        //Kiểm tra customer lần nữa
         var customer = await GetCurrentCustomerAsync();
         if (customer == null)
         {
@@ -131,13 +145,35 @@ public class CheckoutController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        var orderId = $"ORD-{DateTime.Now:yyyyMMddHHmmss}-{Random.Shared.Next(1000, 9999)}";
-        var status = normalizedPayment == "Tiền mặt" ? "Chờ xử lý" : "Chờ thanh toán";
+        Wallet? customerWallet = null;
+        if (normalizedPayment == "Ví điện tử")
+        {
+            customerWallet = await _context.Wallets.FirstOrDefaultAsync(w => w.CustomerId == customer.CustomerId);
+            if (customerWallet == null || customerWallet.Balance < cart.GrandTotal)
+            {
+                TempData["ErrorMessage"] = "Số dư ví điện tử không đủ để thanh toán. Vui lòng chọn phương thức khác hoặc nạp thêm tiền.";
+                return RedirectToAction(nameof(Index));
+            }
+        }
+
+        long orderCode = 0;
+        string orderId;
+        if (normalizedPayment == "Thanh toán online")
+        {
+            var numericString = $"{DateTime.Now:MMddHHmmss}{Random.Shared.Next(10, 99)}";
+            orderCode = long.Parse(numericString);
+            orderId = $"ORD-{orderCode}";
+        }
+        else
+        {
+            orderId = $"ORD-{DateTime.Now:yyyyMMddHHmmss}-{Random.Shared.Next(1000, 9999)}";
+        }
+        var status = (normalizedPayment == "Tiền mặt" || normalizedPayment == "Ví điện tử") ? "Chờ xử lý" : "Chờ thanh toán";
 
         try
         {
             await using var transaction = await _context.Database.BeginTransactionAsync();
-
+            //Tạo entity Order
             var order = new Order
             {
                 OrderId = orderId,
@@ -152,7 +188,7 @@ public class CheckoutController : Controller
                 Date = DateTime.Now
             };
 
-            _context.Orders.Add(order);
+            _context.Orders.Add(order);  //Đưa entity vào change tracker, chưa save ngay.
 
             foreach (var item in cart.Items)
             {
@@ -194,15 +230,75 @@ public class CheckoutController : Controller
                         var spaService = await _context.SpaServices.FirstOrDefaultAsync(s => s.ServiceId == serviceId);
                         if (spaService != null)
                         {
-                            var defaultGroomer = await _context.Users.FirstOrDefaultAsync(u => u.RoleId == 3 && u.Status == "Active")
-                                                ?? await _context.Users.FirstOrDefaultAsync(u => u.RoleId == 3)
-                                                ?? await _context.Users.FirstOrDefaultAsync();
-                            int groomerId = defaultGroomer?.UserId ?? 3;
-
-                            var bookingTime = DateTime.Today.AddHours(9);
-                            if (DateTime.Now >= bookingTime)
+                            var activeGroomers = await _context.Users
+                                .Where(u => u.RoleId == 3 && u.Status == "Active")
+                                .ToListAsync();
+                            if (!activeGroomers.Any())
                             {
-                                bookingTime = DateTime.Today.AddDays(1).AddHours(9);
+                                var fallbackGroomer = await _context.Users.FirstOrDefaultAsync(u => u.RoleId == 3)
+                                                     ?? await _context.Users.FirstOrDefaultAsync();
+                                if (fallbackGroomer != null)
+                                {
+                                    activeGroomers.Add(fallbackGroomer);
+                                }
+                            }
+
+                            int finalGroomerId = activeGroomers.FirstOrDefault()?.UserId ?? 3;
+                            DateTime finalBookingTime = DateTime.Today.AddHours(9);
+                            if (DateTime.Now >= finalBookingTime)
+                            {
+                                finalBookingTime = DateTime.Today.AddDays(1).AddHours(9);
+                            }
+
+                            // Ca làm việc khả dụng: 08:00, 09:00, 10:00, 11:00, 13:00, 14:00, 15:00, 16:00
+                            int[] availableHours = { 8, 9, 10, 11, 13, 14, 15, 16 };
+                            bool foundSlot = false;
+                            
+                            // Thử tìm trong 7 ngày tới để có ca rảnh thực tế
+                            for (int dayOffset = 0; dayOffset < 7 && !foundSlot; dayOffset++)
+                            {
+                                var testDate = DateTime.Today.AddDays(dayOffset);
+                                if (dayOffset == 0 && DateTime.Now.Hour >= 16)
+                                {
+                                    continue;
+                                }
+
+                                foreach (var hour in availableHours)
+                                {
+                                    var testDateTime = testDate.AddHours(hour);
+                                    if (testDateTime <= DateTime.Now)
+                                    {
+                                        continue;
+                                    }
+
+                                    foreach (var groomer in activeGroomers)
+                                    {
+                                        var bookingsOnDay = await _context.SpaBookings
+                                            .Include(b => b.Service)
+                                            .Where(b => b.GroomerId == groomer.UserId 
+                                                     && b.DateTime.Date == testDate 
+                                                     && b.SpaStatus != "Cancelled")
+                                            .ToListAsync();
+
+                                        bool isOverlapTest = bookingsOnDay.Any(b => {
+                                            var startE = b.DateTime;
+                                            var endE = b.DateTime.AddMinutes(b.Service?.DurationMinutes ?? 30);
+                                            var startN = testDateTime;
+                                            var endN = testDateTime.AddMinutes(spaService.DurationMinutes);
+                                            return startN < endE && startE < endN;
+                                        });
+
+                                        if (!isOverlapTest)
+                                        {
+                                            finalGroomerId = groomer.UserId;
+                                            finalBookingTime = testDateTime;
+                                            foundSlot = true;
+                                            break;
+                                        }
+                                    }
+
+                                    if (foundSlot) break;
+                                }
                             }
 
                             var bookingStatus = (normalizedPayment == "Tiền mặt") ? "Chưa thanh toán" : "Đã thanh toán";
@@ -212,8 +308,8 @@ public class CheckoutController : Controller
                                 PetId = petId,
                                 CustomerId = customer.CustomerId,
                                 ServiceId = serviceId,
-                                DateTime = bookingTime,
-                                GroomerId = groomerId,
+                                DateTime = finalBookingTime,
+                                GroomerId = finalGroomerId,
                                 Price = spaService.Price,
                                 Status = bookingStatus,
                                 SpaStatus = "|0",
@@ -227,6 +323,7 @@ public class CheckoutController : Controller
                 {
                     await EnsureProductForOrderItemAsync(item);
                 }
+                //Tạo OrderItem
 
                 _context.OrderItems.Add(new OrderItem
                 {
@@ -239,13 +336,87 @@ public class CheckoutController : Controller
                 });
             }
 
+
+            string? payosCheckoutUrl = null;
+            if (normalizedPayment == "Thanh toán online")
+            {
+                var host = $"{Request.Scheme}://{Request.Host}";
+                var paymentRequest = new CreatePaymentLinkRequest
+                {
+                    OrderCode = orderCode,
+                    Amount = (long)cart.GrandTotal,
+                    Description = $"PetStore {orderCode}",
+                    CancelUrl = $"{host}/Customer/Checkout/Index",
+                    ReturnUrl = $"{host}/Customer/Checkout/Success?orderId={orderId}",
+                    Items = cart.Items.Select(item => new PaymentLinkItem
+                    {
+                        Name = item.Name,
+                        Quantity = item.Quantity,
+                        Price = (long)item.UnitPrice
+                    }).ToList()
+                };
+
+                var paymentLinkResult = await _payOS.PaymentRequests.CreateAsync(paymentRequest);
+                payosCheckoutUrl = paymentLinkResult.CheckoutUrl;
+            }
+
             customer.LoyaltyPoints += (int)Math.Floor(cart.GrandTotal / 10000m);
             _context.Entry(customer).State = EntityState.Modified;
+
+            if (normalizedPayment == "Ví điện tử" && customerWallet != null)
+            {
+                customerWallet.Balance -= cart.GrandTotal;
+                customerWallet.UpdatedAt = DateTime.Now;
+                _context.Entry(customerWallet).State = EntityState.Modified;
+
+                _context.WalletTransactions.Add(new WalletTransaction
+                {
+                    WalletId = customerWallet.WalletId,
+                    Amount = -cart.GrandTotal,
+                    Type = "Payment",
+                    Description = $"Thanh toán đơn hàng {orderId}",
+                    OrderId = orderId,
+                    TransactionDate = DateTime.Now
+                });
+            }
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
-            _cartService.ClearCart();
+            if (normalizedPayment != "Thanh toán online")
+            {
+                _cartService.ClearCart();
+            }
+
+            if (normalizedPayment == "Thanh toán online")
+            {
+                if (!string.IsNullOrWhiteSpace(orderNote))
+                {
+                    TempData["OrderNote"] = orderNote.Trim();
+                    HttpContext.Session.SetString("OrderNote", orderNote.Trim());
+                }
+                // Store cart items in session so email can be sent after PayOS confirms payment
+                var cartItemsJson = System.Text.Json.JsonSerializer.Serialize(cart.Items.ToList());
+                HttpContext.Session.SetString($"CheckoutCartItems_{orderId}", cartItemsJson);
+                // Store success model so Success page can read it when coming from PayOS
+                var payosSuccessModel = new CheckoutSuccessViewModel
+                {
+                    OrderId = orderId,
+                    FullName = trimmedFullName,
+                    Phone = trimmedPhone,
+                    ShippingAddress = trimmedShippingAddress,
+                    ConfirmationEmail = trimmedEmail,
+                    PaymentMethod = normalizedPayment,
+                    Total = cart.GrandTotal,
+                    ItemCount = cart.TotalQuantity
+                };
+                HttpContext.Session.SetString("CheckoutSuccess", System.Text.Json.JsonSerializer.Serialize(payosSuccessModel));
+
+                if (!string.IsNullOrEmpty(payosCheckoutUrl))
+                {
+                    return Redirect(payosCheckoutUrl);
+                }
+            }
 
             var successModel = new CheckoutSuccessViewModel
             {
@@ -259,6 +430,7 @@ public class CheckoutController : Controller
                 ItemCount = cart.TotalQuantity
             };
 
+            //Gửi email xác nhận
             try
             {
                 await _checkoutEmailService.SendOrderConfirmationAsync(
@@ -274,7 +446,10 @@ public class CheckoutController : Controller
                 TempData["EmailSentWarning"] = "Đơn hàng đã tạo thành công nhưng không gửi được email xác nhận. Vui lòng kiểm tra cấu hình Gmail trong appsettings.json.";
             }
 
-            TempData["CheckoutSuccess"] = System.Text.Json.JsonSerializer.Serialize(successModel);
+            //Lưu dữ liệu success bằng TempData
+            var successJson = System.Text.Json.JsonSerializer.Serialize(successModel);
+            TempData["CheckoutSuccess"] = successJson;
+            HttpContext.Session.SetString("CheckoutSuccess", successJson);
 
             if (!string.IsNullOrWhiteSpace(orderNote))
             {
@@ -291,22 +466,147 @@ public class CheckoutController : Controller
     }
 
     [HttpGet]
-    public IActionResult Success()
+    public async Task<IActionResult> Success(string? orderId)
     {
-        var json = TempData["CheckoutSuccess"] as string;
-        if (string.IsNullOrEmpty(json))
+        // Try TempData first (Cash flow), then Session (PayOS flow)
+        var json = TempData["CheckoutSuccess"] as string ?? HttpContext.Session.GetString("CheckoutSuccess");
+        CheckoutSuccessViewModel? model = null;
+
+        if (!string.IsNullOrEmpty(json))
         {
-            return RedirectToAction("Index", "Cart");
+            model = System.Text.Json.JsonSerializer.Deserialize<CheckoutSuccessViewModel>(json);
         }
 
-        var model = System.Text.Json.JsonSerializer.Deserialize<CheckoutSuccessViewModel>(json);
+        if (!string.IsNullOrEmpty(orderId))
+        {
+            var order = await _context.Orders
+                .Include(o => o.OrderItems)
+                .Include(o => o.Customer)
+                .FirstOrDefaultAsync(o => o.OrderId == orderId);
+
+            if (order != null)
+            {
+                var customer = order.Customer;
+
+                if (order.PaymentMethod == "Thanh toán online" && order.Status == "Chờ thanh toán")
+                {
+                    var parts = orderId.Split('-');
+                    if (parts.Length >= 2 && long.TryParse(parts[^1], out long orderCode))
+                    {
+                        try
+                        {
+                            bool isPaid = false;
+                            string? payOsStatus = Request.Query["status"];
+                            string? payOsCancel = Request.Query["cancel"];
+
+                            if (payOsCancel == "true" || payOsStatus == "CANCELLED")
+                            {
+                                TempData["ErrorMessage"] = "Giao dịch thanh toán đã bị hủy.";
+                                return RedirectToAction(nameof(Index));
+                            }
+
+                            if (payOsStatus == "PAID")
+                            {
+                                isPaid = true;
+                            }
+                            else
+                            {
+                                var paymentInfo = await _payOS.PaymentRequests.GetAsync(orderCode);
+                                if (paymentInfo != null && paymentInfo.Status.ToString().ToUpper() == "PAID")
+                                {
+                                    isPaid = true;
+                                }
+                            }
+
+                            if (isPaid)
+                            {
+                                // Update database order status
+                                order.Status = "Chờ xử lý";
+                                _context.Entry(order).State = EntityState.Modified;
+                                await _context.SaveChangesAsync();
+
+                                // Clear the cart now since payment succeeded
+                                _cartService.ClearCart();
+
+                                // Send order confirmation email
+                                var itemsJson = HttpContext.Session.GetString($"CheckoutCartItems_{orderId}");
+                                var orderNote = TempData["OrderNote"] as string ?? HttpContext.Session.GetString("OrderNote") ?? "";
+                                var tempSuccessModel = new CheckoutSuccessViewModel
+                                {
+                                    OrderId = order.OrderId,
+                                    FullName = customer.FullName,
+                                    Phone = customer.Phone,
+                                    ShippingAddress = "",
+                                    ConfirmationEmail = customer.Email ?? "",
+                                    PaymentMethod = order.PaymentMethod,
+                                    Total = order.Total,
+                                    ItemCount = order.OrderItems.Sum(i => i.Quantity)
+                                };
+
+                                if (!string.IsNullOrEmpty(itemsJson))
+                                {
+                                    try
+                                    {
+                                        var items = System.Text.Json.JsonSerializer.Deserialize<List<CartLineItemViewModel>>(itemsJson);
+                                        if (items != null)
+                                        {
+                                            await _checkoutEmailService.SendOrderConfirmationAsync(
+                                                customer.Email ?? "",
+                                                tempSuccessModel,
+                                                items,
+                                                orderNote);
+                                            ViewBag.EmailSentMessage = $"Email xác nhận đơn hàng đã được gửi đến {customer.Email}.";
+                                        }
+                                    }
+                                    catch
+                                    {
+                                        // Ignore email error
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                TempData["ErrorMessage"] = "Giao dịch thanh toán online không thành công hoặc chưa hoàn tất.";
+                                return RedirectToAction(nameof(Index));
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            TempData["ErrorMessage"] = $"Lỗi khi xác minh thanh toán: {ex.Message}";
+                            return RedirectToAction(nameof(Index));
+                        }
+                    }
+                }
+
+                if (model == null)
+                {
+                    model = new CheckoutSuccessViewModel
+                    {
+                        OrderId = order.OrderId,
+                        FullName = customer.FullName,
+                        Phone = customer.Phone,
+                        ShippingAddress = "",
+                        ConfirmationEmail = customer.Email ?? "",
+                        PaymentMethod = order.PaymentMethod,
+                        Total = order.Total,
+                        ItemCount = order.OrderItems.Sum(i => i.Quantity)
+                    };
+                }
+
+                if (order.PaymentMethod == "Thanh toán online" && order.Status == "Chờ xử lý")
+                {
+                    model.IsPaid = true;
+                }
+            }
+        }
+
         if (model == null)
         {
             return RedirectToAction("Index", "Cart");
         }
 
-        ViewBag.OrderNote = TempData["OrderNote"];
-        ViewBag.EmailSentMessage = TempData["EmailSentMessage"];
+        ViewBag.OrderNote = TempData["OrderNote"] ?? HttpContext.Session.GetString("OrderNote");
+        ViewBag.EmailSentMessage = ViewBag.EmailSentMessage ?? TempData["EmailSentMessage"];
         ViewBag.EmailSentWarning = TempData["EmailSentWarning"];
         return View(model);
     }
@@ -332,11 +632,14 @@ public class CheckoutController : Controller
         return paymentMethod switch
         {
             "Cash" => "Tiền mặt",
-            "VNPay" => "VNPay",
+            "PayOS" => "Thanh toán online",
+            "Wallet" => "Ví điện tử",
             _ => null
         };
     }
 
+
+    //Kiểm tra product tồn tại hay chưa
     private async Task EnsureProductForOrderItemAsync(CartLineItemViewModel item)
     {
         var exists = await _context.Database
@@ -346,14 +649,18 @@ public class CheckoutController : Controller
         if (!exists)
         {
             var initialStock = Math.Max(0, item.MaxStock - item.Quantity);
+            // Lấy CategoryId mặc định từ database
+            var defaultCategory = await _context.ProductCategories.FirstOrDefaultAsync();
+            int? categoryId = defaultCategory?.CategoryId;
+
             await _context.Database.ExecuteSqlRawAsync(
                 """
-                INSERT INTO Products (Sku, Name, Category, Unit, Stock, MinStock, Price, ImageUrl)
+                INSERT INTO Products (Sku, Name, CategoryId, Unit, Stock, MinStock, Price, ImageUrl)
                 VALUES ({0}, {1}, {2}, {3}, {4}, 0, {5}, {6})
                 """,
-                item.Sku,
-                item.Name,
-                "Online",
+                item.Sku ?? string.Empty,
+                item.Name ?? string.Empty,
+                (object?)categoryId ?? DBNull.Value,
                 "Cái",
                 initialStock,
                 item.UnitPrice,
