@@ -14,6 +14,7 @@ namespace ManagePetStore.Areas.Cashier.Models
         public string? VoucherCode { get; set; }
         public decimal VoucherDiscount { get; set; }
         public List<PosCartItemDto> Items { get; set; } = new List<PosCartItemDto>();
+        public bool IsAtCounter { get; set; }
     }
 
     public class PosCartItemDto

@@ -3,6 +3,8 @@ using ManagePetStore.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ManagePetStore.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 namespace ManagePetStore.Areas.Cashier.Controllers
 {
@@ -11,10 +13,12 @@ namespace ManagePetStore.Areas.Cashier.Controllers
     public class ReturnRequestController : Controller
     {
         private readonly PetStoreManagementContext _context;
+        private readonly IHubContext<HotelCareHub> _hubContext;
 
-        public ReturnRequestController(PetStoreManagementContext context)
+        public ReturnRequestController(PetStoreManagementContext context, IHubContext<HotelCareHub> hubContext)
         {
             _context = context;
+            _hubContext = hubContext;
         }
 
         private async Task<int?> GetCurrentUserIdAsync()
@@ -25,19 +29,42 @@ namespace ManagePetStore.Areas.Cashier.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string activeTab = "submitted", string searchStr = "", int pageS = 1, int pageW = 1, int pageP = 1)
         {
-            var allRequests = await _context.ReturnRequests
+            ViewBag.ActiveTab = activeTab;
+            ViewBag.SearchStr = searchStr;
+
+            var allRequestsQuery = _context.ReturnRequests
                 .Include(r => r.Customer)
                 .Include(r => r.Order)
                 .Include(r => r.ReturnRequestItems)
                     .ThenInclude(ri => ri.SkuNavigation)
-                .OrderByDescending(r => r.CreatedAt)
-                .ToListAsync();
+                .AsQueryable();
 
-            ViewBag.SubmittedRequests = allRequests.Where(r => r.Status == "Submitted").ToList();
-            ViewBag.WaitingRequests = allRequests.Where(r => r.Status == "WaitingForReturn").ToList();
-            ViewBag.ProcessedRequests = allRequests.Where(r => r.Status != "Submitted" && r.Status != "WaitingForReturn").ToList();
+            if (!string.IsNullOrEmpty(searchStr))
+            {
+                allRequestsQuery = allRequestsQuery.Where(r => r.OrderId.Contains(searchStr));
+            }
+
+            var allRequests = await allRequestsQuery.OrderByDescending(r => r.CreatedAt).ToListAsync();
+
+            var submittedList = allRequests.Where(r => r.Status == "Submitted").ToList();
+            var waitingList = allRequests.Where(r => r.Status == "WaitingForReturn").ToList();
+            var processedList = allRequests.Where(r => r.Status != "Submitted" && r.Status != "WaitingForReturn").ToList();
+
+            int pageSize = 5;
+
+            ViewBag.SubmittedTotalPages = (int)Math.Ceiling(submittedList.Count / (double)pageSize);
+            ViewBag.CurrentPageS = pageS;
+            ViewBag.SubmittedRequests = submittedList.Skip((pageS - 1) * pageSize).Take(pageSize).ToList();
+
+            ViewBag.WaitingTotalPages = (int)Math.Ceiling(waitingList.Count / (double)pageSize);
+            ViewBag.CurrentPageW = pageW;
+            ViewBag.WaitingRequests = waitingList.Skip((pageW - 1) * pageSize).Take(pageSize).ToList();
+
+            ViewBag.ProcessedTotalPages = (int)Math.Ceiling(processedList.Count / (double)pageSize);
+            ViewBag.CurrentPageP = pageP;
+            ViewBag.ProcessedRequests = processedList.Skip((pageP - 1) * pageSize).Take(pageSize).ToList();
 
             return View();
         }
@@ -65,7 +92,28 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             request.ProcessedBy = userId;
             request.ProcessedAt = DateTime.Now;
 
+            // Generate notification for Customer
+            var notif = new CustomerNotification
+            {
+                CustomerId = request.CustomerId,
+                Type = "ReturnRequest",
+                Title = "Yêu cầu trả hàng đã được duyệt",
+                Message = $"Yêu cầu trả hàng #REQ-{id} đã được duyệt online. Vui lòng mang sản phẩm đến cửa hàng trong vòng 7 ngày để hoàn tất thủ tục trả hàng.",
+                CreatedAt = DateTime.Now,
+                IsRead = false,
+                LinkUrl = "/Customer/Account/Profile?activeTab=return"
+            };
+            _context.CustomerNotifications.Add(notif);
+
             await _context.SaveChangesAsync();
+
+            // Push notification to client via SignalR
+            await _hubContext.Clients.All.SendAsync("CareLogUpdated", new {
+                notificationId = notif.NotificationId,
+                title = notif.Title,
+                message = notif.Message,
+                occurredAt = notif.CreatedAt.ToString("o")
+            });
 
             TempData["SuccessMessage"] = $"Đã phê duyệt online yêu cầu #REQ-{id}. Chờ khách mang hàng đến quầy.";
             return RedirectToAction(nameof(Index));

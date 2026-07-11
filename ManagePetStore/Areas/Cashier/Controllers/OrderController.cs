@@ -43,6 +43,24 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             return View();
         }
 
+        // GET: /Cashier/Order/CreateAtCounter (POS At Counter Screen)
+        [HttpGet]
+        public async Task<IActionResult> CreateAtCounter(string? orderId, string? status)
+        {
+            if (!string.IsNullOrEmpty(orderId) && (status == "PAID" || status == "success"))
+            {
+                var order = await _context.Orders.Include(o => o.Customer).FirstOrDefaultAsync(o => o.OrderId == orderId);
+                if (order != null && order.Status == "Chờ thanh toán")
+                {
+                    order.Status = "Chờ xử lý";
+                    order.OrderStatus = 2;
+                    _context.Entry(order).State = EntityState.Modified;
+                    await _context.SaveChangesAsync();
+                }
+            }
+            return View();
+        }
+
         // API: Tìm kiếm Khách hàng (SĐT, Tên KH, Tên Pet)
         [HttpGet]
         public async Task<IActionResult> SearchCustomers(string q)
@@ -474,8 +492,8 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                         OrderCode = orderCode,
                         Amount = onlinePayAmount,
                         Description = $"POS {orderCode}",
-                        CancelUrl = $"{host}/Cashier/Order/Create?status=cancel",
-                        ReturnUrl = $"{host}/Cashier/Order/Create?orderId={order.OrderId}&status=success",
+                        CancelUrl = dto.IsAtCounter ? $"{host}/Cashier/Order/CreateAtCounter?status=cancel" : $"{host}/Cashier/Order/Create?status=cancel",
+                        ReturnUrl = dto.IsAtCounter ? $"{host}/Cashier/Order/CreateAtCounter?orderId={order.OrderId}&status=success" : $"{host}/Cashier/Order/Create?orderId={order.OrderId}&status=success",
                         Items = dto.Items.Select(item => new PaymentLinkItem
                         {
                             Name = item.Name,
@@ -484,8 +502,15 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                         }).ToList()
                     };
 
-                    var paymentLinkResult = await _payOS.PaymentRequests.CreateAsync(paymentRequest);
-                    return Json(new { success = true, orderId = order.OrderId, redirectUrl = paymentLinkResult.CheckoutUrl, qrCode = paymentLinkResult.CheckoutUrl });
+                    try
+                    {
+                        var paymentLinkResult = await _payOS.PaymentRequests.CreateAsync(paymentRequest);
+                        return Json(new { success = true, orderId = order.OrderId, redirectUrl = paymentLinkResult.CheckoutUrl, qrCode = paymentLinkResult.CheckoutUrl });
+                    }
+                    catch (Exception ex)
+                    {
+                        return Json(new { success = false, message = $"Lỗi kết nối PayOS: {ex.Message}" });
+                    }
                 }
             }
             
