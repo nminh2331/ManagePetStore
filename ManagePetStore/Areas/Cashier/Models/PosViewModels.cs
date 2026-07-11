@@ -11,7 +11,10 @@ namespace ManagePetStore.Areas.Cashier.Models
         public int PointsUsed { get; set; }
         public decimal CashAmount { get; set; }
         public decimal OnlineAmount { get; set; }
+        public string? VoucherCode { get; set; }
+        public decimal VoucherDiscount { get; set; }
         public List<PosCartItemDto> Items { get; set; } = new List<PosCartItemDto>();
+        public bool IsAtCounter { get; set; }
     }
 
     public class PosCartItemDto
@@ -26,6 +29,7 @@ namespace ManagePetStore.Areas.Cashier.Models
         public decimal? PetWeight { get; set; }
         public int? GroomerId { get; set; }
         public DateTime? AppointmentTime { get; set; }
+        public int? BookingId { get; set; }
     }
 
     public class PosQuickRegisterDto
