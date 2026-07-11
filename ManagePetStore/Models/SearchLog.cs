@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ManagePetStore.Models;
 
 /// <summary>
@@ -6,6 +8,7 @@ namespace ManagePetStore.Models;
 /// </summary>
 public class SearchLog
 {
+    [Key]
     public int LogId { get; set; }
 
     /// <summary>Keyword người dùng đã nhập (đã normalize: lowercase, bỏ dấu)</summary>

@@ -61,6 +61,23 @@
         }
         .search-view-all:hover { background: #e8f5e9; color: #2d6a4f; }
         .search-loading { padding: 15px; text-align: center; color: #777; font-size: 0.9rem; }
+
+        /* Navigation Menu */
+        .ps-header-nav { display: flex; align-items: center; gap: 4px; margin: 0 20px; }
+        .ps-nav-link {
+            color: #6c757d;
+            font-weight: 600;
+            font-size: 0.95rem;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .ps-nav-link:hover, .ps-nav-link.active {
+            color: #ea580c;
+            background: #fff3eb;
+        }
     </style>
     @await RenderSectionAsync("Styles", required: false)
 </head>
@@ -89,11 +106,12 @@
                 </div>
             </form>
 
+            <div class="ps-header-nav d-none d-lg-flex">
+                <a href="/" class="ps-nav-link @(Context.Request.Path == "/" || Context.Request.Path == "/Home" ? "active" : "")">Trang chủ</a>
+                <a href="/Product" class="ps-nav-link @(Context.Request.Path.StartsWithSegments("/Product") ? "active" : "")">Sản phẩm</a>
+            </div>
+
             <div class="ps-header-actions">
-                <!-- Thêm link Sản phẩm chung cho mọi người -->
-                <a class="ps-admin-link" asp-area="" asp-controller="Product" asp-action="Index" style="color: #10b981; font-weight: 700; white-space: nowrap; margin-right: 15px; text-decoration: none;">
-                    <i class="bi bi-box-seam"></i> Sản phẩm
-                </a>
 
                 @if (User.Identity?.IsAuthenticated == true)
                 {

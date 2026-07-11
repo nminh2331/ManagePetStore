@@ -24,7 +24,7 @@ public class ProductController : Controller
         int? supplierId,
         int? minPrice,
         int? maxPrice,
-        string sort = "newest",
+        string sort = "best_selling",
         int page = 1)
     {
         const int pageSize = 12;
@@ -331,6 +331,19 @@ public class ProductController : Controller
                 if (product != null)
                 {
                     model = MapFromProduct(product);
+
+                    // Fetch related products (same category)
+                    if (product.CategoryId.HasValue)
+                    {
+                        var relatedDbProducts = await _context.Products
+                            .Include(p => p.Category)
+                            .Where(p => p.CategoryId == product.CategoryId && p.Sku != product.Sku && !p.IsDeleted)
+                            .OrderByDescending(p => p.Stock)
+                            .Take(4)
+                            .ToListAsync();
+                            
+                        ViewBag.RelatedProducts = relatedDbProducts.Select(MapFromProduct).ToList();
+                    }
                 }
             }
         }
@@ -400,16 +413,16 @@ public class ProductController : Controller
             Rating = 4.8,
             ReviewCount = 124,
             SoldCount = "1.2k+",
-            Description = "Thức ăn cao cấp được nghiên cứu đặc biệt cho mèo mẹ và mèo con, cung cấp đầy đủ dưỡng chất thiết yếu giúp mèo con phát triển khỏe mạnh.",
+            Description = !string.IsNullOrWhiteSpace(product.Description) 
+                            ? product.Description 
+                            : "Sản phẩm chất lượng cao dành cho thú cưng của bạn.",
             Stock = product.Stock,
             InStock = product.Stock > 0,
             Images =
             [
                 string.IsNullOrEmpty(product.ImageUrl)
                     ? "https://images.unsplash.com/photo-1589924691995-400dc9ecc119?w=600&h=600&fit=crop"
-                    : product.ImageUrl,
-                "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=600&h=600&fit=crop",
-                "https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=600&h=600&fit=crop"
+                    : product.ImageUrl
             ],
             Features =
             [
