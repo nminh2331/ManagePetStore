@@ -789,8 +789,9 @@ namespace ManagePetStore.Areas.Customer.Controllers
         // =========================================================================
         [Authorize]
         [HttpGet]
-        public async Task<IActionResult> Profile()
+        public async Task<IActionResult> Profile(string activeTab = "info", int wPage = 1, string wType = "All", int rPage = 1, string rStatus = "All")
         {
+            ViewBag.ActiveTab = activeTab;
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
             {
@@ -830,19 +831,43 @@ namespace ManagePetStore.Areas.Customer.Controllers
 
                 if (wallet.WalletTransactions != null)
                 {
-                    wallet.WalletTransactions = wallet.WalletTransactions.OrderByDescending(t => t.TransactionDate).ToList();
+                    var allTrans = wallet.WalletTransactions;
+                    if (wType != "All")
+                    {
+                        allTrans = allTrans.Where(t => t.Type == wType).ToList();
+                    }
+                    allTrans = allTrans.OrderByDescending(t => t.TransactionDate).ToList();
+                    
+                    int wPageSize = 5;
+                    ViewBag.WalletTotalPages = (int)Math.Ceiling(allTrans.Count / (double)wPageSize);
+                    wallet.WalletTransactions = allTrans.Skip((wPage - 1) * wPageSize).Take(wPageSize).ToList();
                 }
+                ViewBag.CurrentWPage = wPage;
+                ViewBag.CurrentWType = wType;
 
-                // Query ReturnRequests
-                var returnRequests = await _context.ReturnRequests
+                // Query All ReturnRequests for Eligibility checking
+                var allCustomerReturnRequests = await _context.ReturnRequests
                     .Include(r => r.ReturnRequestItems)
                     .Where(r => r.CustomerId == user.Customer.CustomerId)
                     .OrderByDescending(r => r.CreatedAt)
                     .ToListAsync();
-                ViewBag.ReturnRequests = returnRequests;
+                
+                // Query Filtered & Paginated ReturnRequests for Display
+                var filteredReturnRequests = allCustomerReturnRequests.AsEnumerable();
+                if (rStatus != "All")
+                {
+                    filteredReturnRequests = filteredReturnRequests.Where(r => r.Status == rStatus);
+                }
+                var pagedReturnRequestsList = filteredReturnRequests.ToList();
+                
+                int rPageSize = 5;
+                ViewBag.ReturnTotalPages = (int)Math.Ceiling(pagedReturnRequestsList.Count / (double)rPageSize);
+                ViewBag.ReturnRequests = pagedReturnRequestsList.Skip((rPage - 1) * rPageSize).Take(rPageSize).ToList();
+                ViewBag.CurrentRPage = rPage;
+                ViewBag.CurrentRStatus = rStatus;
 
                 // Query Completed & Eligible Orders
-                var activeReturnRequestOrderIds = returnRequests
+                var activeReturnRequestOrderIds = allCustomerReturnRequests
                     .Select(r => r.OrderId)
                     .ToHashSet();
 
@@ -859,7 +884,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
 
                 // Query Products Name & Image for return items
                 var allSkus = eligibleOrders.SelectMany(o => o.OrderItems.Select(oi => oi.ProductSku))
-                    .Concat(returnRequests.SelectMany(r => r.ReturnRequestItems.Select(ri => ri.Sku)))
+                    .Concat(allCustomerReturnRequests.SelectMany(r => r.ReturnRequestItems.Select(ri => ri.Sku)))
                     .Where(s => !string.IsNullOrEmpty(s))
                     .Distinct()
                     .ToList();

@@ -162,6 +162,7 @@ public class OrderController : Controller
         }
 
         await _context.SaveChangesAsync();
+        await ManagePetStore.Services.Customer.CustomerRewardHelper.RecalculateCustomerPointsAndTierAsync(layout.Customer.CustomerId, _context);
 
         TempData["SuccessMessage"] = $"Đơn hàng {FormatDisplayOrderId(orderId)} đã được xác nhận nhận hàng.";
         return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);
@@ -238,6 +239,7 @@ public class OrderController : Controller
 
         _context.Entry(order).State = EntityState.Modified;
         await _context.SaveChangesAsync();
+        await ManagePetStore.Services.Customer.CustomerRewardHelper.RecalculateCustomerPointsAndTierAsync(layout.Customer.CustomerId, _context);
 
         TempData["SuccessMessage"] = $"Đơn hàng {FormatDisplayOrderId(orderId)} đã được hủy thành công.";
         return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);
@@ -332,7 +334,7 @@ public class OrderController : Controller
             Total = order.Total,
             Status = statusLabel,
             StatusKey = statusKey,
-            CancelReason = order.CancelReason,
+            CancelReason = order.CancelReason != null && order.CancelReason.StartsWith("VOUCHER:") ? null : order.CancelReason,
             CanConfirmReceived = statusKey == "delivering",
             CanReview = statusKey == "completed" && !hasReviewed,
             HasReviewed = hasReviewed,
@@ -363,7 +365,7 @@ public class OrderController : Controller
             PaymentMethod = order.PaymentMethod,
             Status = statusLabel,
             StatusKey = statusKey,
-            CancelReason = order.CancelReason,
+            CancelReason = order.CancelReason != null && order.CancelReason.StartsWith("VOUCHER:") ? null : order.CancelReason,
             CanceledAt = order.CanceledAt,
             CanConfirmReceived = statusKey == "delivering",
             CanCancel = statusKey == "pending",

@@ -7,6 +7,7 @@ using ManagePetStore.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PayOS;
 
 namespace ManagePetStore.Areas.Customer.Controllers
 {
@@ -16,10 +17,12 @@ namespace ManagePetStore.Areas.Customer.Controllers
     public class SpaBookingController : Controller
     {
         private readonly PetStoreManagementContext _context;
+        private readonly PayOSClient _payOS;
 
-        public SpaBookingController(PetStoreManagementContext context)
+        public SpaBookingController(PetStoreManagementContext context, PayOSClient payOS)
         {
             _context = context;
+            _payOS = payOS;
         }
 
         private async Task<ManagePetStore.Models.Customer?> GetCurrentCustomerAsync()
@@ -42,69 +45,69 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 return RedirectToAction("Login", "Account", new { area = "Customer" });
             }
 
-            var bookings = await _context.SpaBookings
+            var query = _context.SpaBookings
+                .AsNoTracking()
                 .Include(b => b.Pet)
                 .Include(b => b.Service)
                 .Include(b => b.Groomer)
-                .Where(b => b.CustomerId == layout.Customer.CustomerId)
-                .OrderByDescending(b => b.DateTime)
-                .ToListAsync();
+                .Where(b => b.CustomerId == layout.Customer.CustomerId);
 
-            // Lọc kết quả tìm kiếm và trạng thái trong bộ nhớ
             var normalizedSearch = searchTerm?.Trim() ?? "";
-            var normalizedStatus = string.IsNullOrWhiteSpace(statusFilter) ? "all" : statusFilter.Trim().ToLowerInvariant();
-
-            IEnumerable<SpaBooking> filteredBookings = bookings;
-
             if (!string.IsNullOrWhiteSpace(normalizedSearch))
             {
-                filteredBookings = filteredBookings.Where(b =>
-                    b.BookingId.ToString().Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
-                    (b.Service?.Name ?? "").Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
-                    (b.Pet?.Name ?? "").Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
-                    (b.Groomer?.FullName ?? "").Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)
+                var term = normalizedSearch.ToLower();
+                query = query.Where(b =>
+                    b.BookingId.ToString().Contains(term) ||
+                    (b.Service != null && b.Service.Name.ToLower().Contains(term)) ||
+                    (b.Pet != null && b.Pet.Name.ToLower().Contains(term)) ||
+                    (b.Groomer != null && b.Groomer.FullName.ToLower().Contains(term))
                 );
             }
 
-            filteredBookings = normalizedStatus switch
+            var normalizedStatus = string.IsNullOrWhiteSpace(statusFilter) ? "all" : statusFilter.Trim().ToLowerInvariant();
+            query = normalizedStatus switch
             {
-                "pending" => filteredBookings.Where(b => b.SpaStatus == "0" || b.SpaStatus.EndsWith("|0")),
-                "inprogress" => filteredBookings.Where(b => b.SpaStatus != "Cancelled" && b.SpaStatus != "4" && !b.SpaStatus.EndsWith("|4") && b.SpaStatus != "0" && !b.SpaStatus.EndsWith("|0")),
-                "completed" => filteredBookings.Where(b => b.SpaStatus == "4" || b.SpaStatus.EndsWith("|4")),
-                "cancelled" => filteredBookings.Where(b => b.SpaStatus == "Cancelled"),
-                _ => filteredBookings
+                "pending" => query.Where(b => b.SpaStatus == "0" || b.SpaStatus.EndsWith("|0")),
+                "inprogress" => query.Where(b => b.SpaStatus != "Cancelled" && b.SpaStatus != "4" && !b.SpaStatus.EndsWith("|4") && b.SpaStatus != "0" && !b.SpaStatus.EndsWith("|0")),
+                "completed" => query.Where(b => b.SpaStatus == "4" || b.SpaStatus.EndsWith("|4")),
+                "cancelled" => query.Where(b => b.SpaStatus == "Cancelled"),
+                _ => query
             };
 
-            var filteredList = filteredBookings.ToList();
-            var currentPage = page < 1 ? 1 : page;
-            var totalFilteredItems = filteredList.Count;
+            query = query.OrderByDescending(b => b.DateTime);
+
+            var totalFilteredItems = await query.CountAsync();
             var pageSize = 5;
             var totalPages = totalFilteredItems == 0 ? 0 : (int)Math.Ceiling(totalFilteredItems / (double)pageSize);
+            var currentPage = page < 1 ? 1 : page;
 
             if (totalPages > 0 && currentPage > totalPages)
             {
                 currentPage = totalPages;
             }
 
-            var visibleBookings = filteredList
+            var visibleBookings = await query
                 .Skip((currentPage - 1) * pageSize)
                 .Take(pageSize)
-                .ToList();
+                .ToListAsync();
 
-            // Lấy danh sách ID các booking đã được đánh giá
+            var visibleBookingIds = visibleBookings.Select(b => b.BookingId).ToList();
             var reviewedBookingIds = await _context.SpaReviews
-                .Where(r => bookings.Select(b => b.BookingId).Contains(r.BookingId))
+                .AsNoTracking()
+                .Where(r => visibleBookingIds.Contains(r.BookingId))
                 .Select(r => r.BookingId)
                 .ToListAsync();
 
             ViewBag.ReviewedBookingIds = reviewedBookingIds;
+
+            var hasAnyBookings = await _context.SpaBookings.AsNoTracking().AnyAsync(b => b.CustomerId == layout.Customer.CustomerId);
 
             var model = new SpaBookingHistoryPageViewModel
             {
                 User = layout.User,
                 Customer = layout.Customer,
                 ActiveNav = "spabooking",
-                Bookings = bookings,
+                Bookings = hasAnyBookings ? new List<SpaBooking> { new SpaBooking() } : new List<SpaBooking>(),
                 VisibleBookings = visibleBookings,
                 SearchTerm = normalizedSearch,
                 StatusFilter = normalizedStatus,
@@ -333,6 +336,142 @@ namespace ManagePetStore.Areas.Customer.Controllers
                     return Json(new { success = false, message = $"Lỗi hệ thống khi gửi đánh giá: {ex.Message}" });
                 }
             }
+        }
+
+        [HttpPost("PayCash")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> PayCash(int bookingId)
+        {
+            var customer = await GetCurrentCustomerAsync();
+            if (customer == null)
+            {
+                return Json(new { success = false, message = "Bạn cần đăng nhập trước." });
+            }
+
+            var booking = await _context.SpaBookings
+                .FirstOrDefaultAsync(b => b.BookingId == bookingId && b.CustomerId == customer.CustomerId);
+
+            if (booking == null)
+            {
+                return Json(new { success = false, message = "Không tìm thấy lịch hẹn." });
+            }
+
+            string orderId = "";
+            if (!string.IsNullOrEmpty(booking.Notes))
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(booking.Notes, @"\[POS\s+(OD-\d+)\]");
+                if (match.Success)
+                {
+                    orderId = match.Groups[1].Value;
+                }
+            }
+
+            if (string.IsNullOrEmpty(orderId))
+            {
+                return Json(new { success = false, message = "Lịch hẹn chưa được thu ngân lập hóa đơn thanh toán." });
+            }
+
+            using (var transaction = await _context.Database.BeginTransactionAsync())
+            {
+                try
+                {
+                    booking.Status = "Đã thanh toán";
+                    _context.SpaBookings.Update(booking);
+
+                    var order = await _context.Orders.FindAsync(orderId);
+                    if (order != null)
+                    {
+                        order.Status = "Đã thanh toán";
+                        order.OrderStatus = 2;
+                        _context.Orders.Update(order);
+                    }
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    return Json(new { success = true, message = "Đã xác nhận thanh toán tiền mặt thành công!" });
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    return Json(new { success = false, message = $"Lỗi hệ thống khi thanh toán: {ex.Message}" });
+                }
+            }
+        }
+
+        [HttpGet("CheckBookingPaymentStatus")]
+        public async Task<IActionResult> CheckBookingPaymentStatus(int bookingId)
+        {
+            var customer = await GetCurrentCustomerAsync();
+            if (customer == null)
+            {
+                return Json(new { success = false, message = "Bạn cần đăng nhập trước." });
+            }
+
+            var booking = await _context.SpaBookings
+                .FirstOrDefaultAsync(b => b.BookingId == bookingId && b.CustomerId == customer.CustomerId);
+
+            if (booking == null)
+            {
+                return Json(new { success = false, message = "Không tìm thấy lịch hẹn." });
+            }
+
+            if (booking.Status == "Đã thanh toán" || booking.Status == "Success" || booking.Status == "PAID")
+            {
+                return Json(new { success = true, paid = true });
+            }
+
+            string orderId = "";
+            if (!string.IsNullOrEmpty(booking.Notes))
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(booking.Notes, @"\[POS\s+(OD-\d+)\]");
+                if (match.Success)
+                {
+                    orderId = match.Groups[1].Value;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(orderId))
+            {
+                var order = await _context.Orders.FindAsync(orderId);
+                if (order != null && (order.Status == "Đã thanh toán" || order.Status == "Chờ xử lý" || order.Status == "PAID"))
+                {
+                    booking.Status = "Đã thanh toán";
+                    _context.SpaBookings.Update(booking);
+                    await _context.SaveChangesAsync();
+
+                    return Json(new { success = true, paid = true });
+                }
+
+                if (order != null && order.Status == "Chờ thanh toán")
+                {
+                    var parts = orderId.Split('-');
+                    if (parts.Length >= 2 && long.TryParse(parts[^1], out long orderCode))
+                    {
+                        try
+                        {
+                            var paymentInfo = await _payOS.PaymentRequests.GetAsync(orderCode);
+                            if (paymentInfo != null && paymentInfo.Status.ToString().ToUpper() == "PAID")
+                            {
+                                order.Status = "Đã thanh toán";
+                                order.OrderStatus = 2;
+                                _context.Orders.Update(order);
+
+                                booking.Status = "Đã thanh toán";
+                                _context.SpaBookings.Update(booking);
+
+                                await _context.SaveChangesAsync();
+                                return Json(new { success = true, paid = true });
+                            }
+                        }
+                        catch (Exception)
+                        {
+                        }
+                    }
+                }
+            }
+
+            return Json(new { success = true, paid = false });
         }
     }
     public class SpaBookingHistoryPageViewModel : ManagePetStore.Areas.Customer.Models.CustomerSidebarViewModel

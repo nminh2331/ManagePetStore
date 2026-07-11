@@ -222,6 +222,18 @@
         </div>
     </div>
 
+    <!-- Search & Filter -->
+    <div class="mb-4 d-flex justify-content-end">
+        <form action="/Cashier/ReturnRequest/Index" method="get" class="d-flex align-items-center gap-2">
+            <input type="hidden" name="activeTab" value="@(ViewBag.ActiveTab ?? "submitted")" id="activeTabInput" />
+            <div class="input-group shadow-sm" style="width: 300px; border-radius: 12px; overflow: hidden;">
+                <span class="input-group-text bg-white border-0 text-muted"><i class="bi bi-search"></i></span>
+                <input type="text" name="searchStr" class="form-control border-0 ps-0" placeholder="Tìm kiếm theo Mã Đơn Hàng..." value="@ViewBag.SearchStr" />
+            </div>
+            <button type="submit" class="btn text-white px-4 shadow-sm" style="background-color: #F2780C; border-radius: 12px; font-weight: 600;">Tìm kiếm</button>
+        </form>
+    </div>
+
     <!-- Navigation Tabs -->
     <ul class="nav nav-tabs nav-cashier-tabs mb-4" id="cashierTabs" role="tablist">
         <li class="nav-item" role="presentation">
@@ -374,6 +386,22 @@
                     Không có yêu cầu trả hàng nào chờ duyệt online.
                 </div>
             }
+            
+            @if (ViewBag.SubmittedTotalPages != null && ViewBag.SubmittedTotalPages >= 1)
+            {
+                <div class="d-flex justify-content-center mt-4">
+                    <nav aria-label="Submitted Pagination">
+                        <ul class="pagination">
+                            @for (int i = 1; i <= ViewBag.SubmittedTotalPages; i++)
+                            {
+                                <li class="page-item @(i == ViewBag.CurrentPageS ? "active" : "")">
+                                    <a class="page-link shadow-sm mx-1 rounded-3" href="?activeTab=submitted&searchStr=@ViewBag.SearchStr&pageS=@i">@i</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                </div>
+            }
         </div>
 
         <!-- 2. Waiting Pane -->
@@ -506,6 +534,22 @@
                 <div class="text-center py-5 text-muted bg-white rounded-3 border">
                     <i class="bi bi-clock text-info d-block mb-3" style="font-size: 3rem;"></i>
                     Không có yêu cầu trả hàng nào đang chờ mang sản phẩm đến quầy.
+                </div>
+            }
+
+            @if (ViewBag.WaitingTotalPages != null && ViewBag.WaitingTotalPages >= 1)
+            {
+                <div class="d-flex justify-content-center mt-4">
+                    <nav aria-label="Waiting Pagination">
+                        <ul class="pagination">
+                            @for (int i = 1; i <= ViewBag.WaitingTotalPages; i++)
+                            {
+                                <li class="page-item @(i == ViewBag.CurrentPageW ? "active" : "")">
+                                    <a class="page-link shadow-sm mx-1 rounded-3" href="?activeTab=waiting&searchStr=@ViewBag.SearchStr&pageW=@i">@i</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
                 </div>
             }
         </div>
@@ -646,6 +690,22 @@
                     Chưa có lịch sử xử lý trả hàng nào.
                 </div>
             }
+            
+            @if (ViewBag.ProcessedTotalPages != null && ViewBag.ProcessedTotalPages >= 1)
+            {
+                <div class="d-flex justify-content-center mt-4">
+                    <nav aria-label="Processed Pagination">
+                        <ul class="pagination">
+                            @for (int i = 1; i <= ViewBag.ProcessedTotalPages; i++)
+                            {
+                                <li class="page-item @(i == ViewBag.CurrentPageP ? "active" : "")">
+                                    <a class="page-link shadow-sm mx-1 rounded-3" href="?activeTab=processed&searchStr=@ViewBag.SearchStr&pageP=@i">@i</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                </div>
+            }
         </div>
     </div>
 </div>
@@ -659,5 +719,27 @@
         function hideRejectBox(type, requestId) {
             document.getElementById('reject-' + type + '-' + requestId).style.display = 'none';
         }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            // Restore active tab
+            var activeTab = '@(ViewBag.ActiveTab ?? "submitted")';
+            var tabBtn = document.getElementById(activeTab + '-tab');
+            if (tabBtn) {
+                var tabInstance = new bootstrap.Tab(tabBtn);
+                tabInstance.show();
+            }
+
+            // Update hidden input when tab changes
+            var tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
+            tabEls.forEach(function (tabEl) {
+                tabEl.addEventListener('shown.bs.tab', function (event) {
+                    var targetId = event.target.id.replace('-tab', '');
+                    var activeTabInput = document.getElementById('activeTabInput');
+                    if (activeTabInput) {
+                        activeTabInput.value = targetId;
+                    }
+                });
+            });
+        });
     </script>
 }

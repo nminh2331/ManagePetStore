@@ -690,8 +690,17 @@
 
                     <!-- Transaction History -->
                     <div class="transaction-card">
-                        <div class="transaction-header">
-                            <h3 class="transaction-title"><i class="bi bi-clock-history me-2"></i>Lịch sử giao dịch</h3>
+                        <div class="transaction-header d-flex flex-wrap justify-content-between align-items-center">
+                            <h3 class="transaction-title mb-2 mb-md-0"><i class="bi bi-clock-history me-2"></i>Lịch sử giao dịch</h3>
+                            <form action="/Customer/Account/Profile" method="get" class="d-flex align-items-center gap-2">
+                                <input type="hidden" name="activeTab" value="wallet" />
+                                <select name="wType" class="form-select form-select-sm" style="border-radius: 8px; width: 140px; font-weight: 600; border-color: #e5e7eb;" onchange="this.form.submit()">
+                                    @if(ViewBag.CurrentWType == "All") { <option value="All" selected>Tất cả loại</option> } else { <option value="All">Tất cả loại</option> }
+                                    @if(ViewBag.CurrentWType == "Deposit") { <option value="Deposit" selected>Nạp Tiền</option> } else { <option value="Deposit">Nạp Tiền</option> }
+                                    @if(ViewBag.CurrentWType == "Payment") { <option value="Payment" selected>Thanh Toán</option> } else { <option value="Payment">Thanh Toán</option> }
+                                    @if(ViewBag.CurrentWType == "Refund") { <option value="Refund" selected>Hoàn Tiền</option> } else { <option value="Refund">Hoàn Tiền</option> }
+                                </select>
+                            </form>
                         </div>
                         <div class="p-0">
                             <div class="table-responsive">
@@ -759,6 +768,23 @@
                                     </tbody>
                                 </table>
                             </div>
+                            
+                            <!-- Pagination cho Ví -->
+                            @if (ViewBag.WalletTotalPages != null && ViewBag.WalletTotalPages >= 1)
+                            {
+                                <div class="p-4 d-flex justify-content-center" style="background-color: #fafafa; border-top: 1px solid #f3f4f6;">
+                                    <nav aria-label="Wallet Pagination">
+                                        <ul class="pagination pagination-sm mb-0" style="gap: 5px;">
+                                            @for (int i = 1; i <= ViewBag.WalletTotalPages; i++)
+                                            {
+                                                <li class="page-item @(i == ViewBag.CurrentWPage ? "active" : "")">
+                                                    <a class="page-link" style="border-radius: 8px; font-weight: 600; color: @(i == ViewBag.CurrentWPage ? "#fff" : "#4B5563"); background-color: @(i == ViewBag.CurrentWPage ? "#f97316" : "#fff"); border-color: @(i == ViewBag.CurrentWPage ? "#f97316" : "#e5e7eb");" href="?activeTab=wallet&wPage=@i&wType=@ViewBag.CurrentWType">@i</a>
+                                                </li>
+                                            }
+                                        </ul>
+                                    </nav>
+                                </div>
+                            }
                         </div>
                     </div>
                 </div>
@@ -786,6 +812,19 @@
                 <div class="tab-content" id="returnSubTabsContent">
                     <!-- History Pane -->
                     <div class="tab-pane fade show active" id="return-history-pane" role="tabpanel">
+                        <div class="d-flex justify-content-end mb-3">
+                            <form action="/Customer/Account/Profile" method="get" class="d-flex align-items-center gap-2">
+                                <input type="hidden" name="activeTab" value="return" />
+                                <select name="rStatus" class="form-select form-select-sm shadow-sm" style="border-radius: 8px; width: 180px; font-weight: 600; border-color: #e5e7eb;" onchange="this.form.submit()">
+                                    @if(ViewBag.CurrentRStatus == "All") { <option value="All" selected>Tất cả trạng thái</option> } else { <option value="All">Tất cả trạng thái</option> }
+                                    @if(ViewBag.CurrentRStatus == "Submitted") { <option value="Submitted" selected>Chờ duyệt online</option> } else { <option value="Submitted">Chờ duyệt online</option> }
+                                    @if(ViewBag.CurrentRStatus == "WaitingForReturn") { <option value="WaitingForReturn" selected>Chờ trả hàng tại quầy</option> } else { <option value="WaitingForReturn">Chờ trả hàng tại quầy</option> }
+                                    @if(ViewBag.CurrentRStatus == "OnlineRejected") { <option value="OnlineRejected" selected>Từ chối duyệt online</option> } else { <option value="OnlineRejected">Từ chối duyệt online</option> }
+                                    @if(ViewBag.CurrentRStatus == "PhysicalRejected") { <option value="PhysicalRejected" selected>Từ chối tại quầy</option> } else { <option value="PhysicalRejected">Từ chối tại quầy</option> }
+                                    @if(ViewBag.CurrentRStatus == "Success") { <option value="Success" selected>Đã hoàn tiền</option> } else { <option value="Success">Đã hoàn tiền</option> }
+                                </select>
+                            </form>
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
                                 <thead class="table-light">
@@ -846,6 +885,12 @@
                                                     else if (req.Status == "WaitingForReturn")
                                                     {
                                                         <span class="badge bg-info text-dark px-3 py-2" style="border-radius: 8px;">Chờ trả hàng tại quầy</span>
+                                                        @if (req.ProcessedAt.HasValue)
+                                                        {
+                                                            <div class="text-danger mt-1 fw-bold" style="font-size: 0.75rem;">
+                                                                Hạn chót: trước @req.ProcessedAt.Value.AddDays(7).ToString("dd/MM/yyyy HH:mm")
+                                                            </div>
+                                                        }
                                                     }
                                                     else if (req.Status == "PhysicalRejected")
                                                     {
@@ -870,6 +915,13 @@
                                                     <div class="row">
                                                         <div class="col-md-6">
                                                             <p class="mb-2"><strong>Lý do trả hàng:</strong> @req.Reason</p>
+                                                            @if (req.Status == "WaitingForReturn" && req.ProcessedAt.HasValue)
+                                                            {
+                                                                <div class="alert alert-warning mt-2 mb-3" style="border-radius: 8px; font-size: 0.85rem;">
+                                                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                                                    <strong>Lưu ý quan trọng:</strong> Yêu cầu trả hàng đã được duyệt online. Vui lòng mang sản phẩm đến quầy trước ngày <strong>@req.ProcessedAt.Value.AddDays(7).ToString("dd/MM/yyyy HH:mm")</strong> để hoàn thành việc trả hàng và nhận tiền hoàn. Sau 7 ngày, yêu cầu sẽ tự động hết hạn.
+                                                                </div>
+                                                            }
                                                             @if (parsedImages.Any())
                                                             {
                                                                 <div class="mb-3">
@@ -932,9 +984,26 @@
                                             </td>
                                         </tr>
                                     }
+                                    }
                                 </tbody>
                             </table>
                         </div>
+                        <!-- Pagination cho Return Request -->
+                        @if (ViewBag.ReturnTotalPages != null && ViewBag.ReturnTotalPages >= 1)
+                        {
+                            <div class="p-3 mt-3 d-flex justify-content-center" style="background-color: #fafafa; border-radius: 12px; border: 1px solid #f3f4f6;">
+                                <nav aria-label="Return Pagination">
+                                    <ul class="pagination pagination-sm mb-0" style="gap: 5px;">
+                                        @for (int i = 1; i <= ViewBag.ReturnTotalPages; i++)
+                                        {
+                                            <li class="page-item @(i == ViewBag.CurrentRPage ? "active" : "")">
+                                                <a class="page-link" style="border-radius: 8px; font-weight: 600; color: @(i == ViewBag.CurrentRPage ? "#fff" : "#4B5563"); background-color: @(i == ViewBag.CurrentRPage ? "#f97316" : "#fff"); border-color: @(i == ViewBag.CurrentRPage ? "#f97316" : "#e5e7eb");" href="?activeTab=return&rPage=@i&rStatus=@ViewBag.CurrentRStatus">@i</a>
+                                            </li>
+                                        }
+                                    </ul>
+                                </nav>
+                            </div>
+                        }
                     </div>
 
                     <!-- Eligible Orders Pane -->
@@ -1202,6 +1271,15 @@
                     e.preventDefault();
                     switchTab('return-tab', returnBtn);
                 });
+            }
+
+            var activeTab = '@(ViewBag.ActiveTab ?? "info")';
+            if (activeTab === 'wallet' && walletBtn) {
+                switchTab('wallet-tab', walletBtn);
+            } else if (activeTab === 'return' && returnBtn) {
+                switchTab('return-tab', returnBtn);
+            } else if (activeTab === 'password' && passwordBtn) {
+                switchTab('password-tab', passwordBtn);
             }
 
             if (avatarWrapper) {

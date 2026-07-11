@@ -81,10 +81,6 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<Supplier> Suppliers { get; set; }
 
-    public virtual DbSet<SupplierProduct> SupplierProducts { get; set; }
-
-    public virtual DbSet<SearchLog> SearchLogs { get; set; }
-
     public virtual DbSet<User> Users { get; set; }
 
     public virtual DbSet<Voucher> Vouchers { get; set; }
@@ -272,6 +268,7 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasOne(d => d.Cage).WithMany(p => p.FoodDiaryLogs)
                 .HasForeignKey(d => d.CageId)
                 .HasConstraintName("FK_FoodDiaryLogs_Cages");
+
         });
 
         modelBuilder.Entity<HotelBooking>(entity =>
@@ -342,6 +339,7 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasOne(d => d.Pet).WithMany(p => p.MedicalRecords)
                 .HasForeignKey(d => d.PetId)
                 .HasConstraintName("FK_MedicalRecords_Pets");
+
         });
 
         modelBuilder.Entity<Order>(entity =>
@@ -445,6 +443,7 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasOne(d => d.Pet).WithMany(p => p.PetBioTimelines)
                 .HasForeignKey(d => d.PetId)
                 .HasConstraintName("FK_PetBioTimelines_Pets");
+
         });
 
         modelBuilder.Entity<Product>(entity =>
@@ -465,11 +464,6 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasOne(d => d.Category).WithMany(p => p.Products)
                 .HasForeignKey(d => d.CategoryId)
                 .HasConstraintName("FK_Products_ProductCategories");
-
-            entity.HasMany(p => p.SupplierProducts)
-                .WithOne(sp => sp.Product)
-                .HasForeignKey(sp => sp.ProductSku)
-                .HasConstraintName("FK_SupplierProducts_Product");
         });
 
         modelBuilder.Entity<ProductCategory>(entity =>
@@ -478,35 +472,6 @@ public partial class PetStoreManagementContext : DbContext
 
             entity.Property(e => e.Description).HasMaxLength(500);
             entity.Property(e => e.Name).HasMaxLength(150);
-            entity.Property(e => e.Keywords).HasMaxLength(500);
-        });
-
-        modelBuilder.Entity<SearchLog>(entity =>
-        {
-            entity.HasKey(e => e.LogId);
-            entity.ToTable("SearchLogs");
-            entity.Property(e => e.Keyword).HasMaxLength(200).IsRequired();
-            entity.Property(e => e.LastSearchedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
-            entity.HasIndex(e => e.Keyword).IsUnique();
-        });
-
-        modelBuilder.Entity<SupplierProduct>(entity =>
-        {
-            entity.HasKey(sp => new { sp.SupplierId, sp.ProductSku });
-            entity.ToTable("SupplierProducts");
-            entity.Property(sp => sp.ProductSku).HasMaxLength(50);
-
-            entity.HasOne(sp => sp.Supplier)
-                .WithMany(s => s.SupplierProducts)
-                .HasForeignKey(sp => sp.SupplierId)
-                .HasConstraintName("FK_SupplierProducts_Supplier");
-
-            entity.HasOne(sp => sp.Product)
-                .WithMany(p => p.SupplierProducts)
-                .HasForeignKey(sp => sp.ProductSku)
-                .HasConstraintName("FK_SupplierProducts_Product");
         });
 
         modelBuilder.Entity<ReturnRequest>(entity =>
