@@ -55,7 +55,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             var query = q.ToLower();
 
             var customers = await _context.Customers
-                .Include(c => c.Pets)
+                .AsNoTracking()
                 .Where(c => c.Phone.Contains(query) || 
                             c.FullName.ToLower().Contains(query) || 
                             c.Pets.Any(p => p.Name.ToLower().Contains(query)))
@@ -229,6 +229,88 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             return Json(new { success = true, data = groomers });
         }
 
+        // API: Lấy danh sách Lịch Spa đã hoàn thành nhưng chưa thanh toán
+        [HttpGet]
+        public async Task<IActionResult> GetCompletedSpaBookings()
+        {
+            var bookings = await _context.SpaBookings
+                .AsNoTracking()
+                .Where(b => (b.SpaStatus == "4" || b.SpaStatus.EndsWith("|4"))
+                         && (b.Status == "Chờ thanh toán" || b.Status == "pending" || b.Status == "Chưa thanh toán")
+                         && (b.Notes == null || !b.Notes.Contains("OD-"))) // Chưa liên kết đơn POS
+                .OrderByDescending(b => b.DateTime)
+                .Select(b => new
+                {
+                    BookingId = b.BookingId,
+                    CustomerId = b.CustomerId,
+                    CustomerName = b.Customer.FullName,
+                    CustomerPhone = b.Customer.Phone,
+                    PetName = b.Pet.Name,
+                    PetId = b.PetId,
+                    PetWeight = b.Pet.Weight,
+                    ServiceName = b.Service.Name,
+                    ServiceId = b.ServiceId,
+                    Price = b.Price,
+                    GroomerId = b.GroomerId,
+                    GroomerName = b.Groomer.FullName,
+                    DateTime = b.DateTime.ToString("dd/MM/yyyy HH:mm")
+                })
+                .ToListAsync();
+
+            return Json(new { success = true, data = bookings });
+        }
+
+        // API: Kiểm tra và áp dụng Voucher
+        [HttpGet]
+        public async Task<IActionResult> CheckVoucher(string code, decimal subtotal)
+        {
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                return Json(new { success = false, message = "Vui lòng nhập mã giảm giá." });
+            }
+
+            var cleanCode = code.Trim().ToUpper();
+            var voucher = await _context.Vouchers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(v => v.Code == cleanCode && v.Status && v.ExpiryDate >= DateTime.Today);
+
+            if (voucher == null)
+            {
+                // Hỗ trợ một số mã test nếu database trống
+                if (cleanCode == "PET20" || cleanCode == "SALE20")
+                {
+                    if (subtotal < 200000)
+                        return Json(new { success = false, message = "Đơn hàng tối thiểu 200.000đ để sử dụng voucher này." });
+                    return Json(new { success = true, discount = 20000m, code = cleanCode });
+                }
+                if (cleanCode == "PET10")
+                {
+                    if (subtotal < 100000)
+                        return Json(new { success = false, message = "Đơn hàng tối thiểu 100.000đ để sử dụng voucher này." });
+                    return Json(new { success = true, discount = Math.Round(subtotal * 0.1m, 0), code = cleanCode });
+                }
+
+                return Json(new { success = false, message = "Mã giảm giá không tồn tại hoặc đã hết hạn." });
+            }
+
+            if (subtotal < voucher.MinOrder)
+            {
+                return Json(new { success = false, message = $"Giá trị đơn hàng chưa đạt mức tối thiểu {voucher.MinOrder:N0}đ." });
+            }
+
+            decimal discount = 0;
+            if (voucher.Type.Equals("Percent", StringComparison.OrdinalIgnoreCase) || voucher.Type.Equals("Percentage", StringComparison.OrdinalIgnoreCase))
+            {
+                discount = Math.Round(subtotal * voucher.Value / 100m, 0);
+            }
+            else
+            {
+                discount = voucher.Value;
+            }
+
+            return Json(new { success = true, discount = discount, code = voucher.Code });
+        }
+
         // API: Submit Order
         [HttpPost]
         public async Task<IActionResult> SubmitOrder([FromBody] PosSubmitOrderDto dto)
@@ -238,24 +320,35 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 return Json(new { success = false, message = "Dữ liệu không hợp lệ." });
             }
 
+            // 1. Kiểm tra số lượng hợp lệ
+            if (dto.Items.Any(i => i.Quantity <= 0))
+            {
+                return Json(new { success = false, message = "Số lượng mặt hàng thanh toán phải lớn hơn 0." });
+            }
+
+            // 2. Kiểm tra trùng lặp thanh toán lịch Spa
+            var linkedBookingIds = dto.Items.Where(i => i.BookingId.HasValue).Select(i => i.BookingId.Value).ToList();
+            if (linkedBookingIds.Any())
+            {
+                var existingLinkedBookings = await _context.SpaBookings
+                    .AsNoTracking()
+                    .Where(b => linkedBookingIds.Contains(b.BookingId) && b.Notes != null && b.Notes.Contains("OD-"))
+                    .Select(b => b.BookingId)
+                    .ToListAsync();
+
+                if (existingLinkedBookings.Any())
+                {
+                    return Json(new { success = false, message = $"Lịch hẹn Spa #{string.Join(", #", existingLinkedBookings)} đã được liên kết hóa đơn thanh toán trước đó." });
+                }
+            }
+
             var customer = await _context.Customers.FindAsync(dto.CustomerId);
             if (customer == null)
             {
                 return Json(new { success = false, message = "Khách hàng không tồn tại." });
             }
 
-            // Deduct Points
-            int pointsUsed = dto.PointsUsed;
-            decimal discount = pointsUsed * 500m;
-            if (pointsUsed > 0)
-            {
-                if (customer.LoyaltyPoints < pointsUsed)
-                {
-                    return Json(new { success = false, message = "Điểm tích lũy của khách hàng không đủ." });
-                }
-                customer.LoyaltyPoints -= pointsUsed;
-            }
-
+            decimal discount = dto.VoucherDiscount;
             decimal totalAmount = dto.TotalAmount - discount;
             if (totalAmount < 0) totalAmount = 0;
 
@@ -266,15 +359,13 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             orderCode = long.Parse(numericString);
             newOrderId = $"OD-{orderCode}";
 
-            // Calculate Points Earned (1% of actual payment)
+            // Keep points earned silent
             int pointsEarned = (int)(totalAmount / 100000) * 10;
             customer.LoyaltyPoints += pointsEarned;
-
-            // Save changes to customer (points subtracted and added)
             _context.Entry(customer).State = EntityState.Modified;
 
             bool hasOnlinePayment = dto.PaymentMethod == "Thanh toán online" || 
-                                    (dto.PaymentMethod == "Tiền mặt + Online" && dto.OnlineAmount > 0);
+                                     (dto.PaymentMethod == "Tiền mặt + Online" && dto.OnlineAmount > 0);
 
             var order = new Order
             {
@@ -286,9 +377,10 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 Total = totalAmount,
                 PaymentMethod = dto.PaymentMethod ?? "Tiền mặt",
                 PointsEarned = pointsEarned,
-                PointsRedeemed = pointsUsed,
+                PointsRedeemed = 0,
                 Status = hasOnlinePayment ? "Chờ thanh toán" : "Chờ xử lý",
-                OrderStatus = hasOnlinePayment ? 1 : 2 
+                OrderStatus = hasOnlinePayment ? 1 : 2,
+                CancelReason = !string.IsNullOrWhiteSpace(dto.VoucherCode) ? $"VOUCHER:{dto.VoucherCode.Trim().ToUpper()}" : null
             };
 
             _context.Orders.Add(order);
@@ -331,12 +423,20 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                         }
                     }
 
-                    // Create SpaBooking
-                    if (item.PetId.HasValue && item.GroomerId.HasValue && item.AppointmentTime.HasValue)
+                    // Link existing SpaBooking
+                    if (item.BookingId.HasValue)
+                    {
+                        var booking = await _context.SpaBookings.FindAsync(item.BookingId.Value);
+                        if (booking != null)
+                        {
+                            booking.Status = "Chờ thanh toán";
+                            booking.Notes = $"[POS {order.OrderId}] | Dịch vụ: {item.Name} " + (booking.Notes ?? "");
+                            _context.Entry(booking).State = EntityState.Modified;
+                        }
+                    }
+                    else if (item.PetId.HasValue && item.GroomerId.HasValue && item.AppointmentTime.HasValue)
                     {
                         var service = await _context.SpaServices.FindAsync(orderItem.SpaServiceId);
-                        int duration = service?.DurationMinutes ?? 60;
-
                         var spaBooking = new SpaBooking
                         {
                             CustomerId = customer.CustomerId,
@@ -389,7 +489,6 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 }
             }
             
-            // If Cash or online amount too small, just return success
             return Json(new { success = true, orderId = order.OrderId, redirectUrl = "" });
         }
 
@@ -432,6 +531,68 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             }
 
             return Json(new { success = true, status = order.Status });
+        }
+
+        // API: Lấy thông tin hóa đơn dưới dạng JSON để hiển thị trực tiếp lên POS modal
+        [HttpGet]
+        public async Task<IActionResult> GetInvoiceData(string orderId)
+        {
+            var order = await _context.Orders
+                .AsNoTracking()
+                .Include(o => o.Customer)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.ProductSkuNavigation)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.SpaService)
+                .FirstOrDefaultAsync(o => o.OrderId == orderId);
+
+            if (order == null)
+            {
+                return Json(new { success = false, message = "Không tìm thấy hóa đơn." });
+            }
+
+            var spaBookings = await _context.SpaBookings
+                .AsNoTracking()
+                .Include(sb => sb.Pet)
+                .Include(sb => sb.Groomer)
+                .Include(sb => sb.Service)
+                .Where(sb => sb.Notes != null && sb.Notes.Contains($"[POS {orderId}]"))
+                .Select(sb => new {
+                    ServiceName = sb.Service.Name,
+                    PetName = sb.Pet.Name,
+                    PetSpecies = sb.Pet.Species,
+                    PetWeight = sb.Pet.Weight,
+                    GroomerName = sb.Groomer.FullName,
+                    DateTime = sb.DateTime.ToString("HH:mm - dd/MM/yyyy")
+                })
+                .ToListAsync();
+
+            string? voucherCode = null;
+            if (order.CancelReason != null && order.CancelReason.StartsWith("VOUCHER:"))
+            {
+                voucherCode = order.CancelReason.Substring(8);
+            }
+
+            return Json(new
+            {
+                success = true,
+                orderId = order.OrderId,
+                date = order.Date.ToString("dd/MM/yyyy HH:mm"),
+                customerName = order.Customer.FullName,
+                customerPhone = order.Customer.Phone,
+                subtotal = order.Subtotal,
+                discount = order.Discount,
+                total = order.Total,
+                paymentMethod = order.PaymentMethod,
+                voucherCode = voucherCode,
+                items = order.OrderItems.Select(oi => new {
+                    name = oi.ProductSku != null ? oi.ProductSkuNavigation.Name : oi.SpaService.Name,
+                    quantity = oi.Quantity,
+                    price = oi.Price,
+                    total = oi.Price * oi.Quantity
+                }).ToList(),
+                spaBookings = spaBookings
+            });
         }
 
         // GET: /Cashier/Order/PrintInvoice

@@ -275,7 +275,7 @@ public class OrderController : Controller
             PaymentMethod = order.PaymentMethod,
             StatusKey = statusKey,
             StatusLabel = statusLabel,
-            CancelReason = order.CancelReason,
+            CancelReason = order.CancelReason != null && order.CancelReason.StartsWith("VOUCHER:") ? null : order.CancelReason,
             CanApprove = statusKey == "pending",
             CanReject = statusKey == "pending",
             CanShip = statusKey == "approved",
