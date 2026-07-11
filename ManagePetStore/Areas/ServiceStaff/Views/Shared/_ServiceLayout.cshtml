@@ -329,7 +329,6 @@
                                             servicePath.StartsWith("/SpaServices/CageMap", StringComparison.OrdinalIgnoreCase) ||
                                             servicePath.StartsWith("/SpaServices/CageCategories", StringComparison.OrdinalIgnoreCase);
                     bool isMedicalRecords = servicePath.StartsWith("/SpaServices/MedicalRecords", StringComparison.OrdinalIgnoreCase);
-                    bool isHotelHistory = servicePath.StartsWith("/SpaServices/HotelHistory", StringComparison.OrdinalIgnoreCase);
                 }
                 <a href="/SpaServices" class="service-nav-item @(!isHotelWorkspace && !isMedicalRecords && (servicePath == "/SpaServices" || servicePath == "/SpaServices/Index" || servicePath == "/SpaServices/") ? "active" : "")">
                     <i class="fa-solid fa-scissors"></i>
@@ -350,10 +349,6 @@
                 <a href="/SpaServices/CageCategories" class="service-nav-item @(servicePath.StartsWith("/SpaServices/CageCategories", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
                     <i class="fa-solid fa-house-chimney-medical"></i>
                     Danh mục Chuồng
-                </a>
-                <a href="/SpaServices/HotelHistory" class="service-nav-item @(isHotelHistory ? "active" : "")">
-                    <i class="fa-solid fa-clock-rotate-left"></i>
-                    Lịch sử lưu trú
                 </a>
             </nav>
 

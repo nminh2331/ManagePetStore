@@ -459,7 +459,6 @@ namespace ManagePetStore.Controllers
                 "service"   => Redirect("/SpaServices"),
                 "warehouse" => RedirectToAction("Index", "Home", new { area = "Warehouse" }),
                 "manager"   => RedirectToAction("Index", "Order", new { area = "Manager" }),
-                "cashier"   => RedirectToAction("Create", "Order", new { area = "Cashier" }),
                 _           => RedirectToAction("Index", "Home", new { area = "" })
             };
         }
@@ -474,8 +473,6 @@ namespace ManagePetStore.Controllers
                 return RedirectToAction("Index", "Home", new { area = "Warehouse" });
             if (User.IsInRole("manager"))
                 return RedirectToAction("Index", "Order", new { area = "Manager" });
-            if (User.IsInRole("cashier"))
-                return RedirectToAction("Create", "Order", new { area = "Cashier" });
 
             return RedirectToAction("Index", "Home", new { area = "" });
         }

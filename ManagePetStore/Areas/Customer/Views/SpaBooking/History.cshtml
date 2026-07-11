@@ -4,15 +4,11 @@
     Layout = "/Views/Shared/_PetStoreLayout.cshtml";
     ViewData["Title"] = "Lịch đặt hẹn Spa";
     var reviewedIds = ViewBag.ReviewedBookingIds as List<int> ?? new List<int>();
-
-    var showingFrom = Model.TotalFilteredItems == 0 ? 0 : ((Model.Page - 1) * Model.PageSize) + 1;
-    var showingTo = Math.Min(Model.Page * Model.PageSize, Model.TotalFilteredItems);
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/customer-pets.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/customer-hotel-bookings.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/customer-orders.css" asp-append-version="true" />
     <style>
         .spa-table-card {
             border: 1px solid #ECE9E5;
@@ -112,249 +108,136 @@
         </div>
 
         <!-- Spa History Table Card -->
-        <div class="spa-table-card mt-3">
-            @if (!Model.Bookings.Any())
-            {
-                <div class="co-empty">
-                    <i class="bi bi-calendar2-x"></i>
-                    <p>Bạn chưa có lịch hẹn đặt Spa nào.</p>
-                    <a asp-area="" asp-controller="Product" asp-action="Spa" class="co-btn-review" style="background-color: #FF7815; border: none; color: white; text-decoration: none; padding: 10px 20px; border-radius: 10px;">Đặt lịch ngay</a>
-                </div>
-            }
-            else
-            {
-                <div class="co-filter-bar">
-                    <form asp-action="History" method="get" class="co-filter-form">
-                        <div class="co-filter-field co-filter-search">
-                            <label class="co-filter-label" for="searchTerm">Tìm lịch hẹn</label>
-                            <input type="text"
-                                   id="searchTerm"
-                                   name="searchTerm"
-                                   value="@Model.SearchTerm"
-                                   class="co-filter-input"
-                                   placeholder="Mã lịch, dịch vụ, tên bé..." />
-                        </div>
-
-                        <div class="co-filter-field co-filter-status">
-                            <label class="co-filter-label" for="statusFilter">Trạng thái</label>
-                            <select id="statusFilter" name="statusFilter" class="co-filter-select">
-                                @if (Model.StatusFilter == "all")
-                                {
-                                    <option value="all" selected>Tất cả</option>
-                                }
-                                else
-                                {
-                                    <option value="all">Tất cả</option>
-                                }
-
-                                @if (Model.StatusFilter == "pending")
-                                {
-                                    <option value="pending" selected>Đang chờ</option>
-                                }
-                                else
-                                {
-                                    <option value="pending">Đang chờ</option>
-                                }
-
-                                @if (Model.StatusFilter == "inprogress")
-                                {
-                                    <option value="inprogress" selected>Đang thực hiện</option>
-                                }
-                                else
-                                {
-                                    <option value="inprogress">Đang thực hiện</option>
-                                }
-
-                                @if (Model.StatusFilter == "completed")
-                                {
-                                    <option value="completed" selected>Hoàn thành</option>
-                                }
-                                else
-                                {
-                                    <option value="completed">Hoàn thành</option>
-                                }
-
-                                @if (Model.StatusFilter == "cancelled")
-                                {
-                                    <option value="cancelled" selected>Đã hủy</option>
-                                }
-                                else
-                                {
-                                    <option value="cancelled">Đã hủy</option>
-                                }
-                            </select>
-                        </div>
-
-                        <div class="co-filter-actions">
-                            <button type="submit" class="co-btn-review" style="background-color: #FF7815; border: none; color: white;">Lọc lịch hẹn</button>
-                            @if (!string.IsNullOrWhiteSpace(Model.SearchTerm) || Model.StatusFilter != "all")
+        <div class="spa-table-card">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;" id="spaBookingTable">
+                    <thead style="background-color: #FAF9F7; font-size: 0.72rem; letter-spacing: 0.8px; text-transform: uppercase;">
+                        <tr>
+                            <th class="py-3 ps-4" style="color: #9E918B; font-weight: 700;">Dịch vụ & Thú cưng</th>
+                            <th class="py-3" style="color: #9E918B; font-weight: 700;">Giờ hẹn</th>
+                            <th class="py-3 text-end" style="color: #9E918B; font-weight: 700;">Tổng tiền</th>
+                            <th class="py-3 text-center" style="color: #9E918B; font-weight: 700;">Groomer</th>
+                            <th class="py-3 text-center" style="color: #9E918B; font-weight: 700;">Thực hiện</th>
+                            <th class="py-3 text-center" style="color: #9E918B; font-weight: 700;">Thanh toán</th>
+                            <th class="py-3 text-center pe-4" style="color: #9E918B; font-weight: 700;">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="spaTableBody">
+                        @if (!Model.Bookings.Any())
+                        {
+                            <tr class="no-spa-data-row">
+                                <td colspan="7" class="text-center py-5 text-muted">
+                                    <i class="bi bi-calendar2-x display-4 text-light d-block mb-3"></i>
+                                    Bạn chưa có lịch hẹn đặt Spa nào.
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var booking in Model.Bookings)
                             {
-                                <a asp-action="History" class="co-btn-reset">Xóa lọc</a>
-                            }
-                        </div>
-                    </form>
+                                var hasReviewed = reviewedIds.Contains(booking.BookingId);
+                                var isFinished = booking.SpaStatus == "4" || booking.SpaStatus.EndsWith("|4");
+                                var isCancelled = booking.SpaStatus == "Cancelled";
 
-                    <div class="co-filter-summary">
-                        @if (Model.TotalFilteredItems > 0)
-                        {
-                            <span>Hiển thị @showingFrom-@showingTo trên @Model.TotalFilteredItems lịch hẹn</span>
-                        }
-                        else
-                        {
-                            <span>Không có lịch hẹn phù hợp với bộ lọc.</span>
-                        }
-                    </div>
-                </div>
+                                <tr class="spa-booking-row">
+                                    <td class="py-3 ps-4">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; border-radius: 10px; font-size: 1.1rem; background-color: #FFF9E6; color: #FF7815 !important;">
+                                                ✂️
+                                            </div>
+                                            <div>
+                                                <strong class="d-block" style="color: #2D2521;">@booking.Service?.Name</strong>
+                                                <span class="text-muted" style="font-size: 0.78rem; display: block;">Bé: <b>@booking.Pet?.Name</b> (@booking.Pet?.Species)</span>
+                                                @if (isCancelled && !string.IsNullOrEmpty(booking.Notes))
+                                                {
+                                                    <span class="text-danger d-block mt-1" style="font-size: 0.75rem; font-weight: 600; max-width: 250px; white-space: normal; line-height: 1.3;">
+                                                        <i class="bi bi-exclamation-circle-fill"></i> @booking.Notes
+                                                    </span>
+                                                }
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="py-3">@booking.DateTime.ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td class="py-3 text-end" style="font-weight: 700; color: #2D2521;">@booking.Price.ToString("N0")đ</td>
+                                    <td class="py-3 text-center">@booking.Groomer?.FullName</td>
+                                    <td class="py-3 text-center">
+                                        @if (isCancelled)
+                                        {
+                                            <span class="badge bg-danger-subtle text-danger spa-badge">Đã hủy</span>
+                                        }
+                                        else if (isFinished)
+                                        {
+                                            <span class="badge bg-success-subtle text-success spa-badge">Hoàn thành</span>
+                                        }
+                                        else if (booking.SpaStatus == "0" || booking.SpaStatus.EndsWith("|0"))
+                                        {
+                                            <span class="badge bg-secondary-subtle text-secondary spa-badge">Đang chờ</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning-subtle text-warning spa-badge" style="background-color: #FFF2E6; color: #FF7815 !important;">Làm việc</span>
+                                        }
+                                    </td>
+                                    <td class="py-3 text-center">
+                                        @if (booking.Status == "Đã thanh toán" || booking.Status == "Success")
+                                        {
+                                            <span class="badge bg-success-subtle text-success spa-badge">Đã thu</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary-subtle text-secondary spa-badge">Chờ thu</span>
+                                        }
+                                    </td>
+                                    <td class="py-3 text-center pe-4">
+                                        <div class="d-flex gap-1 justify-content-center">
+                                            @if (!isCancelled)
+                                            {
+                                                <button class="btn btn-sm btn-outline-warning btn-view-progress" 
+                                                        data-id="@booking.BookingId"
+                                                        style="border-radius: 8px; font-weight: 600; font-size: 0.78rem; padding: 4px 10px; border-color: #FFE6CC; color: #FF7815;">
+                                                    Xem ca
+                                                </button>
+                                            }
 
-                @if (Model.VisibleBookings.Any())
-                {
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;" id="spaBookingTable">
-                            <thead style="background-color: #FAF9F7; font-size: 0.72rem; letter-spacing: 0.8px; text-transform: uppercase;">
-                                <tr>
-                                    <th class="py-3 ps-4" style="color: #9E918B; font-weight: 700;">Mã & Dịch vụ</th>
-                                    <th class="py-3" style="color: #9E918B; font-weight: 700;">Giờ hẹn</th>
-                                    <th class="py-3 text-end" style="color: #9E918B; font-weight: 700;">Tổng tiền</th>
-                                    <th class="py-3 text-center" style="color: #9E918B; font-weight: 700;">Groomer</th>
-                                    <th class="py-3 text-center" style="color: #9E918B; font-weight: 700;">Thực hiện</th>
-                                    <th class="py-3 text-center" style="color: #9E918B; font-weight: 700;">Thanh toán</th>
-                                    <th class="py-3 text-center pe-4" style="color: #9E918B; font-weight: 700;">Hành động</th>
+                                            @if (isFinished && !hasReviewed)
+                                            {
+                                                <button class="btn btn-sm btn-warning btn-rate-service" 
+                                                        data-id="@booking.BookingId"
+                                                        style="border-radius: 8px; font-weight: 700; font-size: 0.78rem; padding: 4px 10px; color: white; background-color: #FF7815; border: none;">
+                                                    Đánh giá
+                                                </button>
+                                            }
+                                            else if (hasReviewed)
+                                            {
+                                                <span class="text-success" style="font-size: 0.78rem; font-weight: 600;"><i class="bi bi-check2"></i> Đã đánh giá</span>
+                                            }
+
+                                            @if (!isFinished && !isCancelled && booking.DateTime > DateTime.Now.AddHours(2))
+                                            {
+                                                <button class="btn btn-sm btn-outline-danger btn-cancel-booking" 
+                                                        data-id="@booking.BookingId"
+                                                        style="border-radius: 8px; font-weight: 600; font-size: 0.78rem; padding: 4px 10px;">
+                                                    Hủy
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody id="spaTableBody">
-                                @foreach (var booking in Model.VisibleBookings)
-                                {
-                                    var hasReviewed = reviewedIds.Contains(booking.BookingId);
-                                    var isFinished = booking.SpaStatus == "4" || booking.SpaStatus.EndsWith("|4");
-                                    var isCancelled = booking.SpaStatus == "Cancelled";
-
-                                    <tr class="spa-booking-row">
-                                        <td class="py-3 ps-4">
-                                            <div class="d-flex align-items-center gap-2">
-                                                <div class="d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; border-radius: 10px; font-size: 1.1rem; background-color: #FFF9E6; color: #FF7815 !important;">
-                                                    ✂️
-                                                </div>
-                                                <div>
-                                                    <span style="font-size: 0.72rem; font-weight: 700; color: #9E918B; display: block;">MÃ LỊCH: #@booking.BookingId</span>
-                                                    <strong class="d-block" style="color: #2D2521;">@booking.Service?.Name</strong>
-                                                    <span class="text-muted" style="font-size: 0.78rem; display: block;">Bé: <b>@booking.Pet?.Name</b> (@booking.Pet?.Species)</span>
-                                                    @if (isCancelled && !string.IsNullOrEmpty(booking.Notes))
-                                                    {
-                                                        <span class="text-danger d-block mt-1" style="font-size: 0.75rem; font-weight: 600; max-width: 250px; white-space: normal; line-height: 1.3;">
-                                                            <i class="bi bi-exclamation-circle-fill"></i> @booking.Notes
-                                                        </span>
-                                                    }
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td class="py-3">@booking.DateTime.ToString("dd/MM/yyyy HH:mm")</td>
-                                        <td class="py-3 text-end" style="font-weight: 700; color: #2D2521;">@booking.Price.ToString("N0")đ</td>
-                                        <td class="py-3 text-center">@booking.Groomer?.FullName</td>
-                                        <td class="py-3 text-center">
-                                            @if (isCancelled)
-                                            {
-                                                <span class="badge bg-danger-subtle text-danger spa-badge">Đã hủy</span>
-                                            }
-                                            else if (isFinished)
-                                            {
-                                                <span class="badge bg-success-subtle text-success spa-badge">Hoàn thành</span>
-                                            }
-                                            else if (booking.SpaStatus == "0" || booking.SpaStatus.EndsWith("|0"))
-                                            {
-                                                <span class="badge bg-secondary-subtle text-secondary spa-badge">Đang chờ</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge bg-warning-subtle text-warning spa-badge" style="background-color: #FFF2E6; color: #FF7815 !important;">Làm việc</span>
-                                            }
-                                        </td>
-                                        <td class="py-3 text-center">
-                                            @if (booking.Status == "Đã thanh toán" || booking.Status == "Success")
-                                            {
-                                                <span class="badge bg-success-subtle text-success spa-badge">Đã thu</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge bg-secondary-subtle text-secondary spa-badge">Chờ thu</span>
-                                            }
-                                        </td>
-                                        <td class="py-3 text-center pe-4">
-                                            <div class="d-flex gap-1 justify-content-center">
-                                                @if (!isCancelled)
-                                                {
-                                                    <button class="btn btn-sm btn-outline-warning btn-view-progress" 
-                                                            data-id="@booking.BookingId"
-                                                            style="border-radius: 8px; font-weight: 600; font-size: 0.78rem; padding: 4px 10px; border-color: #FFE6CC; color: #FF7815;">
-                                                        Xem ca
-                                                    </button>
-                                                }
-
-                                                @if (isFinished && !hasReviewed)
-                                                {
-                                                    <button class="btn btn-sm btn-warning btn-rate-service" 
-                                                            data-id="@booking.BookingId"
-                                                            style="border-radius: 8px; font-weight: 700; font-size: 0.78rem; padding: 4px 10px; color: white; background-color: #FF7815; border: none;">
-                                                        Đánh giá
-                                                    </button>
-                                                }
-                                                else if (hasReviewed)
-                                                {
-                                                    <span class="text-success" style="font-size: 0.78rem; font-weight: 600;"><i class="bi bi-check2"></i> Đã đánh giá</span>
-                                                }
-
-                                                @if (!isFinished && !isCancelled && booking.DateTime > DateTime.Now.AddHours(2))
-                                                {
-                                                    <button class="btn btn-sm btn-outline-danger btn-cancel-booking" 
-                                                            data-id="@booking.BookingId"
-                                                            style="border-radius: 8px; font-weight: 600; font-size: 0.78rem; padding: 4px 10px;">
-                                                        Hủy
-                                                    </button>
-                                                }
-                                            </div>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-                else
-                {
-                    <div class="text-center py-5 text-muted">
-                        <i class="bi bi-search display-4 text-light d-block mb-3"></i>
-                        Không có lịch hẹn nào phù hợp với bộ lọc tìm kiếm.
-                    </div>
-                }
-
-                <!-- Server-Side Pagination UI -->
-                @if (Model.TotalPages > 1)
-                {
-                    <div class="pagination-container">
-                        @if (Model.Page > 1)
-                        {
-                            <a href="@Url.Action("History", new { searchTerm = Model.SearchTerm, statusFilter = Model.StatusFilter, page = Model.Page - 1 })" class="pg-btn text-decoration-none d-inline-flex align-items-center">
-                                <i class="bi bi-chevron-left me-1"></i> Trang trước
-                            </a>
+                            }
                         }
-                        else
-                        {
-                            <button class="pg-btn" disabled><i class="bi bi-chevron-left me-1"></i> Trang trước</button>
-                        }
+                    </tbody>
+                </table>
+            </div>
 
-                        <span class="pg-info">Trang @Model.Page / @Model.TotalPages</span>
-
-                        @if (Model.Page < Model.TotalPages)
-                        {
-                            <a href="@Url.Action("History", new { searchTerm = Model.SearchTerm, statusFilter = Model.StatusFilter, page = Model.Page + 1 })" class="pg-btn text-decoration-none d-inline-flex align-items-center">
-                                Trang sau <i class="bi bi-chevron-right ms-1"></i>
-                            </a>
-                        }
-                        else
-                        {
-                            <button class="pg-btn" disabled>Trang sau <i class="bi bi-chevron-right ms-1"></i></button>
-                        }
-                    </div>
-                }
+            <!-- Client-Side Pagination UI -->
+            @if (Model.Bookings.Any())
+            {
+                <div class="pagination-container">
+                    <button class="pg-btn" id="pgPrevBtn"><i class="bi bi-chevron-left"></i> Trang trước</button>
+                    <span class="pg-info" id="pgInfoSpan">Trang 1 / 1</span>
+                    <button class="pg-btn" id="pgNextBtn">Trang sau <i class="bi bi-chevron-right"></i></button>
+                </div>
             }
         </div>
     </section>
@@ -465,7 +348,40 @@
 @section Scripts {
     <script>
         $(document).ready(function () {
+            // ==========================================
+            // CLIENT-SIDE PAGINATION FOR SPA BOOKINGS
+            // ==========================================
+            var itemsPerPage = 5;
+            var currentPage = 1;
+            var $rows = $('.spa-booking-row');
+            var totalRows = $rows.length;
+            var totalPages = Math.ceil(totalRows / itemsPerPage) || 1;
 
+            function showPage(page) {
+                currentPage = page;
+                var start = (page - 1) * itemsPerPage;
+                var end = start + itemsPerPage;
+
+                $rows.hide();
+                $rows.slice(start, end).fadeIn(150);
+
+                $('#pgInfoSpan').text('Trang ' + currentPage + ' / ' + totalPages);
+                
+                $('#pgPrevBtn').prop('disabled', currentPage === 1);
+                $('#pgNextBtn').prop('disabled', currentPage === totalPages);
+            }
+
+            if (totalRows > 0) {
+                showPage(1);
+            }
+
+            $('#pgPrevBtn').click(function () {
+                if (currentPage > 1) showPage(currentPage - 1);
+            });
+
+            $('#pgNextBtn').click(function () {
+                if (currentPage < totalPages) showPage(currentPage + 1);
+            });
 
             // ==========================================
             // SPA PROGRESS POLLING (UC-31)

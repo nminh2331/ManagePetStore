@@ -4,13 +4,13 @@
     ViewData["Title"] = "Thông tin cá nhân";
 }
 
-@if (TempData["Success"] != null)
+@if (TempData["Success"] != null || TempData["SuccessMessage"] != null)
 {
-    <div class="cp-toast success" id="walletToast">@TempData["Success"]</div>
+    <div class="cp-toast success" id="walletToast">@(TempData["Success"] ?? TempData["SuccessMessage"])</div>
 }
-@if (TempData["Error"] != null)
+@if (TempData["Error"] != null || TempData["ErrorMessage"] != null)
 {
-    <div class="cp-toast error" id="walletToast">@TempData["Error"]</div>
+    <div class="cp-toast error" id="walletToast">@(TempData["Error"] ?? TempData["ErrorMessage"])</div>
 }
 
 <!-- Cropper.js CDN Assets -->
@@ -382,6 +382,163 @@
         border-color: #f97316;
         box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.15);
     }
+
+    /* CUSTOM RETURN / REFUND STYLES - PREMIUM ORANGE */
+    #returnSubTabs {
+        gap: 10px;
+    }
+    #returnSubTabs .nav-link {
+        color: #6b7280 !important;
+        background-color: #fffaf4 !important;
+        border: 1px solid #f1ebd9 !important;
+        transition: all 0.25s ease;
+        border-radius: 12px !important;
+        padding: 10px 24px !important;
+        font-weight: 700 !important;
+    }
+    #returnSubTabs .nav-link:hover {
+        color: #f97316 !important;
+        background-color: rgba(249, 115, 22, 0.05) !important;
+        border-color: #f97316 !important;
+    }
+    #returnSubTabs .nav-link.active {
+        color: #fff !important;
+        background-color: #f97316 !important;
+        border-color: #f97316 !important;
+        box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25) !important;
+    }
+    #return-tab .table-responsive {
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid #f1ebd9;
+        box-shadow: 0 4px 15px rgba(61, 35, 20, 0.02);
+    }
+    #return-tab .table thead th {
+        background-color: #fff9f0 !important;
+        color: #3d2314 !important;
+        font-weight: 700 !important;
+        border-bottom: 2px solid #f1ebd9 !important;
+        padding: 16px;
+    }
+    #return-tab .table tbody td {
+        padding: 16px;
+        border-bottom: 1px solid #f1ebd9;
+        color: #3d2314;
+    }
+    #return-tab .table-hover tbody tr:hover {
+        background-color: #fffdf9 !important;
+    }
+    #return-tab .badge.bg-warning {
+        background-color: #fff7ed !important;
+        color: #c2410c !important;
+        border: 1px solid #ffedd5;
+    }
+    #return-tab .badge.bg-info {
+        background-color: #eff6ff !important;
+        color: #1d4ed8 !important;
+        border: 1px solid #dbeafe;
+    }
+    #return-tab .badge.bg-success {
+        background-color: #f0fdf4 !important;
+        color: #15803d !important;
+        border: 1px solid #dcfce7;
+    }
+    #return-tab .badge.bg-danger {
+        background-color: #fef2f2 !important;
+        color: #b91c1c !important;
+        border: 1px solid #fee2e2;
+    }
+    #return-tab .form-control {
+        border-radius: 12px;
+        border: 2px solid #f1ebd9;
+        padding: 10px 14px;
+        transition: all 0.2s;
+        background-color: #fffdf9;
+    }
+    #return-tab .form-control:focus {
+        border-color: #f97316;
+        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+        background-color: #fff;
+    }
+    .return-item-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px;
+        border-bottom: 1px dashed #f1ebd9;
+        transition: background-color 0.2s;
+    }
+    .return-item-row:hover {
+        background-color: #fffdf9;
+    }
+    .return-item-row:last-child {
+        border-bottom: none;
+    }
+    #returnFormItemsContainer {
+        padding: 0 !important;
+        overflow: hidden;
+        border: 1px solid #f1ebd9 !important;
+        background-color: #fff !important;
+    }
+    #return-tab .btn-deposit {
+        background-color: #f97316 !important;
+        color: #fff !important;
+        border: none;
+        font-weight: 700;
+        transition: all 0.25s ease;
+        box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
+        border-radius: 12px !important;
+        padding: 12px 24px !important;
+    }
+    #return-tab .btn-deposit:hover {
+        background-color: #ea580c !important;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(249, 115, 22, 0.3);
+    }
+    #return-tab .btn-light {
+        background-color: #fffdf9 !important;
+        color: #3d2314 !important;
+        border: 2px solid #f1ebd9 !important;
+        font-weight: 600 !important;
+        transition: all 0.2s;
+        border-radius: 12px !important;
+        padding: 12px 24px !important;
+    }
+    #return-tab .btn-light:hover {
+        background-color: #fcf8ee !important;
+        border-color: #e5dfcf !important;
+    }
+    #return-tab input[type=file] {
+        display: block;
+        width: 100%;
+        padding: 10px;
+        color: #6b7280;
+        background-color: #fffdf9;
+        border: 2px dashed #fdba74;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-size: 0.9rem;
+    }
+    #return-tab input[type=file]::file-selector-button {
+        background-color: #fff7ed;
+        color: #f97316;
+        border: 1px solid #fdba74;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-right: 15px;
+    }
+    #return-tab input[type=file]::file-selector-button:hover {
+        background-color: #f97316;
+        color: #fff;
+    }
+    #return-tab input[type=file]:hover {
+        background-color: rgba(249, 115, 22, 0.05);
+        border-color: #ea580c;
+    }
 </style>
 
 <div class="container py-5 profile-layout-container">
@@ -693,6 +850,25 @@
                         <div class="transaction-header">
                             <h3 class="transaction-title"><i class="bi bi-clock-history me-2"></i>Lịch sử giao dịch</h3>
                         </div>
+                        
+                        <!-- Transaction Filter Controls -->
+                        <div class="p-3 bg-light border-bottom d-flex gap-3 flex-wrap">
+                            <div class="flex-grow-1" style="min-width: 200px;">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                    <input type="text" id="walletSearchInput" class="form-control border-start-0" placeholder="Tìm kiếm nội dung giao dịch..." style="border-radius: 0 8px 8px 0; border: 1px solid #f1ebd9; padding: 8px 12px;" />
+                                </div>
+                            </div>
+                            <div style="width: 200px;">
+                                <select id="walletTypeSelect" class="form-select" style="border-radius: 8px; border: 1px solid #f1ebd9; padding: 8px 12px; font-weight: 600;">
+                                    <option value="">Tất cả loại giao dịch</option>
+                                    <option value="Deposit">Nạp tiền</option>
+                                    <option value="Payment">Thanh toán</option>
+                                    <option value="Refund">Hoàn tiền</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div class="p-0">
                             <div class="table-responsive">
                                 <table class="table table-transactions table-hover mb-0">
@@ -705,12 +881,12 @@
                                             <th>Nội Dung</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody id="walletTableBody">
                                         @if (wallet.WalletTransactions != null && wallet.WalletTransactions.Any())
                                         {
                                             foreach (var trans in wallet.WalletTransactions)
                                             {
-                                                <tr>
+                                                <tr class="wallet-tr" data-type="@trans.Type" data-desc="@(trans.Description?.ToLower() ?? "")">
                                                     <td class="fw-semibold" style="color: #6b7280;">#@trans.TransactionId</td>
                                                     <td>@trans.TransactionDate.ToString("dd/MM/yyyy HH:mm")</td>
                                                     <td>
@@ -749,7 +925,7 @@
                                         }
                                         else
                                         {
-                                            <tr>
+                                            <tr id="walletEmptyRow">
                                                 <td colspan="5" class="text-center py-5 text-muted">
                                                     <i class="bi bi-receipt-cutoff d-block mb-3" style="font-size: 3rem; color: #cbd5e1;"></i>
                                                     Chưa có giao dịch phát sinh nào từ tài khoản này.
@@ -759,6 +935,12 @@
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+
+                        <!-- Wallet Pagination controls -->
+                        <div class="p-3 d-flex justify-content-between align-items-center border-top bg-light" id="walletPagination" style="border-radius: 0 0 20px 20px;">
+                            <span class="text-muted" style="font-size: 0.85rem;" id="walletPaginationInfo">Hiển thị 0-0 trên 0 giao dịch</span>
+                            <div class="d-flex gap-1" id="walletPaginationButtons"></div>
                         </div>
                     </div>
                 </div>
@@ -771,7 +953,7 @@
                 var productInfo = ViewBag.ProductInfo as Dictionary<string, Tuple<string, string?>>;
             }
             <div id="return-tab" class="profile-right-card fade-in-tab" style="display: none;">
-                <h4 class="profile-section-title" style="font-size: 1.2rem; font-weight: 700; color: #3A2B20; margin-bottom: 25px; border-left: 4px solid #F2780C; padding-left: 12px;">Trả hàng / Hoàn tiền</h4>
+                <h4 class="profile-section-title" style="font-size: 1.2rem; font-weight: 700; color: #3d2314; margin-bottom: 25px; border-left: 4px solid #f97316; padding-left: 12px;">Trả hàng / Hoàn tiền</h4>
 
                 <!-- Sub Navigation Tabs -->
                 <ul class="nav nav-pills mb-4" id="returnSubTabs" role="tablist">
@@ -786,6 +968,26 @@
                 <div class="tab-content" id="returnSubTabsContent">
                     <!-- History Pane -->
                     <div class="tab-pane fade show active" id="return-history-pane" role="tabpanel">
+                        <!-- Return History Filter Controls -->
+                        <div class="p-3 bg-light border rounded-3 mb-3 d-flex gap-3 flex-wrap align-items-center">
+                            <div class="flex-grow-1" style="min-width: 200px;">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                    <input type="text" id="returnHistorySearch" class="form-control border-start-0" placeholder="Tìm theo Mã Yêu Cầu hoặc Mã Đơn Hàng..." style="border-radius: 0 8px 8px 0; border: 1px solid #f1ebd9; padding: 8px 12px;" />
+                                </div>
+                            </div>
+                            <div style="width: 200px;">
+                                <select id="returnHistoryStatus" class="form-select" style="border-radius: 8px; border: 1px solid #f1ebd9; padding: 8px 12px; font-weight: 600;">
+                                    <option value="">Tất cả trạng thái</option>
+                                    <option value="Submitted">Chờ duyệt online</option>
+                                    <option value="WaitingForReturn">Chờ trả tại quầy</option>
+                                    <option value="OnlineRejected">Từ chối online</option>
+                                    <option value="PhysicalRejected">Từ chối tại quầy</option>
+                                    <option value="Success">Thành công</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
                                 <thead class="table-light">
@@ -798,7 +1000,7 @@
                                         <th>Thao Tác</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="returnHistoryTableBody">
                                     @if (returnRequests != null && returnRequests.Any())
                                     {
                                         foreach (var req in returnRequests)
@@ -829,7 +1031,7 @@
                                                     rejectReason = req.Notes;
                                                 }
                                             }
-                                            <tr>
+                                            <tr class="return-history-tr" data-req-id="#REQ-@req.RequestId" data-order-id="#OD-@req.OrderId.Split('-')[^1]" data-status="@req.Status">
                                                 <td class="fw-semibold">#REQ-@req.RequestId</td>
                                                 <td>#OD-@req.OrderId.Split('-')[^1]</td>
                                                 <td>@req.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
@@ -846,6 +1048,7 @@
                                                     else if (req.Status == "WaitingForReturn")
                                                     {
                                                         <span class="badge bg-info text-dark px-3 py-2" style="border-radius: 8px;">Chờ trả hàng tại quầy</span>
+                                                        <small class="d-block text-danger mt-1 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-clock me-1"></i>Hạn: 7 ngày</small>
                                                     }
                                                     else if (req.Status == "PhysicalRejected")
                                                     {
@@ -865,10 +1068,16 @@
                                                 </td>
                                             </tr>
                                             <!-- Hidden Detail Box -->
-                                            <tr id="req-detail-@req.RequestId" style="display: none; background-color: #fafafa;">
+                                            <tr id="req-detail-@req.RequestId" class="return-detail-tr" data-parent-id="#REQ-@req.RequestId" style="display: none; background-color: #fafafa;">
                                                 <td colspan="6" class="p-4 text-start">
                                                     <div class="row">
                                                         <div class="col-md-6">
+                                                            @if (req.Status == "WaitingForReturn")
+                                                            {
+                                                                <div class="alert alert-warning p-3 rounded-3 mb-3" style="border-left: 4px solid #f97316; font-size: 0.85rem; background-color: #fffbeb; color: #b45309;">
+                                                                    <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Lưu ý quan trọng:</strong> Yêu cầu của bạn đã được duyệt online. Vui lòng mang sản phẩm đến quầy cửa hàng để thực hiện đối chiếu thực tế và hoàn tiền vào ví <strong>trước 7 ngày</strong> kể từ lúc yêu cầu được duyệt.
+                                                                </div>
+                                                            }
                                                             <p class="mb-2"><strong>Lý do trả hàng:</strong> @req.Reason</p>
                                                             @if (parsedImages.Any())
                                                             {
@@ -925,7 +1134,7 @@
                                     }
                                     else
                                     {
-                                        <tr>
+                                        <tr id="returnHistoryEmptyRow">
                                             <td colspan="6" class="text-center py-5 text-muted">
                                                 <i class="bi bi-clock-history d-block mb-3" style="font-size: 3rem; color: #cbd5e1;"></i>
                                                 Chưa có yêu cầu trả hàng nào được tạo.
@@ -935,10 +1144,24 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        <!-- Return History Pagination controls -->
+                        <div class="p-3 d-flex justify-content-between align-items-center border rounded-3 bg-light mt-3" id="returnHistoryPagination">
+                            <span class="text-muted" style="font-size: 0.85rem;" id="returnHistoryPaginationInfo">Hiển thị 0-0 trên 0 yêu cầu</span>
+                            <div class="d-flex gap-1" id="returnHistoryPaginationButtons"></div>
+                        </div>
                     </div>
 
                     <!-- Eligible Orders Pane -->
                     <div class="tab-pane fade" id="eligible-orders-pane" role="tabpanel">
+                        <!-- Eligible Orders Filter Controls -->
+                        <div class="p-3 bg-light border rounded-3 mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                <input type="text" id="eligibleOrdersSearch" class="form-control border-start-0" placeholder="Tìm theo Mã Đơn Hàng..." style="border-radius: 0 8px 8px 0; border: 1px solid #f1ebd9; padding: 8px 12px;" />
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
                                 <thead class="table-light">
@@ -949,12 +1172,12 @@
                                         <th>Thao Tác</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="eligibleOrdersTableBody">
                                     @if (eligibleOrders != null && eligibleOrders.Any())
                                     {
                                         foreach (var o in eligibleOrders)
                                         {
-                                            <tr>
+                                            <tr class="eligible-tr" data-order-id="#OD-@o.OrderId.Split('-')[^1]">
                                                 <td class="fw-bold">#OD-@o.OrderId.Split('-')[^1]</td>
                                                 <td>@o.Date.ToString("dd/MM/yyyy HH:mm")</td>
                                                 <td class="fw-bold text-success">@o.Total.ToString("N0") đ</td>
@@ -966,7 +1189,7 @@
                                     }
                                     else
                                     {
-                                        <tr>
+                                        <tr id="eligibleOrdersEmptyRow">
                                             <td colspan="4" class="text-center py-5 text-muted">
                                                 <i class="bi bi-check-circle d-block mb-3" style="font-size: 3rem; color: #10b981;"></i>
                                                 Không có đơn hàng nào đủ điều kiện trả hàng (hoặc đã được tạo yêu cầu).
@@ -976,12 +1199,18 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        <!-- Eligible Orders Pagination controls -->
+                        <div class="p-3 d-flex justify-content-between align-items-center border rounded-3 bg-light mt-3" id="eligibleOrdersPagination">
+                            <span class="text-muted" style="font-size: 0.85rem;" id="eligibleOrdersPaginationInfo">Hiển thị 0-0 trên 0 đơn hàng</span>
+                            <div class="d-flex gap-1" id="eligibleOrdersPaginationButtons"></div>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Create Return Form (Hidden by default) -->
-                <div id="return-form-container" style="display: none; border-top: 1px solid #eee; padding-top: 25px; margin-top: 15px;">
-                    <h5 class="fw-bold text-start mb-4" id="returnFormHeader">Tạo yêu cầu trả hàng cho đơn hàng</h5>
+                <div id="return-form-container" style="display: none; border-top: 2px dashed #f1ebd9; padding-top: 25px; margin-top: 15px;">
+                    <h5 class="fw-bold text-start mb-4" id="returnFormHeader" style="color: #3d2314; border-left: 4px solid #f97316; padding-left: 12px;">Tạo yêu cầu trả hàng cho đơn hàng</h5>
                     
                     <form asp-action="CreateReturnRequest" method="post" id="actualReturnForm" enctype="multipart/form-data">
                         @Html.AntiForgeryToken()
@@ -1490,18 +1719,18 @@
             order.Items.forEach(function(item) {
                 var imgUrl = item.ImageUrl || 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=100&h=100&fit=crop';
                 itemsHtml += `
-                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-3">
+                <div class="return-item-row">
                     <div class="d-flex align-items-center text-start">
-                        <input type="checkbox" name="selectedSkus" value="${item.Sku}" class="return-item-checkbox form-check-input me-3" data-price="${item.Price}" onchange="updateRefundSum()" style="width: 20px; height: 20px;" />
-                        <img src="${imgUrl}" style="width: 55px; height: 55px; object-fit: cover; border-radius: 8px; margin-right: 15px; border: 1px solid #ddd;" />
+                        <input type="checkbox" name="selectedSkus" value="${item.Sku}" class="return-item-checkbox form-check-input me-3" data-price="${item.Price}" onchange="updateRefundSum()" style="width: 22px; height: 22px; border-color: #f1ebd9; cursor: pointer;" />
+                        <img src="${imgUrl}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 10px; margin-right: 15px; border: 1px solid #f1ebd9;" />
                         <div>
-                            <div class="fw-bold text-dark" style="font-size: 0.95rem;">${item.Name}</div>
+                            <div class="fw-bold text-dark" style="font-size: 0.95rem; margin-bottom: 2px;">${item.Name}</div>
                             <div class="text-muted" style="font-size: 0.8rem;">SKU: ${item.Sku} | Đơn giá: ${item.Price.toLocaleString('vi-VN')} đ | Mua x${item.Quantity}</div>
                         </div>
                     </div>
                     <div class="d-flex align-items-center">
-                        <span class="text-muted me-2" style="font-size: 0.8rem;">Số lượng trả:</span>
-                        <input type="number" name="returnQuantities[${item.Sku}]" value="1" min="1" max="${item.Quantity}" class="form-control return-qty-input text-center fw-bold" style="width: 70px; border-radius: 8px; border: 2px solid #ddd;" onchange="updateRefundSum()" disabled />
+                        <span class="text-muted me-2" style="font-size: 0.8rem; font-weight: 600;">Số lượng trả:</span>
+                        <input type="number" name="returnQuantities[${item.Sku}]" value="1" min="1" max="${item.Quantity}" class="form-control return-qty-input text-center fw-bold" style="width: 70px; border-radius: 10px; border: 2px solid #f1ebd9; padding: 6px;" onchange="updateRefundSum()" disabled />
                     </div>
                 </div>`;
             });
@@ -1548,7 +1777,7 @@
             var sum = 0;
             var checkboxes = document.querySelectorAll('.return-item-checkbox');
             checkboxes.forEach(function(cb) {
-                var parentRow = cb.closest('.border-bottom');
+                var parentRow = cb.closest('.return-item-row');
                 var qtyInput = parentRow.querySelector('.return-qty-input');
                 
                 if (cb.checked) {
@@ -1688,6 +1917,267 @@
                 e.target.value = '';
                 submitBtn.disabled = true;
             };
+        });
+
+        // ==========================================
+        // CLIENT-SIDE PAGINATION & FILTERING SYSTEMS
+        // ==========================================
+        document.addEventListener("DOMContentLoaded", function () {
+            const PAGE_SIZE = 5;
+
+            // 1. WALLET TRANSACTIONS PAGINATION & FILTERING
+            const walletSearchInput = document.getElementById("walletSearchInput");
+            const walletTypeSelect = document.getElementById("walletTypeSelect");
+            const walletTableBody = document.getElementById("walletTableBody");
+            const walletEmptyRow = document.getElementById("walletEmptyRow");
+            const walletPaginationInfo = document.getElementById("walletPaginationInfo");
+            const walletPaginationButtons = document.getElementById("walletPaginationButtons");
+
+            let currentWalletPage = 1;
+
+            function updateWalletTable() {
+                const trs = Array.from(document.querySelectorAll(".wallet-tr"));
+                const query = walletSearchInput ? walletSearchInput.value.toLowerCase().trim() : "";
+                const selectedType = walletTypeSelect ? walletTypeSelect.value : "";
+
+                // Filter
+                const filtered = trs.filter(tr => {
+                    const desc = tr.getAttribute("data-desc") || "";
+                    const type = tr.getAttribute("data-type") || "";
+                    const matchesQuery = desc.includes(query);
+                    const matchesType = selectedType === "" || type === selectedType;
+                    return matchesQuery && matchesType;
+                });
+
+                // Total pages
+                const totalItems = filtered.length;
+                const totalPages = Math.ceil(totalItems / PAGE_SIZE) || 1;
+
+                if (currentWalletPage > totalPages) currentWalletPage = totalPages;
+                if (currentWalletPage < 1) currentWalletPage = 1;
+
+                // Show/Hide rows
+                trs.forEach(tr => tr.style.display = "none");
+                
+                const start = (currentWalletPage - 1) * PAGE_SIZE;
+                const end = Math.min(start + PAGE_SIZE, totalItems);
+
+                filtered.slice(start, end).forEach(tr => {
+                    tr.style.display = "";
+                });
+
+                // Empty state handling
+                if (totalItems === 0) {
+                    if (walletEmptyRow) walletEmptyRow.style.display = "";
+                } else {
+                    if (walletEmptyRow) walletEmptyRow.style.display = "none";
+                }
+
+                // Render pagination info
+                if (walletPaginationInfo) {
+                    if (totalItems === 0) {
+                        walletPaginationInfo.textContent = "Không tìm thấy giao dịch nào";
+                    } else {
+                        walletPaginationInfo.textContent = `Hiển thị ${start + 1}-${end} trên ${totalItems} giao dịch`;
+                    }
+                }
+
+                // Render pagination buttons
+                renderPaginationButtons(walletPaginationButtons, currentWalletPage, totalPages, function (p) {
+                    currentWalletPage = p;
+                    updateWalletTable();
+                });
+            }
+
+            if (walletSearchInput) walletSearchInput.addEventListener("input", () => { currentWalletPage = 1; updateWalletTable(); });
+            if (walletTypeSelect) walletTypeSelect.addEventListener("change", () => { currentWalletPage = 1; updateWalletTable(); });
+
+            // Initialize Wallet Table
+            if (document.querySelector(".wallet-tr")) {
+                updateWalletTable();
+            }
+
+            // 2. RETURN HISTORY PAGINATION & FILTERING
+            const returnHistorySearch = document.getElementById("returnHistorySearch");
+            const returnHistoryStatus = document.getElementById("returnHistoryStatus");
+            const returnHistoryTableBody = document.getElementById("returnHistoryTableBody");
+            const returnHistoryEmptyRow = document.getElementById("returnHistoryEmptyRow");
+            const returnHistoryPaginationInfo = document.getElementById("returnHistoryPaginationInfo");
+            const returnHistoryPaginationButtons = document.getElementById("returnHistoryPaginationButtons");
+
+            let currentReturnPage = 1;
+
+            function updateReturnHistoryTable() {
+                const trs = Array.from(document.querySelectorAll(".return-history-tr"));
+                const details = Array.from(document.querySelectorAll(".return-detail-tr"));
+                
+                const query = returnHistorySearch ? returnHistorySearch.value.toLowerCase().trim() : "";
+                const selectedStatus = returnHistoryStatus ? returnHistoryStatus.value : "";
+
+                // Filter
+                const filtered = trs.filter(tr => {
+                    const reqId = (tr.getAttribute("data-req-id") || "").toLowerCase();
+                    const orderId = (tr.getAttribute("data-order-id") || "").toLowerCase();
+                    const status = tr.getAttribute("data-status") || "";
+                    
+                    const matchesQuery = reqId.includes(query) || orderId.includes(query);
+                    const matchesStatus = selectedStatus === "" || status === selectedStatus;
+                    return matchesQuery && matchesStatus;
+                });
+
+                const totalItems = filtered.length;
+                const totalPages = Math.ceil(totalItems / PAGE_SIZE) || 1;
+
+                if (currentReturnPage > totalPages) currentReturnPage = totalPages;
+                if (currentReturnPage < 1) currentReturnPage = 1;
+
+                // Hide all main and detail rows initially
+                trs.forEach(tr => tr.style.display = "none");
+                details.forEach(det => det.style.display = "none");
+
+                const start = (currentReturnPage - 1) * PAGE_SIZE;
+                const end = Math.min(start + PAGE_SIZE, totalItems);
+
+                const activePageItems = filtered.slice(start, end);
+                activePageItems.forEach(tr => {
+                    tr.style.display = "";
+                });
+
+                if (totalItems === 0) {
+                    if (returnHistoryEmptyRow) returnHistoryEmptyRow.style.display = "";
+                } else {
+                    if (returnHistoryEmptyRow) returnHistoryEmptyRow.style.display = "none";
+                }
+
+                // Render pagination info
+                if (returnHistoryPaginationInfo) {
+                    if (totalItems === 0) {
+                        returnHistoryPaginationInfo.textContent = "Không tìm thấy yêu cầu nào";
+                    } else {
+                        returnHistoryPaginationInfo.textContent = `Hiển thị ${start + 1}-${end} trên ${totalItems} yêu cầu`;
+                    }
+                }
+
+                // Render pagination buttons
+                renderPaginationButtons(returnHistoryPaginationButtons, currentReturnPage, totalPages, function (p) {
+                    currentReturnPage = p;
+                    updateReturnHistoryTable();
+                });
+            }
+
+            if (returnHistorySearch) returnHistorySearch.addEventListener("input", () => { currentReturnPage = 1; updateReturnHistoryTable(); });
+            if (returnHistoryStatus) returnHistoryStatus.addEventListener("change", () => { currentReturnPage = 1; updateReturnHistoryTable(); });
+
+            // Initialize Return History Table
+            if (document.querySelector(".return-history-tr")) {
+                updateReturnHistoryTable();
+            }
+
+            // 3. ELIGIBLE ORDERS PAGINATION & FILTERING
+            const eligibleOrdersSearch = document.getElementById("eligibleOrdersSearch");
+            const eligibleOrdersTableBody = document.getElementById("eligibleOrdersTableBody");
+            const eligibleOrdersEmptyRow = document.getElementById("eligibleOrdersEmptyRow");
+            const eligibleOrdersPaginationInfo = document.getElementById("eligibleOrdersPaginationInfo");
+            const eligibleOrdersPaginationButtons = document.getElementById("eligibleOrdersPaginationButtons");
+
+            let currentEligiblePage = 1;
+
+            function updateEligibleOrdersTable() {
+                const trs = Array.from(document.querySelectorAll(".eligible-tr"));
+                const query = eligibleOrdersSearch ? eligibleOrdersSearch.value.toLowerCase().trim() : "";
+
+                // Filter
+                const filtered = trs.filter(tr => {
+                    const orderId = (tr.getAttribute("data-order-id") || "").toLowerCase();
+                    return orderId.includes(query);
+                });
+
+                const totalItems = filtered.length;
+                const totalPages = Math.ceil(totalItems / PAGE_SIZE) || 1;
+
+                if (currentEligiblePage > totalPages) currentEligiblePage = totalPages;
+                if (currentEligiblePage < 1) currentEligiblePage = 1;
+
+                trs.forEach(tr => tr.style.display = "none");
+
+                const start = (currentEligiblePage - 1) * PAGE_SIZE;
+                const end = Math.min(start + PAGE_SIZE, totalItems);
+
+                filtered.slice(start, end).forEach(tr => {
+                    tr.style.display = "";
+                });
+
+                if (totalItems === 0) {
+                    if (eligibleOrdersEmptyRow) eligibleOrdersEmptyRow.style.display = "";
+                } else {
+                    if (eligibleOrdersEmptyRow) eligibleOrdersEmptyRow.style.display = "none";
+                }
+
+                // Render pagination info
+                if (eligibleOrdersPaginationInfo) {
+                    if (totalItems === 0) {
+                        eligibleOrdersPaginationInfo.textContent = "Không tìm thấy đơn hàng nào";
+                    } else {
+                        eligibleOrdersPaginationInfo.textContent = `Hiển thị ${start + 1}-${end} trên ${totalItems} đơn hàng`;
+                    }
+                }
+
+                // Render pagination buttons
+                renderPaginationButtons(eligibleOrdersPaginationButtons, currentEligiblePage, totalPages, function (p) {
+                    currentEligiblePage = p;
+                    updateEligibleOrdersTable();
+                });
+            }
+
+            if (eligibleOrdersSearch) eligibleOrdersSearch.addEventListener("input", () => { currentEligiblePage = 1; updateEligibleOrdersTable(); });
+
+            // Initialize Eligible Orders Table
+            if (document.querySelector(".eligible-tr")) {
+                updateEligibleOrdersTable();
+            }
+
+            // PAGINATION UTILITY FUNCTION
+            function renderPaginationButtons(container, currentPage, totalPages, onPageClick) {
+                if (!container) return;
+                container.innerHTML = "";
+
+                if (totalPages <= 1) return;
+
+                // Previous Button
+                const prevBtn = document.createElement("button");
+                prevBtn.type = "button";
+                prevBtn.className = `btn btn-sm btn-outline-secondary px-2 ${currentPage === 1 ? 'disabled' : ''}`;
+                prevBtn.innerHTML = '<i class="bi bi-chevron-left"></i>';
+                prevBtn.addEventListener("click", () => {
+                    if (currentPage > 1) onPageClick(currentPage - 1);
+                });
+                container.appendChild(prevBtn);
+
+                // Page Number Buttons
+                for (let i = 1; i <= totalPages; i++) {
+                    const pageBtn = document.createElement("button");
+                    pageBtn.type = "button";
+                    pageBtn.className = `btn btn-sm px-3 ${currentPage === i ? 'btn-primary' : 'btn-outline-secondary'}`;
+                    if (currentPage === i) {
+                        pageBtn.style.backgroundColor = "#f97316";
+                        pageBtn.style.borderColor = "#f97316";
+                        pageBtn.style.color = "#ffffff";
+                    }
+                    pageBtn.textContent = i;
+                    pageBtn.addEventListener("click", () => onPageClick(i));
+                    container.appendChild(pageBtn);
+                }
+
+                // Next Button
+                const nextBtn = document.createElement("button");
+                nextBtn.type = "button";
+                nextBtn.className = `btn btn-sm btn-outline-secondary px-2 ${currentPage === totalPages ? 'disabled' : ''}`;
+                nextBtn.innerHTML = '<i class="bi bi-chevron-right"></i>';
+                nextBtn.addEventListener("click", () => {
+                    if (currentPage < totalPages) onPageClick(currentPage + 1);
+                });
+                container.appendChild(nextBtn);
+            }
         });
     </script>
 }

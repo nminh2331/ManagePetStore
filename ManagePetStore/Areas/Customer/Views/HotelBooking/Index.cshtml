@@ -2,16 +2,12 @@
 
 @{
     Layout = "/Views/Shared/_PetStoreLayout.cshtml";
-    ViewData["Title"] = "Lịch sử lưu trú Hotel";
-
-    var showingFrom = Model.TotalFilteredItems == 0 ? 0 : ((Model.Page - 1) * Model.PageSize) + 1;
-    var showingTo = Math.Min(Model.Page * Model.PageSize, Model.TotalFilteredItems);
+    ViewData["Title"] = "Lịch hẹn & Khách sạn";
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/customer-pets.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/customer-hotel-bookings.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/hotel-booking-history.css" asp-append-version="true" />
 }
 
 @if (TempData["SuccessMessage"] != null)
@@ -30,8 +26,8 @@
     <section class="cp-main">
         <div class="cp-main-header">
             <div>
-                <h1 class="cp-main-title">Lịch sử lưu trú Hotel</h1>
-                <p class="cp-main-subtitle">Theo dõi các lần đặt phòng, đang lưu trú, đã trả phòng hoặc đã hủy của thú cưng.</p>
+                <h1 class="cp-main-title">Lịch hẹn &amp; Khách sạn</h1>
+                <p class="cp-main-subtitle">Theo dõi các lịch lưu trú đã đặt trước cho thú cưng.</p>
             </div>
             <a asp-area="" asp-controller="Home" asp-action="Index" asp-route-hotel="book" class="cp-btn-add text-decoration-none">
                 <i class="bi bi-plus-lg"></i> Đặt phòng mới
@@ -50,62 +46,8 @@
         }
         else
         {
-            <div class="hb-filter-bar">
-                <form asp-action="Index" method="get" class="hb-filter-form">
-                    <div class="hb-filter-field hb-filter-search">
-                        <label class="hb-filter-label" for="searchTerm">Tìm lịch lưu trú</label>
-                        <input type="text"
-                               id="searchTerm"
-                               name="searchTerm"
-                               value="@Model.SearchTerm"
-                               class="hb-filter-input"
-                               placeholder="Mã lịch, tên thú cưng, chuồng hoặc trạng thái" />
-                    </div>
-
-                    <div class="hb-filter-field">
-                        <label class="hb-filter-label" for="statusFilter">Trạng thái</label>
-                        <select id="statusFilter" name="statusFilter" class="hb-filter-select">
-                            <option value="all" selected="@(Model.StatusFilter == "all")">Tất cả</option>
-                            <option value="reserved" selected="@(Model.StatusFilter == "reserved")">Đã đặt</option>
-                            <option value="active" selected="@(Model.StatusFilter == "active")">Đang lưu trú</option>
-                            <option value="completed" selected="@(Model.StatusFilter == "completed")">Đã trả</option>
-                            <option value="cancelled" selected="@(Model.StatusFilter == "cancelled")">Đã hủy</option>
-                        </select>
-                    </div>
-
-                    <div class="hb-filter-actions">
-                        <button type="submit" class="hb-btn-primary">Lọc lịch sử</button>
-                        @if (!string.IsNullOrWhiteSpace(Model.SearchTerm) || Model.StatusFilter != "all")
-                        {
-                            <a asp-action="Index" class="hb-btn-reset">Xóa lọc</a>
-                        }
-                    </div>
-                </form>
-
-                <div class="hb-filter-summary">
-                    @if (Model.TotalFilteredItems > 0)
-                    {
-                        <span>Hiển thị @showingFrom-@showingTo trên @Model.TotalFilteredItems lịch lưu trú</span>
-                    }
-                    else
-                    {
-                        <span>Không có lịch lưu trú phù hợp với bộ lọc.</span>
-                    }
-                </div>
-            </div>
-
-            @if (!Model.VisibleBookings.Any())
-            {
-                <div class="cp-empty hb-filter-empty">
-                    <i class="bi bi-funnel"></i>
-                    <p>Không tìm thấy lịch lưu trú nào khớp với bộ lọc hiện tại.</p>
-                    <a asp-action="Index" class="hb-btn-primary">Xem toàn bộ lịch sử</a>
-                </div>
-            }
-            else
-            {
             <div class="hb-list">
-                @foreach (var booking in Model.VisibleBookings)
+                @foreach (var booking in Model.Bookings)
                 {
                     <article class="hb-card">
                         <div class="hb-card-icon">
@@ -139,11 +81,6 @@
                             </div>
                         </div>
                         <div class="hb-card-action">
-                            <a asp-action="Details"
-                               asp-route-id="@booking.HotelBookingId"
-                               class="hb-btn-primary">
-                                Xem chi tiết
-                            </a>
                             @if (booking.CanCancel)
                             {
                                 <form asp-action="Cancel" method="post" onsubmit="return confirm('Bạn chắc chắn muốn hủy lịch đặt phòng này?');">
@@ -160,32 +97,6 @@
                     </article>
                 }
             </div>
-
-            @if (Model.TotalPages > 1)
-            {
-                <nav class="hbh-pagination" aria-label="Phân trang lịch sử lưu trú">
-                    @if (Model.HasPreviousPage)
-                    {
-                        <a asp-action="Index" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-page="@(Model.Page - 1)" aria-label="Trang trước"><i class="bi bi-chevron-left"></i></a>
-                    }
-                    @for (var pageNumber = 1; pageNumber <= Model.TotalPages; pageNumber++)
-                    {
-                        if (pageNumber == Model.Page)
-                        {
-                            <span>@pageNumber</span>
-                        }
-                        else
-                        {
-                            <a asp-action="Index" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-page="@pageNumber">@pageNumber</a>
-                        }
-                    }
-                    @if (Model.HasNextPage)
-                    {
-                        <a asp-action="Index" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-page="@(Model.Page + 1)" aria-label="Trang sau"><i class="bi bi-chevron-right"></i></a>
-                    }
-                </nav>
-            }
-        }
         }
     </section>
 </div>

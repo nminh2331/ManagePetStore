@@ -10,7 +10,21 @@ document.addEventListener('DOMContentLoaded', function () {
     const cancelParam = urlParams.get('cancel');
 
     if (orderIdParam && (statusParam === 'success' || statusParam === 'PAID' || codeParam === '00')) {
-        showSuccessInvoiceModal(orderIdParam);
+        const successModal = document.getElementById('posSuccessModal');
+        const lblOrderId = document.getElementById('lblSuccessOrderId');
+        if (successModal && lblOrderId) {
+            lblOrderId.textContent = orderIdParam;
+            successModal.style.display = 'flex';
+            
+            document.getElementById('btnSuccessPrint').onclick = function() {
+                window.open(`/Cashier/Order/PrintInvoice?orderId=${orderIdParam}`, '_blank', 'width=380,height=600');
+                successModal.style.display = 'none';
+            };
+            
+            document.getElementById('btnSuccessClose').onclick = function() {
+                successModal.style.display = 'none';
+            };
+        }
         
         // Clear giỏ hàng trong localStorage để bắt đầu đơn mới
         localStorage.removeItem('pos_cart');
@@ -27,8 +41,6 @@ document.addEventListener('DOMContentLoaded', function () {
     let cart = []; // Mảng chứa PosCartItemDto
     let currentCustomer = null;
     let selectedPetId = null;
-    let appliedVoucher = null;
-    let currentPayingOrderId = '';
 
     // Lấy giỏ hàng tạm từ LocalStorage nếu có
     const savedCart = localStorage.getItem('pos_cart');
@@ -61,129 +73,50 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     updateHeldCount();
 
-
-
-
-
-    // === LOAD DANH SÁCH SPA CHỜ THU ===
-    async function loadCompletedSpaBookings() {
+    // === LOAD TẤT CẢ SPA SERVICES ===
+    async function loadAllSpas() {
         try {
-            const res = await fetch('/Cashier/Order/GetCompletedSpaBookings');
+            const res = await fetch('/Cashier/Order/GetAllSpas');
             const data = await res.json();
-            const badge = document.getElementById('countSpaPending');
-            const list = document.getElementById('listSpaPending');
-            const empty = document.getElementById('emptySpaPending');
-            
             if (data.success && data.data) {
-                const count = data.data.length;
-                if (badge) badge.textContent = count;
-                
-                if (count === 0) {
-                    if (empty) empty.style.display = 'block';
-                    if (list) list.innerHTML = '';
-                } else {
-                    if (empty) empty.style.display = 'none';
-                    if (list) {
-                        list.innerHTML = data.data.map(b => {
-                            const bookingJson = JSON.stringify(b).replace(/'/g, "&#39;");
-                            return `
-                                <div class="pos-spa-item" style="padding:16px; border: 1px solid var(--pos-border); border-radius:12px; display:flex; flex-direction:column; gap:8px; cursor:default; background:#fff; align-items: stretch; height: auto;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                                        <span style="font-weight:800; color:var(--admin-primary); font-size:14px;">Mã: #${b.bookingId}</span>
-                                        <span style="font-size:11px; color:var(--pos-text-muted);"><i class="bi bi-clock"></i> ${b.dateTime}</span>
-                                    </div>
-                                    <div style="font-size:12px; color:var(--pos-text); text-align: left;">
-                                        <div><strong>Khách:</strong> ${b.customerName} (${b.customerPhone})</div>
-                                        <div><strong>Pet:</strong> ${b.petName}</div>
-                                        <div><strong>Dịch vụ:</strong> ${b.serviceName}</div>
-                                        <div><strong>Nhân viên:</strong> ${b.groomerName || 'Không có'}</div>
-                                    </div>
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-                                        <strong style="color:#ef4444; font-size:14px;">${formatCurrency(b.price)}</strong>
-                                        <button class="btn-pos-primary" style="padding:4px 8px; font-size:11px; border-radius:6px;" onclick='handleSelectCompletedSpa(${bookingJson})'>
-                                            <i class="bi bi-plus-circle"></i> Thu tiền
-                                        </button>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('');
-                    }
+                const list = document.getElementById('allSpasList');
+                if (list) {
+                    list.innerHTML = data.data.map(s => `
+                        <div class="pos-spa-item" onclick="handleSelectProduct('Spa', '${s.id}', '${s.name}', ${s.price}, 999)">
+                            <span class="pos-spa-item-name">${s.name}</span>
+                            <span class="pos-spa-item-price">${formatCurrency(s.price)}</span>
+                        </div>
+                    `).join('');
                 }
             }
-        } catch(err) {
-            console.error("Lỗi lấy lịch Spa chờ thu:", err);
-        }
+        } catch(err) {}
     }
-    loadCompletedSpaBookings();
+    loadAllSpas();
 
-    window.handleSelectCompletedSpa = function (b) {
-        // 1. Kiểm tra nếu đã chọn khách hàng khác và giỏ hàng không trống
-        if (currentCustomer && cart.length > 0 && (currentCustomer.customerId !== b.customerId || currentCustomer.phone !== b.customerPhone)) {
-            if (!confirm(`Giỏ hàng hiện tại đang chứa dịch vụ của khách hàng: ${currentCustomer.fullName}. Bạn có muốn chuyển sang khách hàng mới: ${b.customerName} và xóa giỏ hàng cũ?`)) {
-                return;
+    // === LOAD TẤT CẢ SẢN PHẨM ===
+    async function loadAllProducts() {
+        try {
+            const res = await fetch('/Cashier/Order/GetAllProducts');
+            const data = await res.json();
+            if (data.success && data.data) {
+                const list = document.getElementById('allProductsList');
+                if (list) {
+                    if (data.data.length === 0) {
+                        list.innerHTML = '<p style="color:var(--pos-text-muted);font-size:13px;">Không có sản phẩm nào.</p>';
+                        return;
+                    }
+                    list.innerHTML = data.data.map(p => `
+                        <div class="pos-spa-item" onclick="handleSelectProduct('Product', '${p.id}', '${p.name.replace(/'/g, "&#39;")}', ${p.price}, ${p.stock})">
+                            <span class="pos-spa-item-name">${p.name}</span>
+                            <span class="pos-spa-item-price">${formatCurrency(p.price)}</span>
+                            <span style="font-size:11px;color:var(--pos-text-muted);margin-top:2px;">Tồn: ${p.stock}</span>
+                        </div>
+                    `).join('');
+                }
             }
-            clearCurrentCartAndCustomer();
-        }
-
-        // 2. Nạp khách hàng vào POS
-        const mockCustomer = {
-            customerId: b.customerId,
-            fullName: b.customerName,
-            phone: b.customerPhone,
-            membershipTier: "Thành viên",
-            loyaltyPoints: 0,
-            pets: [{ petId: b.petId, name: b.petName, weight: b.petWeight || 5 }]
-        };
-        handleSelectCustomer(mockCustomer);
-
-        // 3. Thêm mặt hàng Spa này vào giỏ hàng POS với BookingId liên kết
-        cart = cart.filter(item => !(item.type === 'Spa' && item.bookingId === b.bookingId));
-        
-        cart.push({
-            type: 'Spa',
-            id: String(b.serviceId),
-            name: b.serviceName,
-            quantity: 1,
-            price: b.price,
-            total: b.price,
-            petId: b.petId,
-            petName: b.petName,
-            petWeight: b.petWeight || 5,
-            groomerId: b.groomerId,
-            appointmentTime: new Date().toISOString(),
-            bookingId: b.bookingId
-        });
-
-        saveCartLocally();
-        renderCart();
-        
-        // 4. Hiển thị thông tin ca Spa đang thanh toán tự động
-        updateSpaBookingSummary();
-
-        // Báo hiệu thành công
-        alert(`Đã nạp thành công dịch vụ của bé ${b.petName} (Mã lịch: #${b.bookingId}) vào giỏ hàng.`);
-    };
-
-    function updateSpaBookingSummary() {
-        const summary = document.getElementById('spaBookingSummary');
-        if (!summary) return;
-
-        const spaItems = cart.filter(item => item.type === 'Spa');
-        if (spaItems.length === 0) {
-            summary.style.display = 'none';
-            return;
-        }
-
-        const listHtml = spaItems.map(item => `
-            <div style="margin-bottom: 8px; border-bottom: 1px dashed #fcd34d; padding-bottom: 6px; last-child { border-bottom: none; }">
-                <p style="margin: 0; font-size: 13px; color: #b45309; font-weight: 700; margin-bottom: 2px;"><i class="bi bi-scissors"></i> Ca Spa: <span style="font-weight: 500;">${item.name}</span></p>
-                <p style="margin: 0; font-size: 13px; color: #b45309; font-weight: 700;"><i class="bi bi-heart"></i> Thú cưng: <span style="font-weight: 500;">${item.petName} (${item.petWeight}kg)</span></p>
-            </div>
-        `).join('');
-
-        summary.innerHTML = listHtml;
-        summary.style.display = 'block';
+        } catch(err) { console.error('loadAllProducts error', err); }
     }
+    loadAllProducts();
 
     // === TABS LOGIC ===
     const tabs = document.querySelectorAll('.pos-tab');
@@ -195,12 +128,7 @@ document.addEventListener('DOMContentLoaded', function () {
             tabContents.forEach(tc => tc.classList.remove('active'));
             
             tab.classList.add('active');
-            const targetId = tab.getAttribute('data-target');
-            document.getElementById(targetId).classList.add('active');
-            
-            if (targetId === 'cart-spa-pending') {
-                loadCompletedSpaBookings();
-            }
+            document.getElementById(tab.getAttribute('data-target')).classList.add('active');
         });
     });
 
@@ -218,7 +146,69 @@ document.addEventListener('DOMContentLoaded', function () {
         };
     }
 
+    // === TÌM KIẾM SẢN PHẨM / DỊCH VỤ ===
+    const inputSearchProduct = document.getElementById('posSearchProduct');
+    const resultBoxProduct = document.getElementById('posProductResults');
 
+    const searchProduct = debounce(async function (query) {
+        if (!query.trim()) {
+            resultBoxProduct.style.display = 'none';
+            return;
+        }
+
+        try {
+            const res = await fetch(`/Cashier/Order/SearchProducts?q=${encodeURIComponent(query)}`);
+            const data = await res.json();
+            
+            if (data.success) {
+                renderProductResults(data.data);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }, 400);
+
+    inputSearchProduct.addEventListener('input', (e) => searchProduct(e.target.value));
+
+    function renderProductResults(items) {
+        if (items.length === 0) {
+            resultBoxProduct.innerHTML = '<div class="pos-search-item"><div class="pos-search-item-info"><span>Không tìm thấy kết quả.</span></div></div>';
+        } else {
+            resultBoxProduct.innerHTML = items.map(item => `
+                <div class="pos-search-item" onclick="handleSelectProduct('${item.type}', '${item.id}', '${item.name}', ${item.price}, ${item.stock})">
+                    <div class="pos-search-item-info">
+                        <strong>${item.name}</strong>
+                        <span>${item.type === 'Product' ? 'Sản phẩm - SKU: ' + item.id + ' (Tồn: ' + item.stock + ')' : 'Dịch vụ Spa'}</span>
+                    </div>
+                    <div class="pos-search-item-price">${formatCurrency(item.price)}</div>
+                </div>
+            `).join('');
+        }
+        resultBoxProduct.style.display = 'block';
+    }
+
+    // === CHỌN SẢN PHẨM TỪ TÌM KIẾM ===
+    window.handleSelectProduct = function (type, id, name, price, stock) {
+        resultBoxProduct.style.display = 'none';
+        inputSearchProduct.value = '';
+
+        if (type === 'Product') {
+            addToCartProduct(id, name, price);
+        } else if (type === 'Spa') {
+            if (!currentCustomer) {
+                alert("Vui lòng chọn hoặc thêm khách hàng trước khi đặt lịch Spa.");
+                return;
+            }
+            openSpaSetupModal(id, name, price);
+        }
+    };
+
+    // Đóng popup khi click ngoài
+    document.addEventListener('click', (e) => {
+        if (!inputSearchProduct.contains(e.target) && !resultBoxProduct.contains(e.target)) {
+            resultBoxProduct.style.display = 'none';
+        }
+    });
 
     // === TÌM KIẾM KHÁCH HÀNG ===
     const inputSearchCustomer = document.getElementById('posSearchCustomer');
@@ -254,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="pos-search-item" onclick='handleSelectCustomer(${JSON.stringify(c).replace(/'/g, "&#39;")})'>
                     <div class="pos-search-item-info">
                         <strong>${c.fullName} - ${c.phone}</strong>
-                        <span>Thú cưng: ${pets}</span>
+                        <span>Hạng: ${c.membershipTier} | Thú cưng: ${pets}</span>
                     </div>
                 </div>
             `}).join('');
@@ -272,26 +262,45 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderCustomerInfo() {
         if (!currentCustomer) {
             document.getElementById('selectedCustomerInfo').style.display = 'none';
-            const summary = document.getElementById('spaBookingSummary');
-            if (summary) summary.style.display = 'none';
+            document.getElementById('loyaltyGroup').style.display = 'none';
+            document.getElementById('chkUsePoints').checked = false;
             recalculatePayment();
             return;
         }
 
         document.getElementById('lblCustomerName').textContent = currentCustomer.fullName;
         document.getElementById('lblCustomerPhone').textContent = currentCustomer.phone;
+        document.getElementById('lblCustomerTier').textContent = currentCustomer.membershipTier;
+        document.getElementById('lblCustomerPoints').textContent = currentCustomer.loyaltyPoints;
+
+        // Render Pet Selector
+        const petSelect = document.getElementById('posSelectPet');
+        const petSection = document.getElementById('customerPetsSection');
+        
+        if (currentCustomer.pets && currentCustomer.pets.length > 0) {
+            petSelect.innerHTML = '<option value="">-- Chọn thú cưng --</option>' + 
+                currentCustomer.pets.map(p => `<option value="${p.petId}">${p.name} (${p.species}) - ${p.weight}kg</option>`).join('');
+            petSection.style.display = 'block';
+        } else {
+            petSelect.innerHTML = '<option value="">-- Khách chưa có thú cưng (đăng ký mới) --</option>';
+            petSection.style.display = 'block';
+        }
+
+        document.getElementById('lblCustomerPointsVal').textContent = currentCustomer.loyaltyPoints;
+        const totalAmount = cart.reduce((acc, curr) => acc + curr.total, 0);
+        const maxDiscountPoints = Math.floor(totalAmount / 500);
+        const pointsToUse = Math.min(currentCustomer.loyaltyPoints, maxDiscountPoints);
+        document.getElementById('lblMaxDiscountVal').textContent = formatCurrency(pointsToUse * 500);
+        document.getElementById('loyaltyGroup').style.display = 'block';
 
         document.getElementById('selectedCustomerInfo').style.display = 'block';
-        updateSpaBookingSummary();
         recalculatePayment();
     }
 
     document.getElementById('btnClearCustomer').addEventListener('click', () => {
         currentCustomer = null;
+        document.getElementById('chkUsePoints').checked = false;
         renderCustomerInfo();
-        
-        const summary = document.getElementById('spaBookingSummary');
-        if (summary) summary.style.display = 'none';
         
         // Remove Spa items from cart because they require a customer
         cart = cart.filter(c => c.type !== 'Spa');
@@ -299,9 +308,218 @@ document.addEventListener('DOMContentLoaded', function () {
         renderCart();
     });
 
+    // === SPA SETUP MODAL ===
+    const spaModal = document.getElementById('spaSetupModal');
+    let tempSpaService = null;
 
+    function openSpaSetupModal(id, name, basePrice) {
+        tempSpaService = { id, name, basePrice };
+        
+        document.getElementById('spaSetupServiceName').textContent = name;
+        document.getElementById('spaSetupServiceId').value = id;
+        document.getElementById('spaSetupBasePrice').value = basePrice;
+        document.getElementById('spaSetupCalculatedPrice').textContent = formatCurrency(basePrice);
+        
+        // Set weight if pet selected
+        const petSelect = document.getElementById('posSelectPet');
+        if (petSelect && petSelect.value) {
+            const petId = parseInt(petSelect.value);
+            const pet = currentCustomer.pets.find(p => p.petId === petId);
+            if (pet) {
+                document.getElementById('spaSetupWeight').value = pet.weight;
+            }
+        } else {
+            document.getElementById('spaSetupWeight').value = '';
+        }
 
+        // Set Default Time
+        const now = new Date();
+        now.setMinutes(now.getMinutes() + 30); // Default to 30 mins from now
+        document.getElementById('spaSetupTime').value = now.toTimeString().substring(0,5);
 
+        // Fetch Groomers
+        fetchGroomers();
+
+        spaModal.style.display = 'flex';
+    }
+
+    async function fetchGroomers() {
+        const today = new Date().toISOString().split('T')[0];
+        try {
+            const res = await fetch(`/Cashier/Order/GetGroomers?date=${today}`);
+            const data = await res.json();
+            if (data.success) {
+                const select = document.getElementById('spaSetupGroomer');
+                select.innerHTML = '<option value="">-- Bất kỳ Groomer nào --</option>' + 
+                    data.data.map(g => `<option value="${g.userId}">${g.fullName}</option>`).join('');
+            }
+        } catch (err) {
+            console.error("Lỗi lấy groomer:", err);
+        }
+    }
+
+    // Tính lại giá khi nhập cân nặng (Giả lập: Trên 5kg +20k)
+    document.getElementById('spaSetupWeight').addEventListener('input', (e) => {
+        const w = parseFloat(e.target.value) || 0;
+        let price = parseFloat(document.getElementById('spaSetupBasePrice').value);
+        if (w > 5) {
+            price += 20000; // Extra charge
+        }
+        document.getElementById('spaSetupCalculatedPrice').textContent = formatCurrency(price);
+    });
+
+    document.getElementById('btnCloseSpaSetup').addEventListener('click', () => spaModal.style.display = 'none');
+    document.getElementById('btnCancelSpaSetup').addEventListener('click', () => spaModal.style.display = 'none');
+
+    document.getElementById('btnSaveSpaSetup').addEventListener('click', () => {
+        const weight = parseFloat(document.getElementById('spaSetupWeight').value) || 0;
+        const groomerId = document.getElementById('spaSetupGroomer').value;
+        const time = document.getElementById('spaSetupTime').value;
+
+        if (weight <= 0) {
+            alert("Vui lòng nhập cân nặng hợp lệ.");
+            return;
+        }
+
+        let price = parseFloat(document.getElementById('spaSetupBasePrice').value);
+        if (weight > 5) price += 20000;
+
+        const petSelect = document.getElementById('posSelectPet');
+        const petId = petSelect && petSelect.value ? parseInt(petSelect.value) : null;
+
+        if (!petId) {
+            alert("Vui lòng chọn Thú cưng cho dịch vụ Spa ở khung Khách hàng.");
+            return;
+        }
+
+        // Construct Date Time
+        const today = new Date().toISOString().split('T')[0];
+        const appointmentTime = `${today}T${time}:00`;
+
+        cart.push({
+            type: 'Spa',
+            id: tempSpaService.id,
+            name: tempSpaService.name,
+            quantity: 1,
+            price: price,
+            total: price,
+            petId: petId,
+            petWeight: weight,
+            groomerId: groomerId ? parseInt(groomerId) : null,
+            appointmentTime: appointmentTime
+        });
+
+        saveCartLocally();
+        renderCart();
+        spaModal.style.display = 'none';
+    });
+
+    // === QUICK REGISTER MODAL ===
+    const regModal = document.getElementById('quickRegisterModal');
+    
+    document.getElementById('btnShowQuickRegister').addEventListener('click', () => {
+        regModal.style.display = 'flex';
+        document.getElementById('regCustomerName').value = inputSearchCustomer.value; // Auto-fill if typed something
+    });
+
+    document.getElementById('btnCloseRegisterModal').addEventListener('click', () => regModal.style.display = 'none');
+    document.getElementById('btnCancelRegister').addEventListener('click', () => regModal.style.display = 'none');
+
+    // === INLINE VALIDATION HELPERS ===
+    function setFieldError(inputId, errorId, message) {
+        const input = document.getElementById(inputId);
+        const err = document.getElementById(errorId);
+        if (message) {
+            if (input) input.classList.add('is-invalid');
+            if (err) err.textContent = message;
+        } else {
+            if (input) input.classList.remove('is-invalid');
+            if (err) err.textContent = '';
+        }
+    }
+
+    function clearRegisterErrors() {
+        ['regCustomerName', 'regPhone', 'regPetName'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.classList.remove('is-invalid');
+        });
+        ['errRegCustomerName', 'errRegPhone', 'errRegPetName'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = '';
+        });
+        const banner = document.getElementById('regFormError');
+        if (banner) { banner.style.display = 'none'; banner.textContent = ''; }
+    }
+
+    // Clear error khi người dùng gõ lại
+    ['regCustomerName', 'regPhone', 'regPetName'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', () => {
+            el.classList.remove('is-invalid');
+            const errId = 'err' + id.charAt(0).toUpperCase() + id.slice(1);
+            const errEl = document.getElementById(errId);
+            if (errEl) errEl.textContent = '';
+        });
+    });
+
+    document.getElementById('btnSaveRegister').addEventListener('click', async () => {
+        const name = document.getElementById('regCustomerName').value.trim();
+        const phone = document.getElementById('regPhone').value.trim();
+        const petName = document.getElementById('regPetName').value.trim();
+        const petType = document.getElementById('regPetType').value;
+
+        clearRegisterErrors();
+        let hasError = false;
+
+        if (!name) {
+            setFieldError('regCustomerName', 'errRegCustomerName', 'Vui lòng nhập tên khách hàng.');
+            hasError = true;
+        } else if (!/^[\p{L}\s]+$/u.test(name)) {
+            setFieldError('regCustomerName', 'errRegCustomerName', 'Tên chỉ được nhập chữ, không chứa số hay ký tự đặc biệt.');
+            hasError = true;
+        }
+
+        if (!phone) {
+            setFieldError('regPhone', 'errRegPhone', 'Vui lòng nhập số điện thoại.');
+            hasError = true;
+        } else if (!/^\d{10,}$/.test(phone)) {
+            setFieldError('regPhone', 'errRegPhone', 'SĐT phải là số, ít nhất 10 chữ số, không chứa khoảng trắng.');
+            hasError = true;
+        }
+
+        if (petName && !/^[\p{L}\s]+$/u.test(petName)) {
+            setFieldError('regPetName', 'errRegPetName', 'Tên thú cưng chỉ được nhập chữ, không chứa số hay ký tự đặc biệt.');
+            hasError = true;
+        }
+
+        if (hasError) return;
+
+        const dto = { customerName: name, phone: phone, petName: petName, petType: petType };
+
+        try {
+            const res = await fetch('/Cashier/Order/QuickRegister', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dto)
+            });
+            const data = await res.json();
+            if (data.success) {
+                currentCustomer = data.data;
+                renderCustomerInfo();
+                clearRegisterErrors();
+                regModal.style.display = 'none';
+            } else {
+                const banner = document.getElementById('regFormError');
+                if (banner) {
+                    banner.textContent = data.message || 'Lỗi tạo khách hàng.';
+                    banner.style.display = 'block';
+                }
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Lỗi kết nối.");
+        }
+    });
 
     // === CART LOGIC ===
     function addToCartProduct(id, name, price) {
@@ -355,61 +573,59 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function renderCart() {
         const listProducts = document.getElementById('listProducts');
+        const listSpa = document.getElementById('listSpa');
         const emptyProducts = document.getElementById('emptyProducts');
+        const emptySpa = document.getElementById('emptySpa');
 
-        if (!listProducts || !emptyProducts) return;
+        const products = cart.map((c, idx) => ({ ...c, originalIndex: idx })).filter(c => c.type === 'Product');
+        const spas = cart.map((c, idx) => ({ ...c, originalIndex: idx })).filter(c => c.type === 'Spa');
 
-        const count = cart.length;
-        const countEl = document.getElementById('countProducts');
-        if (countEl) countEl.textContent = count;
+        document.getElementById('countProducts').textContent = products.length;
+        document.getElementById('countSpa').textContent = spas.length;
 
-        const cartItemsCard = document.getElementById('cartItemsCard');
-        if (cartItemsCard) {
-            cartItemsCard.style.display = count > 0 ? 'block' : 'none';
-        }
-
-        if (count === 0) {
+        // Render Products
+        if (products.length === 0) {
             emptyProducts.style.display = '';
             listProducts.innerHTML = '';
         } else {
             emptyProducts.style.display = 'none';
-            listProducts.innerHTML = cart.map((item, idx) => {
-                if (item.type === 'Product') {
-                    return `
-                        <div class="pos-cart-item">
-                            <div class="pos-item-icon"><i class="bi bi-box"></i></div>
-                            <div class="pos-item-details">
-                                <div class="pos-item-name">${item.name}</div>
-                                <div class="pos-item-meta">${formatCurrency(item.price)}</div>
-                            </div>
-                            <div class="pos-qty-control">
-                                <button class="pos-qty-btn" onclick="changeQty(${idx}, -1)">-</button>
-                                <input type="text" class="pos-qty-input" value="${item.quantity}" readonly />
-                                <button class="pos-qty-btn" onclick="changeQty(${idx}, 1)">+</button>
-                            </div>
-                            <div class="pos-item-price">${formatCurrency(item.total)}</div>
-                            <button class="btn-remove-item" onclick="removeItem(${idx})"><i class="bi bi-trash"></i></button>
-                        </div>
-                    `;
-                } else {
-                    return `
-                        <div class="pos-cart-item">
-                            <div class="pos-item-icon"><i class="bi bi-scissors"></i></div>
-                            <div class="pos-item-details">
-                                <div class="pos-item-name">${item.name} (Dịch vụ Spa)</div>
-                                <div class="pos-item-meta">Bé: ${item.petWeight}kg</div>
-                            </div>
-                            <div class="pos-qty-control" style="visibility: hidden;">
-                                <button class="pos-qty-btn">-</button>
-                                <input type="text" class="pos-qty-input" value="1" readonly />
-                                <button class="pos-qty-btn">+</button>
-                            </div>
-                            <div class="pos-item-price">${formatCurrency(item.total)}</div>
-                            <button class="btn-remove-item" onclick="removeItem(${idx})"><i class="bi bi-trash"></i></button>
-                        </div>
-                    `;
-                }
-            }).join('');
+            listProducts.innerHTML = products.map(p => `
+                <div class="pos-cart-item">
+                    <div class="pos-item-icon"><i class="bi bi-box"></i></div>
+                    <div class="pos-item-details">
+                        <div class="pos-item-name">${p.name}</div>
+                        <div class="pos-item-meta">${formatCurrency(p.price)}</div>
+                    </div>
+                    <div class="pos-qty-control">
+                        <button class="pos-qty-btn" onclick="changeQty(${p.originalIndex}, -1)">-</button>
+                        <input type="text" class="pos-qty-input" value="${p.quantity}" readonly />
+                        <button class="pos-qty-btn" onclick="changeQty(${p.originalIndex}, 1)">+</button>
+                    </div>
+                    <div class="pos-item-price">${formatCurrency(p.total)}</div>
+                    <button class="btn-remove-item" onclick="removeItem(${p.originalIndex})"><i class="bi bi-trash"></i></button>
+                </div>
+            `).join('');
+        }
+
+        // Render Spa
+        if (spas.length === 0) {
+            emptySpa.style.display = 'block';
+            listSpa.innerHTML = '';
+        } else {
+            emptySpa.style.display = 'none';
+            listSpa.innerHTML = spas.map(s => {
+                const timeStr = s.appointmentTime ? new Date(s.appointmentTime).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'}) : 'Chưa chọn';
+                return `
+                <div class="pos-cart-item">
+                    <div class="pos-item-icon"><i class="bi bi-scissors"></i></div>
+                    <div class="pos-item-details">
+                        <div class="pos-item-name">${s.name}</div>
+                        <div class="pos-item-meta">Giờ: ${timeStr} | Bé: ${s.petWeight}kg</div>
+                    </div>
+                    <div class="pos-item-price">${formatCurrency(s.total)}</div>
+                    <button class="btn-remove-item" onclick="removeItem(${s.originalIndex})"><i class="bi bi-trash"></i></button>
+                </div>
+            `}).join('');
         }
 
         // Calculate Totals
@@ -522,28 +738,21 @@ document.addEventListener('DOMContentLoaded', function () {
     function recalculatePayment() {
         const subtotal = cart.reduce((acc, curr) => acc + curr.total, 0);
         let discount = 0;
+        let pointsUsed = 0;
 
-        if (appliedVoucher) {
-            discount = appliedVoucher.discount;
+        if (currentCustomer) {
+            const maxDiscountPoints = Math.floor(subtotal / 500);
+            const pointsToUse = Math.min(currentCustomer.loyaltyPoints, maxDiscountPoints);
+            document.getElementById('lblMaxDiscountVal').textContent = formatCurrency(pointsToUse * 500);
+
+            if (document.getElementById('chkUsePoints').checked) {
+                pointsUsed = pointsToUse;
+                discount = pointsUsed * 500;
+            }
         }
 
         const finalTotal = Math.max(0, subtotal - discount);
         document.getElementById('lblTotal').textContent = formatCurrency(finalTotal);
-        
-        const lblModalSubtotal = document.getElementById('lblModalSubtotal');
-        if (lblModalSubtotal) lblModalSubtotal.textContent = formatCurrency(subtotal);
-
-        const rowDiscount = document.getElementById('rowModalDiscount');
-        const lblModalDiscount = document.getElementById('lblModalDiscount');
-        if (rowDiscount && lblModalDiscount) {
-            if (discount > 0) {
-                lblModalDiscount.textContent = `-${formatCurrency(discount)}`;
-                rowDiscount.style.display = 'flex';
-            } else {
-                rowDiscount.style.display = 'none';
-            }
-        }
-
         document.getElementById('lblModalTotal').textContent = formatCurrency(finalTotal);
 
         const paymentMethod = document.getElementById('posPaymentMethod').value;
@@ -586,8 +795,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const paymentMethod = document.getElementById('posPaymentMethod').value;
         const subtotal = cart.reduce((acc, curr) => acc + curr.total, 0);
         let discount = 0;
-        if (appliedVoucher) {
-            discount = appliedVoucher.discount;
+        if (currentCustomer && document.getElementById('chkUsePoints').checked) {
+            discount = Math.min(currentCustomer.loyaltyPoints, Math.floor(subtotal / 500)) * 500;
         }
         const finalTotal = Math.max(0, subtotal - discount);
 
@@ -598,6 +807,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const defaultCash = Math.floor(finalTotal / 2);
             document.getElementById('txtCashReceived').value = defaultCash.toLocaleString('vi-VN');
         }
+        recalculatePayment();
+    });
+
+    document.getElementById('chkUsePoints').addEventListener('change', () => {
         recalculatePayment();
     });
 
@@ -612,169 +825,8 @@ document.addEventListener('DOMContentLoaded', function () {
         recalculatePayment();
     });
 
-    async function showSuccessInvoiceModal(orderId) {
-        currentPayingOrderId = orderId;
-        const container = document.getElementById('printReceiptContent');
-        if (!container) return;
-
-        container.innerHTML = `
-            <div style="text-align: center; padding: 20px;">
-                <div class="spinner-border text-success" role="status" style="width: 2rem; height: 2rem;">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <p style="margin-top:12px;color:var(--pos-text-muted);">Đang tải hóa đơn...</p>
-            </div>
-        `;
-        document.getElementById('posSuccessModal').style.display = 'flex';
-
-        try {
-            const res = await fetch(`/Cashier/Order/GetInvoiceData?orderId=${orderId}`);
-            const resData = await res.json();
-            if (resData.success) {
-                let itemsHtml = resData.items.map(item => `
-                    <tr>
-                        <td style="padding: 4px 0;">${item.name}</td>
-                        <td style="padding: 4px 0; text-align: center;">${item.quantity}</td>
-                        <td style="padding: 4px 0; text-align: right;">${formatCurrency(item.total)}</td>
-                    </tr>
-                `).join('');
-
-                let spaHtml = '';
-                if (resData.spaBookings && resData.spaBookings.length > 0) {
-                    spaHtml = resData.spaBookings.map(b => `
-                        <div style="border-top: 2px dashed #000; margin: 15px 0;"></div>
-                        <div class="spa-ticket" style="border: 1px dashed #000; padding: 12px; background: #fff; text-align: left;">
-                            <div style="font-size: 13px; font-weight: bold; text-align: center; text-transform: uppercase; margin-bottom: 8px;">PHIẾU DỊCH VỤ SPA</div>
-                            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-                                <tr>
-                                    <td style="width: 40%; padding: 2px 0;">Mã hóa đơn:</td>
-                                    <td style="font-weight: bold; padding: 2px 0;">${resData.orderId}</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 2px 0;">Dịch vụ:</td>
-                                    <td style="font-weight: bold; padding: 2px 0;">${b.serviceName}</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 2px 0;">Khách hàng:</td>
-                                    <td style="padding: 2px 0;">${resData.customerName}</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 2px 0;">Tên Pet:</td>
-                                    <td style="font-weight: bold; padding: 2px 0;">${b.petName} (${b.petSpecies})</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 2px 0;">Cân nặng Pet:</td>
-                                    <td style="padding: 2px 0;">${b.petWeight}kg</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 2px 0;">Groomer:</td>
-                                    <td style="font-weight: bold; padding: 2px 0;">${b.groomerName}</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 2px 0;">Giờ hẹn:</td>
-                                    <td style="font-weight: bold; padding: 2px 0; font-size: 12px;">${b.dateTime}</td>
-                                </tr>
-                            </table>
-                        </div>
-                    `).join('');
-                }
-
-                container.innerHTML = `
-                    <div style="text-align: center; margin-bottom: 12px;">
-                        <h1 style="font-size: 18px; margin: 0 0 5px 0; text-transform: uppercase; font-weight: bold;">PET STORE</h1>
-                        <p style="margin: 2px 0; font-size: 11px;">Địa chỉ: Thôn 1, Xã Thạch Thất, Hà Nội</p>
-                        <p style="margin: 2px 0; font-size: 11px;">SĐT: 0915793038</p>
-                        <p style="font-weight: bold; margin: 5px 0 0 0;">HÓA ĐƠN THANH TOÁN</p>
-                    </div>
-
-                    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-                        <tr>
-                            <td style="width: 40%; padding: 2px 0;">Mã hóa đơn:</td>
-                            <td style="font-weight: bold; padding: 2px 0;">${resData.orderId}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 2px 0;">Ngày mua:</td>
-                            <td style="padding: 2px 0;">${resData.date}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 2px 0;">Khách hàng:</td>
-                            <td style="padding: 2px 0;">${resData.customerName}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 2px 0;">SĐT khách:</td>
-                            <td style="padding: 2px 0;">${resData.customerPhone}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 2px 0;">Nhân viên:</td>
-                            <td style="padding: 2px 0;">Thu ngân POS</td>
-                        </tr>
-                    </table>
-
-                    <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
-
-                    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-                        <thead>
-                            <tr style="border-bottom: 1px solid #000;">
-                                <th style="width: 50%; padding: 4px 0; text-align: left;">Tên SP/DV</th>
-                                <th style="width: 15%; padding: 4px 0; text-align: center;">SL</th>
-                                <th style="width: 35%; padding: 4px 0; text-align: right;">Thành tiền</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${itemsHtml}
-                        </tbody>
-                    </table>
-
-                    <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
-
-                    <div style="margin-top: 8px; font-size: 11px;">
-                        <div style="display: flex; justify-content: space-between; padding: 2px 0;">
-                            <span>Tạm tính:</span>
-                            <span>${formatCurrency(resData.subtotal)}</span>
-                        </div>
-                        ${resData.discount > 0 ? `
-                        <div style="display: flex; justify-content: space-between; padding: 2px 0;">
-                            <span>Giảm giá voucher:</span>
-                            <span>-${formatCurrency(resData.discount)}</span>
-                        </div>
-                        ` : ''}
-                        <div style="display: flex; justify-content: space-between; padding: 4px 0; font-weight: bold; font-size: 13px;">
-                            <span>TỔNG CỘNG:</span>
-                            <span>${formatCurrency(resData.total)}</span>
-                        </div>
-                        <div style="border-top: 1px dashed #000; margin: 8px 0;"></div>
-                        <div style="display: flex; justify-content: space-between; padding: 2px 0;">
-                            <span>Phương thức:</span>
-                            <span style="font-weight: bold;">${resData.paymentMethod}</span>
-                        </div>
-                    </div>
-
-                    <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
-
-                    <div style="font-size: 11px;">
-                        <div style="display: flex; justify-content: space-between; padding: 2px 0;">
-                            <span>Voucher áp dụng:</span>
-                            <span style="font-weight: bold;">${resData.voucherCode ? `${resData.voucherCode} (-${formatCurrency(resData.discount)})` : 'Không áp dụng voucher'}</span>
-                        </div>
-                    </div>
-
-                    <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
-
-                    <div style="text-align: center; margin-top: 12px; font-size: 11px;">
-                        <p style="font-weight: bold; margin: 0 0 4px 0;">CẢM ƠN QUÝ KHÁCH & HẸN GẶP LẠI!</p>
-                        <p style="margin: 0; font-size: 10px; color: #555;">Chăm sóc thú cưng như người thân</p>
-                    </div>
-
-                    <!-- PHIẾU DỊCH VỤ SPA -->
-                    ${spaHtml}
-                `;
-            } else {
-                container.innerHTML = `<p style="color:var(--pos-danger);text-align:center;padding:20px;">Lỗi tải chi tiết hóa đơn: ${resData.message}</p>`;
-            }
-        } catch (err) {
-            console.error(err);
-            container.innerHTML = `<p style="color:var(--pos-danger);text-align:center;padding:20px;">Lỗi kết nối máy chủ.</p>`;
-        }
+    function printThermalInvoice(orderId) {
+        window.open(`/Cashier/Order/PrintInvoice?orderId=${orderId}`, '_blank', 'width=380,height=600');
     }
 
     function clearCurrentCartAndCustomer() {
@@ -782,6 +834,7 @@ document.addEventListener('DOMContentLoaded', function () {
         localStorage.removeItem('pos_current_customer');
         cart = [];
         currentCustomer = null;
+        document.getElementById('chkUsePoints').checked = false;
         document.getElementById('txtCashReceived').value = '';
         renderCart();
         renderCustomerInfo();
@@ -802,44 +855,6 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('paymentModal').style.display = 'none';
     });
 
-    // Apply Voucher
-    document.getElementById('btnApplyVoucher').addEventListener('click', async () => {
-        const code = document.getElementById('txtVoucherCode').value.trim();
-        const msg = document.getElementById('voucherMessage');
-        
-        if (!code) {
-            msg.textContent = "Vui lòng nhập mã giảm giá.";
-            msg.style.color = "var(--pos-danger)";
-            msg.style.display = "block";
-            return;
-        }
-
-        const subtotal = cart.reduce((acc, curr) => acc + curr.total, 0);
-
-        try {
-            const res = await fetch(`/Cashier/Order/CheckVoucher?code=${encodeURIComponent(code)}&subtotal=${subtotal}`);
-            const data = await res.json();
-            
-            if (data.success) {
-                appliedVoucher = { code: data.code, discount: data.discount };
-                msg.textContent = `Áp dụng thành công voucher ${data.code}. Giảm: -${formatCurrency(data.discount)}`;
-                msg.style.color = "var(--pos-success)";
-                msg.style.display = "block";
-                recalculatePayment();
-            } else {
-                appliedVoucher = null;
-                msg.textContent = data.message;
-                msg.style.color = "var(--pos-danger)";
-                msg.style.display = "block";
-                recalculatePayment();
-            }
-        } catch (err) {
-            msg.textContent = "Lỗi kết nối máy chủ.";
-            msg.style.color = "var(--pos-danger)";
-            msg.style.display = "block";
-        }
-    });
-
     // Open Payment Modal
     document.getElementById('btnSubmitOrder').addEventListener('click', () => {
         if (cart.length === 0) {
@@ -852,19 +867,11 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-
-
-        // Reset voucher input and state when opening
-        appliedVoucher = null;
-        const txtVoucher = document.getElementById('txtVoucherCode');
-        if (txtVoucher) txtVoucher.value = '';
-        const voucherMsg = document.getElementById('voucherMessage');
-        if (voucherMsg) {
-            voucherMsg.style.display = 'none';
-            voucherMsg.textContent = '';
+        const petSelect = document.getElementById('posSelectPet');
+        if (!petSelect || !petSelect.value) {
+            alert("Vui lòng chọn Thú cưng cho khách hàng trước khi tạo đơn và thanh toán!");
+            return;
         }
-        const rowDiscount = document.getElementById('rowModalDiscount');
-        if (rowDiscount) rowDiscount.style.display = 'none';
         
         // Trigger payment method change to set default cash value
         const evt = new Event('change');
@@ -878,10 +885,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const subtotal = cart.reduce((acc, curr) => acc + curr.total, 0);
         const paymentMethod = document.getElementById('posPaymentMethod').value;
-        const voucherCode = appliedVoucher ? appliedVoucher.code : null;
-        const voucherDiscount = appliedVoucher ? appliedVoucher.discount : 0;
+        const usePoints = document.getElementById('chkUsePoints').checked;
 
-        const finalTotal = Math.max(0, subtotal - voucherDiscount);
+        let pointsUsed = 0;
+        if (usePoints && currentCustomer) {
+            pointsUsed = Math.min(currentCustomer.loyaltyPoints, Math.floor(subtotal / 500));
+        }
+
+        const finalTotal = subtotal - (pointsUsed * 500);
         const cashRaw = document.getElementById('txtCashReceived').value.replace(/[^0-9]/g, '');
         const cashVal = parseFloat(cashRaw) || 0;
 
@@ -909,11 +920,9 @@ document.addEventListener('DOMContentLoaded', function () {
             customerId: currentCustomer.customerId,
             totalAmount: subtotal,
             paymentMethod: paymentMethod,
-            pointsUsed: 0,
+            pointsUsed: pointsUsed,
             cashAmount: cashAmount,
             onlineAmount: onlineAmount,
-            voucherCode: voucherCode,
-            voucherDiscount: voucherDiscount,
             items: cart
         };
 
@@ -934,12 +943,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     // Chuyển trực tiếp qua trang thanh toán PayOS
                     window.location.href = data.redirectUrl;
                 } else {
+                    alert("Tạo đơn hàng & Thanh toán tiền mặt thành công!");
                     document.getElementById('paymentModal').style.display = 'none';
                     btn.disabled = false;
                     btn.innerHTML = '<i class="bi bi-check-circle"></i> XÁC NHẬN';
                     
-                    // Hiển thị trực tiếp Popup hóa đơn thành công lên màn hình
-                    showSuccessInvoiceModal(data.orderId);
+                    // Print Thermal Invoice immediately
+                    printThermalInvoice(data.orderId);
+
+                    // Clear POS state
+                    clearCurrentCartAndCustomer();
                 }
             } else {
                 alert(data.message || "Lỗi tạo đơn hàng.");
@@ -953,47 +966,6 @@ document.addEventListener('DOMContentLoaded', function () {
             btn.innerHTML = '<i class="bi bi-check-circle"></i> XÁC NHẬN';
         }
     });
-
-    // Đóng và dọn dẹp POS khi bấm đóng modal thành công
-    const btnSuccessClose = document.getElementById('btnSuccessClose');
-    if (btnSuccessClose) {
-        btnSuccessClose.addEventListener('click', () => {
-            document.getElementById('posSuccessModal').style.display = 'none';
-            clearCurrentCartAndCustomer();
-            loadCompletedSpaBookings();
-        });
-    }
-
-    // Xuất PDF hóa đơn thành công
-    const btnSuccessPDF = document.getElementById('btnSuccessPDF');
-    if (btnSuccessPDF) {
-        btnSuccessPDF.addEventListener('click', () => {
-            const element = document.getElementById('printReceiptContent');
-            if (!element) return;
-            
-            const opt = {
-                margin:       [10, 10, 10, 10],
-                filename:     `HoaDon_${currentPayingOrderId || 'Receipt'}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-            
-            const oldHtml = btnSuccessPDF.innerHTML;
-            btnSuccessPDF.disabled = true;
-            btnSuccessPDF.innerHTML = '<i class="bi bi-hourglass-split"></i> Đang xuất...';
-            
-            html2pdf().set(opt).from(element).save().then(() => {
-                btnSuccessPDF.disabled = false;
-                btnSuccessPDF.innerHTML = oldHtml;
-            }).catch(err => {
-                console.error(err);
-                alert("Không thể xuất file PDF.");
-                btnSuccessPDF.disabled = false;
-                btnSuccessPDF.innerHTML = oldHtml;
-            });
-        });
-    }
 
     // Initialize
     renderCart();

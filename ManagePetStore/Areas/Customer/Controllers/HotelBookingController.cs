@@ -2,7 +2,6 @@ using System.Data;
 using System.Security.Claims;
 using ManagePetStore.Areas.Customer.Models;
 using ManagePetStore.Models;
-using ManagePetStore.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -16,21 +15,18 @@ public class HotelBookingController : Controller
     private static readonly string[] BlockingStatuses = ["Đã đặt", "Active", "Đang ở"];
 
     private readonly PetStoreManagementContext _context;
-    private readonly IHotelBookingHistoryService _historyService;
     private readonly ILogger<HotelBookingController> _logger;
 
     public HotelBookingController(
         PetStoreManagementContext context,
-        IHotelBookingHistoryService historyService,
         ILogger<HotelBookingController> logger)
     {
         _context = context;
-        _historyService = historyService;
         _logger = logger;
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? searchTerm, string statusFilter = "all", int page = 1)
+    public async Task<IActionResult> Index()
     {
         var layout = await BuildSidebarViewModelAsync("appointments");
         if (layout == null)
@@ -49,87 +45,15 @@ public class HotelBookingController : Controller
             .ThenByDescending(b => b.HotelBookingId)
             .ToListAsync();
 
-        var mappedBookings = bookings.Select(MapToListItem).ToList();
-        var normalizedSearch = searchTerm?.Trim() ?? "";
-        var normalizedStatus = string.IsNullOrWhiteSpace(statusFilter)
-            ? "all"
-            : statusFilter.Trim().ToLowerInvariant();
-
-        IEnumerable<HotelBookingListItemViewModel> filteredBookings = mappedBookings;
-
-        if (!string.IsNullOrWhiteSpace(normalizedSearch))
-        {
-            filteredBookings = filteredBookings.Where(b =>
-                b.DisplayBookingId.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
-                b.PetName.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
-                b.CageId.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
-                b.RoomTypeName.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
-                b.Status.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase));
-        }
-
-        filteredBookings = normalizedStatus switch
-        {
-            "reserved" => filteredBookings.Where(b => b.StatusKey == "reserved"),
-            "active" => filteredBookings.Where(b => b.StatusKey == "active"),
-            "completed" => filteredBookings.Where(b => b.StatusKey == "completed"),
-            "cancelled" => filteredBookings.Where(b => b.StatusKey == "cancelled"),
-            _ => filteredBookings
-        };
-
-        var filteredBookingList = filteredBookings.ToList();
-        var currentPage = page < 1 ? 1 : page;
-        var pageSize = new HotelBookingHistoryPageViewModel().PageSize;
-        var totalFilteredItems = filteredBookingList.Count;
-        var totalPages = totalFilteredItems == 0 ? 0 : (int)Math.Ceiling(totalFilteredItems / (double)pageSize);
-
-        if (totalPages > 0 && currentPage > totalPages)
-        {
-            currentPage = totalPages;
-        }
-
         var model = new HotelBookingHistoryPageViewModel
         {
             User = layout.User,
             Customer = layout.Customer,
             ActiveNav = layout.ActiveNav,
-            Bookings = mappedBookings,
-            SearchTerm = normalizedSearch,
-            StatusFilter = normalizedStatus,
-            Page = totalPages == 0 ? 1 : currentPage,
-            TotalFilteredItems = totalFilteredItems,
-            TotalPages = totalPages
+            Bookings = bookings.Select(MapToListItem).ToList()
         };
 
-        model.VisibleBookings = filteredBookingList
-            .Skip((model.Page - 1) * model.PageSize)
-            .Take(model.PageSize)
-            .ToList();
-
         return View(model);
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> Details(int id)
-    {
-        var layout = await BuildSidebarViewModelAsync("appointments");
-        if (layout == null)
-        {
-            return RedirectToAction("Login", "Account", new { area = "Customer" });
-        }
-
-        var booking = await _historyService.GetDetailAsync(id, layout.Customer.CustomerId);
-        if (booking == null)
-        {
-            return NotFound();
-        }
-
-        return View(new HotelBookingDetailPageViewModel
-        {
-            User = layout.User,
-            Customer = layout.Customer,
-            ActiveNav = layout.ActiveNav,
-            Booking = booking
-        });
     }
 
     [HttpPost]
@@ -217,15 +141,13 @@ public class HotelBookingController : Controller
             var discount = decimal.Round(subtotal * discountRate, 0, MidpointRounding.AwayFromZero);
             var finalAmount = subtotal - discount;
 
-            var booking = new HotelBooking
+            _context.HotelBookings.Add(new HotelBooking
             {
                 CageId = cage.CageId,
                 PetId = pet.PetId,
                 CustomerId = customer.CustomerId,
                 CheckInDate = checkIn,
                 CheckOutDate = checkOut,
-                ScheduledCheckInDate = checkIn,
-                ScheduledCheckOutDate = checkOut,
                 StayDays = stayDays,
                 BaseDailyPrice = roomType.DailyPrice,
                 Subtotal = subtotal,
@@ -233,17 +155,6 @@ public class HotelBookingController : Controller
                 FinalAmount = finalAmount,
                 EarnedPoints = 0,
                 Status = "Đã đặt"
-            };
-
-            _context.HotelBookings.Add(booking);
-            _context.PetBioTimelines.Add(new PetBioTimeline
-            {
-                PetId = pet.PetId,
-                HotelBooking = booking,
-                Date = DateTime.Now,
-                Title = "Đặt phòng Hotel",
-                Type = "HotelBookingCreated",
-                Description = $"Khách hàng đặt chuồng {cage.CageId} từ {checkIn:dd/MM/yyyy} đến {checkOut:dd/MM/yyyy}."
             });
 
             await _context.SaveChangesAsync();
@@ -267,7 +178,7 @@ public class HotelBookingController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Cancel(int id, string? searchTerm, string statusFilter = "all", int page = 1)
+    public async Task<IActionResult> Cancel(int id)
     {
         var customer = await GetCurrentCustomerAsync();
         if (customer == null)
@@ -284,35 +195,26 @@ public class HotelBookingController : Controller
         if (booking == null)
         {
             TempData["ErrorMessage"] = "Không tìm thấy lịch đặt phòng hoặc bạn không có quyền hủy.";
-            return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
+            return RedirectToAction(nameof(Index));
         }
 
         if (!string.Equals(booking.Status, "Đã đặt", StringComparison.OrdinalIgnoreCase))
         {
             TempData["ErrorMessage"] = "Chỉ có thể hủy lịch đang ở trạng thái Đã đặt.";
-            return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
+            return RedirectToAction(nameof(Index));
         }
 
         if (booking.CheckInDate.Date <= DateTime.Today)
         {
             TempData["ErrorMessage"] = "Không thể hủy online vào hoặc sau ngày nhận phòng. Vui lòng liên hệ cửa hàng.";
-            return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
+            return RedirectToAction(nameof(Index));
         }
 
         booking.Status = "Đã hủy";
-        _context.PetBioTimelines.Add(new PetBioTimeline
-        {
-            PetId = booking.PetId,
-            HotelBookingId = booking.HotelBookingId,
-            Date = DateTime.Now,
-            Title = "Hủy lịch lưu trú",
-            Type = "HotelBookingCancelled",
-            Description = "Khách hàng đã hủy lịch đặt phòng qua hệ thống."
-        });
         await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] = $"Đã hủy lịch Hotel của {booking.Pet.Name}.";
-        return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
+        return RedirectToAction(nameof(Index));
     }
 
     private IActionResult BookingError(string message)
@@ -387,16 +289,13 @@ public class HotelBookingController : Controller
             PetName = booking.Pet.Name,
             CageId = booking.CageId,
             RoomTypeName = booking.Cage.RoomType.Type,
-            CheckInDate = booking.ScheduledCheckInDate ?? booking.CheckInDate,
-            CheckOutDate = booking.ScheduledCheckOutDate
-                ?? booking.CheckOutDate
-                ?? booking.CheckInDate.AddDays(booking.StayDays),
+            CheckInDate = booking.CheckInDate,
+            CheckOutDate = booking.CheckOutDate ?? booking.CheckInDate.AddDays(booking.StayDays),
             StayDays = booking.StayDays,
             FinalAmount = booking.FinalAmount,
             Status = booking.Status,
             StatusKey = statusKey,
-            CanCancel = statusKey == "reserved" &&
-                (booking.ScheduledCheckInDate ?? booking.CheckInDate).Date > DateTime.Today
+            CanCancel = statusKey == "reserved" && booking.CheckInDate.Date > DateTime.Today
         };
     }
 

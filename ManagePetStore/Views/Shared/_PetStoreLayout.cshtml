@@ -10,7 +10,6 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/homepage.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/customer-notifications.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="petstore-body">
@@ -70,7 +69,10 @@
                     <a class="ps-icon-btn" asp-area="Customer" asp-controller="Account" asp-action="Profile" aria-label="Tài khoản">
                         <i class="bi bi-person-circle"></i>
                     </a>
-                    @await Component.InvokeAsync("CustomerNotification")
+                    <button class="ps-icon-btn" type="button" aria-label="Thông báo">
+                        <i class="bi bi-bell"></i>
+                        <span class="ps-badge ps-badge-red">4</span>
+                    </button>
                     <span class="ps-greeting">Hi, @(User.FindFirst("FullName")?.Value ?? "Nguyễn Văn A")</span>
                     <form asp-area="Customer" asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
                         <button type="submit" class="ps-logout-btn">Đăng xuất</button>
@@ -146,7 +148,6 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/homepage.js" asp-append-version="true"></script>
-    <script src="~/js/customer-notifications.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
