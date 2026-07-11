@@ -336,6 +336,15 @@ using (var scope = app.Services.CreateScope())
     {
         Console.WriteLine($"[DB Update Error] Không thể tự động cập nhật Database: {ex.Message}");
     }
+
+    try
+    {
+        await ManagePetStore.Services.Customer.CustomerRewardHelper.RecalculateAllCustomersPointsAndTiersAsync(context);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Reward Update Error] Không thể tính toán lại điểm thưởng: {ex.Message}");
+    }
 }
 
 app.Run();
