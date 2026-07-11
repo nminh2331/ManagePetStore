@@ -47,15 +47,30 @@ namespace ManagePetStore.Areas.Cashier.Controllers
         [HttpGet]
         public async Task<IActionResult> CreateAtCounter(string? orderId, string? status)
         {
-            if (!string.IsNullOrEmpty(orderId) && (status == "PAID" || status == "success"))
+            if (!string.IsNullOrEmpty(orderId))
             {
                 var order = await _context.Orders.Include(o => o.Customer).FirstOrDefaultAsync(o => o.OrderId == orderId);
                 if (order != null && order.Status == "Chờ thanh toán")
                 {
-                    order.Status = "Chờ xử lý";
-                    order.OrderStatus = 2;
-                    _context.Entry(order).State = EntityState.Modified;
-                    await _context.SaveChangesAsync();
+                    if (status == "PAID" || status == "success")
+                    {
+                        order.Status = "Chờ xử lý";
+                        order.OrderStatus = 2;
+                        _context.Entry(order).State = EntityState.Modified;
+                        await _context.SaveChangesAsync();
+                    }
+                    else if (status == "cancel")
+                    {
+                        order.Status = "Đã hủy";
+                        order.OrderStatus = 0; // Canceled
+                        order.CancelReason = "Khách hàng hủy thanh toán trực tuyến qua PayOS tại quầy.";
+                        _context.Entry(order).State = EntityState.Modified;
+                        await _context.SaveChangesAsync();
+                        if (order.CustomerId != null)
+                        {
+                            await ManagePetStore.Services.Customer.CustomerRewardHelper.RecalculateCustomerPointsAndTierAsync(order.CustomerId, _context);
+                        }
+                    }
                 }
             }
             return View();
@@ -366,7 +381,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 return Json(new { success = false, message = "Khách hàng không tồn tại." });
             }
 
-            decimal discount = dto.VoucherDiscount;
+            decimal discount = dto.VoucherDiscount + (dto.PointsUsed * 500);
             decimal totalAmount = dto.TotalAmount - discount;
             if (totalAmount < 0) totalAmount = 0;
 
@@ -377,9 +392,8 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             orderCode = long.Parse(numericString);
             newOrderId = $"OD-{orderCode}";
 
-            // Keep points earned silent
-            int pointsEarned = (int)(totalAmount / 100000) * 10;
-            customer.LoyaltyPoints += pointsEarned;
+            // Keep points earned silent (10 points initialized, but not added to account immediately)
+            int pointsEarned = 10;
             _context.Entry(customer).State = EntityState.Modified;
 
             bool hasOnlinePayment = dto.PaymentMethod == "Thanh toán online" || 
@@ -395,7 +409,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 Total = totalAmount,
                 PaymentMethod = dto.PaymentMethod ?? "Tiền mặt",
                 PointsEarned = pointsEarned,
-                PointsRedeemed = 0,
+                PointsRedeemed = dto.PointsUsed,
                 Status = hasOnlinePayment ? "Chờ thanh toán" : "Chờ xử lý",
                 OrderStatus = hasOnlinePayment ? 1 : 2,
                 CancelReason = !string.IsNullOrWhiteSpace(dto.VoucherCode) ? $"VOUCHER:{dto.VoucherCode.Trim().ToUpper()}" : null
@@ -475,6 +489,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             }
 
             await _context.SaveChangesAsync();
+            await ManagePetStore.Services.Customer.CustomerRewardHelper.RecalculateCustomerPointsAndTierAsync(customer.CustomerId, _context);
 
             if (hasOnlinePayment)
             {
@@ -492,7 +507,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                         OrderCode = orderCode,
                         Amount = onlinePayAmount,
                         Description = $"POS {orderCode}",
-                        CancelUrl = dto.IsAtCounter ? $"{host}/Cashier/Order/CreateAtCounter?status=cancel" : $"{host}/Cashier/Order/Create?status=cancel",
+                        CancelUrl = dto.IsAtCounter ? $"{host}/Cashier/Order/CreateAtCounter?orderId={order.OrderId}&status=cancel" : $"{host}/Cashier/Order/Create?status=cancel",
                         ReturnUrl = dto.IsAtCounter ? $"{host}/Cashier/Order/CreateAtCounter?orderId={order.OrderId}&status=success" : $"{host}/Cashier/Order/Create?orderId={order.OrderId}&status=success",
                         Items = dto.Items.Select(item => new PaymentLinkItem
                         {

@@ -183,7 +183,7 @@ public class CheckoutController : Controller
                 Total = cart.GrandTotal,
                 PaymentMethod = normalizedPayment,
                 PointsRedeemed = 0,
-                PointsEarned = (int)Math.Floor(cart.GrandTotal / 10000m),
+                PointsEarned = 10,
                 Status = status,
                 Date = DateTime.Now
             };
@@ -360,7 +360,7 @@ public class CheckoutController : Controller
                 payosCheckoutUrl = paymentLinkResult.CheckoutUrl;
             }
 
-            customer.LoyaltyPoints += (int)Math.Floor(cart.GrandTotal / 10000m);
+            // Loyalty points will be calculated when the order is completed.
             _context.Entry(customer).State = EntityState.Modified;
 
             if (normalizedPayment == "Ví điện tử" && customerWallet != null)
@@ -381,6 +381,7 @@ public class CheckoutController : Controller
             }
 
             await _context.SaveChangesAsync();
+            await ManagePetStore.Services.Customer.CustomerRewardHelper.RecalculateCustomerPointsAndTierAsync(customer.CustomerId, _context);
             await transaction.CommitAsync();
 
             if (normalizedPayment != "Thanh toán online")
