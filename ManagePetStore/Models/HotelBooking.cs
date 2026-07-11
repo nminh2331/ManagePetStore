@@ -17,6 +17,14 @@ public partial class HotelBooking
 
     public DateTime? CheckOutDate { get; set; }
 
+    public DateTime? ScheduledCheckInDate { get; set; }
+
+    public DateTime? ScheduledCheckOutDate { get; set; }
+
+    public DateTime? ActualCheckInAt { get; set; }
+
+    public DateTime? ActualCheckOutAt { get; set; }
+
     public int StayDays { get; set; }
 
     public decimal BaseDailyPrice { get; set; }
@@ -32,6 +40,12 @@ public partial class HotelBooking
     public string Status { get; set; } = null!;
 
     public virtual ICollection<BookingAddon> BookingAddons { get; set; } = new List<BookingAddon>();
+
+    public virtual ICollection<FoodDiaryLog> FoodDiaryLogs { get; set; } = new List<FoodDiaryLog>();
+
+    public virtual ICollection<MedicalRecord> MedicalRecords { get; set; } = new List<MedicalRecord>();
+
+    public virtual ICollection<PetBioTimeline> PetBioTimelines { get; set; } = new List<PetBioTimeline>();
 
     public virtual Cage Cage { get; set; } = null!;
 

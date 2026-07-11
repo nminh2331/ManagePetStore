@@ -1,0 +1,39 @@
+@model ManagePetStore.Areas.Customer.Models.CustomerNotificationMenuViewModel
+
+@if (Model.IsCustomer)
+{
+    <div class="ps-notification" data-notification-root>
+        <button class="ps-icon-btn" type="button" aria-label="Thông báo" aria-expanded="false" data-notification-toggle>
+            <i class="bi bi-bell"></i>
+            <span class="ps-badge ps-badge-red @(Model.UnreadCount == 0 ? "d-none" : "")" data-notification-count>@(Model.UnreadCount > 99 ? "99+" : Model.UnreadCount)</span>
+        </button>
+        <div class="ps-notification-menu" data-notification-menu hidden>
+            <div class="ps-notification-head">
+                <strong>Thông báo chăm sóc</strong>
+                <a href="/Customer/Notifications">Xem tất cả</a>
+            </div>
+            <div class="ps-notification-list" data-notification-list>
+                @if (Model.Items.Count == 0)
+                {
+                    <p class="ps-notification-empty" data-notification-empty>Chưa có thông báo mới.</p>
+                }
+                else
+                {
+                    @foreach (var item in Model.Items)
+                    {
+                        <a class="ps-notification-item @(!item.IsRead ? "is-unread" : "")" href="/Customer/Notifications/Open/@item.NotificationId">
+                            <strong>@item.Title</strong>
+                            <span>@item.Message</span>
+                            <time>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</time>
+                        </a>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+    <div class="ps-care-toast" data-care-toast hidden>
+        <i class="bi bi-bell-fill"></i>
+        <div><strong data-care-toast-title></strong><span data-care-toast-message></span></div>
+        <a data-care-toast-link href="#">Xem</a>
+    </div>
+}
