@@ -275,18 +275,27 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 6px;
     border: none;
-    background: #059669;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     color: #fff;
     font-size: 12px;
     font-weight: 700;
     padding: 8px 16px;
-    border-radius: 10px;
+    border-radius: 20px;
     cursor: pointer;
+    box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2), 0 2px 4px -1px rgba(16, 185, 129, 0.1);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .co-btn-received:hover {
-    background: #047857;
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    transform: translateY(-1px) scale(1.03);
+    box-shadow: 0 6px 12px -2px rgba(16, 185, 129, 0.3), 0 3px 6px -2px rgba(16, 185, 129, 0.2);
+}
+
+.co-btn-received:active {
+    transform: translateY(1px) scale(0.98);
 }
 
 .co-review-placeholder {
@@ -698,4 +707,95 @@
     background: #ecfdf5;
     padding: 8px 12px;
     border-radius: 10px;
+}
+
+/* Cancel Order Button */
+.co-btn-cancel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid #ef4444;
+    background: transparent;
+    color: #ef4444;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.co-btn-cancel:hover {
+    background: #fef2f2;
+    transform: translateY(-1px);
+}
+
+.co-btn-cancel:active {
+    transform: translateY(1px);
+}
+
+/* Cancel Order Modal Styles */
+.co-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(61, 35, 20, 0.45);
+    backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 2000;
+}
+
+.co-modal-card {
+    width: 100%;
+    background: #fff;
+    border-radius: 24px;
+    padding: 28px;
+    border: 2px solid #fecdd3;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    animation: coModalFadeIn 0.2s ease-out;
+}
+
+.co-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.co-modal-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: #3d2314;
+    margin: 0;
+}
+
+.co-modal-close {
+    border: none;
+    background: transparent;
+    font-size: 28px;
+    color: #94a3b8;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    transition: color 0.15s ease;
+}
+
+.co-modal-close:hover {
+    color: #ef4444;
+}
+
+@keyframes coModalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }

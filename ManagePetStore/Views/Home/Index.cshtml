@@ -61,9 +61,60 @@
 
 <!-- Best Selling Products -->
 <section class="ps-section" id="best-sellers">
-    <div class="ps-section-header">
-        <h2 class="ps-section-title">Sản phẩm bán chạy</h2>
-        <a href="#categories" class="ps-filter-btn" aria-label="Lọc theo danh mục"><i class="bi bi-funnel"></i></a>
+    <div class="ps-section-header" style="flex-wrap: wrap; gap: 15px; align-items: center; display: flex; justify-content: space-between; width: 100%;">
+        <h2 class="ps-section-title" style="margin: 0;">Sản phẩm & Dịch vụ</h2>
+        
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: #5D524D;">Thú cưng:</span>
+            <form method="get" asp-controller="Home" asp-action="Index" id="speciesFilterForm" style="margin: 0; display: inline-block;">
+                <input type="hidden" name="search" value="@Model.SearchKeyword" />
+                <input type="hidden" name="category" value="@Model.SelectedCategorySlug" />
+                <select name="species" onchange="document.getElementById('speciesFilterForm').submit();" 
+                        style="border: 1px solid #ECE9E5; border-radius: 8px; padding: 6px 12px; font-size: 0.85rem; font-weight: 600; color: #2D2521; outline: none; background-color: #FFFFFF; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                    @if (ViewBag.SelectedSpecies == "Chó")
+                    {
+                        <option value="Tất cả">Tất cả</option>
+                        <option value="Chó" selected>Chó</option>
+                        <option value="Mèo">Mèo</option>
+                        <option value="Chuột">Chuột</option>
+                        <option value="Rùa">Rùa</option>
+                    }
+                    else if (ViewBag.SelectedSpecies == "Mèo")
+                    {
+                        <option value="Tất cả">Tất cả</option>
+                        <option value="Chó">Chó</option>
+                        <option value="Mèo" selected>Mèo</option>
+                        <option value="Chuột">Chuột</option>
+                        <option value="Rùa">Rùa</option>
+                    }
+                    else if (ViewBag.SelectedSpecies == "Chuột")
+                    {
+                        <option value="Tất cả">Tất cả</option>
+                        <option value="Chó">Chó</option>
+                        <option value="Mèo">Mèo</option>
+                        <option value="Chuột" selected>Chuột</option>
+                        <option value="Rùa">Rùa</option>
+                    }
+                    else if (ViewBag.SelectedSpecies == "Rùa")
+                    {
+                        <option value="Tất cả">Tất cả</option>
+                        <option value="Chó">Chó</option>
+                        <option value="Mèo">Mèo</option>
+                        <option value="Chuột">Chuột</option>
+                        <option value="Rùa" selected>Rùa</option>
+                    }
+                    else
+                    {
+                        <option value="Tất cả" selected>Tất cả</option>
+                        <option value="Chó">Chó</option>
+                        <option value="Mèo">Mèo</option>
+                        <option value="Chuột">Chuột</option>
+                        <option value="Rùa">Rùa</option>
+                    }
+                </select>
+            </form>
+            <a href="#categories" class="ps-filter-btn" aria-label="Lọc theo danh mục" style="padding: 6px 12px; border: 1px solid #ECE9E5; border-radius: 8px; color: #5D524D; display: inline-flex; align-items: center; justify-content: center;"><i class="bi bi-funnel"></i></a>
+        </div>
     </div>
     @if (Model.IsFiltered && Model.BestSellers.Count == 0)
     {
@@ -123,39 +174,178 @@
     </div>
 </section>
 
-<!-- News & Care Handbook -->
-<section class="ps-section">
+<!-- News & Care Handbook - Blog CMS (2 khu vực tách biệt) -->
+<section class="ps-section" id="blog-section">
     <div class="ps-section-header">
         <h2 class="ps-section-title">Tin tức &amp; Cẩm nang chăm sóc</h2>
-        <a href="#" class="ps-section-link">Tất cả bài viết &gt;</a>
+        <a href="/Blog" class="ps-section-link">Tất cả bài viết &gt;</a>
     </div>
 
-    <a href="#" class="ps-featured-blog">
-        <img src="@Model.FeaturedBlog.ImageUrl" alt="@Model.FeaturedBlog.Title" />
-        <div class="ps-featured-overlay">
-            <div class="ps-featured-content">
-                <span class="ps-featured-tag">NỔI BẬT</span>
-                <h3 class="ps-featured-title">@Model.FeaturedBlog.Title</h3>
-                <p class="ps-featured-excerpt">@Model.FeaturedBlog.Excerpt</p>
-                <span class="ps-featured-link">Đọc bài viết ngay &rarr;</span>
+    @if (!Model.LatestBlogs.Any() && !Model.PopularBlogs.Any())
+    {
+        <!-- Fallback khi chưa có bài viết nào trong DB -->
+        <div class="ps-blog-empty">
+            <i class="bi bi-journal-x"></i>
+            <p>Chưa có bài viết nào được đăng. Hãy quay lại sau!</p>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            <!-- ================================================================
+                 CỘT CHÍNH (col-lg-8): BÀI VIẾT MỚI NHẤT
+                 ================================================================ -->
+            <div class="col-lg-8">
+                @if (Model.LatestBlogs.Any())
+                {
+                    var featured = Model.LatestBlogs[0];
+                    var plainFeatured = System.Text.RegularExpressions.Regex.Replace(featured.Excerpt ?? "", "<.*?>", "");
+                    var excerptFeatured = plainFeatured.Length > 160 ? plainFeatured[..160] + "..." : plainFeatured;
+
+                    <!-- Bài đầu tiên: Card lớn nổi bật -->
+                    <a href="/Blog/@featured.Slug" class="ps-blog-featured-card d-block text-decoration-none mb-4">
+                        <div class="ps-blog-featured-inner">
+                            @if (!string.IsNullOrEmpty(featured.CoverImage))
+                            {
+                                <img src="@featured.CoverImage" alt="@featured.Title" class="ps-blog-featured-img" loading="lazy" />
+                            }
+                            else
+                            {
+                                <div class="ps-blog-featured-placeholder">
+                                    <i class="bi bi-journal-richtext"></i>
+                                </div>
+                            }
+                            <div class="ps-blog-featured-overlay">
+                                <div class="ps-blog-featured-content">
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        @if (featured.IsFeatured)
+                                        {
+                                            <span class="ps-blog-badge-featured">⭐ NỔI BẬT</span>
+                                        }
+                                        @if (!string.IsNullOrEmpty(featured.Category))
+                                        {
+                                            <span class="ps-blog-badge-cat">@featured.Category.ToUpper()</span>
+                                        }
+                                    </div>
+                                    <h3 class="ps-blog-featured-title">@featured.Title</h3>
+                                    @if (!string.IsNullOrEmpty(excerptFeatured))
+                                    {
+                                        <p class="ps-blog-featured-excerpt">@excerptFeatured</p>
+                                    }
+                                    <div class="ps-blog-featured-meta">
+                                        <span><i class="bi bi-person-circle me-1"></i>@featured.AuthorName</span>
+                                        <span><i class="bi bi-calendar3 me-1"></i>@featured.CreatedAt.ToString("dd/MM/yyyy")</span>
+                                        <span><i class="bi bi-eye me-1"></i>@featured.ViewCount.ToString("N0") lượt xem</span>
+                                        <span class="ps-blog-read-more-link">Đọc ngay →</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- 3 bài còn lại: Grid nhỏ gọn -->
+                    @if (Model.LatestBlogs.Count > 1)
+                    {
+                        <div class="row g-3">
+                            @for (int i = 1; i < Model.LatestBlogs.Count; i++)
+                            {
+                                var blog = Model.LatestBlogs[i];
+                                var plainText = System.Text.RegularExpressions.Regex.Replace(blog.Excerpt ?? "", "<.*?>", "");
+                                var excerpt = plainText.Length > 90 ? plainText[..90] + "..." : plainText;
+
+                                <div class="col-md-4">
+                                    <a href="/Blog/@blog.Slug" class="ps-blog-small-card d-block text-decoration-none h-100">
+                                        <div class="ps-blog-small-img-wrap">
+                                            @if (!string.IsNullOrEmpty(blog.CoverImage))
+                                            {
+                                                <img src="@blog.CoverImage" alt="@blog.Title" loading="lazy" />
+                                            }
+                                            else
+                                            {
+                                                <div class="ps-blog-small-placeholder">
+                                                    <i class="bi bi-journal-text"></i>
+                                                </div>
+                                            }
+                                            @if (!string.IsNullOrEmpty(blog.Category))
+                                            {
+                                                <span class="ps-blog-small-cat">@blog.Category</span>
+                                            }
+                                        </div>
+                                        <div class="ps-blog-small-body">
+                                            <h4 class="ps-blog-small-title">@blog.Title</h4>
+                                            @if (!string.IsNullOrEmpty(excerpt))
+                                            {
+                                                <p class="ps-blog-small-excerpt">@excerpt</p>
+                                            }
+                                            <div class="ps-blog-small-meta">
+                                                <span>@blog.CreatedAt.ToString("dd/MM")</span>
+                                                <span><i class="bi bi-eye me-1"></i>@blog.ViewCount.ToString("N0")</span>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+
+            <!-- ================================================================
+                 SIDEBAR (col-lg-4): ĐỌC NHIỀU NHẤT
+                 ================================================================ -->
+            <div class="col-lg-4">
+                <div class="ps-popular-box">
+                    <div class="ps-popular-header">
+                        <span class="ps-popular-icon">🔥</span>
+                        <span class="ps-popular-heading">Đọc nhiều nhất</span>
+                    </div>
+                    <div class="ps-popular-list">
+                        @if (!Model.PopularBlogs.Any())
+                        {
+                            <p class="text-muted text-center py-3 small">Chưa có dữ liệu lượt xem.</p>
+                        }
+                        else
+                        {
+                            @for (int i = 0; i < Model.PopularBlogs.Count; i++)
+                            {
+                                var pop = Model.PopularBlogs[i];
+                                <a href="/Blog/@pop.Slug" class="ps-popular-item text-decoration-none">
+                                    <!-- Số thứ tự nổi bật -->
+                                    <div class="ps-popular-rank @(i == 0 ? "rank-gold" : i == 1 ? "rank-silver" : i == 2 ? "rank-bronze" : "")">
+                                        @(i + 1)
+                                    </div>
+                                    <!-- Ảnh nhỏ -->
+                                    <div class="ps-popular-thumb">
+                                        @if (!string.IsNullOrEmpty(pop.CoverImage))
+                                        {
+                                            <img src="@pop.CoverImage" alt="@pop.Title" loading="lazy" />
+                                        }
+                                        else
+                                        {
+                                            <div class="ps-popular-thumb-placeholder">
+                                                <i class="bi bi-journal"></i>
+                                            </div>
+                                        }
+                                    </div>
+                                    <!-- Nội dung -->
+                                    <div class="ps-popular-info">
+                                        <div class="ps-popular-title">@pop.Title</div>
+                                        <div class="ps-popular-views">
+                                            <i class="bi bi-eye-fill me-1"></i>
+                                            <strong>@pop.ViewCount.ToString("N0")</strong> lượt xem
+                                        </div>
+                                    </div>
+                                </a>
+                            }
+                        }
+                    </div>
+                    <div class="ps-popular-footer">
+                        <a href="/Blog" class="ps-popular-view-all">Xem tất cả bài viết →</a>
+                    </div>
+                </div>
             </div>
         </div>
-    </a>
-
-    <div class="ps-blog-grid">
-        @foreach (var blog in Model.BlogArticles)
-        {
-            <a href="#" class="ps-blog-card">
-                <div class="ps-blog-image">
-                    <img src="@blog.ImageUrl" alt="@blog.Title" loading="lazy" />
-                    <span class="ps-blog-tag">@blog.Tag</span>
-                </div>
-                <div class="ps-blog-body">
-                    <h4 class="ps-blog-title">@blog.Title</h4>
-                    <p class="ps-blog-excerpt">@blog.Excerpt</p>
-                    <span class="ps-blog-more">Xem thêm &gt;</span>
-                </div>
-            </a>
-        }
-    </div>
+    }
 </section>
+
+

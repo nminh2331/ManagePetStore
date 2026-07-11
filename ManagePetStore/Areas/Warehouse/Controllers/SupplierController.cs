@@ -61,7 +61,7 @@ public class SupplierController : Controller
         if (supplier == null) return NotFound();
 
         var categories = (await _categoryService.GetCategorySummary()).Categories;
-        var selectedCategoryIds = supplier.SupplierCategories.Select(sc => sc.CategoryId).ToList();
+        var selectedCategoryIds = supplier.Categories.Select(c => c.CategoryId).ToList();
         ViewBag.Categories = new MultiSelectList(categories, "CategoryId", "Name", selectedCategoryIds);
         
         return View(supplier);

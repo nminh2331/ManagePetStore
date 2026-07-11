@@ -36,6 +36,22 @@
                     <a class="ps-admin-link" asp-area="Customer" asp-controller="Pet" asp-action="Index" style="color: #f97316; font-weight: 700; white-space: nowrap;">
                         <i class="bi bi-heart-fill"></i> Hồ sơ thú cưng
                     </a>
+                    @if (User.FindFirst("RoleId")?.Value == "5")
+                    {
+                        <a class="ps-admin-link" href="/Customer/Account/Profile?tab=wallet" style="color: #0dcaf0; font-weight: 700; white-space: nowrap; margin-left: 15px;">
+                            <i class="bi bi-wallet2"></i> Ví điện tử
+                        </a>
+                    }
+                }
+
+                @if (User.FindFirst("RoleId")?.Value == "2" || User.IsInRole("cashier"))
+                {
+                    <a class="ps-admin-link" asp-area="Cashier" asp-controller="ReturnRequest" asp-action="Index" style="color: #0dcaf0; font-weight: 700; white-space: nowrap; margin-left: 15px;">
+                        <i class="bi bi-arrow-counterclockwise"></i> Trả hàng hoàn tiền
+                    </a>
+                    <a class="ps-admin-link" asp-area="Cashier" asp-controller="Order" asp-action="Create" style="color: #f97316; font-weight: 700; white-space: nowrap; margin-left: 15px;">
+                        <i class="bi bi-shop"></i> Quầy thu ngân
+                    </a>
                 }
 
                 @if (User.IsInRole("admin"))
@@ -124,6 +140,10 @@
     </footer>
 
     @await Html.PartialAsync("_HotelBookingModal")
+    
+    <!-- Local SignalR Library & Custom Chat Bubble -->
+    <script src="~/js/signalr.min.js"></script>
+    @await Html.PartialAsync("_ChatBubble")
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>

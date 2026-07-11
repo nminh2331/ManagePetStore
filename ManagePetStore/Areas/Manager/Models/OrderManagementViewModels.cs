@@ -35,4 +35,7 @@ public class OrderManagementListItemViewModel
     public bool CanApprove { get; set; }
     public bool CanReject { get; set; }
     public bool CanShip { get; set; }
+    public DateTime? CanceledAt { get; set; }
+    public string? CanceledBy { get; set; }
+    public string ItemsSummary { get; set; } = "";
 }

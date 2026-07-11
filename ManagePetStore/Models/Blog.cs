@@ -21,5 +21,11 @@ public partial class Blog
 
     public DateTime CreatedAt { get; set; }
 
+    public string? Category { get; set; }
+
+    public bool IsFeatured { get; set; }
+
+    public int ViewCount { get; set; }
+
     public virtual User Author { get; set; } = null!;
 }

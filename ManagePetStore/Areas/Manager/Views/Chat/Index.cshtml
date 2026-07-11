@@ -1,0 +1,759 @@
+@{
+    Layout = "_ManagerLayout";
+    ViewData["Title"] = "Live Chat Hỗ Trợ";
+    ViewData["ManagerNav"] = "chat";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-0" style="color: var(--admin-text-primary);">💬 Live Chat Hỗ Trợ Khách Hàng</h2>
+        <p class="text-muted small mb-0">Hỗ trợ khách hàng trực tuyến qua mô hình Helpdesk real-time</p>
+    </div>
+</div>
+
+<!-- Main Live Chat Dashboard Container -->
+<div class="card border-0 shadow-sm overflow-hidden" style="height: calc(100vh - 200px); min-height: 550px;">
+    <div class="row g-0 h-100">
+        <!-- CỘT TRÁI: DANH SÁCH INBOX (350px) -->
+        <div class="col-md-4 col-lg-3 border-end d-flex flex-column h-100 bg-white">
+            <!-- Nav Tabs -->
+            <ul class="nav nav-tabs nav-fill border-bottom" id="chatTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active py-3 fw-bold position-relative text-uppercase" 
+                            id="live-tab" data-bs-toggle="tab" data-bs-target="#live-panel" 
+                            type="button" role="tab" onclick="changeTab('live')">
+                        🔴 Trực tuyến
+                        <span class="badge bg-danger rounded-pill d-none ms-1" id="liveBadge">0</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link py-3 fw-bold text-uppercase" 
+                            id="history-tab" data-bs-toggle="tab" data-bs-target="#history-panel" 
+                            type="button" role="tab" onclick="changeTab('history')">
+                        📁 Lịch sử
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Search bar -->
+            <div class="p-3 border-bottom bg-light">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" id="inboxSearchInput" class="form-control border-start-0" 
+                           placeholder="Tìm khách hàng..." onkeyup="filterInboxList()" />
+                </div>
+            </div>
+
+            <!-- Tab Panels (Danh sách Inbox) -->
+            <div class="tab-content flex-1 overflow-y-auto" id="chatTabContent">
+                <!-- PANEL: LIVE INBOX -->
+                <div class="tab-pane fade show active" id="live-panel" role="tabpanel">
+                    <div class="list-group list-group-flush" id="liveInboxList">
+                        <!-- Render dynamic sessions -->
+                        <div class="text-center text-muted py-5">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                            <div class="mt-2 small">Đang tải cuộc hội thoại...</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- PANEL: HISTORY -->
+                <div class="tab-pane fade" id="history-panel" role="tabpanel">
+                    <div class="list-group list-group-flush" id="historyInboxList">
+                        <!-- Render dynamic history sessions -->
+                        <div class="text-center text-muted py-5">Chọn tab để tải...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CỘT PHẢI: KHUNG CHAT CHI TIẾT -->
+        <div class="col-md-8 col-lg-9 d-flex flex-column h-100 bg-light">
+            <!-- Trạng thái trống (chưa chọn session) -->
+            <div class="d-flex flex-column align-items-center justify-content-center h-100 text-center p-5" id="chatEmptyState">
+                <i class="bi bi-chat-left-dots-fill text-muted" style="font-size: 5rem; opacity: 0.3;"></i>
+                <h4 class="fw-bold mt-4 text-secondary">Hỗ trợ khách hàng trực tuyến</h4>
+                <p class="text-muted small max-width-400">Chọn một cuộc trò chuyện ở danh sách bên trái để xem nội dung và bắt đầu hỗ trợ giải đáp thắc mắc của khách hàng.</p>
+            </div>
+
+            <!-- Khung chat chính (Ẩn mặc định) -->
+            <div class="d-flex flex-column h-100 d-none" id="chatActiveState">
+                <!-- Chat Header -->
+                <div class="p-3 bg-white border-bottom d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="ps-mgr-avatar">
+                            <i class="bi bi-person-circle"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold fs-6" id="activeCustomerName">Khách Hàng</div>
+                            <div class="small text-muted" id="activeSessionMeta">Phiên chat: #Id</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2" id="headerActionArea">
+                        <!-- Nút đóng phiên / nút tiếp quản render ở đây -->
+                    </div>
+                </div>
+
+                <!-- Chat Body (Khung tin nhắn) -->
+                <div class="flex-1 p-3 overflow-y-auto" id="activeChatMessagesBody" style="background-color: #f1f5f9;">
+                    <!-- Tin nhắn render ở đây -->
+                </div>
+
+                <!-- Blocked notification banner (nếu không có quyền chat) -->
+                <div class="alert alert-warning border-0 rounded-0 mb-0 py-2 px-3 d-none text-center" id="chatBlockBanner">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    Bạn chỉ có quyền xem. Nhấn <strong>Tiếp nhận</strong> hoặc <strong>Tiếp quản</strong> ở phía trên để bắt đầu chat.
+                </div>
+
+                <!-- Chat Footer (Khung gõ tin nhắn) -->
+                <div class="p-3 bg-white border-top" id="activeChatInputArea">
+                    <form id="activeChatForm" onsubmit="sendManagerMessage(event)" class="d-flex gap-2">
+                        <input type="text" id="activeChatMessageInput" class="form-control" 
+                               placeholder="Nhập tin nhắn hỗ trợ khách hàng..." autocomplete="off" required />
+                        <button type="submit" class="btn btn-primary px-4 fw-bold" id="activeChatSendBtn">
+                            Gửi <i class="bi bi-send-fill ms-1"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Xác nhận hành động (Đóng phiên / Tiếp quản) -->
+<div class="modal fade" id="confirmActionModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="confirmActionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header border-bottom-0 pb-0 justify-content-end">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-3 text-center">
+                <div class="mb-3" id="confirmModalIcon">
+                    <!-- Icon render dynamically -->
+                </div>
+                <h4 class="fw-bold text-dark mb-2">Xác nhận yêu cầu</h4>
+                <p class="fs-6 text-secondary px-3 mb-0" id="confirmModalMessage">Nội dung xác nhận...</p>
+            </div>
+            <div class="modal-footer border-top-0 pt-2 pb-4 d-flex justify-content-center gap-3">
+                <button type="button" class="btn btn-light px-4 py-2 fw-semibold" data-bs-dismiss="modal" style="border-radius: 10px;">Hủy bỏ</button>
+                <button type="button" class="btn px-4 py-2 fw-bold text-white shadow-sm" id="btnConfirmAction" style="border-radius: 10px;">Đồng ý</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSS cho Live Chat Manager Dashboard -->
+<style>
+    /* Layout utils */
+    .flex-1 {
+        flex: 1;
+    }
+    .overflow-y-auto {
+        overflow-y: auto;
+    }
+    .max-width-400 {
+        max-width: 400px;
+    }
+    
+    /* Inbox List Item Styles */
+    .chat-inbox-item {
+        padding: 16px;
+        border-bottom: 1px solid #f1f5f9;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        position: relative;
+    }
+    .chat-inbox-item:hover {
+        background-color: #f8fafc;
+    }
+    .chat-inbox-item.active {
+        background-color: #f0fdf4 !important; /* Xanh lá khi chọn */
+        border-left: 4px solid #22c55e;
+    }
+    
+    /* Highlight States */
+    .chat-inbox-item.state-waiting {
+        background-color: #fffbeb; /* Vàng nhạt */
+        border-left: 4px solid #eab308;
+    }
+    .chat-inbox-item.state-active-self {
+        background-color: #f0fdf4; /* Xanh lá nhạt */
+        border-left: 4px solid #22c55e;
+    }
+    .chat-inbox-item.state-active-other {
+        background-color: #f1f5f9; /* Xám nhạt */
+        border-left: 4px solid #94a3b8;
+    }
+
+    .chat-inbox-title {
+        font-weight: 700;
+        color: #1e293b;
+        font-size: 0.95rem;
+    }
+    .chat-inbox-time {
+        font-size: 11px;
+        color: #94a3b8;
+    }
+    .chat-inbox-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 4px;
+    }
+    
+    /* Avatar */
+    .ps-mgr-avatar {
+        width: 42px;
+        height: 42px;
+        background-color: #f1f5f9;
+        color: #f97316;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        border: 2px solid #e2e8f0;
+    }
+    
+    /* Tin nhắn trong khung chat */
+    .mgr-chat-msg-item {
+        display: flex;
+        flex-direction: column;
+        max-width: 70%;
+        margin-bottom: 12px;
+    }
+    .mgr-chat-msg-item.self {
+        align-self: flex-end;
+    }
+    .mgr-chat-msg-item.other {
+        align-self: flex-start;
+    }
+    .mgr-chat-msg-bubble {
+        padding: 10px 16px;
+        border-radius: 16px;
+        font-size: 14px;
+        line-height: 1.5;
+        word-break: break-word;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .mgr-chat-msg-item.self .mgr-chat-msg-bubble {
+        background-color: #0284c7; /* Xanh da trời cho Manager */
+        color: #fff;
+        border-bottom-right-radius: 2px;
+    }
+    .mgr-chat-msg-item.other .mgr-chat-msg-bubble {
+        background-color: #fff;
+        color: #1e293b;
+        border-bottom-left-radius: 2px;
+    }
+    .mgr-chat-msg-time {
+        font-size: 10px;
+        color: #94a3b8;
+        margin-top: 4px;
+        align-self: flex-end;
+    }
+    .mgr-chat-msg-item.other .mgr-chat-msg-time {
+        align-self: flex-start;
+    }
+
+    /* Dividers & System notifications */
+    .mgr-chat-divider {
+        align-self: center;
+        width: 100%;
+        text-align: center;
+        border-bottom: 1px dashed #cbd5e1;
+        line-height: 0.1em;
+        margin: 24px 0 16px;
+        color: #64748b;
+        font-weight: 700;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+    }
+    .mgr-chat-divider span {
+        background: #f1f5f9;
+        padding: 0 12px;
+    }
+    .mgr-chat-system {
+        align-self: center;
+        background-color: #e2e8f0;
+        color: #475569;
+        font-size: 11px;
+        padding: 5px 14px;
+        border-radius: 12px;
+        margin: 8px 0;
+        text-align: center;
+        max-width: 80%;
+    }
+
+    /* Scrollbar */
+    #chatTabContent::-webkit-scrollbar,
+    #activeChatMessagesBody::-webkit-scrollbar {
+        width: 6px;
+    }
+    #chatTabContent::-webkit-scrollbar-track,
+    #activeChatMessagesBody::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    #chatTabContent::-webkit-scrollbar-thumb,
+    #activeChatMessagesBody::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+    }
+</style>
+
+@section Scripts {
+    <!-- Thư viện SignalR Local -->
+    <script src="~/js/signalr.min.js"></script>
+
+
+    <script>
+        const currentUserId = @ViewBag.CurrentUserId;
+        const currentUserName = "@Html.Raw(ViewBag.CurrentUserName)";
+        let managerConnection = null;
+        let selectedCustomerId = 0;
+        let selectedSessionId = 0;
+        let allSessions = { live: [], history: [] };
+        let activeTab = 'live';
+
+        let pendingActionCallback = null;
+
+        function showConfirmModal(message, type, onConfirm) {
+            document.getElementById("confirmModalMessage").textContent = message;
+            const iconContainer = document.getElementById("confirmModalIcon");
+            const confirmBtn = document.getElementById("btnConfirmAction");
+            
+            if (type === 'danger') {
+                iconContainer.innerHTML = `<i class="bi bi-x-circle-fill text-danger" style="font-size: 3.5rem;"></i>`;
+                confirmBtn.className = "btn btn-danger px-4 py-2 fw-bold text-white";
+            } else if (type === 'warning') {
+                iconContainer.innerHTML = `<i class="bi bi-exclamation-triangle-fill text-warning" style="font-size: 3.5rem;"></i>`;
+                confirmBtn.className = "btn btn-warning px-4 py-2 fw-bold text-dark";
+            } else {
+                iconContainer.innerHTML = `<i class="bi bi-info-circle-fill text-primary" style="font-size: 3.5rem;"></i>`;
+                confirmBtn.className = "btn btn-primary px-4 py-2 fw-bold text-white";
+            }
+            
+            pendingActionCallback = onConfirm;
+            
+            const modalEl = document.getElementById('confirmActionModal');
+            const myModal = new bootstrap.Modal(modalEl);
+            myModal.show();
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            // Tải danh sách Inbox lần đầu
+            loadInboxSessions();
+
+            // Khởi tạo SignalR Hub Connection
+            initManagerSignalR();
+
+            // Lắng nghe nút đồng ý trong Modal xác nhận
+            const btnConfirm = document.getElementById("btnConfirmAction");
+            if (btnConfirm) {
+                btnConfirm.addEventListener("click", function() {
+                    if (pendingActionCallback) {
+                        pendingActionCallback();
+                    }
+                    const modalEl = document.getElementById('confirmActionModal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+                });
+            }
+        });
+
+
+        // =========================================================================
+        // KHỞI TẠO kết nối SIGNALR
+        // =========================================================================
+        function initManagerSignalR() {
+            managerConnection = new signalR.HubConnectionBuilder()
+                .withUrl("/chatHub")
+                .withAutomaticReconnect()
+                .build();
+
+            // Khi có tin nhắn mới gửi đến
+            managerConnection.on("ReceiveMessage", function (msg) {
+                // Nếu tin nhắn thuộc customer đang được chọn xem
+                if (selectedCustomerId === msg.customerId) {
+                    renderManagerChatMessage(msg);
+                    scrollToChatBottom();
+                }
+                // Tự động load lại danh sách inbox để cập nhật LastMessageAt và tin nhắn cuối
+                loadInboxSessions();
+            });
+
+            // Khi có Customer tạo session mới (Waiting)
+            managerConnection.on("NewSessionCreated", function (session) {
+                loadInboxSessions();
+                playNotificationSound();
+            });
+
+            // Khi có sự thay đổi người quản lý phụ trách session
+            managerConnection.on("SessionAssigned", function (assignInfo) {
+                if (selectedSessionId === assignInfo.sessionId) {
+                    // Update header và input chat nếu là mình
+                    updateActiveChatUI(selectedSessionId, selectedCustomerId, $("#activeCustomerName").text(), assignInfo.managerId);
+                }
+                loadInboxSessions();
+            });
+
+            // Khi đóng phiên
+            managerConnection.on("SessionClosed", function (closeInfo) {
+                if (selectedSessionId === closeInfo.sessionId) {
+                    updateActiveChatUI(selectedSessionId, selectedCustomerId, $("#activeCustomerName").text(), null, "Closed");
+                }
+                loadInboxSessions();
+            });
+
+            managerConnection.start()
+                .then(() => {
+                    console.log("Manager SignalR Connected!");
+                })
+                .catch(err => console.error("Lỗi khởi tạo Manager SignalR:", err));
+        }
+
+        // =========================================================================
+        // LOAD DANH SÁCH INBOX SESSIONS (API)
+        // =========================================================================
+        function loadInboxSessions() {
+            fetch('/api/ChatApi/sessions')
+                .then(res => {
+                    if (!res.ok) throw new Error("Không thể tải danh sách phiên.");
+                    return res.json();
+                })
+                .then(data => {
+                    allSessions = data;
+                    renderInboxList();
+                })
+                .catch(err => console.error(err));
+        }
+
+
+        // Render List Inbox
+        function renderInboxList() {
+            const listContainer = document.getElementById(activeTab === 'live' ? 'liveInboxList' : 'historyInboxList');
+            const sessions = activeTab === 'live' ? allSessions.live : allSessions.history;
+            
+            // Cập nhật Badge số lượng session Live chưa được tiếp nhận (Waiting)
+            const waitingCount = allSessions.live.filter(s => s.status === 'Waiting').length;
+            const badge = document.getElementById("liveBadge");
+            if (waitingCount > 0) {
+                badge.textContent = waitingCount;
+                badge.classList.remove("d-none");
+            } else {
+                badge.classList.add("d-none");
+            }
+
+            if (sessions.length === 0) {
+                listContainer.innerHTML = `<div class="text-center text-muted py-5 small">Không có cuộc trò chuyện nào.</div>`;
+                return;
+            }
+
+            listContainer.innerHTML = "";
+            sessions.forEach(s => {
+                const item = document.createElement("div");
+                
+                // Quyết định class highlight trạng thái
+                let highlightClass = "";
+                let statusBadge = "";
+                let actionText = "";
+
+                if (s.status === "Waiting") {
+                    highlightClass = "state-waiting";
+                    statusBadge = `<span class="badge bg-warning text-dark">Chờ hỗ trợ</span>`;
+                    actionText = `<span class="text-warning fw-bold small"><i class="bi bi-clock"></i> Tiếp nhận ngay</span>`;
+                } else if (s.status === "Active") {
+                    if (s.managerId === currentUserId) {
+                        highlightClass = "state-active-self";
+                        statusBadge = `<span class="badge bg-success">Đang chat</span>`;
+                        actionText = `<span class="text-success fw-bold small"><i class="bi bi-chat-text-fill"></i> Phụ trách</span>`;
+                    } else {
+                        highlightClass = "state-active-other";
+                        statusBadge = `<span class="badge bg-secondary">Bị cướp quyền</span>`;
+                        actionText = `<span class="text-muted small">Phụ trách: ${s.managerName}</span>`;
+                    }
+                } else {
+                    // Closed
+                    statusBadge = `<span class="badge bg-dark">Đã đóng</span>`;
+                    actionText = `<span class="text-muted small">Bởi: ${s.managerName || 'System'}</span>`;
+                }
+
+                // Đánh dấu active item đang chọn
+                const isActive = s.id === selectedSessionId ? "active" : "";
+
+                item.className = `chat-inbox-item ${highlightClass} ${isActive}`;
+                item.setAttribute("onclick", `selectChatSession(${s.id}, ${s.customerId}, '${escapeJS(s.customerName)}', ${s.managerId}, '${s.status}')`);
+
+                const lastMsgTime = new Date(s.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                item.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="chat-inbox-title">${escapeHTML(s.customerName)}</span>
+                        <span class="chat-inbox-time">${lastMsgTime}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        ${statusBadge}
+                        ${actionText}
+                    </div>
+                `;
+                listContainer.appendChild(item);
+            });
+        }
+
+        // Chọn một phiên chat
+        function selectChatSession(sessionId, customerId, customerName, managerId, status) {
+            selectedSessionId = sessionId;
+            selectedCustomerId = customerId;
+
+            // Xóa rỗng empty state, hiện active state
+            document.getElementById("chatEmptyState").classList.add("d-none");
+            document.getElementById("chatActiveState").classList.remove("d-none");
+
+            // Cập nhật active class trong list inbox
+            document.querySelectorAll(".chat-inbox-item").forEach(item => item.classList.remove("active"));
+            event.currentTarget.classList.add("active");
+
+            // Join SignalR Group của customerId này
+            if (managerConnection) {
+                managerConnection.invoke("JoinGroup", customerId)
+                    .catch(err => console.error("Lỗi Join Group của Manager:", err));
+            }
+
+            // Cập nhật UI & Load lịch sử
+            updateActiveChatUI(sessionId, customerId, customerName, managerId, status);
+            loadManagerChatHistory(customerId, sessionId);
+        }
+
+        // Cập nhật các nút Tiếp nhận / Tiếp quản ở Header & Khóa/Mở Khung Chat
+        function updateActiveChatUI(sessionId, customerId, customerName, managerId, status) {
+            $("#activeCustomerName").text(customerName);
+            $("#activeSessionMeta").text(`Phiên chat: #${sessionId} (${status === 'Closed' ? 'Đã đóng' : managerId === null ? 'Đang chờ' : 'Hoạt động'})`);
+
+            const headerActions = document.getElementById("headerActionArea");
+            const chatFormInput = document.getElementById("activeChatMessageInput");
+            const chatSendBtn = document.getElementById("activeChatSendBtn");
+            const blockBanner = document.getElementById("chatBlockBanner");
+
+            headerActions.innerHTML = "";
+            chatFormInput.disabled = true;
+            chatSendBtn.disabled = true;
+            blockBanner.classList.add("d-none");
+
+            if (status === "Closed") {
+                headerActions.innerHTML = `<span class="badge bg-dark px-3 py-2 fs-6">Đã đóng phiên</span>`;
+                blockBanner.innerHTML = `<i class="bi bi-info-circle-fill me-2"></i> Phiên chat này đã được kết thúc. Chỉ có thể xem lại lịch sử.`;
+                blockBanner.classList.remove("d-none");
+                return;
+            }
+
+            if (managerId === null) {
+                // Phiên Waiting
+                headerActions.innerHTML = `
+                    <button class="btn btn-warning fw-bold text-dark" onclick="managerJoinSession(${sessionId})">
+                        <i class="bi bi-check-circle-fill me-1"></i> Tiếp nhận
+                    </button>
+                `;
+                blockBanner.classList.remove("d-none");
+            } 
+            else if (managerId === currentUserId) {
+                // Mình là người phụ trách
+                headerActions.innerHTML = `
+                    <span class="badge bg-success px-3 py-2 fs-6 me-2"><i class="bi bi-person-fill"></i> Bạn đang chat</span>
+                    <button class="btn btn-danger btn-sm" onclick="managerCloseSession(${sessionId})">
+                        Đóng phiên
+                    </button>
+                `;
+                // Mở khóa khung chat
+                chatFormInput.disabled = false;
+                chatSendBtn.disabled = false;
+            } 
+            else {
+                // Người khác phụ trách
+                headerActions.innerHTML = `
+                    <button class="btn btn-outline-danger fw-bold" onclick="managerTakeOverSession(${sessionId})">
+                        <i class="bi bi-arrow-left-right me-1"></i> Tiếp quản / Cướp quyền
+                    </button>
+                `;
+                blockBanner.classList.remove("d-none");
+            }
+        }
+
+        // Tải lịch sử 50 tin nhắn của Customer
+        function loadManagerChatHistory(customerId, currentSessionId) {
+            const body = document.getElementById("activeChatMessagesBody");
+            body.innerHTML = `
+                <div class="text-center text-muted my-5">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    <div class="mt-2 small">Đang tải lịch sử...</div>
+                </div>
+            `;
+
+            fetch(`/api/ChatApi/messages/${customerId}`)
+                .then(res => res.json())
+
+                .then(messages => {
+                    body.innerHTML = "";
+                    let hasPlacedDivider = false;
+
+                    // Vẽ các tin nhắn cũ & chèn divider phân chia phiên hiện tại
+                    messages.forEach(m => {
+                        // Nếu tin nhắn thuộc phiên hiện tại và chưa đặt divider
+                        if (m.sessionId === currentSessionId && !hasPlacedDivider) {
+                            const div = document.createElement("div");
+                            div.className = "mgr-chat-divider";
+                            div.innerHTML = `<span>Phiên chat hiện tại (#${currentSessionId})</span>`;
+                            body.appendChild(div);
+                            hasPlacedDivider = true;
+                        }
+
+                        renderManagerChatMessage({
+                            senderId: m.senderId,
+                            messageText: m.messageText,
+                            sentAt: m.sentAt
+                        });
+                    });
+                    
+                    // Trường hợp phiên mới hoàn toàn chưa có tin nhắn nào
+                    if (!hasPlacedDivider) {
+                        const div = document.createElement("div");
+                        div.className = "mgr-chat-divider";
+                        div.innerHTML = `<span>Phiên chat hiện tại (#${currentSessionId})</span>`;
+                        body.appendChild(div);
+                    }
+
+                    scrollToChatBottom();
+                })
+                .catch(err => {
+                    body.innerHTML = `<div class="text-center text-danger my-5">${err.message}</div>`;
+                });
+        }
+
+        // Vẽ một tin nhắn lên khung chat manager
+        function renderManagerChatMessage(msg) {
+            const body = document.getElementById("activeChatMessagesBody");
+            const isSelf = msg.senderId === currentUserId;
+            const msgClass = isSelf ? "self" : "other";
+
+            const div = document.createElement("div");
+            div.className = `mgr-chat-msg-item ${msgClass}`;
+
+            const timeFormatted = new Date(msg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            div.innerHTML = `
+                <div class="mgr-chat-msg-bubble shadow-sm">${escapeHTML(msg.messageText)}</div>
+                <div class="mgr-chat-msg-time">${timeFormatted}</div>
+            `;
+            body.appendChild(div);
+        }
+
+        // Gửi tin nhắn từ Manager
+        function sendManagerMessage(event) {
+            event.preventDefault();
+            const input = document.getElementById("activeChatMessageInput");
+            const text = input.value.trim();
+            if (!text || !managerConnection) return;
+
+            managerConnection.invoke("SendMessage", selectedCustomerId, text)
+                .then(() => {
+                    input.value = "";
+                })
+                .catch(err => alert("Không thể gửi: " + err.message));
+        }
+
+        // =========================================================================
+        // MANAGER HUB ACTIONS
+        // =========================================================================
+        function managerJoinSession(sessionId) {
+            if (managerConnection) {
+                managerConnection.invoke("JoinSession", sessionId, currentUserId)
+                    .catch(err => alert("Lỗi: " + err.message));
+            }
+        }
+
+        function managerTakeOverSession(sessionId) {
+            showConfirmModal(
+                "Bạn có chắc chắn muốn tiếp quản (cướp quyền) phụ trách phiên chat này từ nhân viên khác không?",
+                "warning",
+                function() {
+                    if (managerConnection) {
+                        managerConnection.invoke("TakeOverSession", sessionId, currentUserId)
+                            .catch(err => alert("Lỗi: " + err.message));
+                    }
+                }
+            );
+        }
+
+        function managerCloseSession(sessionId) {
+            showConfirmModal(
+                "Bạn có chắc chắn muốn đóng và kết thúc phiên hỗ trợ chat này với khách hàng?",
+                "danger",
+                function() {
+                    if (managerConnection) {
+                        managerConnection.invoke("CloseSession", sessionId)
+                            .catch(err => alert("Lỗi: " + err.message));
+                    }
+                }
+            );
+        }
+
+
+        // =========================================================================
+        // UTILS
+        // =========================================================================
+        function changeTab(tabName) {
+            activeTab = tabName;
+            renderInboxList();
+        }
+
+        function filterInboxList() {
+            const query = document.getElementById("inboxSearchInput").value.toLowerCase().trim();
+            const items = document.querySelectorAll(activeTab === 'live' ? '#liveInboxList .chat-inbox-item' : '#historyInboxList .chat-inbox-item');
+            
+            items.forEach(item => {
+                const title = item.querySelector('.chat-inbox-title').textContent.toLowerCase();
+                if (title.includes(query)) {
+                    item.classList.remove("d-none");
+                } else {
+                    item.classList.add("d-none");
+                }
+            });
+        }
+
+        function scrollToChatBottom() {
+            const body = document.getElementById("activeChatMessagesBody");
+            body.scrollTop = body.scrollHeight;
+        }
+
+        function playNotificationSound() {
+            try {
+                // Tạo âm thanh bíp nhẹ báo hiệu tin nhắn mới/phiên mới cho manager
+                const context = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = context.createOscillator();
+                const gain = context.createGain();
+                osc.connect(gain);
+                gain.connect(context.destination);
+                osc.frequency.value = 523.25; // nốt C5
+                gain.gain.setValueAtTime(0.1, context.currentTime);
+                osc.start();
+                osc.stop(context.currentTime + 0.15);
+            } catch (e) {
+                // Bỏ qua nếu trình duyệt chặn tự động phát âm thanh
+            }
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        function escapeJS(str) {
+            return str.replace(/['"\\]/g, '\\$&');
+        }
+    </script>
+}

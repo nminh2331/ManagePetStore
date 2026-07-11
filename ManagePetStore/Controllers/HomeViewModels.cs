@@ -13,6 +13,10 @@ public class HomepageViewModel
     public string? SearchKeyword { get; set; }
     public string? SelectedCategorySlug { get; set; }
     public bool IsFiltered { get; set; }
+
+    // Blog CMS: dữ liệu thật từ database
+    public List<BlogSummaryItem> LatestBlogs { get; set; } = [];
+    public List<BlogSummaryItem> PopularBlogs { get; set; } = [];
 }
 
 public class CategoryItem
@@ -35,6 +39,7 @@ public class ProductCardItem
     public string? Badge { get; set; }
     public string BadgeType { get; set; } = "discount";
     public bool InStock { get; set; } = true;
+    public string? TargetSpecies { get; set; }
 }
 
 public class BlogCardItem
@@ -85,4 +90,19 @@ public class ProductDetailViewModel
     public bool InStock { get; set; } = true;
     public List<string> Images { get; set; } = [];
     public List<string> Features { get; set; } = [];
+}
+
+/// <summary>ViewModel cho danh sách Blog hiển thị ở Trang chủ</summary>
+public class BlogSummaryItem
+{
+    public int BlogId { get; set; }
+    public string Slug { get; set; } = "";
+    public string Title { get; set; } = "";
+    public string? Excerpt { get; set; }
+    public string? CoverImage { get; set; }
+    public string? Category { get; set; }
+    public bool IsFeatured { get; set; }
+    public int ViewCount { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public string AuthorName { get; set; } = "";
 }

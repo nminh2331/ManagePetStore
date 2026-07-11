@@ -436,11 +436,22 @@ public class ProductController : Controller
             return RedirectToAction("Details", new { id = sku });
         }
 
-        // Check if groomer has an overlapping appointment at this slot
-        bool isOverlap = await _context.SpaBookings.AnyAsync(b => 
-            b.GroomerId == targetGroomerId && 
-            b.DateTime == bookingDateTime && 
-            b.SpaStatus != "Cancelled");
+        // Check if groomer has an overlapping appointment at this slot (Interval Overlap Check - BR-29)
+        var bookedSlotsToday = await _context.SpaBookings
+            .Include(b => b.Service)
+            .Where(b => b.GroomerId == targetGroomerId 
+                     && b.DateTime.Date == bookingDateTime.Date 
+                     && b.SpaStatus != "Cancelled")
+            .ToListAsync();
+
+        bool isOverlap = bookedSlotsToday.Any(b => {
+            var existingStart = b.DateTime;
+            var existingEnd = b.DateTime.AddMinutes(b.Service?.DurationMinutes ?? 30);
+            var newStart = bookingDateTime;
+            var newEnd = bookingDateTime.AddMinutes(service.DurationMinutes);
+            return newStart < existingEnd && existingStart < newEnd;
+        });
+
         if (isOverlap)
         {
             TempData["ErrorMessage"] = "Kỹ thuật viên đã có ca làm việc ở khung giờ này. Vui lòng chọn khung giờ hoặc kỹ thuật viên khác.";

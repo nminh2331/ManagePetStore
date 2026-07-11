@@ -1,0 +1,296 @@
+@model ManagePetStore.Models.Blog
+@{
+    Layout = "_PetStoreLayout";
+    ViewData["Title"] = Model.Title;
+    var relatedBlogs = ViewBag.RelatedBlogs as List<ManagePetStore.Models.Blog> ?? new();
+    // Trích xuất đoạn trích ~200 ký tự cho meta description
+    var plainText = System.Text.RegularExpressions.Regex.Replace(Model.ContentBody, "<.*?>", "");
+    var metaDesc = plainText.Length > 200 ? plainText[..200] + "..." : plainText;
+}
+
+@section Styles {
+    <style>
+        .blog-detail-hero {
+            position: relative;
+            width: 100%;
+            height: 420px;
+            overflow: hidden;
+            border-radius: 0 0 24px 24px;
+            background: #1e293b;
+        }
+        .blog-detail-hero img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.55;
+        }
+        .blog-detail-hero-content {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 40px 60px;
+            max-width: 860px;
+        }
+        .blog-category-pill {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            margin-bottom: 12px;
+            background: rgba(249, 115, 22, 0.9);
+            color: #fff;
+        }
+        .blog-detail-title {
+            font-size: clamp(1.4rem, 3vw, 2.2rem);
+            font-weight: 800;
+            color: #fff;
+            line-height: 1.3;
+            margin-bottom: 16px;
+        }
+        .blog-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            font-size: 0.88rem;
+            color: rgba(255,255,255,0.8);
+        }
+        .blog-meta i { margin-right: 5px; }
+
+        .blog-content-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        /* Styles cho nội dung CKEditor render ra */
+        .ck-content-render h1, .ck-content-render h2, .ck-content-render h3 {
+            font-weight: 700; margin-top: 2rem; margin-bottom: 1rem;
+            color: #1e293b;
+        }
+        .ck-content-render h2 { font-size: 1.5rem; border-bottom: 2px solid #f1f5f9; padding-bottom: .5rem; }
+        .ck-content-render h3 { font-size: 1.2rem; }
+        .ck-content-render p { line-height: 1.85; color: #374151; margin-bottom: 1.2rem; }
+        
+        /* CKEditor 5 Image & Caption Styles */
+        .ck-content-render figure.image {
+            margin: 1.5rem auto;
+            display: table;
+            clear: both;
+            text-align: center;
+            max-width: 100%;
+        }
+        .ck-content-render figure.image img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            display: block;
+            margin: 0 auto;
+        }
+        .ck-content-render figure.image figcaption {
+            display: table-caption;
+            caption-side: bottom;
+            font-size: 0.85rem;
+            color: #64748b;
+            padding: 8px;
+            background-color: #f8fafc;
+            border-radius: 6px;
+            margin-top: 6px;
+            font-style: italic;
+            text-align: center;
+            line-height: 1.4;
+        }
+        /* Alignment classes */
+        .ck-content-render figure.image.image-style-side {
+            float: right;
+            margin-left: 20px;
+            margin-bottom: 15px;
+            max-width: 50%;
+        }
+        .ck-content-render figure.image.image-style-align-left {
+            float: left;
+            margin-right: 20px;
+            margin-bottom: 15px;
+            max-width: 50%;
+        }
+        .ck-content-render figure.image.image-style-align-right {
+            float: right;
+            margin-left: 20px;
+            margin-bottom: 15px;
+            max-width: 50%;
+        }
+        .ck-content-render figure.image.image-style-block-align-left {
+            margin-left: 0;
+            margin-right: auto;
+        }
+        .ck-content-render figure.image.image-style-block-align-right {
+            margin-right: 0;
+            margin-left: auto;
+        }
+        
+        .ck-content-render blockquote {
+
+            border-left: 4px solid #f97316;
+            background: #fff7ed;
+            padding: 16px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 1.5rem 0;
+            font-style: italic;
+            color: #92400e;
+        }
+        .ck-content-render pre, .ck-content-render code {
+            background: #1e293b;
+            color: #e2e8f0;
+            border-radius: 8px;
+            padding: 2px 6px;
+            font-size: .88em;
+        }
+        .ck-content-render pre { padding: 16px 20px; overflow-x: auto; }
+        .ck-content-render ul, .ck-content-render ol {
+            padding-left: 1.5rem; margin-bottom: 1.2rem; line-height: 1.85;
+        }
+        .ck-content-render table {
+            width: 100%; border-collapse: collapse; margin: 1.5rem 0;
+        }
+        .ck-content-render th, .ck-content-render td {
+            border: 1px solid #e5e7eb; padding: 10px 14px; text-align: left;
+        }
+        .ck-content-render th { background: #f8fafc; font-weight: 600; }
+
+        /* Related blogs card */
+        .related-blog-card {
+            display: flex; gap: 14px; padding: 14px 0;
+            border-bottom: 1px solid #f1f5f9; text-decoration: none; color: inherit;
+            transition: color .2s;
+        }
+        .related-blog-card:hover { color: #f97316; }
+        .related-blog-card:last-child { border-bottom: none; }
+        .related-blog-card img {
+            width: 72px; height: 56px; object-fit: cover;
+            border-radius: 8px; flex-shrink: 0;
+        }
+
+        @@media (max-width: 768px) {
+            .blog-detail-hero { height: 280px; }
+            .blog-detail-hero-content { padding: 20px 20px; }
+        }
+    </style>
+}
+
+<!-- SEO Meta -->
+<meta name="description" content="@metaDesc" />
+
+<!-- Breadcrumb & Post Header -->
+<div class="ps-section" style="background:#f8f9fa;padding:32px 0 0;">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Trang chủ</a></li>
+                <li class="breadcrumb-item"><a href="/Blog">Blog</a></li>
+                <li class="breadcrumb-item active">@Model.Title</li>
+            </ol>
+        </nav>
+        <h1 class="fw-bold mb-2" style="font-size:clamp(1.4rem,3vw,2rem);color:#1e293b;">@Model.Title</h1>
+        <div class="d-flex gap-4 flex-wrap mb-4" style="font-size:.9rem;color:#64748b;">
+            <span><i class="bi bi-person-circle me-1"></i>@Model.Author.FullName</span>
+            <span><i class="bi bi-calendar3 me-1"></i>@Model.CreatedAt.ToString("dd/MM/yyyy")</span>
+            <span><i class="bi bi-eye me-1"></i>@Model.ViewCount.ToString("N0") lượt xem</span>
+            @if (!string.IsNullOrEmpty(Model.Category))
+            {
+                <span class="badge rounded-pill" style="background:#fff7ed;color:#c2410c;font-weight:600;">
+                    @Model.Category
+                </span>
+            }
+        </div>
+    </div>
+</div>
+
+
+<!-- Nội dung chính -->
+<section class="ps-section">
+    <div class="container">
+        <div class="row g-5">
+            <!-- Nội dung bài viết -->
+            <div class="col-lg-8">
+                <article class="blog-content-wrapper">
+                    <!-- Nội dung bài viết (render HTML từ CKEditor) -->
+
+                    <div class="ck-content-render">
+                        @Html.Raw(Model.ContentBody)
+                    </div>
+
+                    <!-- Thẻ chia sẻ -->
+                    <hr class="my-5" />
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                        <div>
+                            <span class="text-muted me-2">Đăng bởi:</span>
+                            <strong>@Model.Author.FullName</strong>
+                            <span class="text-muted ms-2">— @Model.CreatedAt.ToString("dd 'tháng' MM, yyyy")</span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="https://www.facebook.com/sharer/sharer.php?u=@Uri.EscapeDataString($"{Context.Request.Scheme}://{Context.Request.Host}/Blog/{Model.Slug}")"
+                               target="_blank" class="btn btn-sm btn-outline-primary" title="Chia sẻ Facebook">
+                                <i class="bi bi-facebook me-1"></i>Chia sẻ
+                            </a>
+                            <a href="/Blog" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Tất cả bài viết
+                            </a>
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <!-- Bài viết liên quan -->
+                @if (relatedBlogs.Any())
+                {
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-transparent border-bottom py-3">
+                            <h6 class="fw-bold mb-0">📚 Bài viết liên quan</h6>
+                        </div>
+                        <div class="card-body">
+                            @foreach (var related in relatedBlogs)
+                            {
+                                <a href="/Blog/@related.Slug" class="related-blog-card">
+                                    @if (!string.IsNullOrEmpty(related.CoverImage))
+                                    {
+                                        <img src="@related.CoverImage" alt="@related.Title" loading="lazy" />
+                                    }
+                                    else
+                                    {
+                                        <div style="width:72px;height:56px;border-radius:8px;background:#f1f5f9;
+                                                    display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                            <i class="bi bi-journal-text text-muted"></i>
+                                        </div>
+                                    }
+                                    <div>
+                                        <div class="fw-semibold" style="font-size:.9rem;line-height:1.4;
+                                             display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
+                                            @related.Title
+                                        </div>
+                                        <small class="text-muted"><i class="bi bi-eye me-1"></i>@related.ViewCount.ToString("N0") lượt xem</small>
+                                    </div>
+                                </a>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- CTA quay lại trang blog -->
+                <div class="card border-0 text-center p-4"
+                     style="background:linear-gradient(135deg,#fff7ed,#fef3c7);border-radius:16px;">
+                    <i class="bi bi-journal-richtext fs-1 text-warning mb-3 d-block"></i>
+                    <h6 class="fw-bold mb-2">Khám phá thêm bài viết</h6>
+                    <p class="text-muted small mb-3">Cẩm nang chăm sóc thú cưng từ chuyên gia</p>
+                    <a href="/Blog" class="btn btn-warning btn-sm fw-semibold">
+                        Xem tất cả bài viết →
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

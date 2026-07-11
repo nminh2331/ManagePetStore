@@ -1,0 +1,297 @@
+@model ManagePetStore.Models.Blog
+@{
+    Layout = "_ManagerLayout";
+    ViewData["Title"] = "Tạo bài viết mới";
+    ViewData["ManagerNav"] = "blogs";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item">
+                    <a asp-area="Manager" asp-controller="Blogs" asp-action="Index">Quản lý Blog</a>
+                </li>
+                <li class="breadcrumb-item active">Tạo bài viết mới</li>
+            </ol>
+        </nav>
+        <h2 class="fw-bold mb-0" style="color: var(--admin-text-primary);">✏️ Tạo bài viết mới</h2>
+    </div>
+    <a asp-area="Manager" asp-controller="Blogs" asp-action="Index" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i> Quay lại
+    </a>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger alert-dismissible fade show mb-4">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <strong>Vui lòng kiểm tra lại các trường sau:</strong>
+        <ul class="mb-0 mt-2">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<form asp-area="Manager" asp-controller="Blogs" asp-action="Create"
+      method="post" enctype="multipart/form-data" id="blogCreateForm">
+    @Html.AntiForgeryToken()
+
+    <div class="row g-4">
+        <!-- Cột chính: Nội dung -->
+        <div class="col-lg-8">
+            <!-- Tiêu đề -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <label asp-for="Title" class="form-label fw-semibold">
+                        Tiêu đề bài viết <span class="text-danger">*</span>
+                    </label>
+                    <input asp-for="Title" class="form-control form-control-lg"
+                           placeholder="Nhập tiêu đề hấp dẫn cho bài viết..."
+                           id="blogTitle" oninput="autoGenerateSlug()" />
+                    <span asp-validation-for="Title" class="text-danger small"></span>
+                </div>
+            </div>
+
+            <!-- Slug -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <label asp-for="Slug" class="form-label fw-semibold">
+                        Slug (URL thân thiện)
+                        <span class="text-muted fw-normal small">— Để trống để tự động sinh từ tiêu đề</span>
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text text-muted">/blog/</span>
+                        <input asp-for="Slug" class="form-control font-monospace"
+                               placeholder="tu-dong-sinh-tu-tieu-de" id="blogSlug" />
+                    </div>
+                    <span asp-validation-for="Slug" class="text-danger small"></span>
+                </div>
+            </div>
+
+            <!-- Nội dung (CKEditor 5) -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom py-3">
+                    <span class="fw-semibold">Nội dung bài viết <span class="text-danger">*</span></span>
+                </div>
+                <div class="card-body p-0">
+                    <textarea asp-for="ContentBody" id="contentBodyEditor"
+                              style="display:none;">@Model.ContentBody</textarea>
+                    <div id="editor-container" style="min-height: 450px; border-radius: 0 0 8px 8px;"></div>
+                </div>
+                <span asp-validation-for="ContentBody" class="text-danger small px-3 pb-2 d-block"></span>
+            </div>
+        </div>
+
+        <!-- Cột phụ: Cài đặt -->
+        <div class="col-lg-4">
+            <!-- Xuất bản -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom py-3">
+                    <span class="fw-semibold">⚙️ Cài đặt xuất bản</span>
+                </div>
+                <div class="card-body">
+                    <div class="form-check form-switch mb-3">
+                        <input asp-for="IsPublished" class="form-check-input" role="switch" id="isPublishedSwitch" />
+                        <label class="form-check-label fw-semibold" for="isPublishedSwitch">
+                            Đăng bài ngay
+                        </label>
+                        <div class="form-text">Bật để hiển thị công khai trên trang web</div>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input asp-for="IsFeatured" class="form-check-input" role="switch" id="isFeaturedSwitch" />
+                        <label class="form-check-label fw-semibold" for="isFeaturedSwitch">
+                            ⭐ Bài nổi bật
+                        </label>
+                        <div class="form-text">Ưu tiên hiển thị lên đầu trang chủ</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thể loại -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom py-3">
+                    <span class="fw-semibold">🏷️ Phân loại</span>
+                </div>
+                <div class="card-body">
+                    <label asp-for="Category" class="form-label fw-semibold">Thể loại</label>
+                    <select asp-for="Category" class="form-select" id="categorySelect">
+                        <option value="">— Chọn thể loại —</option>
+                        <option value="Dinh dưỡng">Dinh dưỡng</option>
+                        <option value="Sức khỏe">Sức khỏe</option>
+                        <option value="Làm đẹp">Làm đẹp</option>
+                        <option value="Huấn luyện">Huấn luyện</option>
+                        <option value="Tin tức">Tin tức</option>
+                        <option value="Mẹo & Thủ thuật">Mẹo & Thủ thuật</option>
+                        <option value="Dịch vụ">Dịch vụ</option>
+                    </select>
+                    <span asp-validation-for="Category" class="text-danger small"></span>
+                </div>
+            </div>
+
+            <!-- Ảnh bìa -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom py-3">
+                    <span class="fw-semibold">🖼️ Ảnh bìa</span>
+                </div>
+                <div class="card-body">
+                    <div id="coverPreview" class="mb-3 d-none">
+                        <img id="coverPreviewImg" src="" alt="Preview ảnh bìa"
+                             style="width:100%;height:160px;object-fit:cover;border-radius:8px;" />
+                    </div>
+                    <div id="coverPlaceholder" class="rounded d-flex align-items-center justify-content-center mb-3"
+                         style="height:120px;background:#f8f9fa;border:2px dashed #dee2e6;">
+                        <div class="text-center text-muted">
+                            <i class="bi bi-image fs-2 d-block mb-1"></i>
+                            <small>Chưa có ảnh bìa</small>
+                        </div>
+                    </div>
+                    <input type="file" name="coverImageFile" id="coverImageFile" accept="image/*"
+                           class="form-control" onchange="previewCoverImage(this)" />
+                    <div class="form-text">JPG, PNG, WEBP. Tối đa 5MB.</div>
+                </div>
+            </div>
+
+            <!-- Nút lưu -->
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-floppy me-2"></i>Lưu bài viết
+                </button>
+                <a asp-area="Manager" asp-controller="Blogs" asp-action="Index"
+                   class="btn btn-outline-secondary">Hủy</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+    <!-- CKEditor 5 CDN -->
+    <script src="https://cdn.ckeditor.com/ckeditor5/43.3.1/ckeditor5.umd.js"></script>
+    <link rel="stylesheet" href="https://cdn.ckeditor.com/ckeditor5/43.3.1/ckeditor5.css" />
+
+    <script>
+        const { ClassicEditor, Essentials, Bold, Italic, Underline, Strikethrough,
+            Paragraph, Heading, Link,
+            Image, ImageUpload, ImageCaption, ImageStyle, ImageToolbar, ImageResize, SimpleUploadAdapter,
+            BlockQuote, List, Indent, MediaEmbed,
+            Table, TableToolbar, HorizontalLine, FontColor, FontBackgroundColor,
+            FontSize, FontFamily, Alignment, Code, CodeBlock } = CKEDITOR;
+
+        let editorInstance;
+
+        ClassicEditor.create(document.querySelector('#editor-container'), {
+            plugins: [
+                Essentials, Bold, Italic, Underline, Strikethrough,
+                Paragraph, Heading, Link, BlockQuote, List, Indent,
+                // Image plugins — bật đầy đủ để hỗ trợ upload & resize
+                Image, ImageUpload, ImageCaption, ImageStyle, ImageToolbar, ImageResize, SimpleUploadAdapter,
+                MediaEmbed, Table, TableToolbar, HorizontalLine,
+                FontColor, FontBackgroundColor, FontSize, FontFamily, Alignment,
+                Code, CodeBlock
+            ],
+            toolbar: {
+                items: [
+                    'heading', '|',
+                    'fontFamily', 'fontSize', '|',
+                    'bold', 'italic', 'underline', 'strikethrough', '|',
+                    'fontColor', 'fontBackgroundColor', '|',
+                    'alignment', '|',
+                    'bulletedList', 'numberedList', 'outdent', 'indent', '|',
+                    'link', 'uploadImage', 'blockQuote', 'insertTable', 'mediaEmbed', '|',
+                    'code', 'codeBlock', 'horizontalLine', '|',
+                    'undo', 'redo'
+                ]
+            },
+            image: {
+                toolbar: [
+                    'imageStyle:inline', 'imageStyle:block', 'imageStyle:side', '|',
+                    'toggleImageCaption', 'imageTextAlternative', '|',
+                    'resizeImage'
+                ],
+                resizeOptions: [
+                    { name: 'resizeImage:original', value: null, label: 'Gốc' },
+                    { name: 'resizeImage:25',  value: '25',  label: '25%' },
+                    { name: 'resizeImage:50',  value: '50',  label: '50%' },
+                    { name: 'resizeImage:75',  value: '75',  label: '75%' },
+                    { name: 'resizeImage:100', value: '100', label: '100%' }
+                ]
+            },
+            simpleUpload: {
+                // URL của action UploadImage trong BlogsController
+                uploadUrl: '/Manager/Blogs/UploadImage',
+                // Gửi cookie để xác thực (Authorization)
+                withCredentials: true
+            },
+            initialData: document.querySelector('#contentBodyEditor').value,
+            language: 'vi'
+        }).then(editor => {
+            editorInstance = editor;
+        }).catch(console.error);
+
+        // Đồng bộ nội dung CKEditor vào textarea trước khi submit
+        document.querySelector('#blogCreateForm').addEventListener('submit', function (e) {
+            if (editorInstance) {
+                document.querySelector('#contentBodyEditor').value = editorInstance.getData();
+            }
+            if (!document.querySelector('#contentBodyEditor').value.trim()) {
+                e.preventDefault();
+                alert('Vui lòng nhập nội dung bài viết.');
+            }
+        });
+
+        // Preview ảnh bìa
+        function previewCoverImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    document.getElementById('coverPreviewImg').src = e.target.result;
+                    document.getElementById('coverPreview').classList.remove('d-none');
+                    document.getElementById('coverPlaceholder').classList.add('d-none');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // Tự động sinh slug từ tiêu đề
+        function autoGenerateSlug() {
+            const titleVal = document.getElementById('blogTitle').value;
+            const slugField = document.getElementById('blogSlug');
+            if (slugField.dataset.manualEdit === 'true') return;
+            slugField.value = toSlug(titleVal);
+        }
+
+        document.getElementById('blogSlug').addEventListener('input', function () {
+            this.dataset.manualEdit = 'true';
+        });
+
+        function toSlug(str) {
+            const charMap = {
+                'à': 'a', 'á': 'a', 'ả': 'a', 'ã': 'a', 'ạ': 'a',
+                'ă': 'a', 'ắ': 'a', 'ặ': 'a', 'ằ': 'a', 'ẵ': 'a', 'ẳ': 'a',
+                'â': 'a', 'ấ': 'a', 'ầ': 'a', 'ẩ': 'a', 'ẫ': 'a', 'ậ': 'a',
+                'è': 'e', 'é': 'e', 'ẻ': 'e', 'ẽ': 'e', 'ẹ': 'e',
+                'ê': 'e', 'ế': 'e', 'ề': 'e', 'ể': 'e', 'ễ': 'e', 'ệ': 'e',
+                'ì': 'i', 'í': 'i', 'ỉ': 'i', 'ĩ': 'i', 'ị': 'i',
+                'ò': 'o', 'ó': 'o', 'ỏ': 'o', 'õ': 'o', 'ọ': 'o',
+                'ô': 'o', 'ố': 'o', 'ồ': 'o', 'ổ': 'o', 'ỗ': 'o', 'ộ': 'o',
+                'ơ': 'o', 'ớ': 'o', 'ờ': 'o', 'ở': 'o', 'ỡ': 'o', 'ợ': 'o',
+                'ù': 'u', 'ú': 'u', 'ủ': 'u', 'ũ': 'u', 'ụ': 'u',
+                'ư': 'u', 'ứ': 'u', 'ừ': 'u', 'ử': 'u', 'ữ': 'u', 'ự': 'u',
+                'ỳ': 'y', 'ý': 'y', 'ỷ': 'y', 'ỹ': 'y', 'ỵ': 'y',
+                'đ': 'd', 'Đ': 'd'
+            };
+            return str.toLowerCase()
+                .split('').map(c => charMap[c] || c).join('')
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+        }
+    </script>
+}
