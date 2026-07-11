@@ -2105,7 +2105,7 @@
                     </div>
                     <div class="hform-group">
                         <label class="hform-label">Bệnh lý / Tình trạng đặc biệt</label>
-                        <input type="text" name="pathology" id="ci-pathology" class="hform-control health-input"
+                        <input type="text" name="pathology" id="ci-pathology" class="hform-control"
                             maxlength="1000"
                             placeholder="VD: Bị dị ứng thức ăn hải sản, đang dùng thuốc tim... (để trống nếu khỏe mạnh)">
                     </div>
@@ -2756,6 +2756,10 @@ function isMedicalRecordMode() {
     return getReceptionMode() === 'MedicalRecord';
 }
 
+function isOnlineReception() {
+    return Boolean(document.getElementById('ci-hotelBookingId').value);
+}
+
 function enableNewPetForm() {
     const form = document.getElementById('petNewForm');
     form.style.opacity = '1';
@@ -2817,6 +2821,9 @@ function resetHealthCheckFields() {
     document.getElementById('ci-temperature').value = '';
     document.getElementById('ci-healthNote').value = '';
     document.getElementById('ci-healthConfirmed').checked = false;
+    const pathology = document.getElementById('ci-pathology');
+    pathology.setCustomValidity('');
+    pathology.classList.remove('health-input');
     document.getElementById('healthStatusMessage').style.display = 'none';
     document.getElementById('healthStatusMessage').innerHTML = '';
 }
@@ -2891,7 +2898,7 @@ function setReceptionMode() {
     const label = document.getElementById('existingPetLabel');
     const help = document.getElementById('existingPetHelp');
 
-    select.required = isMedicalMode;
+    select.required = isMedicalMode && !isOnlineReception();
     label.textContent = isMedicalMode
         ? 'Chọn thú cưng có sổ y tế'
         : 'Chọn thú cưng chưa có sổ y tế hoặc tạo hồ sơ mới';
@@ -2945,7 +2952,7 @@ function populateExistingPets(pets) {
         select.appendChild(option);
     });
 
-    select.required = isMedicalMode;
+    select.required = isMedicalMode && !isOnlineReception();
     group.style.display = (eligiblePets.length > 0 || isMedicalMode) ? 'block' : 'none';
     if (isMedicalMode && !eligiblePets.length) {
         help.textContent = 'Khách này chưa có thú cưng nào có sổ y tế. Hãy chuyển sang luồng chưa có sổ y tế.';
@@ -2975,11 +2982,18 @@ function lookupCustomer(phone) {
     }
 
     lookupTimer = setTimeout(() => {
-        const customers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(customers.Select(c => new { c.CustomerId, c.FullName, c.Phone })));
+        const customers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(customers.Select(c => new
+        {
+            customerId = c.CustomerId,
+            fullName = c.FullName,
+            phone = c.Phone
+        })));
         const found = customers.find(c => (c.phone || '').replace(/\D/g, '') === normalizedPhone);
         if (!found) {
             document.getElementById('existingPetGroup').style.display = 'none';
-            resetPetSelection();
+            if (!isOnlineReception()) {
+                resetPetSelection();
+            }
             return;
         }
 
@@ -3067,6 +3081,7 @@ function updateHealthStatus() {
     const message = document.getElementById('healthStatusMessage');
 
     pathology.setCustomValidity('');
+    pathology.classList.toggle('health-input', status === 'Monitor');
     if (status === 'Monitor' && !pathology.value.trim()) {
         pathology.setCustomValidity('Vui lòng ghi rõ tình trạng cần theo dõi.');
     }
@@ -3145,7 +3160,11 @@ document.getElementById('checkInForm').addEventListener('submit', event => {
 
     if (!event.currentTarget.checkValidity()) {
         event.preventDefault();
+        const invalidControl = event.currentTarget.querySelector(':invalid');
+        const message = invalidControl?.validationMessage || 'Vui lòng kiểm tra lại các trường bắt buộc.';
+        setReceptionModeHint(message, 'error');
         event.currentTarget.reportValidity();
+        invalidControl?.focus();
     }
 });
 
