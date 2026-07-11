@@ -26,11 +26,12 @@ public class OrderController : Controller
         ViewData["ManagerNav"] = "approval";
 
 
-        //Query tất cả đơn hàng
+        //Query tất cả đơn hàng mua sản phẩm tạo từ customer
         var allOrders = await _context.Orders
             .Include(o => o.Customer)  //lấy luôn thông tin khách hàng liên quan
             .Include(o => o.OrderItems).ThenInclude(oi => oi.ProductSkuNavigation)
             .Include(o => o.OrderItems).ThenInclude(oi => oi.SpaService)
+            .Where(o => o.OrderId.StartsWith("ORD-") && o.OrderItems.All(oi => oi.ProductSku != null && oi.SpaServiceId == null && oi.RoomTypeId == null))
             .OrderByDescending(o => o.Date)  //đơn mới nhất lên trên.
             .ToListAsync();  //thực thi query và lấy danh sách.
 
@@ -51,6 +52,7 @@ public class OrderController : Controller
             .Include(o => o.Customer)
             .Include(o => o.OrderItems).ThenInclude(oi => oi.ProductSkuNavigation)
             .Include(o => o.OrderItems).ThenInclude(oi => oi.SpaService)
+            .Where(o => o.OrderId.StartsWith("ORD-") && o.OrderItems.All(oi => oi.ProductSku != null && oi.SpaServiceId == null && oi.RoomTypeId == null))
             .OrderByDescending(o => o.Date)
             .ToListAsync();
         //Chỉ giữ các đơn thuộc nhánh giao hàng
@@ -123,6 +125,7 @@ public class OrderController : Controller
         order.CanceledAt = DateTime.Now;
 
         await _context.SaveChangesAsync();
+        await ManagePetStore.Services.Customer.CustomerRewardHelper.RecalculateCustomerPointsAndTierAsync(order.CustomerId, _context);
         TempData["SuccessMessage"] = $"Đã từ chối đơn hàng {FormatDisplayOrderId(orderId)}.";
         return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
     }
@@ -275,7 +278,7 @@ public class OrderController : Controller
             PaymentMethod = order.PaymentMethod,
             StatusKey = statusKey,
             StatusLabel = statusLabel,
-            CancelReason = order.CancelReason,
+            CancelReason = order.CancelReason != null && order.CancelReason.StartsWith("VOUCHER:") ? null : order.CancelReason,
             CanApprove = statusKey == "pending",
             CanReject = statusKey == "pending",
             CanShip = statusKey == "approved",

@@ -268,6 +268,7 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasOne(d => d.Cage).WithMany(p => p.FoodDiaryLogs)
                 .HasForeignKey(d => d.CageId)
                 .HasConstraintName("FK_FoodDiaryLogs_Cages");
+
         });
 
         modelBuilder.Entity<HotelBooking>(entity =>
@@ -338,6 +339,7 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasOne(d => d.Pet).WithMany(p => p.MedicalRecords)
                 .HasForeignKey(d => d.PetId)
                 .HasConstraintName("FK_MedicalRecords_Pets");
+
         });
 
         modelBuilder.Entity<Order>(entity =>
@@ -441,6 +443,7 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasOne(d => d.Pet).WithMany(p => p.PetBioTimelines)
                 .HasForeignKey(d => d.PetId)
                 .HasConstraintName("FK_PetBioTimelines_Pets");
+
         });
 
         modelBuilder.Entity<Product>(entity =>
