@@ -91,6 +91,7 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<SpaReview> SpaReviews { get; set; }
 
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         var builder = new ConfigurationBuilder()
@@ -101,6 +102,7 @@ public partial class PetStoreManagementContext : DbContext
     }
     //#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
     //        => optionsBuilder.UseSqlServer("Server= DESKTOP-S7IL3CT\\SQLEXPRESS;Database= PetStoreManagement;Trusted_Connection=True; TrustServerCertificate=True;");
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -266,6 +268,7 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasOne(d => d.Cage).WithMany(p => p.FoodDiaryLogs)
                 .HasForeignKey(d => d.CageId)
                 .HasConstraintName("FK_FoodDiaryLogs_Cages");
+
         });
 
         modelBuilder.Entity<HotelBooking>(entity =>
@@ -336,6 +339,7 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasOne(d => d.Pet).WithMany(p => p.MedicalRecords)
                 .HasForeignKey(d => d.PetId)
                 .HasConstraintName("FK_MedicalRecords_Pets");
+
         });
 
         modelBuilder.Entity<Order>(entity =>
@@ -439,6 +443,7 @@ public partial class PetStoreManagementContext : DbContext
             entity.HasOne(d => d.Pet).WithMany(p => p.PetBioTimelines)
                 .HasForeignKey(d => d.PetId)
                 .HasConstraintName("FK_PetBioTimelines_Pets");
+
         });
 
         modelBuilder.Entity<Product>(entity =>

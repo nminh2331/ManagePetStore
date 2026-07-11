@@ -13,56 +13,45 @@
         .cashier-container {
             max-width: 1300px;
             margin: 40px auto;
-            padding: 0 24px;
-            font-family: 'Be Vietnam Pro', sans-serif;
-            color: #3d2314;
+            padding: 0 20px;
+            font-family: 'Outfit', sans-serif;
         }
         .dashboard-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 30px;
-            border-bottom: 2px dashed #f1ebd9;
-            padding-bottom: 20px;
         }
         .dashboard-title {
             font-size: 1.8rem;
             font-weight: 800;
-            color: #3d2314;
+            color: #3A2B20;
             margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .dashboard-title i {
-            color: #f97316 !important;
         }
         .stats-row {
             display: flex;
-            gap: 24px;
+            gap: 20px;
             margin-bottom: 40px;
         }
         .stat-card {
             flex: 1;
             background: #fff;
-            border-radius: 20px;
+            border-radius: 16px;
             padding: 24px;
-            box-shadow: 0 10px 25px -5px rgba(61, 35, 20, 0.05);
-            border: 1px solid #f1ebd9;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.05);
             display: flex;
             align-items: center;
             gap: 20px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.3s ease;
         }
         .stat-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 12px 30px rgba(61, 35, 20, 0.1);
-            border-color: #f97316;
         }
         .stat-icon {
             width: 60px;
             height: 60px;
-            border-radius: 14px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -72,37 +61,29 @@
             font-size: 2.2rem;
             font-weight: 800;
             margin: 0;
-            color: #3d2314;
-            line-height: 1.1;
+            color: #3A2B20;
         }
         .stat-info p {
-            margin: 4px 0 0;
-            color: #6b7280;
+            margin: 0;
+            color: #8E7A6B;
             font-size: 0.9rem;
-            font-weight: 600;
+            font-weight: 500;
         }
         .nav-cashier-tabs {
-            border-bottom: 2px solid #f1ebd9;
-            gap: 8px;
-            margin-bottom: 30px;
+            border-bottom: 2px solid #EAE5E0;
+            gap: 10px;
         }
         .nav-cashier-tabs .nav-link {
             border: none;
-            color: #6b7280;
+            color: #8E7A6B;
             font-weight: 700;
-            padding: 14px 28px;
+            padding: 12px 24px;
             position: relative;
             background: none;
-            transition: all 0.25s ease;
-            font-size: 0.95rem;
-            border-radius: 12px 12px 0 0;
-        }
-        .nav-cashier-tabs .nav-link:hover {
-            color: #f97316;
-            background-color: rgba(249, 115, 22, 0.05);
+            transition: color 0.3s ease;
         }
         .nav-cashier-tabs .nav-link.active {
-            color: #f97316;
+            color: #F2780C;
             background: none;
         }
         .nav-cashier-tabs .nav-link.active::after {
@@ -112,26 +93,25 @@
             left: 0;
             width: 100%;
             height: 3px;
-            background-color: #f97316;
+            background-color: #F2780C;
             border-radius: 3px;
         }
         .request-card {
             background: #fff;
-            border-radius: 20px;
-            border: 1px solid #f1ebd9;
-            box-shadow: 0 8px 24px rgba(61, 35, 20, 0.03);
-            margin-bottom: 28px;
+            border-radius: 16px;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+            margin-bottom: 20px;
             overflow: hidden;
-            transition: all 0.3s ease;
+            transition: box-shadow 0.3s ease;
         }
         .request-card:hover {
-            box-shadow: 0 12px 30px rgba(61, 35, 20, 0.08);
-            border-color: #f97316;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
         }
         .card-header-bar {
-            padding: 18px 24px;
-            background-color: #fff9f0;
-            border-bottom: 1px solid #f1ebd9;
+            padding: 16px 24px;
+            background-color: #FAF9F8;
+            border-bottom: 1px solid #EAE5E0;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -143,103 +123,45 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 14px 0;
-            border-bottom: 1px dashed #f1ebd9;
+            padding: 12px 0;
+            border-bottom: 1px solid #FAF9F8;
         }
         .item-row:last-child {
             border-bottom: none;
         }
         .btn-approve {
-            background-color: #22c55e;
+            background-color: #10B981;
             color: #fff;
             font-weight: 700;
             border: none;
-            padding: 12px 24px;
-            border-radius: 12px;
-            transition: all 0.25s ease;
-            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            transition: background 0.2s ease;
         }
         .btn-approve:hover {
-            background-color: #16a34a;
+            background-color: #059669;
             color: #fff;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(34, 197, 94, 0.3);
         }
         .btn-reject {
-            background-color: #ef4444;
+            background-color: #EF4444;
             color: #fff;
             font-weight: 700;
             border: none;
-            padding: 12px 24px;
-            border-radius: 12px;
-            transition: all 0.25s ease;
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            transition: background 0.2s ease;
         }
         .btn-reject:hover {
-            background-color: #dc2626;
+            background-color: #DC2626;
             color: #fff;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
         }
         .reject-box {
             display: none;
-            margin-top: 20px;
-            padding: 20px;
-            background-color: #fef2f2;
-            border: 1px solid #fecaca;
-            border-radius: 16px;
-            animation: slideDown 0.2s ease-out;
-        }
-        
-        
-        .badge.bg-warning {
-            background-color: #fff7ed !important;
-            color: #c2410c !important;
-            border: 1px solid #ffedd5;
-        }
-        .badge.bg-info {
-            background-color: #eff6ff !important;
-            color: #1d4ed8 !important;
-            border: 1px solid #dbeafe;
-        }
-        .badge.bg-success {
-            background-color: #f0fdf4 !important;
-            color: #15803d !important;
-            border: 1px solid #dcfce7;
-        }
-        .badge.bg-danger {
-            background-color: #fef2f2 !important;
-            color: #b91c1c !important;
-            border: 1px solid #fee2e2;
-        }
-        .table-responsive {
-            border-radius: 16px;
-            overflow: hidden;
-            border: 1px solid #f1ebd9;
-        }
-        .table {
-            margin-bottom: 0;
-        }
-        .table thead th {
-            background-color: #fff9f0 !important;
-            color: #3d2314 !important;
-            font-weight: 700 !important;
-            border-bottom: 2px solid #f1ebd9 !important;
-            padding: 16px;
-        }
-        .table tbody td {
-            padding: 16px;
-            border-bottom: 1px solid #f1ebd9;
-            color: #3d2314;
-        }
-        .table-hover tbody tr:hover {
-            background-color: #fffdf9 !important;
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #FFF5F5;
+            border: 1px solid #FED7D7;
+            border-radius: 12px;
         }
     </style>
 }
@@ -322,338 +244,274 @@
     <div class="tab-content" id="cashierTabsContent">
         <!-- 1. Submitted Pane -->
         <div class="tab-pane fade show active" id="submitted-pane" role="tabpanel">
-            <!-- Submitted Search Controls -->
-            <div class="mb-3 p-3 bg-light border rounded-3 d-flex gap-3 align-items-center">
-                <div class="flex-grow-1">
-                    <div class="input-group">
-                        <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
-                        <input type="text" id="submittedSearch" class="form-control" placeholder="Tìm theo Mã Yêu Cầu, Mã Đơn Hàng, Khách Hàng, SĐT..." style="border-radius: 0 8px 8px 0; border: 1px solid #ced4da; padding: 8px 12px;" />
-                    </div>
-                </div>
-            </div>
-
-            <div id="submittedCardsContainer">
-                @if (submittedRequests.Any())
+            @if (submittedRequests.Any())
+            {
+                foreach (var req in submittedRequests)
                 {
-                    foreach (var req in submittedRequests)
-                    {
-                        <div class="request-card submitted-card" data-req-id="#REQ-@req.RequestId" data-order-id="#OD-@req.OrderId.Split('-')[^1]" data-customer="@(req.Customer?.FullName?.ToLower() ?? "")" data-phone="@(req.Customer?.Phone ?? "")">
-                            <div class="card-header-bar">
-                                <div>
-                                    <span class="fw-bold text-dark" style="font-size: 1.05rem;">Mã Yêu Cầu: #REQ-@req.RequestId</span>
-                                    <span class="mx-2 text-muted">|</span>
-                                    <span class="text-muted">Đơn mua: #OD-@req.OrderId.Split('-')[^1]</span>
-                                </div>
-                                <span class="badge bg-warning text-dark px-3 py-2 rounded-pill">Chờ duyệt online</span>
+                    <div class="request-card">
+                        <div class="card-header-bar">
+                            <div>
+                                <span class="fw-bold text-dark" style="font-size: 1.05rem;">Mã Yêu Cầu: #REQ-@req.RequestId</span>
+                                <span class="mx-2 text-muted">|</span>
+                                <span class="text-muted">Đơn mua: #OD-@req.OrderId.Split('-')[^1]</span>
                             </div>
-                            <div class="card-body-content text-start">
-                                <div class="row">
-                                    <div class="col-md-7">
-                                        <h6 class="fw-bold text-muted mb-2">Thông tin khách hàng:</h6>
-                                        <p class="mb-1"><strong>Khách hàng:</strong> @req.Customer.FullName</p>
-                                        <p class="mb-3"><strong>Số điện thoại:</strong> @req.Customer.Phone</p>
+                            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill">Chờ duyệt online</span>
+                        </div>
+                        <div class="card-body-content text-start">
+                            <div class="row">
+                                <div class="col-md-7">
+                                    <h6 class="fw-bold text-muted mb-2">Thông tin khách hàng:</h6>
+                                    <p class="mb-1"><strong>Khách hàng:</strong> @req.Customer.FullName</p>
+                                    <p class="mb-3"><strong>Số điện thoại:</strong> @req.Customer.Phone</p>
 
-                                        <h6 class="fw-bold text-muted mb-2">Lý do hoàn trả:</h6>
-                                        <blockquote class="bg-light p-3 rounded-3 border-start border-warning mb-0" style="font-style: italic; color: #555;">
-                                            "@req.Reason"
-                                        </blockquote>
-                                        @{
-                                            var parsedImages = new List<string>();
-                                            var parsedVideo = "";
-                                            if (!string.IsNullOrEmpty(req.Notes))
+                                    <h6 class="fw-bold text-muted mb-2">Lý do hoàn trả:</h6>
+                                    <blockquote class="bg-light p-3 rounded-3 border-start border-warning mb-0" style="font-style: italic; color: #555;">
+                                        "@req.Reason"
+                                    </blockquote>
+                                    @{
+                                        var parsedImages = new List<string>();
+                                        var parsedVideo = "";
+                                        if (!string.IsNullOrEmpty(req.Notes))
+                                        {
+                                            var parts = req.Notes.Split('|');
+                                            foreach (var part in parts)
                                             {
-                                                var parts = req.Notes.Split('|');
-                                                foreach (var part in parts)
+                                                if (part.StartsWith("IMAGES:"))
                                                 {
-                                                    if (part.StartsWith("IMAGES:"))
-                                                    {
-                                                        parsedImages.AddRange(part.Substring("IMAGES:".Length).Split(';', StringSplitOptions.RemoveEmptyEntries));
-                                                    }
-                                                    else if (part.StartsWith("VIDEO:"))
-                                                    {
-                                                        parsedVideo = part.Substring("VIDEO:".Length);
-                                                    }
+                                                    parsedImages.AddRange(part.Substring("IMAGES:".Length).Split(';', StringSplitOptions.RemoveEmptyEntries));
+                                                }
+                                                else if (part.StartsWith("VIDEO:"))
+                                                {
+                                                    parsedVideo = part.Substring("VIDEO:".Length);
                                                 }
                                             }
                                         }
-                                        @if (parsedImages.Any())
+                                    }
+                                    @if (parsedImages.Any())
+                                    {
+                                        <div class="mt-3">
+                                            <h6 class="fw-bold text-muted mb-2">Ảnh minh chứng khách gửi:</h6>
+                                            <div class="d-flex gap-2">
+                                                @foreach (var img in parsedImages)
+                                                {
+                                                    <a href="@img" target="_blank">
+                                                        <img src="@img" style="width: 75px; height: 75px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd;" />
+                                                    </a>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(parsedVideo))
+                                    {
+                                        <div class="mt-3">
+                                            <h6 class="fw-bold text-muted mb-2">Video đập hộp khách gửi:</h6>
+                                            <div>
+                                                <video src="@parsedVideo" width="260" controls style="border-radius: 8px; border: 1px solid #ddd;"></video>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                                <div class="col-md-5 border-start ps-4">
+                                    <h6 class="fw-bold text-muted mb-2">Sản phẩm yêu cầu trả:</h6>
+                                    <div class="mb-3">
+                                        @foreach (var item in req.ReturnRequestItems)
                                         {
-                                            <div class="mt-3">
-                                                <h6 class="fw-bold text-muted mb-2">Ảnh minh chứng khách gửi:</h6>
-                                                <div class="d-flex gap-2">
-                                                    @foreach (var img in parsedImages)
+                                            <div class="item-row">
+                                                <div class="d-flex align-items-center">
+                                                    @if (item.SkuNavigation != null && !string.IsNullOrEmpty(item.SkuNavigation.ImageUrl))
                                                     {
-                                                        <a href="@img" target="_blank">
-                                                            <img src="@img" style="width: 75px; height: 75px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd;" />
-                                                        </a>
+                                                        <img src="@item.SkuNavigation.ImageUrl" style="width: 40px; height: 40px; object-fit: cover; border-radius: 6px; margin-right: 10px;" />
                                                     }
-                                                </div>
-                                            </div>
-                                        }
-                                        @if (!string.IsNullOrEmpty(parsedVideo))
-                                        {
-                                            <div class="mt-3">
-                                                <h6 class="fw-bold text-muted mb-2">Video đập hộp khách gửi:</h6>
-                                                <div>
-                                                    <video src="@parsedVideo" width="260" controls style="border-radius: 8px; border: 1px solid #ddd;"></video>
-                                                </div>
-                                            </div>
-                                        }
-                                    </div>
-                                    <div class="col-md-5 border-start ps-4">
-                                        <h6 class="fw-bold text-muted mb-2">Sản phẩm yêu cầu trả:</h6>
-                                        <div class="mb-3">
-                                            @foreach (var item in req.ReturnRequestItems)
-                                            {
-                                                <div class="item-row">
-                                                    <div class="d-flex align-items-center">
-                                                        @if (item.SkuNavigation != null && !string.IsNullOrEmpty(item.SkuNavigation.ImageUrl))
-                                                        {
-                                                            <img src="@item.SkuNavigation.ImageUrl" style="width: 40px; height: 40px; object-fit: cover; border-radius: 6px; margin-right: 10px;" />
-                                                        }
-                                                        <div>
-                                                            <div class="fw-bold" style="font-size: 0.9rem;">@(item.SkuNavigation?.Name ?? item.Sku)</div>
-                                                            <div class="text-muted" style="font-size: 0.8rem;">SKU: @item.Sku | Giá: @item.RefundPrice.ToString("N0")đ</div>
-                                                        </div>
+                                                    <div>
+                                                        <div class="fw-bold" style="font-size: 0.9rem;">@(item.SkuNavigation?.Name ?? item.Sku)</div>
+                                                        <div class="text-muted" style="font-size: 0.8rem;">SKU: @item.Sku | Giá: @item.RefundPrice.ToString("N0")đ</div>
                                                     </div>
                                                 </div>
-                                            }
-                                        </div>
-                                        <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded-3">
-                                            <span class="fw-bold text-muted">Số tiền hoàn đề xuất:</span>
-                                            <span class="fs-5 fw-bold text-primary">@req.RefundAmount.ToString("N0") đ</span>
-                                        </div>
+                                                <span class="fw-bold">x@item.Quantity</span>
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded-3">
+                                        <span class="fw-bold text-muted">Số tiền hoàn đề xuất:</span>
+                                        <span class="fs-5 fw-bold text-primary">@req.RefundAmount.ToString("N0") đ</span>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div class="mt-4 pt-3 border-top d-flex justify-content-end gap-2">
-                                    <button type="button" class="btn btn-reject px-4" onclick="showRejectBox('online', @req.RequestId)">Từ chối duyệt</button>
-                                    
-                                    <form asp-action="ApproveOnline" method="post" style="display:inline;">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="id" value="@req.RequestId" />
-                                        <button type="submit" class="btn btn-approve px-4" onclick="return confirm('Bạn có chắc chắn muốn DUYỆT ONLINE yêu cầu này không? Khách hàng sẽ nhận thông báo mang hàng qua quầy.')">Duyệt yêu cầu online</button>
-                                    </form>
-                                </div>
+                            <div class="mt-4 pt-3 border-top d-flex justify-content-end gap-2">
+                                <button type="button" class="btn btn-reject px-4" onclick="showRejectBox('online', @req.RequestId)">Từ chối duyệt</button>
+                                
+                                <form asp-action="ApproveOnline" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@req.RequestId" />
+                                    <button type="submit" class="btn btn-approve px-4" onclick="return confirm('Bạn có chắc chắn muốn DUYỆT ONLINE yêu cầu này không? Khách hàng sẽ nhận thông báo mang hàng qua quầy.')">Duyệt yêu cầu online</button>
+                                </form>
+                            </div>
 
-                                <!-- Reject input container -->
-                                <div class="reject-box" id="reject-online-@req.RequestId">
-                                    <form asp-action="RejectOnline" method="post">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="id" value="@req.RequestId" />
-                                        <div class="mb-3 text-start">
-                                            <label class="form-label fw-bold text-danger">Nhập lý do từ chối duyệt online *</label>
-                                            <textarea class="form-control" name="rejectReason" rows="2" required placeholder="Lý do từ chối (Ví dụ: Sản phẩm quá hạn đổi trả, lý do không hợp lệ...)"></textarea>
-                                        </div>
-                                        <div class="text-end">
-                                            <button type="button" class="btn btn-light btn-sm" onclick="hideRejectBox('online', @req.RequestId)">Hủy</button>
-                                            <button type="submit" class="btn btn-danger btn-sm ms-1">Xác nhận từ chối</button>
-                                        </div>
-                                    </form>
-                                </div>
+                            <!-- Reject input container -->
+                            <div class="reject-box" id="reject-online-@req.RequestId">
+                                <form asp-action="RejectOnline" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@req.RequestId" />
+                                    <div class="mb-3 text-start">
+                                        <label class="form-label fw-bold text-danger">Nhập lý do từ chối duyệt online *</label>
+                                        <textarea class="form-control" name="rejectReason" rows="2" required placeholder="Lý do từ chối (Ví dụ: Sản phẩm quá hạn đổi trả, lý do không hợp lệ...)"></textarea>
+                                    </div>
+                                    <div class="text-end">
+                                        <button type="button" class="btn btn-light btn-sm" onclick="hideRejectBox('online', @req.RequestId)">Hủy</button>
+                                        <button type="submit" class="btn btn-danger btn-sm ms-1">Xác nhận từ chối</button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
-                    }
-                }
-                else
-                {
-                    <div class="text-center py-5 text-muted bg-white rounded-3 border">
-                        <i class="bi bi-inbox d-block mb-3" style="font-size: 3rem; color: #cbd5e1;"></i>
-                        Không có yêu cầu trả hàng nào chờ duyệt online.
                     </div>
                 }
-            </div>
-
-            <!-- Empty Search State -->
-            <div id="submittedSearchEmpty" class="text-center py-5 text-muted bg-white rounded-3 border" style="display: none;">
-                <i class="bi bi-search d-block mb-3" style="font-size: 3rem; color: #cbd5e1;"></i>
-                Không tìm thấy yêu cầu trả hàng nào khớp với tìm kiếm.
-            </div>
-
-            <!-- Submitted Pagination controls -->
-            <div class="p-3 d-flex justify-content-between align-items-center border rounded-3 bg-light mt-3" id="submittedPagination">
-                <span class="text-muted" style="font-size: 0.85rem;" id="submittedPaginationInfo">Hiển thị 0-0 trên 0 yêu cầu</span>
-                <div class="d-flex gap-1" id="submittedPaginationButtons"></div>
-            </div>
+            }
+            else
+            {
+                <div class="text-center py-5 text-muted bg-white rounded-3 border">
+                    <i class="bi bi-inbox d-block mb-3" style="font-size: 3rem; color: #cbd5e1;"></i>
+                    Không có yêu cầu trả hàng nào chờ duyệt online.
+                </div>
+            }
         </div>
 
         <!-- 2. Waiting Pane -->
         <div class="tab-pane fade" id="waiting-pane" role="tabpanel">
-            <!-- Waiting Search Controls -->
-            <div class="mb-3 p-3 bg-light border rounded-3 d-flex gap-3 align-items-center">
-                <div class="flex-grow-1">
-                    <div class="input-group">
-                        <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
-                        <input type="text" id="waitingSearch" class="form-control" placeholder="Tìm theo Mã Yêu Cầu, Mã Đơn Hàng, Khách Hàng, SĐT..." style="border-radius: 0 8px 8px 0; border: 1px solid #ced4da; padding: 8px 12px;" />
-                    </div>
-                </div>
-            </div>
-
-            <div id="waitingCardsContainer">
-                @if (waitingRequests.Any())
+            @if (waitingRequests.Any())
+            {
+                foreach (var req in waitingRequests)
                 {
-                    foreach (var req in waitingRequests)
-                    {
-                        <div class="request-card waiting-card" data-req-id="#REQ-@req.RequestId" data-order-id="#OD-@req.OrderId.Split('-')[^1]" data-customer="@(req.Customer?.FullName?.ToLower() ?? "")" data-phone="@(req.Customer?.Phone ?? "")">
-                            <div class="card-header-bar">
-                                <div>
-                                    <span class="fw-bold text-dark" style="font-size: 1.05rem;">Mã Yêu Cầu: #REQ-@req.RequestId</span>
-                                    <span class="mx-2 text-muted">|</span>
-                                    <span class="text-muted">Đơn mua: #OD-@req.OrderId.Split('-')[^1]</span>
-                                </div>
-                                <span class="badge bg-info text-dark px-3 py-2 rounded-pill">Chờ khách mang hàng qua quầy</span>
+                    <div class="request-card">
+                        <div class="card-header-bar">
+                            <div>
+                                <span class="fw-bold text-dark" style="font-size: 1.05rem;">Mã Yêu Cầu: #REQ-@req.RequestId</span>
+                                <span class="mx-2 text-muted">|</span>
+                                <span class="text-muted">Đơn mua: #OD-@req.OrderId.Split('-')[^1]</span>
                             </div>
-                            <div class="card-body-content text-start">
-                                <div class="row">
-                                    <div class="col-md-7">
-                                        <h6 class="fw-bold text-muted mb-2">Thông tin khách hàng:</h6>
-                                        <p class="mb-1"><strong>Khách hàng:</strong> @req.Customer.FullName</p>
-                                        <p class="mb-3"><strong>Số điện thoại:</strong> @req.Customer.Phone</p>
+                            <span class="badge bg-info text-dark px-3 py-2 rounded-pill">Chờ khách mang hàng qua quầy</span>
+                        </div>
+                        <div class="card-body-content text-start">
+                            <div class="row">
+                                <div class="col-md-7">
+                                    <h6 class="fw-bold text-muted mb-2">Thông tin khách hàng:</h6>
+                                    <p class="mb-1"><strong>Khách hàng:</strong> @req.Customer.FullName</p>
+                                    <p class="mb-3"><strong>Số điện thoại:</strong> @req.Customer.Phone</p>
 
-                                        <h6 class="fw-bold text-muted mb-2">Lý do hoàn trả:</h6>
-                                        <blockquote class="bg-light p-3 rounded-3 border-start border-info mb-0" style="font-style: italic; color: #555;">
-                                            "@req.Reason"
-                                        </blockquote>
-                                        @{
-                                            var parsedImages = new List<string>();
-                                            var parsedVideo = "";
-                                            if (!string.IsNullOrEmpty(req.Notes))
+                                    <h6 class="fw-bold text-muted mb-2">Lý do hoàn trả:</h6>
+                                    <blockquote class="bg-light p-3 rounded-3 border-start border-info mb-0" style="font-style: italic; color: #555;">
+                                        "@req.Reason"
+                                    </blockquote>
+                                    @{
+                                        var parsedImages = new List<string>();
+                                        var parsedVideo = "";
+                                        if (!string.IsNullOrEmpty(req.Notes))
+                                        {
+                                            var parts = req.Notes.Split('|');
+                                            foreach (var part in parts)
                                             {
-                                                var parts = req.Notes.Split('|');
-                                                foreach (var part in parts)
+                                                if (part.StartsWith("IMAGES:"))
                                                 {
-                                                    if (part.StartsWith("IMAGES:"))
-                                                    {
-                                                        parsedImages.AddRange(part.Substring("IMAGES:".Length).Split(';', StringSplitOptions.RemoveEmptyEntries));
-                                                    }
-                                                    else if (part.StartsWith("VIDEO:"))
-                                                    {
-                                                        parsedVideo = part.Substring("VIDEO:".Length);
-                                                    }
+                                                    parsedImages.AddRange(part.Substring("IMAGES:".Length).Split(';', StringSplitOptions.RemoveEmptyEntries));
+                                                }
+                                                else if (part.StartsWith("VIDEO:"))
+                                                {
+                                                    parsedVideo = part.Substring("VIDEO:".Length);
                                                 }
                                             }
                                         }
-                                        @if (parsedImages.Any())
+                                    }
+                                    @if (parsedImages.Any())
+                                    {
+                                        <div class="mt-3">
+                                            <h6 class="fw-bold text-muted mb-2">Ảnh minh chứng khách gửi:</h6>
+                                            <div class="d-flex gap-2">
+                                                @foreach (var img in parsedImages)
+                                                {
+                                                    <a href="@img" target="_blank">
+                                                        <img src="@img" style="width: 75px; height: 75px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd;" />
+                                                    </a>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(parsedVideo))
+                                    {
+                                        <div class="mt-3">
+                                            <h6 class="fw-bold text-muted mb-2">Video đập hộp khách gửi:</h6>
+                                            <div>
+                                                <video src="@parsedVideo" width="260" controls style="border-radius: 8px; border: 1px solid #ddd;"></video>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                                <div class="col-md-5 border-start ps-4">
+                                    <h6 class="fw-bold text-muted mb-2">Sản phẩm cần đối chiếu thực tế:</h6>
+                                    <div class="mb-3">
+                                        @foreach (var item in req.ReturnRequestItems)
                                         {
-                                            <div class="mt-3">
-                                                <h6 class="fw-bold text-muted mb-2">Ảnh minh chứng khách gửi:</h6>
-                                                <div class="d-flex gap-2">
-                                                    @foreach (var img in parsedImages)
+                                            <div class="item-row">
+                                                <div class="d-flex align-items-center">
+                                                    @if (item.SkuNavigation != null && !string.IsNullOrEmpty(item.SkuNavigation.ImageUrl))
                                                     {
-                                                        <a href="@img" target="_blank">
-                                                            <img src="@img" style="width: 75px; height: 75px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd;" />
-                                                        </a>
+                                                        <img src="@item.SkuNavigation.ImageUrl" style="width: 40px; height: 40px; object-fit: cover; border-radius: 6px; margin-right: 10px;" />
                                                     }
-                                                </div>
-                                            </div>
-                                        }
-                                        @if (!string.IsNullOrEmpty(parsedVideo))
-                                        {
-                                            <div class="mt-3">
-                                                <h6 class="fw-bold text-muted mb-2">Video đập hộp khách gửi:</h6>
-                                                <div>
-                                                    <video src="@parsedVideo" width="260" controls style="border-radius: 8px; border: 1px solid #ddd;"></video>
-                                                </div>
-                                            </div>
-                                        }
-                                    </div>
-                                    <div class="col-md-5 border-start ps-4">
-                                        <h6 class="fw-bold text-muted mb-2">Sản phẩm cần đối chiếu thực tế:</h6>
-                                        <div class="mb-3">
-                                            @foreach (var item in req.ReturnRequestItems)
-                                            {
-                                                <div class="item-row">
-                                                    <div class="d-flex align-items-center">
-                                                        @if (item.SkuNavigation != null && !string.IsNullOrEmpty(item.SkuNavigation.ImageUrl))
-                                                        {
-                                                            <img src="@item.SkuNavigation.ImageUrl" style="width: 40px; height: 40px; object-fit: cover; border-radius: 6px; margin-right: 10px;" />
-                                                        }
-                                                        <div>
-                                                            <div class="fw-bold" style="font-size: 0.9rem;">@(item.SkuNavigation?.Name ?? item.Sku)</div>
-                                                            <div class="text-muted" style="font-size: 0.8rem;">SKU: @item.Sku | Giá: @item.RefundPrice.ToString("N0")đ</div>
-                                                        </div>
+                                                    <div>
+                                                        <div class="fw-bold" style="font-size: 0.9rem;">@(item.SkuNavigation?.Name ?? item.Sku)</div>
+                                                        <div class="text-muted" style="font-size: 0.8rem;">SKU: @item.Sku | Giá: @item.RefundPrice.ToString("N0")đ</div>
                                                     </div>
                                                 </div>
-                                            }
-                                        </div>
-                                        <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded-3">
-                                            <span class="fw-bold text-muted">Số tiền hoàn vào ví:</span>
-                                            <span class="fs-5 fw-bold text-primary">@req.RefundAmount.ToString("N0") đ</span>
-                                        </div>
+                                                <span class="fw-bold">x@item.Quantity</span>
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded-3">
+                                        <span class="fw-bold text-muted">Số tiền hoàn vào ví:</span>
+                                        <span class="fs-5 fw-bold text-primary">@req.RefundAmount.ToString("N0") đ</span>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div class="mt-4 pt-3 border-top d-flex justify-content-end gap-2">
-                                    <button type="button" class="btn btn-reject px-4" onclick="showRejectBox('physical', @req.RequestId)">Từ chối nhận hàng tại quầy</button>
-                                    
-                                    <form asp-action="ConfirmPhysicalReturn" method="post" style="display:inline;">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="id" value="@req.RequestId" />
-                                        <button type="submit" class="btn btn-approve px-4" onclick="return confirm('Xác nhận đã kiểm tra và nhận đủ sản phẩm thực tế? Hệ thống sẽ tự động cộng @req.RefundAmount.ToString("N0")đ vào ví khách hàng và cộng trả hàng vào kho.')">Xác nhận đã nhận hàng & Hoàn tiền</button>
-                                    </form>
-                                </div>
+                            <div class="mt-4 pt-3 border-top d-flex justify-content-end gap-2">
+                                <button type="button" class="btn btn-reject px-4" onclick="showRejectBox('physical', @req.RequestId)">Từ chối nhận hàng tại quầy</button>
+                                
+                                <form asp-action="ConfirmPhysicalReturn" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@req.RequestId" />
+                                    <button type="submit" class="btn btn-approve px-4" onclick="return confirm('Xác nhận đã kiểm tra và nhận đủ sản phẩm thực tế? Hệ thống sẽ tự động cộng @req.RefundAmount.ToString("N0")đ vào ví khách hàng và cộng trả hàng vào kho.')">Xác nhận đã nhận hàng & Hoàn tiền</button>
+                                </form>
+                            </div>
 
-                                <!-- Reject input container -->
-                                <div class="reject-box" id="reject-physical-@req.RequestId">
-                                    <form asp-action="RejectPhysicalReturn" method="post">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="id" value="@req.RequestId" />
-                                        <div class="mb-3 text-start">
-                                            <label class="form-label fw-bold text-danger">Nhập lý do từ chối nhận hàng tại quầy *</label>
-                                            <textarea class="form-control" name="rejectReason" rows="2" required placeholder="Lý do từ chối (Ví dụ: Sản phẩm thực tế đã bị hư hỏng thêm, bao bì bị khui, thiếu phụ kiện...)"></textarea>
-                                        </div>
-                                        <div class="text-end">
-                                            <button type="button" class="btn btn-light btn-sm" onclick="hideRejectBox('physical', @req.RequestId)">Hủy</button>
-                                            <button type="submit" class="btn btn-danger btn-sm ms-1">Xác nhận từ chối</button>
-                                        </div>
-                                    </form>
-                                </div>
+                            <!-- Reject input container -->
+                            <div class="reject-box" id="reject-physical-@req.RequestId">
+                                <form asp-action="RejectPhysicalReturn" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@req.RequestId" />
+                                    <div class="mb-3 text-start">
+                                        <label class="form-label fw-bold text-danger">Nhập lý do từ chối nhận hàng tại quầy *</label>
+                                        <textarea class="form-control" name="rejectReason" rows="2" required placeholder="Lý do từ chối (Ví dụ: Sản phẩm thực tế đã bị hư hỏng thêm, bao bì bị khui, thiếu phụ kiện...)"></textarea>
+                                    </div>
+                                    <div class="text-end">
+                                        <button type="button" class="btn btn-light btn-sm" onclick="hideRejectBox('physical', @req.RequestId)">Hủy</button>
+                                        <button type="submit" class="btn btn-danger btn-sm ms-1">Xác nhận từ chối</button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
-                    }
-                }
-                else
-                {
-                    <div class="text-center py-5 text-muted bg-white rounded-3 border">
-                        <i class="bi bi-clock text-info d-block mb-3" style="font-size: 3rem;"></i>
-                        Không có yêu cầu trả hàng nào đang chờ mang sản phẩm đến quầy.
                     </div>
                 }
-            </div>
-
-            <!-- Empty Search State -->
-            <div id="waitingSearchEmpty" class="text-center py-5 text-muted bg-white rounded-3 border" style="display: none;">
-                <i class="bi bi-search d-block mb-3" style="font-size: 3rem; color: #cbd5e1;"></i>
-                Không tìm thấy yêu cầu trả hàng nào khớp với tìm kiếm.
-            </div>
-
-            <!-- Waiting Pagination controls -->
-            <div class="p-3 d-flex justify-content-between align-items-center border rounded-3 bg-light mt-3" id="waitingPagination">
-                <span class="text-muted" style="font-size: 0.85rem;" id="waitingPaginationInfo">Hiển thị 0-0 trên 0 yêu cầu</span>
-                <div class="d-flex gap-1" id="waitingPaginationButtons"></div>
-            </div>
+            }
+            else
+            {
+                <div class="text-center py-5 text-muted bg-white rounded-3 border">
+                    <i class="bi bi-clock text-info d-block mb-3" style="font-size: 3rem;"></i>
+                    Không có yêu cầu trả hàng nào đang chờ mang sản phẩm đến quầy.
+                </div>
+            }
         </div>
 
         <!-- 3. Processed Pane -->
         <div class="tab-pane fade" id="processed-pane" role="tabpanel">
-            <!-- Processed Search Controls -->
-            <div class="mb-3 p-3 bg-light border rounded-3 d-flex gap-3 align-items-center flex-wrap">
-                <div class="flex-grow-1" style="min-width: 200px;">
-                    <div class="input-group">
-                        <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
-                        <input type="text" id="processedSearch" class="form-control" placeholder="Tìm theo Mã Yêu Cầu, Mã Đơn Hàng, Khách Hàng, SĐT..." style="border-radius: 0 8px 8px 0; border: 1px solid #ced4da; padding: 8px 12px;" />
-                    </div>
-                </div>
-                <div style="width: 200px;">
-                    <select id="processedStatusSelect" class="form-select" style="border-radius: 8px; font-weight: 600;">
-                        <option value="">Tất cả trạng thái</option>
-                        <option value="OnlineRejected">Từ chối online</option>
-                        <option value="PhysicalRejected">Từ chối tại quầy</option>
-                        <option value="Success">Thành công</option>
-                    </select>
-                </div>
-            </div>
-
             @if (processedRequests.Any())
             {
                 <div class="bg-white rounded-3 border overflow-hidden">
@@ -669,7 +527,7 @@
                                 <th>Xử Lý Lúc</th>
                             </tr>
                         </thead>
-                        <tbody class="text-start" id="processedTableBody">
+                        <tbody class="text-start">
                             @foreach (var req in processedRequests)
                             {
                                 var historyImages = new List<string>();
@@ -698,7 +556,7 @@
                                         rejectReason = req.Notes;
                                     }
                                 }
-                                <tr class="processed-tr" data-req-id="#REQ-@req.RequestId" data-order-id="#OD-@req.OrderId.Split('-')[^1]" data-customer="@(req.Customer?.FullName?.ToLower() ?? "")" data-phone="@(req.Customer?.Phone ?? "")" data-status="@req.Status">
+                                <tr>
                                     <td class="fw-bold">#REQ-@req.RequestId</td>
                                     <td>#OD-@req.OrderId.Split('-')[^1]</td>
                                     <td>
@@ -737,7 +595,7 @@
                                     </td>
                                 </tr>
                                 <!-- Sub row to display reasons and details -->
-                                <tr class="processed-detail-tr" data-parent-id="#REQ-@req.RequestId" style="background-color: #fafafa; display: none;">
+                                <tr style="background-color: #fafafa;">
                                     <td colspan="7" class="p-3" style="font-size: 0.85rem;">
                                         <div class="row">
                                             <div class="col-md-6">
@@ -788,18 +646,6 @@
                     Chưa có lịch sử xử lý trả hàng nào.
                 </div>
             }
-
-            <!-- Empty Search State -->
-            <div id="processedSearchEmpty" class="text-center py-5 text-muted bg-white rounded-3 border" style="display: none;">
-                <i class="bi bi-search d-block mb-3" style="font-size: 3rem; color: #cbd5e1;"></i>
-                Không tìm thấy lịch sử yêu cầu trả hàng nào khớp với tìm kiếm.
-            </div>
-
-            <!-- Processed Pagination controls -->
-            <div class="p-3 d-flex justify-content-between align-items-center border rounded-3 bg-light mt-3" id="processedPagination">
-                <span class="text-muted" style="font-size: 0.85rem;" id="processedPaginationInfo">Hiển thị 0-0 trên 0 yêu cầu</span>
-                <div class="d-flex gap-1" id="processedPaginationButtons"></div>
-            </div>
         </div>
     </div>
 </div>
@@ -813,281 +659,5 @@
         function hideRejectBox(type, requestId) {
             document.getElementById('reject-' + type + '-' + requestId).style.display = 'none';
         }
-
-        // ========================================================
-        // CASHIER RETURN REQUESTS CLIENT-SIDE PAGINATION & FILTERS
-        // ========================================================
-        document.addEventListener("DOMContentLoaded", function () {
-            const PAGE_SIZE = 5;
-
-            // 1. SUBMITTED PANE (Chờ duyệt online)
-            const submittedSearch = document.getElementById("submittedSearch");
-            const submittedCardsContainer = document.getElementById("submittedCardsContainer");
-            const submittedSearchEmpty = document.getElementById("submittedSearchEmpty");
-            const submittedPaginationInfo = document.getElementById("submittedPaginationInfo");
-            const submittedPaginationButtons = document.getElementById("submittedPaginationButtons");
-
-            let currentSubmittedPage = 1;
-
-            function updateSubmittedCards() {
-                const cards = Array.from(document.querySelectorAll(".submitted-card"));
-                const query = submittedSearch ? submittedSearch.value.toLowerCase().trim() : "";
-
-                // Filter
-                const filtered = cards.filter(card => {
-                    const reqId = card.getAttribute("data-req-id").toLowerCase();
-                    const orderId = card.getAttribute("data-order-id").toLowerCase();
-                    const customer = card.getAttribute("data-customer");
-                    const phone = card.getAttribute("data-phone");
-                    return reqId.includes(query) || orderId.includes(query) || customer.includes(query) || phone.includes(query);
-                });
-
-                const totalItems = filtered.length;
-                const totalPages = Math.ceil(totalItems / PAGE_SIZE) || 1;
-
-                if (currentSubmittedPage > totalPages) currentSubmittedPage = totalPages;
-                if (currentSubmittedPage < 1) currentSubmittedPage = 1;
-
-                // Hide all cards
-                cards.forEach(card => card.style.display = "none");
-
-                const start = (currentSubmittedPage - 1) * PAGE_SIZE;
-                const end = Math.min(start + PAGE_SIZE, totalItems);
-
-                filtered.slice(start, end).forEach(card => {
-                    card.style.display = "";
-                });
-
-                // Show/hide empty state
-                if (totalItems === 0) {
-                    if (submittedCardsContainer) submittedCardsContainer.style.display = "none";
-                    if (submittedSearchEmpty) submittedSearchEmpty.style.display = "";
-                } else {
-                    if (submittedCardsContainer) submittedCardsContainer.style.display = "";
-                    if (submittedSearchEmpty) submittedSearchEmpty.style.display = "none";
-                }
-
-                // Render pagination info
-                if (submittedPaginationInfo) {
-                    if (totalItems === 0) {
-                        submittedPaginationInfo.textContent = "Không tìm thấy yêu cầu nào";
-                    } else {
-                        submittedPaginationInfo.textContent = `Hiển thị ${start + 1}-${end} trên ${totalItems} yêu cầu`;
-                    }
-                }
-
-                renderPaginationButtons(submittedPaginationButtons, currentSubmittedPage, totalPages, function (p) {
-                    currentSubmittedPage = p;
-                    updateSubmittedCards();
-                });
-            }
-
-            if (submittedSearch) submittedSearch.addEventListener("input", () => { currentSubmittedPage = 1; updateSubmittedCards(); });
-
-            if (document.querySelector(".submitted-card")) {
-                updateSubmittedCards();
-            }
-
-
-            // 2. WAITING PANE (Chờ trả hàng tại quầy)
-            const waitingSearch = document.getElementById("waitingSearch");
-            const waitingCardsContainer = document.getElementById("waitingCardsContainer");
-            const waitingSearchEmpty = document.getElementById("waitingSearchEmpty");
-            const waitingPaginationInfo = document.getElementById("waitingPaginationInfo");
-            const waitingPaginationButtons = document.getElementById("waitingPaginationButtons");
-
-            let currentWaitingPage = 1;
-
-            function updateWaitingCards() {
-                const cards = Array.from(document.querySelectorAll(".waiting-card"));
-                const query = waitingSearch ? waitingSearch.value.toLowerCase().trim() : "";
-
-                // Filter
-                const filtered = cards.filter(card => {
-                    const reqId = card.getAttribute("data-req-id").toLowerCase();
-                    const orderId = card.getAttribute("data-order-id").toLowerCase();
-                    const customer = card.getAttribute("data-customer");
-                    const phone = card.getAttribute("data-phone");
-                    return reqId.includes(query) || orderId.includes(query) || customer.includes(query) || phone.includes(query);
-                });
-
-                const totalItems = filtered.length;
-                const totalPages = Math.ceil(totalItems / PAGE_SIZE) || 1;
-
-                if (currentWaitingPage > totalPages) currentWaitingPage = totalPages;
-                if (currentWaitingPage < 1) currentWaitingPage = 1;
-
-                // Hide all cards
-                cards.forEach(card => card.style.display = "none");
-
-                const start = (currentWaitingPage - 1) * PAGE_SIZE;
-                const end = Math.min(start + PAGE_SIZE, totalItems);
-
-                filtered.slice(start, end).forEach(card => {
-                    card.style.display = "";
-                });
-
-                if (totalItems === 0) {
-                    if (waitingCardsContainer) waitingCardsContainer.style.display = "none";
-                    if (waitingSearchEmpty) waitingSearchEmpty.style.display = "";
-                } else {
-                    if (waitingCardsContainer) waitingCardsContainer.style.display = "";
-                    if (waitingSearchEmpty) waitingSearchEmpty.style.display = "none";
-                }
-
-                if (waitingPaginationInfo) {
-                    if (totalItems === 0) {
-                        waitingPaginationInfo.textContent = "Không tìm thấy yêu cầu nào";
-                    } else {
-                        waitingPaginationInfo.textContent = `Hiển thị ${start + 1}-${end} trên ${totalItems} yêu cầu`;
-                    }
-                }
-
-                renderPaginationButtons(waitingPaginationButtons, currentWaitingPage, totalPages, function (p) {
-                    currentWaitingPage = p;
-                    updateWaitingCards();
-                });
-            }
-
-            if (waitingSearch) waitingSearch.addEventListener("input", () => { currentWaitingPage = 1; updateWaitingCards(); });
-
-            if (document.querySelector(".waiting-card")) {
-                updateWaitingCards();
-            }
-
-
-            // 3. PROCESSED PANE (Lịch sử xử lý)
-            const processedSearch = document.getElementById("processedSearch");
-            const processedStatusSelect = document.getElementById("processedStatusSelect");
-            const processedTableBody = document.getElementById("processedTableBody");
-            const processedSearchEmpty = document.getElementById("processedSearchEmpty");
-            const processedPaginationInfo = document.getElementById("processedPaginationInfo");
-            const processedPaginationButtons = document.getElementById("processedPaginationButtons");
-
-            let currentProcessedPage = 1;
-
-            function updateProcessedTable() {
-                const trs = Array.from(document.querySelectorAll(".processed-tr"));
-                const details = Array.from(document.querySelectorAll(".processed-detail-tr"));
-                const query = processedSearch ? processedSearch.value.toLowerCase().trim() : "";
-                const selectedStatus = processedStatusSelect ? processedStatusSelect.value : "";
-
-                // Filter
-                const filtered = trs.filter(tr => {
-                    const reqId = tr.getAttribute("data-req-id").toLowerCase();
-                    const orderId = tr.getAttribute("data-order-id").toLowerCase();
-                    const customer = tr.getAttribute("data-customer");
-                    const phone = tr.getAttribute("data-phone");
-                    const status = tr.getAttribute("data-status");
-
-                    const matchesQuery = reqId.includes(query) || orderId.includes(query) || customer.includes(query) || phone.includes(query);
-                    const matchesStatus = selectedStatus === "" || status === selectedStatus;
-                    return matchesQuery && matchesStatus;
-                });
-
-                const totalItems = filtered.length;
-                const totalPages = Math.ceil(totalItems / PAGE_SIZE) || 1;
-
-                if (currentProcessedPage > totalPages) currentProcessedPage = totalPages;
-                if (currentProcessedPage < 1) currentProcessedPage = 1;
-
-                // Hide all rows
-                trs.forEach(tr => tr.style.display = "none");
-                details.forEach(det => det.style.display = "none");
-
-                const start = (currentProcessedPage - 1) * PAGE_SIZE;
-                const end = Math.min(start + PAGE_SIZE, totalItems);
-
-                const activePageRows = filtered.slice(start, end);
-                activePageRows.forEach(tr => {
-                    tr.style.display = "";
-                    
-                    // Hook double row click toggle to show details sub-row
-                    tr.onclick = function() {
-                        const targetId = tr.getAttribute("data-req-id");
-                        const detailRow = document.querySelector(`.processed-detail-tr[data-parent-id="${targetId}"]`);
-                        if (detailRow) {
-                            if (detailRow.style.display === "none") {
-                                detailRow.style.display = "table-row";
-                            } else {
-                                detailRow.style.display = "none";
-                            }
-                        }
-                    };
-                });
-
-                if (totalItems === 0) {
-                    if (processedTableBody) processedTableBody.closest("div").style.display = "none";
-                    if (processedSearchEmpty) processedSearchEmpty.style.display = "";
-                } else {
-                    if (processedTableBody) processedTableBody.closest("div").style.display = "";
-                    if (processedSearchEmpty) processedSearchEmpty.style.display = "none";
-                }
-
-                if (processedPaginationInfo) {
-                    if (totalItems === 0) {
-                        processedPaginationInfo.textContent = "Không tìm thấy yêu cầu nào";
-                    } else {
-                        processedPaginationInfo.textContent = `Hiển thị ${start + 1}-${end} trên ${totalItems} yêu cầu`;
-                    }
-                }
-
-                renderPaginationButtons(processedPaginationButtons, currentProcessedPage, totalPages, function (p) {
-                    currentProcessedPage = p;
-                    updateProcessedTable();
-                });
-            }
-
-            if (processedSearch) processedSearch.addEventListener("input", () => { currentProcessedPage = 1; updateProcessedTable(); });
-            if (processedStatusSelect) processedStatusSelect.addEventListener("change", () => { currentProcessedPage = 1; updateProcessedTable(); });
-
-            if (document.querySelector(".processed-tr")) {
-                updateProcessedTable();
-            }
-
-
-            // PAGINATION BUTTONS RENDERER
-            function renderPaginationButtons(container, currentPage, totalPages, onPageClick) {
-                if (!container) return;
-                container.innerHTML = "";
-
-                if (totalPages <= 1) return;
-
-                // Prev button
-                const prevBtn = document.createElement("button");
-                prevBtn.type = "button";
-                prevBtn.className = `btn btn-sm btn-outline-secondary px-2 ${currentPage === 1 ? 'disabled' : ''}`;
-                prevBtn.innerHTML = '<i class="bi bi-chevron-left"></i>';
-                prevBtn.addEventListener("click", () => {
-                    if (currentPage > 1) onPageClick(currentPage - 1);
-                });
-                container.appendChild(prevBtn);
-
-                // Numbers
-                for (let i = 1; i <= totalPages; i++) {
-                    const pageBtn = document.createElement("button");
-                    pageBtn.type = "button";
-                    pageBtn.className = `btn btn-sm px-3 ${currentPage === i ? 'btn-primary' : 'btn-outline-secondary'}`;
-                    if (currentPage === i) {
-                        pageBtn.style.backgroundColor = "#f97316";
-                        pageBtn.style.borderColor = "#f97316";
-                        pageBtn.style.color = "#ffffff";
-                    }
-                    pageBtn.textContent = i;
-                    pageBtn.addEventListener("click", () => onPageClick(i));
-                    container.appendChild(pageBtn);
-                }
-
-                // Next button
-                const nextBtn = document.createElement("button");
-                nextBtn.type = "button";
-                nextBtn.className = `btn btn-sm btn-outline-secondary px-2 ${currentPage === totalPages ? 'disabled' : ''}`;
-                nextBtn.innerHTML = '<i class="bi bi-chevron-right"></i>';
-                nextBtn.addEventListener("click", () => {
-                    if (currentPage < totalPages) onPageClick(currentPage + 1);
-                });
-                container.appendChild(nextBtn);
-            }
-        });
     </script>
 }

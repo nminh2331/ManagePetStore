@@ -1,0 +1,109 @@
+@model ManagePetStore.Areas.ServiceStaff.Models.StaffHotelBookingHistoryPageViewModel
+
+@{
+    Layout = "~/Areas/ServiceStaff/Views/Shared/_ServiceLayout.cshtml";
+    ViewData["Title"] = "Lịch sử lưu trú Hotel";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/customer-hotel-bookings.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/hotel-booking-history.css" asp-append-version="true" />
+}
+
+<div class="container-fluid py-3">
+    <div class="hbh-page-header">
+        <div>
+            <h1>Lịch sử lưu trú theo thú cưng</h1>
+            <p>Tìm một pet để xem toàn bộ các lần đã ở, sau đó mở từng booking để kiểm tra chi tiết hoạt động.</p>
+        </div>
+        <a href="/SpaServices/Reception" class="hbh-button"><i class="fa-solid fa-clipboard-check"></i> Tiếp nhận mới</a>
+    </div>
+
+    <form method="get" action="/SpaServices/HotelHistory" class="hbh-staff-filter">
+        <input class="hbh-input" type="search" name="searchTerm" value="@Model.SearchTerm" placeholder="Mã booking, pet, chủ nuôi, SĐT hoặc chuồng" />
+        <select class="hbh-select" name="petId" aria-label="Chọn thú cưng">
+            <option value="">Tất cả thú cưng</option>
+            @foreach (var pet in Model.Pets)
+            {
+                <option value="@pet.PetId" selected="@(Model.PetId == pet.PetId)">@pet.PetName · @pet.CustomerName (@pet.BookingCount lần)</option>
+            }
+        </select>
+        <select class="hbh-select" name="statusFilter" aria-label="Trạng thái booking">
+            <option value="all" selected="@(Model.StatusFilter == "all")">Tất cả trạng thái</option>
+            <option value="reserved" selected="@(Model.StatusFilter == "reserved")">Đã đặt</option>
+            <option value="active" selected="@(Model.StatusFilter == "active")">Đang lưu trú</option>
+            <option value="completed" selected="@(Model.StatusFilter == "completed")">Đã trả</option>
+            <option value="cancelled" selected="@(Model.StatusFilter == "cancelled")">Đã hủy</option>
+        </select>
+        <button type="submit" class="hbh-button"><i class="fa-solid fa-magnifying-glass"></i> Tìm lịch sử</button>
+    </form>
+
+    <section class="hbh-staff-surface">
+        <div class="hbh-staff-surface-header">
+            <h2>Danh sách booking</h2>
+            <span>@Model.TotalItems kết quả</span>
+        </div>
+
+        @if (Model.Bookings.Count == 0)
+        {
+            <div class="hbh-empty"><i class="fa-regular fa-folder-open"></i> Không có lượt lưu trú phù hợp với bộ lọc.</div>
+        }
+        else
+        {
+            <div class="hbh-care-table-wrap">
+                <table class="hbh-staff-table">
+                    <thead>
+                        <tr><th>Booking</th><th>Thú cưng</th><th>Chủ nuôi</th><th>Phòng</th><th>Thời gian</th><th>Trạng thái</th><th>Chi phí</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var booking in Model.Bookings)
+                    {
+                        <tr>
+                            <td><strong>@booking.DisplayBookingId</strong></td>
+                            <td>
+                                <strong>@booking.PetName</strong>
+                                <small>@booking.PetSpecies · Pet #@booking.PetId</small>
+                            </td>
+                            <td>
+                                <strong>@booking.CustomerName</strong>
+                                <small>@booking.CustomerPhone</small>
+                            </td>
+                            <td><strong>@booking.CageId</strong><small>@booking.RoomTypeName</small></td>
+                            <td><strong>@booking.CheckInDate.ToString("dd/MM/yyyy")</strong><small>đến @(booking.CheckOutDate?.ToString("dd/MM/yyyy") ?? "chưa xác định")</small></td>
+                            <td><span class="hb-status hb-status-@booking.StatusKey">@booking.Status</span></td>
+                            <td><strong>@booking.FinalAmount.ToString("N0")đ</strong></td>
+                            <td><a href="/SpaServices/HotelHistory/@booking.HotelBookingId" class="hbh-table-link">Chi tiết</a></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <nav class="hbh-pagination" aria-label="Phân trang lịch sử lưu trú">
+                    @if (Model.HasPreviousPage)
+                    {
+                        <a asp-action="HotelHistory" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-petId="@Model.PetId" asp-route-page="@(Model.Page - 1)" aria-label="Trang trước"><i class="fa-solid fa-chevron-left"></i></a>
+                    }
+                    @for (var pageNumber = 1; pageNumber <= Model.TotalPages; pageNumber++)
+                    {
+                        if (pageNumber == Model.Page)
+                        {
+                            <span>@pageNumber</span>
+                        }
+                        else
+                        {
+                            <a asp-action="HotelHistory" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-petId="@Model.PetId" asp-route-page="@pageNumber">@pageNumber</a>
+                        }
+                    }
+                    @if (Model.HasNextPage)
+                    {
+                        <a asp-action="HotelHistory" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-petId="@Model.PetId" asp-route-page="@(Model.Page + 1)" aria-label="Trang sau"><i class="fa-solid fa-chevron-right"></i></a>
+                    }
+                </nav>
+            }
+        }
+    </section>
+</div>
