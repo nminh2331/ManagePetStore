@@ -65,11 +65,21 @@ public class HotelBookingRequest : IValidatableObject
 public class HotelBookingHistoryPageViewModel : CustomerSidebarViewModel
 {
     public List<HotelBookingListItemViewModel> Bookings { get; set; } = [];
+    public List<HotelBookingListItemViewModel> VisibleBookings { get; set; } = [];
+    public string SearchTerm { get; set; } = "";
+    public string StatusFilter { get; set; } = "all";
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 5;
+    public int TotalFilteredItems { get; set; }
+    public int TotalPages { get; set; }
+    public bool HasPreviousPage => Page > 1;
+    public bool HasNextPage => Page < TotalPages;
 }
 
 public class HotelBookingListItemViewModel
 {
     public int HotelBookingId { get; set; }
+    public string DisplayBookingId => $"HB{HotelBookingId:0000}";
     public string PetName { get; set; } = "";
     public string CageId { get; set; } = "";
     public string RoomTypeName { get; set; } = "";
@@ -80,4 +90,9 @@ public class HotelBookingListItemViewModel
     public string Status { get; set; } = "";
     public string StatusKey { get; set; } = "";
     public bool CanCancel { get; set; }
+}
+
+public class HotelBookingDetailPageViewModel : CustomerSidebarViewModel
+{
+    public ManagePetStore.Models.HotelBookingHistoryDetailViewModel Booking { get; set; } = new();
 }

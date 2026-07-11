@@ -9,6 +9,8 @@ public partial class MedicalRecord
 
     public int PetId { get; set; }
 
+    public int? HotelBookingId { get; set; }
+
     public DateTime DateCreated { get; set; }
 
     public decimal Weight { get; set; }
@@ -36,6 +38,8 @@ public partial class MedicalRecord
     public string? FurSkinCheck { get; set; }
 
     public string? DigestiveSigns { get; set; }
+
+    public virtual HotelBooking? HotelBooking { get; set; }
 
     public virtual Pet Pet { get; set; } = null!;
 }
