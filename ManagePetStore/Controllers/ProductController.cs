@@ -344,6 +344,51 @@ public class ProductController : Controller
                             
                         ViewBag.RelatedProducts = relatedDbProducts.Select(MapFromProduct).ToList();
                     }
+                    // Load Reviews
+                    var reviews = await _context.ProductReviews
+                        .Include(r => r.Customer)
+                        .Where(r => r.ProductSku == product.Sku)
+                        .OrderByDescending(r => r.CreatedAt)
+                        .ToListAsync();
+                    
+                    if (reviews.Any())
+                    {
+                        model.Reviews = reviews.Select(r => new ProductReviewViewModel
+                        {
+                            CustomerName = r.Customer.FullName,
+                            Rating = r.Rating,
+                            Comment = r.Comment,
+                            CreatedAt = r.CreatedAt
+                        }).ToList();
+                        model.ReviewCount = reviews.Count;
+                        model.Rating = Math.Round(reviews.Average(r => r.Rating), 1);
+                    }
+                    else
+                    {
+                        model.Rating = 0;
+                        model.ReviewCount = 0;
+                    }
+
+                    // Check CanReview
+                    if (User.Identity?.IsAuthenticated == true)
+                    {
+                        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+                        if (userIdClaim != null && int.TryParse(userIdClaim.Value, out var userId))
+                        {
+                            var customerObj = await _context.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
+                            if (customerObj != null)
+                            {
+                                var hasPurchased = await _context.OrderItems
+                                    .Include(oi => oi.Order)
+                                    .AnyAsync(oi => oi.ProductSku == product.Sku && oi.Order.CustomerId == customerObj.CustomerId && (oi.Order.Status == "Hoàn thành" || oi.Order.Status == "Đã giao hàng"));
+                                
+                                var hasReviewed = await _context.ProductReviews
+                                    .AnyAsync(r => r.ProductSku == product.Sku && r.CustomerId == customerObj.CustomerId);
+                                
+                                model.CanReview = hasPurchased && !hasReviewed;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -355,6 +400,65 @@ public class ProductController : Controller
         model ??= GetStaticProduct(id) ?? GetStaticProduct("RC-MBC-001")!;
 
         return View(model);
+    }
+
+    [HttpPost]
+    [Microsoft.AspNetCore.Authorization.Authorize]
+    public async Task<IActionResult> SubmitProductReview(string productSku, int rating, string comment)
+    {
+        if (string.IsNullOrWhiteSpace(productSku) || rating < 1 || rating > 5 || string.IsNullOrWhiteSpace(comment))
+        {
+            TempData["ErrorMessage"] = "Dữ liệu đánh giá không hợp lệ.";
+            return RedirectToAction("Details", new { id = productSku });
+        }
+
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var userId))
+        {
+            TempData["ErrorMessage"] = "Vui lòng đăng nhập để đánh giá.";
+            return RedirectToAction("Details", new { id = productSku });
+        }
+
+        var customer = await _context.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
+        if (customer == null)
+        {
+            TempData["ErrorMessage"] = "Không tìm thấy thông tin khách hàng.";
+            return RedirectToAction("Details", new { id = productSku });
+        }
+
+        var hasPurchased = await _context.OrderItems
+            .Include(oi => oi.Order)
+            .AnyAsync(oi => oi.ProductSku == productSku && oi.Order.CustomerId == customer.CustomerId && (oi.Order.Status == "Hoàn thành" || oi.Order.Status == "Đã giao hàng"));
+
+        if (!hasPurchased)
+        {
+            TempData["ErrorMessage"] = "Bạn chỉ có thể đánh giá sản phẩm sau khi đã mua và nhận hàng.";
+            return RedirectToAction("Details", new { id = productSku });
+        }
+
+        var hasReviewed = await _context.ProductReviews
+            .AnyAsync(r => r.ProductSku == productSku && r.CustomerId == customer.CustomerId);
+
+        if (hasReviewed)
+        {
+            TempData["ErrorMessage"] = "Bạn đã đánh giá sản phẩm này rồi.";
+            return RedirectToAction("Details", new { id = productSku });
+        }
+
+        var review = new ProductReview
+        {
+            ProductSku = productSku,
+            CustomerId = customer.CustomerId,
+            Rating = rating,
+            Comment = comment.Trim(),
+            CreatedAt = DateTime.Now
+        };
+
+        _context.ProductReviews.Add(review);
+        await _context.SaveChangesAsync();
+
+        TempData["SuccessMessage"] = "Cảm ơn bạn đã đánh giá sản phẩm!";
+        return RedirectToAction("Details", new { id = productSku });
     }
 
     private static ProductDetailViewModel MapFromSpaService(SpaService service)

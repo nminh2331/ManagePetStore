@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace ManagePetStore.Models;
@@ -36,4 +36,6 @@ public partial class Customer
     public virtual User? User { get; set; }
 
     public virtual ICollection<Wallet> Wallets { get; set; } = new List<Wallet>();
+
+    public virtual ICollection<ProductReview> ProductReviews { get; set; } = new List<ProductReview>();
 }

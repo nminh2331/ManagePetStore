@@ -357,36 +357,221 @@
     </div>
 </section>
 
-<section class="ps-section mt-4 mb-5" style="background: #fff; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,.06); overflow: hidden; max-width: 1200px; margin: 0 auto;">
-    <div style="display: flex; border-bottom: 1px solid #eee; padding: 0 24px;">
-        <div style="padding: 16px 24px; color: #ea580c; font-weight: 700; border-bottom: 2px solid #ea580c; cursor: pointer; font-size: 1rem;">
-            @if (!Model.Sku.StartsWith("SPA-SVC-")) { <text>Mô tả sản phẩm</text> } else { <text>Chi tiết dịch vụ</text> }
+<section class="ps-section mt-4 mb-5" style="max-width: 1200px; margin: 0 auto; padding: 0 32px;">
+    <div style="background: #fff; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,.06); overflow: hidden;">
+        <div style="display: flex; border-bottom: 1px solid #eee; padding: 0 24px;">
+            <div style="padding: 16px 24px; color: #ea580c; font-weight: 700; border-bottom: 2px solid #ea580c; cursor: pointer; font-size: 1rem;">
+                @if (!Model.Sku.StartsWith("SPA-SVC-")) { <text>Mô tả sản phẩm</text> } else { <text>Chi tiết dịch vụ</text> }
+            </div>
         </div>
-    </div>
-    
-    <div style="padding: 32px 24px;">
-        <h3 style="font-size: 1.15rem; font-weight: 800; color: #111; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">
-            @Model.Name
-        </h3>
         
-        <div class="product-description-content" style="color: #555; line-height: 1.8; font-size: 0.95rem;">
-            @if (!string.IsNullOrWhiteSpace(Model.Description))
-            {
-                @Html.Raw(Model.Description.Replace("\r\n", "<br/>").Replace("\n", "<br/>"))
-            }
-            else
-            {
-                <p style="color: #888; font-style: italic;">Đang cập nhật thông tin...</p>
-            }
+        <div style="padding: 32px 32px;">
+            <h3 style="font-size: 1.15rem; font-weight: 800; color: #111; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">
+                @Model.Name
+            </h3>
+            
+            <div class="product-description-content" style="color: #555; line-height: 1.8; font-size: 0.95rem;">
+                @if (!string.IsNullOrWhiteSpace(Model.Description))
+                {
+                    @Html.Raw(Model.Description.Replace("\r\n", "<br/>").Replace("\n", "<br/>"))
+                }
+                else
+                {
+                    <p style="color: #888; font-style: italic;">Đang cập nhật thông tin...</p>
+                }
+            </div>
         </div>
     </div>
 </section>
 
 @if (!Model.Sku.StartsWith("SPA-SVC-"))
 {
+    <!-- ======================== KHU VỰC ĐÁNH GIÁ SẢN PHẨM ======================== -->
+    <section class="ps-section mt-4 mb-4" style="max-width: 1200px; margin: 0 auto; padding: 0 32px;">
+        <style>
+            .review-section-wrap { background: #fff; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,.06); padding: 28px 32px; }
+            .review-summary-row { display: flex; align-items: center; gap: 32px; padding-bottom: 24px; border-bottom: 1px solid #f0f0f0; margin-bottom: 24px; flex-wrap: wrap; }
+            .review-big-score { font-size: 3.5rem; font-weight: 900; color: #111; line-height: 1; }
+            .review-stars-row { display: flex; gap: 4px; }
+            .review-star { font-size: 1.4rem; }
+            .review-star.filled { color: #f59e0b; }
+            .review-star.empty  { color: #d1d5db; }
+            .review-star.half   { color: #f59e0b; }
+            .review-count-label { font-size: 0.88rem; color: #6b7280; margin-top: 4px; }
+            .review-list { display: flex; flex-direction: column; gap: 20px; }
+            .review-card { background: #fafafa; border-radius: 12px; padding: 18px 22px; border: 1px solid #f0f0f0; }
+            .review-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px; }
+            .review-card-author { font-weight: 700; font-size: 0.95rem; color: #111; display: flex; align-items: center; gap: 8px; }
+            .review-card-author .avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #ea580c, #f59e0b); color: #fff; font-weight: 800; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+            .review-card-date { font-size: 0.8rem; color: #9ca3af; }
+            .review-card-stars { display: flex; gap: 3px; margin-bottom: 8px; }
+            .review-card-stars .rs { font-size: 1rem; color: #f59e0b; }
+            .review-card-stars .rs.empty { color: #d1d5db; }
+            .review-card-comment { color: #374151; font-size: 0.93rem; line-height: 1.7; }
+            .review-empty-state { text-align: center; padding: 32px; color: #9ca3af; }
+            .review-empty-state i { font-size: 2.5rem; color: #e5e7eb; display: block; margin-bottom: 12px; }
+            /* Write review form */
+            .write-review-wrap { margin-top: 28px; padding-top: 24px; border-top: 1px solid #f0f0f0; }
+            .write-review-title { font-size: 1.05rem; font-weight: 800; color: #111; margin-bottom: 18px; }
+            .star-picker { display: flex; gap: 8px; margin-bottom: 18px; cursor: pointer; }
+            .star-picker i { font-size: 1.8rem; color: #d1d5db; transition: color 0.15s; }
+            .star-picker i.active { color: #f59e0b; }
+            .star-picker i:hover ~ i { color: #d1d5db; }
+            .write-review-textarea { width: 100%; border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; font-size: 0.93rem; color: #374151; resize: vertical; min-height: 100px; font-family: inherit; transition: border-color 0.2s; }
+            .write-review-textarea:focus { outline: none; border-color: #ea580c; }
+            .write-review-submit { margin-top: 12px; background: linear-gradient(135deg, #ea580c, #f59e0b); color: #fff; border: none; border-radius: 10px; padding: 12px 28px; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: opacity 0.2s, transform 0.15s; }
+            .write-review-submit:hover { opacity: 0.9; transform: translateY(-1px); }
+            .review-login-notice { background: #fff7ed; border: 1.5px solid #fed7aa; border-radius: 10px; padding: 14px 18px; color: #9a3412; font-size: 0.9rem; margin-top: 24px; }
+        </style>
+
+        <div class="review-section-wrap">
+            <h2 style="font-size: 1.15rem; font-weight: 800; color: #111; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                <i class="bi bi-star-fill" style="color: #f59e0b;"></i> Đánh giá từ khách hàng
+            </h2>
+
+            @{
+                var avgRating = Model.ReviewCount > 0 ? Model.Rating : 0.0;
+                var fullStars = (int)Math.Floor(avgRating);
+                var hasHalf = (avgRating - fullStars) >= 0.5;
+            }
+
+            <div class="row">
+                <!-- Cột trái: Tóm tắt điểm & Form đánh giá -->
+                <div class="col-md-4" style="border-right: 1px solid #f0f0f0; padding-right: 24px;">
+                    <!-- Summary row -->
+                    <div class="review-summary-row" style="padding-bottom: 20px; margin-bottom: 20px;">
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <div style="display: flex; gap: 3px;">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    if (i <= fullStars)
+                                    { <span class="review-star filled">★</span> }
+                                    else if (i == fullStars + 1 && hasHalf)
+                                    { <span class="review-star half">★</span> }
+                                    else
+                                    { <span class="review-star empty">☆</span> }
+                                }
+                            </div>
+                            @if (Model.ReviewCount > 0)
+                            {
+                                <div style="width: 100%;">
+                                    <span style="font-size: 1.1rem; font-weight: 800; color: #111;">@avgRating.ToString("0.0")</span>
+                                    <span style="color: #9ca3af; font-size: 0.88rem;">/ 5 (@Model.ReviewCount đánh giá)</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div style="width: 100%;"><span style="color: #9ca3af; font-size: 0.88rem;">Chưa có đánh giá nào</span></div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Write review form or notice -->
+                    @if (Model.CanReview)
+                    {
+                        <div class="write-review-wrap" style="margin-top: 0; padding-top: 0; border-top: none;">
+                            <div class="write-review-title"><i class="bi bi-pencil-square me-2" style="color: #ea580c;"></i>Viết đánh giá của bạn</div>
+                            <form asp-controller="Product" asp-action="SubmitProductReview" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="productSku" value="@Model.Sku" />
+                                <input type="hidden" name="rating" id="review-rating-input" value="5" />
+                                <div class="star-picker" id="star-picker">
+                                    <i class="bi bi-star-fill active" data-val="1"></i>
+                                    <i class="bi bi-star-fill active" data-val="2"></i>
+                                    <i class="bi bi-star-fill active" data-val="3"></i>
+                                    <i class="bi bi-star-fill active" data-val="4"></i>
+                                    <i class="bi bi-star-fill active" data-val="5"></i>
+                                </div>
+                                <textarea class="write-review-textarea" name="comment" placeholder="Chia sẻ cảm nhận của bạn về sản phẩm..." required maxlength="1000" style="min-height: 80px;"></textarea>
+                                <div><button type="submit" class="write-review-submit" style="padding: 10px 20px; font-size: 0.9rem;"><i class="bi bi-send me-2"></i>Gửi đánh giá</button></div>
+                            </form>
+                        </div>
+                    }
+                    else if (!User.Identity?.IsAuthenticated ?? true)
+                    {
+                        <div class="review-login-notice" style="margin-top: 0;">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <a asp-area="Customer" asp-controller="Account" asp-action="Login" style="color: #ea580c; font-weight: 700;">Đăng nhập</a> và mua sản phẩm này để gửi đánh giá.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="review-login-notice" style="margin-top: 0; background: #f0fdf4; border-color: #bbf7d0; color: #166534;">
+                            <i class="bi bi-bag-check me-2"></i>
+                            Mua và nhận sản phẩm này để có thể gửi đánh giá.
+                        </div>
+                    }
+                </div>
+
+                <!-- Cột phải: Danh sách bình luận -->
+                <div class="col-md-8" style="padding-left: 24px;">
+                    <!-- Review list -->
+                    @if (Model.Reviews.Any())
+                    {
+                        <div class="review-list">
+                            @foreach (var rv in Model.Reviews)
+                            {
+                                <div class="review-card">
+                                    <div class="review-card-header">
+                                        <div class="review-card-author">
+                                            <div class="avatar">@(rv.CustomerName.Length > 0 ? rv.CustomerName[0].ToString().ToUpper() : "K")</div>
+                                            <span>@rv.CustomerName</span>
+                                        </div>
+                                        <span class="review-card-date">@rv.CreatedAt.ToString("dd/MM/yyyy")</span>
+                                    </div>
+                                    <div class="review-card-stars">
+                                        @for (int i = 1; i <= 5; i++)
+                                        {
+                                            <span class="rs @(i <= rv.Rating ? "" : "empty")">★</span>
+                                        }
+                                    </div>
+                                    <div class="review-card-comment">@rv.Comment</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="review-empty-state">
+                            <i class="bi bi-chat-square-text"></i>
+                            <div style="font-weight: 600; color: #6b7280; margin-bottom: 4px;">Chưa có đánh giá nào</div>
+                            <div style="font-size: 0.85rem;">Hãy là người đầu tiên đánh giá sản phẩm này!</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- JS: Star picker -->
+    <script>
+        (function () {
+            var picker = document.getElementById('star-picker');
+            var input = document.getElementById('review-rating-input');
+            if (!picker || !input) return;
+            var stars = picker.querySelectorAll('i');
+            function setRating(val) {
+                input.value = val;
+                stars.forEach(function (s, idx) {
+                    s.classList.toggle('active', idx < val);
+                });
+            }
+            stars.forEach(function (star, idx) {
+                star.addEventListener('click', function () { setRating(idx + 1); });
+                star.addEventListener('mouseenter', function () {
+                    stars.forEach(function (s, i) { s.classList.toggle('active', i <= idx); });
+                });
+            });
+            picker.addEventListener('mouseleave', function () { setRating(parseInt(input.value)); });
+        })();
+    </script>
+}
+
+@if (!Model.Sku.StartsWith("SPA-SVC-"))
+{
     @if (ViewBag.RelatedProducts != null && ((List<ManagePetStore.Controllers.ProductDetailViewModel>)ViewBag.RelatedProducts).Any())
     {
-        <section class="ps-section mt-5" style="max-width: 1200px; margin: 0 auto; padding: 0 16px;">
+        <section class="ps-section mt-5" style="max-width: 1200px; margin: 0 auto; padding: 0 32px;">
             <div class="ps-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2 class="ps-section-title" style="font-size: 1.25rem; font-weight: 800; margin: 0;">Các sản phẩm cùng danh mục</h2>
                 <a href="@Url.Action("Index", "Product")" style="color: #ea580c; font-weight: 600; text-decoration: none; font-size: 0.95rem;">Xem tất cả &rarr;</a>

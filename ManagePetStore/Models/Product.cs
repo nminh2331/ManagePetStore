@@ -45,4 +45,6 @@ public partial class Product
     public virtual ICollection<ReturnRequestItem> ReturnRequestItems { get; set; } = new List<ReturnRequestItem>();
 
     public virtual ICollection<StockMovementDetail> StockMovementDetails { get; set; } = new List<StockMovementDetail>();
+
+    public virtual ICollection<ProductReview> ProductReviews { get; set; } = new List<ProductReview>();
 }

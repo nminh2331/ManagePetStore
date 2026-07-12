@@ -23,6 +23,9 @@ public interface IStockMovementService
     // Duyệt đơn
     Task ApproveMovement(int movementId, int approvedById, Dictionary<int, DateTime>? expiryDates = null);
 
+    // Tự động tạo phiếu xuất/nhập khi có thay đổi từ đơn hàng (Sales, Return)
+    Task CreateSystemMovement(int systemUserId, string type, string status, string? supplier, decimal totalValue, List<StockMovementDetail> details);
+
     // Hủy đơn
     Task CancelMovement(int movementId);
 

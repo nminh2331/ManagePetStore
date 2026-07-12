@@ -51,6 +51,8 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<Product> Products { get; set; }
 
+    public virtual DbSet<ProductReview> ProductReviews { get; set; }
+
     public virtual DbSet<ProductCategory> ProductCategories { get; set; }
 
     public virtual DbSet<ReturnRequest> ReturnRequests { get; set; }
@@ -853,6 +855,24 @@ public partial class PetStoreManagementContext : DbContext
                 .HasForeignKey(d => d.WalletId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_WalletTransactions_Wallets");
+        });
+
+        modelBuilder.Entity<ProductReview>(entity =>
+        {
+            entity.HasKey(e => e.ReviewId);
+
+            entity.Property(e => e.ProductSku).HasMaxLength(50);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnType("datetime");
+
+            entity.HasOne(d => d.Customer).WithMany(p => p.ProductReviews)
+                .HasForeignKey(d => d.CustomerId)
+                .HasConstraintName("FK_ProductReviews_Customers")
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(d => d.Product).WithMany(p => p.ProductReviews)
+                .HasForeignKey(d => d.ProductSku)
+                .HasConstraintName("FK_ProductReviews_Products")
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         OnModelCreatingPartial(modelBuilder);

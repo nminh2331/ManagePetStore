@@ -12,6 +12,8 @@ using ManagePetStore.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using ClosedXML.Excel;
+using System.IO;
 
 namespace ManagePetStore.Areas.Warehouse.Controllers
 {
@@ -41,6 +43,69 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             ViewBag.Search = search;
             var movements = await _movementService.GetAllMovements(fromDate, toDate, search);
             return View(movements);
+        }
+
+        // Xuất file Excel
+        [HttpGet]
+        [Authorize(Roles = "warehouse,manager")]
+        public async Task<IActionResult> ExportExcel(DateTime? fromDate, DateTime? toDate, string tab = "all", string? search = null)
+        {
+            var allMovements = await _movementService.GetAllMovements(fromDate, toDate, search);
+            
+            // Lọc theo tab giống như View Index
+            var movementsToExport = allMovements;
+            if (tab == "manager")
+            {
+                movementsToExport = allMovements.Where(m => m.Status == "Chờ quản lý duyệt");
+            }
+            else if (tab == "inspection")
+            {
+                movementsToExport = allMovements.Where(m => m.Status == "Chờ kiểm hàng");
+            }
+
+            using (var workbook = new XLWorkbook())
+            {
+                var worksheet = workbook.Worksheets.Add("LichSuXuatNhapKho");
+                var currentRow = 1;
+
+                // Headers
+                worksheet.Cell(currentRow, 1).Value = "Mã Phiếu";
+                worksheet.Cell(currentRow, 2).Value = "Ngày tạo";
+                worksheet.Cell(currentRow, 3).Value = "Loại phiếu";
+                worksheet.Cell(currentRow, 4).Value = "Nhà cung cấp";
+                worksheet.Cell(currentRow, 5).Value = "Tổng giá trị (VNĐ)";
+                worksheet.Cell(currentRow, 6).Value = "Trạng thái";
+
+                // Format Headers
+                var headerRange = worksheet.Range(1, 1, 1, 6);
+                headerRange.Style.Font.Bold = true;
+                headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
+                headerRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+                // Data Rows
+                foreach (var m in movementsToExport)
+                {
+                    currentRow++;
+                    worksheet.Cell(currentRow, 1).Value = "MH-" + m.MovementId.ToString("D5");
+                    worksheet.Cell(currentRow, 2).Value = m.Date.ToString("dd/MM/yyyy HH:mm");
+                    worksheet.Cell(currentRow, 3).Value = m.Type;
+                    worksheet.Cell(currentRow, 4).Value = m.Supplier ?? "N/A";
+                    worksheet.Cell(currentRow, 5).Value = m.TotalValue;
+                    worksheet.Cell(currentRow, 6).Value = m.Status;
+                }
+
+                // Format Columns
+                worksheet.Column(5).Style.NumberFormat.Format = "#,##0";
+                worksheet.Columns().AdjustToContents();
+
+                using (var stream = new MemoryStream())
+                {
+                    workbook.SaveAs(stream);
+                    var content = stream.ToArray();
+                    var fileName = $"LichSuXuatNhapKho_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+                    return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+                }
+            }
         }
 
         // Hiển thị chi tiết một phiếu xuất/nhập kho
