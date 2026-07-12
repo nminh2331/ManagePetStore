@@ -8,6 +8,7 @@ using ManagePetStore.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ManagePetStore.Services.Warehouse;
 
 namespace ManagePetStore.Areas.Customer.Controllers;
 
@@ -17,11 +18,15 @@ public class OrderController : Controller
 {
     private readonly PetStoreManagementContext _context;
     private readonly IOrderReviewService _reviewService;
+    private readonly IStockMovementService _stockMovementService;
+    private readonly IInventoryBatchService _inventoryBatchService;
 
-    public OrderController(PetStoreManagementContext context, IOrderReviewService reviewService)
+    public OrderController(PetStoreManagementContext context, IOrderReviewService reviewService, IStockMovementService stockMovementService, IInventoryBatchService inventoryBatchService)
     {
         _context = context;
         _reviewService = reviewService;
+        _stockMovementService = stockMovementService;
+        _inventoryBatchService = inventoryBatchService;
     }
 
     [HttpGet]
@@ -208,6 +213,7 @@ public class OrderController : Controller
         }
 
         // Hoàn lại số lượng tồn kho cho sản phẩm
+        var systemStockDetails = new List<StockMovementDetail>();
         foreach (var item in order.OrderItems)
         {
             if (!string.IsNullOrEmpty(item.ProductSku))
@@ -215,10 +221,28 @@ public class OrderController : Controller
                 var product = await _context.Products.FirstOrDefaultAsync(p => p.Sku == item.ProductSku);
                 if (product != null)
                 {
-                    product.Stock += item.Quantity;
-                    _context.Entry(product).State = EntityState.Modified;
+                    await _inventoryBatchService.RestockToBatches(item.ProductSku, item.Quantity);
+                    
+                    systemStockDetails.Add(new StockMovementDetail
+                    {
+                        ProductSku = item.ProductSku,
+                        Quantity = item.Quantity,
+                        CostPrice = 0
+                    });
                 }
             }
+        }
+
+        if (systemStockDetails.Any())
+        {
+            await _stockMovementService.CreateSystemMovement(
+                systemUserId: 1, 
+                type: "Nhập kho (Hủy đơn)",
+                status: "Đã hoàn thành",
+                supplier: null,
+                totalValue: 0,
+                details: systemStockDetails
+            );
         }
 
         // Hủy các Spa Booking đi kèm đơn hàng (nếu có)

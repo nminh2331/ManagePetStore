@@ -9,20 +9,26 @@ using System.Threading.Tasks;
 using PayOS;
 using PayOS.Models;
 using PayOS.Models.V2.PaymentRequests;
+using ManagePetStore.Services.Warehouse;
+using System.Security.Claims;
 
 namespace ManagePetStore.Areas.Cashier.Controllers
 {
     [Area("Cashier")]
-    [Authorize(Roles = "cashier")]
+    [Authorize(Roles = "cashier,manager,admin")]
     public class OrderController : Controller
     {
         private readonly PetStoreManagementContext _context;
         private readonly PayOSClient _payOS;
+        private readonly IStockMovementService _stockMovementService;
+        private readonly IInventoryBatchService _inventoryBatchService;
 
-        public OrderController(PetStoreManagementContext context, PayOSClient payOS)
+        public OrderController(PetStoreManagementContext context, PayOSClient payOS, IStockMovementService stockMovementService, IInventoryBatchService inventoryBatchService)
         {
             _context = context;
             _payOS = payOS;
+            _stockMovementService = stockMovementService;
+            _inventoryBatchService = inventoryBatchService;
         }
 
         // GET: /Cashier/Order/Create (POS Screen)
@@ -66,10 +72,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                         order.CancelReason = "Khách hàng hủy thanh toán trực tuyến qua PayOS tại quầy.";
                         _context.Entry(order).State = EntityState.Modified;
                         await _context.SaveChangesAsync();
-                        if (order.CustomerId != null)
-                        {
-                            await ManagePetStore.Services.Customer.CustomerRewardHelper.RecalculateCustomerPointsAndTierAsync(order.CustomerId, _context);
-                        }
+                        await ManagePetStore.Services.Customer.CustomerRewardHelper.RecalculateCustomerPointsAndTierAsync(order.CustomerId, _context);
                     }
                 }
             }
@@ -498,6 +501,8 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
 
+            var systemStockDetails = new List<StockMovementDetail>();
+
             // Process Items
             foreach (var item in dto.Items)
             {
@@ -517,8 +522,23 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                     var product = await _context.Products.FirstOrDefaultAsync(p => p.Sku == item.Id);
                     if (product != null)
                     {
-                        product.Stock -= item.Quantity;
-                        if (product.Stock < 0) product.Stock = 0;
+                        try 
+                        {
+                            await _inventoryBatchService.DeductStockFIFO(item.Id, item.Quantity);
+                        }
+                        catch (ManagePetStore.Exceptions.ServiceException)
+                        {
+                            // Fallback to manual deduction if batch service fails (e.g. not enough stock recorded in batches)
+                            product.Stock -= item.Quantity;
+                            if (product.Stock < 0) product.Stock = 0;
+                        }
+                        
+                        systemStockDetails.Add(new StockMovementDetail
+                        {
+                            ProductSku = item.Id,
+                            Quantity = item.Quantity,
+                            CostPrice = 0
+                        });
                     }
                 }
                 else if (item.Type == "Spa")
@@ -573,6 +593,19 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 }
 
                 _context.OrderItems.Add(orderItem);
+            }
+
+            if (systemStockDetails.Any())
+            {
+                int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "1");
+                await _stockMovementService.CreateSystemMovement(
+                    systemUserId: userId,
+                    type: "Xuất kho (Bán hàng POS)",
+                    status: "Đã hoàn thành",
+                    supplier: null,
+                    totalValue: 0,
+                    details: systemStockDetails
+                );
             }
 
             await _context.SaveChangesAsync();

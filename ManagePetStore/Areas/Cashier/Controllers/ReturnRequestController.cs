@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ManagePetStore.Hubs;
 using Microsoft.AspNetCore.SignalR;
+using ManagePetStore.Services.Warehouse;
 
 namespace ManagePetStore.Areas.Cashier.Controllers
 {
@@ -14,11 +15,15 @@ namespace ManagePetStore.Areas.Cashier.Controllers
     {
         private readonly PetStoreManagementContext _context;
         private readonly IHubContext<HotelCareHub> _hubContext;
+        private readonly IStockMovementService _stockMovementService;
+        private readonly IInventoryBatchService _inventoryBatchService;
 
-        public ReturnRequestController(PetStoreManagementContext context, IHubContext<HotelCareHub> hubContext)
+        public ReturnRequestController(PetStoreManagementContext context, IHubContext<HotelCareHub> hubContext, IStockMovementService stockMovementService, IInventoryBatchService inventoryBatchService)
         {
             _context = context;
             _hubContext = hubContext;
+            _stockMovementService = stockMovementService;
+            _inventoryBatchService = inventoryBatchService;
         }
 
         private async Task<int?> GetCurrentUserIdAsync()
@@ -229,14 +234,33 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                     _context.WalletTransactions.Add(walletTransaction);
 
                     // 4. Restock items returned
+                    var systemStockDetails = new List<StockMovementDetail>();
                     foreach (var item in request.ReturnRequestItems)
                     {
                         var product = await _context.Products.FirstOrDefaultAsync(p => p.Sku == item.Sku);
                         if (product != null)
                         {
-                            product.Stock += item.Quantity;
-                            _context.Entry(product).State = EntityState.Modified;
+                            await _inventoryBatchService.RestockToBatches(item.Sku, item.Quantity);
+                            
+                            systemStockDetails.Add(new StockMovementDetail
+                            {
+                                ProductSku = item.Sku,
+                                Quantity = item.Quantity,
+                                CostPrice = 0
+                            });
                         }
+                    }
+
+                    if (systemStockDetails.Any())
+                    {
+                        await _stockMovementService.CreateSystemMovement(
+                            systemUserId: userId ?? 1,
+                            type: "Nhập kho (Khách trả hàng)",
+                            status: "Đã hoàn thành",
+                            supplier: null,
+                            totalValue: 0,
+                            details: systemStockDetails
+                        );
                     }
 
                     await _context.SaveChangesAsync();

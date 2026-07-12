@@ -190,6 +190,22 @@ public class StockMovementService : IStockMovementService
         }
     }
 
+    public async Task CreateSystemMovement(int systemUserId, string type, string status, string? supplier, decimal totalValue, List<StockMovementDetail> details)
+    {
+        var movement = new StockMovement
+        {
+            Type = type,
+            CreatedById = systemUserId,
+            Status = status,
+            Supplier = supplier,
+            TotalValue = totalValue,
+            Date = DateTime.Now,
+            StockMovementDetails = details
+        };
+
+        await _movementRepo.AddMovement(movement);
+    }
+
     public async Task CancelMovement(int movementId)
     {
         var movement = await _movementRepo.GetMovementById(movementId);

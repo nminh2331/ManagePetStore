@@ -11,6 +11,7 @@ using System.Text.RegularExpressions;
 using PayOS;
 using PayOS.Models;
 using PayOS.Models.V2.PaymentRequests;
+using ManagePetStore.Services.Warehouse;
 
 namespace ManagePetStore.Areas.Customer.Controllers;
 
@@ -22,17 +23,23 @@ public class CheckoutController : Controller
     private readonly PetStoreManagementContext _context;
     private readonly ICheckoutEmailService _checkoutEmailService;
     private readonly PayOSClient _payOS;
+    private readonly IStockMovementService _stockMovementService;
+    private readonly IInventoryBatchService _inventoryBatchService;
 
     public CheckoutController(
         ICartService cartService,
         PetStoreManagementContext context,
         ICheckoutEmailService checkoutEmailService,
-        PayOSClient payOS)
+        PayOSClient payOS,
+        IStockMovementService stockMovementService,
+        IInventoryBatchService inventoryBatchService)
     {
         _cartService = cartService;
         _context = context;
         _checkoutEmailService = checkoutEmailService;
         _payOS = payOS;
+        _stockMovementService = stockMovementService;
+        _inventoryBatchService = inventoryBatchService;
     }
 
     [HttpGet]
@@ -190,6 +197,8 @@ public class CheckoutController : Controller
 
             _context.Orders.Add(order);  //Đưa entity vào change tracker, chưa save ngay.
 
+            var systemStockDetails = new List<StockMovementDetail>();
+
             foreach (var item in cart.Items)
             {
                 var isSpa = item.Sku.StartsWith("SPA-SVC-", StringComparison.OrdinalIgnoreCase);
@@ -334,6 +343,16 @@ public class CheckoutController : Controller
                     Price = item.UnitPrice,
                     IsCombo = false
                 });
+
+                if (!isSpa && !string.IsNullOrEmpty(item.Sku))
+                {
+                    systemStockDetails.Add(new StockMovementDetail
+                    {
+                        ProductSku = item.Sku,
+                        Quantity = item.Quantity,
+                        CostPrice = 0 // Not tracking cost for export right now
+                    });
+                }
             }
 
 
@@ -378,6 +397,18 @@ public class CheckoutController : Controller
                     OrderId = orderId,
                     TransactionDate = DateTime.Now
                 });
+            }
+
+            if (systemStockDetails.Any())
+            {
+                await _stockMovementService.CreateSystemMovement(
+                    systemUserId: 1, // Admin ID as system
+                    type: "Xuất kho (Bán hàng online)",
+                    status: "Đã hoàn thành",
+                    supplier: null,
+                    totalValue: 0,
+                    details: systemStockDetails
+                );
             }
 
             await _context.SaveChangesAsync();
@@ -669,10 +700,21 @@ public class CheckoutController : Controller
         }
         else
         {
-            await _context.Database.ExecuteSqlRawAsync(
-                "UPDATE Products SET Stock = CASE WHEN Stock >= {1} THEN Stock - {1} ELSE 0 END WHERE Sku = {0}",
-                item.Sku,
-                item.Quantity);
+            try 
+            {
+                if (!string.IsNullOrEmpty(item.Sku))
+                {
+                    await _inventoryBatchService.DeductStockFIFO(item.Sku, item.Quantity);
+                }
+            }
+            catch (ManagePetStore.Exceptions.ServiceException)
+            {
+                // Fallback to basic deduction if batch service throws (e.g., stock mismatch)
+                await _context.Database.ExecuteSqlRawAsync(
+                    "UPDATE Products SET Stock = CASE WHEN Stock >= {1} THEN Stock - {1} ELSE 0 END WHERE Sku = {0}",
+                    item.Sku,
+                    item.Quantity);
+            }
         }
     }
 }

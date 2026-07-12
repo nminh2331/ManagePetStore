@@ -105,6 +105,16 @@ public class ProductDetailViewModel
     public bool InStock { get; set; } = true;
     public List<string> Images { get; set; } = [];
     public List<string> Features { get; set; } = [];
+    public List<ProductReviewViewModel> Reviews { get; set; } = new();
+    public bool CanReview { get; set; } = false;
+}
+
+public class ProductReviewViewModel
+{
+    public string CustomerName { get; set; } = "";
+    public int Rating { get; set; }
+    public string? Comment { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
 
 /// <summary>ViewModel cho danh sách Blog hiển thị ở Trang chủ</summary>

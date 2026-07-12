@@ -136,4 +136,33 @@ public class InventoryBatchService : IInventoryBatchService
         product.Stock -= quantityToDeduct;
         await _productRepo.UpdateProduct(product);
     }
+
+    public async Task RestockToBatches(string productSku, int quantityToRestock)
+    {
+        var product = await _productRepo.GetProductBySku(productSku);
+        if (product == null) throw new ServiceException("Sản phẩm không tồn tại.");
+
+        if (quantityToRestock <= 0) return;
+
+        // Tìm lô hàng nhập vào gần nhất (hoặc lô có hạn sử dụng xa nhất)
+        var newestBatch = (await _batchRepo.GetBatchesByProductSku(productSku))
+            .OrderByDescending(b => b.ReceivedDate)
+            .FirstOrDefault();
+
+        if (newestBatch != null)
+        {
+            // Cộng trả lại vào lô mới nhất
+            newestBatch.CurrentQuantity += quantityToRestock;
+            await _batchRepo.UpdateBatch(newestBatch);
+        }
+        else
+        {
+            // Nếu không có bất kỳ lô nào (hiếm), ta có thể tạo 1 lô tự động
+            // Nhưng hiện tại theo flow cũ, chỉ cần bỏ qua và cộng vào Product.Stock
+        }
+
+        // Cập nhật tổng tồn kho
+        product.Stock += quantityToRestock;
+        await _productRepo.UpdateProduct(product);
+    }
 }
