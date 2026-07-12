@@ -330,6 +330,7 @@
                                             servicePath.StartsWith("/SpaServices/CageCategories", StringComparison.OrdinalIgnoreCase);
                     bool isMedicalRecords = servicePath.StartsWith("/SpaServices/MedicalRecords", StringComparison.OrdinalIgnoreCase);
                     bool isHotelHistory = servicePath.StartsWith("/SpaServices/HotelHistory", StringComparison.OrdinalIgnoreCase);
+                    bool isDailyCare = servicePath.StartsWith("/SpaServices/PetDaily", StringComparison.OrdinalIgnoreCase);
                 }
                 <a href="/SpaServices" class="service-nav-item @(!isHotelWorkspace && !isMedicalRecords && (servicePath == "/SpaServices" || servicePath == "/SpaServices/Index" || servicePath == "/SpaServices/") ? "active" : "")">
                     <i class="fa-solid fa-scissors"></i>
@@ -350,6 +351,10 @@
                 <a href="/SpaServices/CageCategories" class="service-nav-item @(servicePath.StartsWith("/SpaServices/CageCategories", StringComparison.OrdinalIgnoreCase) ? "active" : "")">
                     <i class="fa-solid fa-house-chimney-medical"></i>
                     Danh mục Chuồng
+                </a>
+                <a href="/SpaServices/PetDaily" class="service-nav-item @(isDailyCare ? "active" : "")">
+                    <i class="fa-solid fa-book-open"></i>
+                    Nhật ký chăm sóc
                 </a>
                 <a href="/SpaServices/HotelHistory" class="service-nav-item @(isHotelHistory ? "active" : "")">
                     <i class="fa-solid fa-clock-rotate-left"></i>

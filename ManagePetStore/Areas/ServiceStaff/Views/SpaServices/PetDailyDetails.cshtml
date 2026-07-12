@@ -1,0 +1,242 @@
+@model ManagePetStore.Areas.ServiceStaff.Models.PetDailyCareDetailsViewModel
+
+@{
+    Layout = "~/Areas/ServiceStaff/Views/Shared/_ServiceLayout.cshtml";
+    ViewData["Title"] = $"Nhật ký {Model.PetName}";
+    var displayedLogs = Model.SelectedTab == "all" ? Model.AllLogs : Model.CurrentLogs;
+
+    string ActivityLabel(string activityType) => activityType switch
+    {
+        "Feeding" => "Ăn uống",
+        "Health" => "Sức khỏe",
+        "Medication" => "Thuốc",
+        "Exercise" => "Vận động",
+        "Hygiene" => "Vệ sinh",
+        "CameraSnapshot" => "Camera / media",
+        _ => "Chăm sóc chung"
+    };
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/customer-hotel-bookings.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/hotel-booking-history.css" asp-append-version="true" />
+}
+
+<div class="container-fluid py-3">
+    <div class="hbh-page-header">
+        <div>
+            <a href="/SpaServices/PetDaily" class="hbh-back-link"><i class="fa-solid fa-arrow-left"></i> Danh sách pet đang lưu trú</a>
+            <h1>Nhật ký của @Model.PetName</h1>
+            <p>Theo dõi chăm sóc hiện tại và toàn bộ nhật ký lưu trú trước đây của riêng pet này.</p>
+        </div>
+        <a href="/SpaServices/HotelHistory?petId=@Model.PetId" class="hbh-button hbh-button-neutral"><i class="fa-solid fa-clock-rotate-left"></i> Lịch sử booking</a>
+    </div>
+
+    @if (TempData["HotelCareSuccess"] is string successMessage)
+    {
+        <div class="hbh-alert hbh-alert-success" role="status"><i class="bi bi-check-circle"></i> @successMessage</div>
+    }
+    @if (TempData["HotelCareError"] is string errorMessage)
+    {
+        <div class="hbh-alert hbh-alert-error" role="alert"><i class="bi bi-exclamation-circle"></i> @errorMessage</div>
+    }
+
+    <section class="hbh-summary-band">
+        <div class="hbh-pet-summary">
+            @if (!string.IsNullOrWhiteSpace(Model.ImageUrl))
+            {
+                <img src="@Model.ImageUrl" alt="@Model.PetName" class="hbh-pet-avatar" />
+            }
+            else
+            {
+                <span class="hbh-pet-avatar hbh-pet-avatar-placeholder"><i class="fa-solid fa-paw"></i></span>
+            }
+            <div>
+                <span class="hbh-eyebrow">Pet #@Model.PetId</span>
+                <h2>@Model.PetName</h2>
+                <p>@Model.Species@(string.IsNullOrWhiteSpace(Model.Breed) ? "" : $" · {Model.Breed}") · Chủ nuôi: @Model.CustomerName · @Model.CustomerPhone</p>
+            </div>
+        </div>
+        <span class="hb-status hb-status-@(Model.CurrentStay == null ? "completed" : "active")">@(Model.CurrentStay == null ? "Không lưu trú" : "Đang lưu trú")</span>
+    </section>
+
+    <div class="hbh-facts pdc-pet-facts">
+        <div><span>Tuổi</span><strong>@(string.IsNullOrWhiteSpace(Model.Age) ? "Chưa cập nhật" : Model.Age)</strong></div>
+        <div><span>Cân nặng</span><strong>@Model.Weight.ToString("0.##") kg</strong></div>
+        <div><span>Tình trạng đặc biệt</span><strong>@(string.IsNullOrWhiteSpace(Model.Pathology) ? "Không ghi nhận" : Model.Pathology)</strong></div>
+        <div><span>Lịch sử lưu trú</span><strong>@Model.Stays.Count lượt</strong></div>
+    </div>
+
+    @if (Model.CurrentStay != null)
+    {
+        <section class="hbh-care-editor" aria-labelledby="care-log-heading">
+            <div class="hbh-care-editor-heading">
+                <div>
+                    <span class="hbh-eyebrow">@Model.CurrentStay.DisplayBookingId · Chuồng @Model.CurrentStay.CageId</span>
+                    <h2 id="care-log-heading">Cập nhật nhật ký chăm sóc</h2>
+                    <p>Gói ăn: @Model.CurrentStay.FoodPlanName · @Model.CurrentStay.PortionGrams g/bữa · @Model.CurrentStay.MealsPerDay bữa/ngày.</p>
+                </div>
+                <i class="bi bi-journal-plus" aria-hidden="true"></i>
+            </div>
+
+            <form action="/SpaServices/HotelCareLog" method="post" enctype="multipart/form-data" class="hbh-care-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="HotelBookingId" value="@Model.CurrentStay.HotelBookingId" />
+                <input type="hidden" name="ReturnToPetDaily" value="true" />
+
+                <label><span>Loại hoạt động</span><select name="ActivityType" required>
+                    <option value="General">Chăm sóc chung</option>
+                    <option value="Feeding">Ăn uống</option>
+                    <option value="Health">Sức khỏe</option>
+                    <option value="Medication">Thuốc</option>
+                    <option value="Exercise">Vận động</option>
+                    <option value="Hygiene">Vệ sinh</option>
+                    <option value="CameraSnapshot">Ảnh từ camera</option>
+                </select></label>
+                <label><span>Tiêu đề</span><input name="Title" maxlength="150" required placeholder="Ví dụ: Bữa trưa và kiểm tra sức khỏe" /></label>
+                <label><span>Thời gian thực hiện</span><input type="datetime-local" name="OccurredAt" value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" required /></label>
+                <label><span>Tình trạng</span><input name="Status" maxlength="30" required placeholder="Ví dụ: Ăn tốt, tinh thần vui vẻ" /></label>
+                <label><span>Thức ăn</span><input name="FoodType" maxlength="100" placeholder="Để trống nếu không liên quan" /></label>
+                <label><span>Khẩu phần</span><input name="Amount" maxlength="50" placeholder="Ví dụ: 120 g" /></label>
+                <label><span>Bữa ăn</span><select name="MealType"><option value="">Không áp dụng</option><option>Sáng</option><option>Trưa</option><option>Tối</option><option>Ăn thêm</option></select></label>
+                <label><span>Khối lượng phục vụ (g)</span><input type="number" name="ServedGrams" min="0" max="10000" step="0.1" /></label>
+                <label><span>Tỷ lệ đã ăn (%)</span><input type="number" name="ConsumedPercent" min="0" max="100" /></label>
+                <label class="hbh-care-toggle">
+                    <input type="checkbox" name="IsExtraCharge" value="true" />
+                    <input type="hidden" name="IsExtraCharge" value="false" />
+                    <span><strong>Bữa ngoài gói có tính phí</strong></span>
+                </label>
+                <label><span>Phụ phí (đ)</span><input type="number" name="ExtraChargeAmount" min="0" max="100000000" step="1000" value="0" /></label>
+                <label class="hbh-care-form-wide"><span>Ghi chú chi tiết</span><textarea name="Note" maxlength="1000" rows="3" placeholder="Hành vi, phản ứng, thay đổi hoặc lưu ý cho chủ nuôi"></textarea></label>
+                <label class="hbh-care-form-wide"><span>Ảnh hoặc video</span><input type="file" name="MediaFile" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" /><small>Ảnh tối đa 10 MB; video tối đa 50 MB.</small></label>
+                <label class="hbh-care-toggle hbh-care-form-wide">
+                    <input type="checkbox" name="IsVisibleToCustomer" value="true" checked />
+                    <input type="hidden" name="IsVisibleToCustomer" value="false" />
+                    <span><strong>Thông báo cho chủ nuôi</strong><small>Lưu thông báo và đẩy realtime trên web cá nhân.</small></span>
+                </label>
+                <div class="hbh-care-actions hbh-care-form-wide"><button type="submit"><i class="bi bi-send"></i> Đăng nhật ký</button></div>
+            </form>
+        </section>
+    }
+    else
+    {
+        <div class="pdc-readonly" role="status">
+            <i class="bi bi-lock"></i>
+            <div><strong>Nhật ký đang ở chế độ chỉ xem</strong><span>Pet không có booking đang lưu trú. Staff không thể thêm hoạt động vào các lượt đã trả phòng hoặc đã hủy.</span></div>
+        </div>
+    }
+
+    <nav class="pdc-tabs" aria-label="Chế độ xem nhật ký">
+        <a href="/SpaServices/PetDaily/@Model.PetId?tab=current" class="@(Model.SelectedTab == "current" ? "active" : "")"><i class="bi bi-house-heart"></i> Lượt đang ở <span>@Model.CurrentLogs.Count</span></a>
+        <a href="/SpaServices/PetDaily/@Model.PetId?tab=all" class="@(Model.SelectedTab == "all" ? "active" : "")"><i class="bi bi-clock-history"></i> Toàn bộ lịch sử <span>@Model.AllLogs.Count</span></a>
+    </nav>
+
+    <section class="hbh-staff-surface pdc-log-surface">
+        <div class="hbh-staff-surface-header">
+            <h2>@(Model.SelectedTab == "all" ? "Toàn bộ nhật ký của pet" : "Nhật ký lượt đang lưu trú")</h2>
+            <span>@displayedLogs.Count hoạt động</span>
+        </div>
+        @if (displayedLogs.Count == 0)
+        {
+            <div class="hbh-empty"><i class="bi bi-journal"></i> Chưa có hoạt động chăm sóc trong phạm vi này.</div>
+        }
+        else
+        {
+            <div class="hbh-care-table-wrap">
+                <table class="hbh-care-table">
+                    <thead>
+                        <tr>
+                            <th>Thời gian</th>
+                            @if (Model.SelectedTab == "all") { <th>Booking</th> }
+                            <th>Hoạt động</th>
+                            <th>Tình trạng</th>
+                            <th>Ăn uống / phụ phí</th>
+                            <th>Nhân viên</th>
+                            <th>Khách hàng</th>
+                            <th>Media</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var log in displayedLogs)
+                    {
+                        <tr>
+                            <td><strong>@(log.OccurredAt?.ToString("dd/MM/yyyy HH:mm") ?? log.LegacyTime)</strong></td>
+                            @if (Model.SelectedTab == "all")
+                            {
+                                <td><a href="/SpaServices/HotelHistory/@log.HotelBookingId" class="pdc-booking-link">@log.DisplayBookingId</a></td>
+                            }
+                            <td><strong>@log.Title</strong><span class="hbh-care-type">@ActivityLabel(log.ActivityType)</span></td>
+                            <td>@log.Status</td>
+                            <td>
+                                @if (log.ActivityType == "Feeding" || !string.IsNullOrWhiteSpace(log.MealType) || log.IsExtraCharge)
+                                {
+                                    <strong>@log.FoodType</strong>
+                                    <small class="pdc-log-detail">@log.MealType · @log.Amount@(log.ConsumedPercent.HasValue ? $" · ăn {log.ConsumedPercent}%" : "")</small>
+                                    @if (log.IsExtraCharge) { <small class="pdc-extra-charge">Phụ phí @log.ExtraChargeAmount.ToString("N0")đ</small> }
+                                }
+                                else
+                                {
+                                    <span>Không áp dụng</span>
+                                }
+                            </td>
+                            <td>@log.StaffName</td>
+                            <td><span class="pdc-visibility @(log.IsVisibleToCustomer ? "visible" : "private")"><i class="bi @(log.IsVisibleToCustomer ? "bi-bell" : "bi-eye-slash")"></i> @(log.IsVisibleToCustomer ? "Đã thông báo" : "Nội bộ")</span></td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(log.MediaUrl))
+                                {
+                                    @if (string.Equals(log.MediaType, "Video", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <video controls preload="metadata" class="hbh-care-video"><source src="@log.MediaUrl" /></video>
+                                    }
+                                    else
+                                    {
+                                        <a href="@log.MediaUrl" target="_blank" rel="noopener" class="hbh-care-photo-link"><img src="@log.MediaUrl" alt="Media nhật ký" class="hbh-care-photo" /></a>
+                                    }
+                                }
+                                else
+                                {
+                                    <span>—</span>
+                                }
+                            </td>
+                        </tr>
+                        @if (!string.IsNullOrWhiteSpace(log.Note))
+                        {
+                            <tr class="hbh-care-note"><td colspan="@(Model.SelectedTab == "all" ? 8 : 7)"><strong>Ghi chú:</strong> @log.Note</td></tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <section class="hbh-staff-surface pdc-stay-surface">
+        <div class="hbh-staff-surface-header"><h2>Các lượt lưu trú của @Model.PetName</h2><span>@Model.Stays.Count lượt</span></div>
+        @if (Model.Stays.Count == 0)
+        {
+            <div class="hbh-empty">Pet chưa có lịch sử booking hotel.</div>
+        }
+        else
+        {
+            <div class="hbh-care-table-wrap">
+                <table class="hbh-staff-table">
+                    <thead><tr><th>Booking</th><th>Phòng</th><th>Thời gian</th><th>Trạng thái</th><th>Chế độ ăn</th><th></th></tr></thead>
+                    <tbody>
+                    @foreach (var stay in Model.Stays)
+                    {
+                        <tr>
+                            <td><strong>@stay.DisplayBookingId</strong></td>
+                            <td><strong>@stay.CageId</strong><small>@stay.RoomTypeName</small></td>
+                            <td><strong>@stay.CheckInAt.ToString("dd/MM/yyyy HH:mm")</strong><small>đến @(stay.CheckOutAt?.ToString("dd/MM/yyyy HH:mm") ?? "chưa xác định")</small></td>
+                            <td><span class="hb-status hb-status-@stay.StatusKey">@stay.Status</span></td>
+                            <td><strong>@stay.FoodPlanName</strong><small>@stay.PortionGrams g/bữa · @stay.MealsPerDay bữa/ngày</small></td>
+                            <td><a href="/SpaServices/HotelHistory/@stay.HotelBookingId" class="hbh-table-link hbh-table-link-secondary">Chi tiết</a></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>

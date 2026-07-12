@@ -9,6 +9,13 @@
     const checkOut = document.getElementById('hotelCheckOut');
     const totalEl = document.getElementById('hotelTotal');
     const nightsEl = document.getElementById('hotelNights');
+    const foodPlanType = document.getElementById('hotelFoodPlanType');
+    const foodOption = document.getElementById('hotelFoodOption');
+    const foodOptionWrap = document.getElementById('hotelFoodOptionWrap');
+    const foodDescription = document.getElementById('hotelFoodDescription');
+    const feedingScheduleWrap = document.getElementById('hotelFeedingScheduleWrap');
+    const feedingSchedule = document.getElementById('hotelFeedingSchedule');
+    const foodTotalEl = document.getElementById('hotelFoodTotal');
     const dayInMilliseconds = 24 * 60 * 60 * 1000;
 
     function openHotelModal() {
@@ -131,8 +138,71 @@
 
         const subtotal = dailyPrice * nights;
         const discounted = subtotal * (1 - discountPercent / 100);
-        totalEl.textContent = formatCurrency(discounted);
+        const selectedFood = foodOption?.options[foodOption.selectedIndex];
+        const premiumRoom = selected?.dataset.premiumFood === 'true';
+        const includedWithPremium = selectedFood?.dataset.includedPremium === 'true';
+        const foodDailyPrice = foodPlanType?.value === 'HotelFood'
+            ? (premiumRoom && includedWithPremium ? 0 : parseFloat(selectedFood?.dataset.price) || 0)
+            : 0;
+        const foodTotal = foodDailyPrice * nights;
+        totalEl.textContent = formatCurrency(discounted + foodTotal);
+        if (foodTotalEl) foodTotalEl.textContent = foodDailyPrice === 0 && foodPlanType?.value === 'HotelFood'
+            ? 'Đã bao gồm'
+            : formatCurrency(foodTotal);
         if (nightsEl) nightsEl.textContent = nights + ' đêm';
+    }
+
+    function updateFoodPlan() {
+        const hasSelectedPlan = Boolean(foodPlanType?.value);
+        const useHotelFood = foodPlanType?.value === 'HotelFood';
+        if (foodOptionWrap) foodOptionWrap.hidden = !useHotelFood;
+        if (foodOption) foodOption.required = useHotelFood;
+        if (feedingScheduleWrap) feedingScheduleWrap.hidden = !hasSelectedPlan;
+        if (feedingSchedule) {
+            feedingSchedule.disabled = !hasSelectedPlan;
+            if (hasSelectedPlan) {
+                validateFeedingSchedule();
+            } else {
+                feedingSchedule.setCustomValidity('');
+            }
+        }
+        const selectedFood = foodOption?.options[foodOption.selectedIndex];
+        if (foodDescription && useHotelFood && selectedFood?.value) {
+            const detail = selectedFood.dataset.description || 'Gói thức ăn Hotel';
+            foodDescription.textContent = `${detail} · ${selectedFood.dataset.portion || 0}g/bữa · ${selectedFood.dataset.meals || 0} bữa/ngày`;
+        }
+        updateTotal();
+    }
+
+    function validateFeedingSchedule() {
+        if (!feedingSchedule || feedingSchedule.disabled) return true;
+
+        feedingSchedule.setCustomValidity('');
+        const value = feedingSchedule.value.trim();
+        if (!value) return true;
+
+        const mealTimes = value
+            .split(/\s*(?:,|;|và|and)\s*/iu)
+            .filter(Boolean);
+        const timePattern = /^(?:[01]?\d|2[0-3]):[0-5]\d$/;
+
+        if (mealTimes.length === 0 || mealTimes.some(time => !timePattern.test(time))) {
+            feedingSchedule.setCustomValidity('Giờ ăn phải có dạng HH:mm, ví dụ 07:00 và 18:00.');
+            return false;
+        }
+
+        const outsideAllowedHours = mealTimes.some(time => {
+            const [hours, minutes] = time.split(':').map(Number);
+            const totalMinutes = hours * 60 + minutes;
+            return totalMinutes < 7 * 60 || totalMinutes > 20 * 60;
+        });
+
+        if (outsideAllowedHours) {
+            feedingSchedule.setCustomValidity('Giờ ăn chỉ được trong khoảng 07:00 đến 20:00.');
+            return false;
+        }
+
+        return true;
     }
 
     document.querySelectorAll('.open-hotel-modal, #btnBookHotel, .ps-hotel-banner').forEach(function (el) {
@@ -160,6 +230,10 @@
     updateTotal();
 
     if (roomSelect) roomSelect.addEventListener('change', updateTotal);
+    if (foodPlanType) foodPlanType.addEventListener('change', updateFoodPlan);
+    if (foodOption) foodOption.addEventListener('change', updateFoodPlan);
+    if (feedingSchedule) feedingSchedule.addEventListener('input', validateFeedingSchedule);
+    updateFoodPlan();
     if (checkIn) {
         checkIn.addEventListener('change', function () {
             checkIn.setCustomValidity('');
@@ -178,7 +252,9 @@
 
     if (form) {
         form.addEventListener('submit', function (e) {
-            if (!validateHotelDates() || !form.checkValidity()) {
+            const hasValidDates = validateHotelDates();
+            const hasValidFeedingSchedule = validateFeedingSchedule();
+            if (!hasValidDates || !hasValidFeedingSchedule || !form.checkValidity()) {
                 e.preventDefault();
                 form.reportValidity();
             }

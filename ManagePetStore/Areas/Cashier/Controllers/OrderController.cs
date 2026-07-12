@@ -286,11 +286,45 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                     Price = b.Price,
                     GroomerId = b.GroomerId,
                     GroomerName = b.Groomer.FullName,
-                    DateTime = b.DateTime.ToString("dd/MM/yyyy HH:mm")
+                    DateTime = b.DateTime.ToString("dd/MM/yyyy HH:mm"),
+                    HeldForHotel = _context.HotelBookings.Any(hotel =>
+                        hotel.PetId == b.PetId &&
+                        hotel.CustomerId == b.CustomerId &&
+                        (hotel.Status == "Active" || hotel.Status == "Đang ở") &&
+                        b.DateTime >= hotel.CheckInDate &&
+                        (!hotel.CheckOutDate.HasValue || b.DateTime <= hotel.CheckOutDate.Value))
                 })
                 .ToListAsync();
 
             return Json(new { success = true, data = bookings });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetReadyHotelCheckouts()
+        {
+            var statements = await _context.HotelCheckoutStatements
+                .AsNoTracking()
+                .Where(statement => statement.Status == "ReadyForPayment" && statement.OrderId == null)
+                .OrderBy(statement => statement.PreparedAt)
+                .Select(statement => new
+                {
+                    HotelCheckoutId = statement.CheckoutStatementId,
+                    statement.HotelBookingId,
+                    CustomerId = statement.HotelBooking.CustomerId,
+                    CustomerName = statement.HotelBooking.Customer.FullName,
+                    CustomerPhone = statement.HotelBooking.Customer.Phone,
+                    PetId = statement.HotelBooking.PetId,
+                    PetName = statement.HotelBooking.Pet.Name,
+                    PetWeight = statement.HotelBooking.Pet.Weight,
+                    RoomTypeId = statement.HotelBooking.Cage.RoomTypeId,
+                    RoomTypeName = statement.HotelBooking.Cage.RoomType.Type,
+                    statement.HotelBooking.CageId,
+                    Total = statement.TotalAmount,
+                    PreparedAt = statement.PreparedAt.ToString("dd/MM/yyyy HH:mm"),
+                    LinkedSpaBookingIds = statement.HotelBooking.SpaLinks.Select(link => link.SpaBookingId).ToList()
+                })
+                .ToListAsync();
+            return Json(new { success = true, data = statements });
         }
 
         // API: Kiểm tra và áp dụng Voucher
@@ -359,8 +393,54 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 return Json(new { success = false, message = "Số lượng mặt hàng thanh toán phải lớn hơn 0." });
             }
 
+            var hotelCheckoutIds = dto.Items
+                .Where(item => item.Type == "Hotel" && item.HotelCheckoutId.HasValue)
+                .Select(item => item.HotelCheckoutId!.Value)
+                .Distinct()
+                .ToList();
+            var hotelCheckouts = await _context.HotelCheckoutStatements
+                .Include(statement => statement.HotelBooking)
+                    .ThenInclude(booking => booking.Cage)
+                .Where(statement => hotelCheckoutIds.Contains(statement.CheckoutStatementId))
+                .ToDictionaryAsync(statement => statement.CheckoutStatementId);
+            if (hotelCheckouts.Count != hotelCheckoutIds.Count ||
+                hotelCheckouts.Values.Any(statement => statement.Status != "ReadyForPayment" || statement.OrderId != null || statement.HotelBooking.CustomerId != dto.CustomerId))
+            {
+                return Json(new { success = false, message = "Bảng kê Hotel không còn hợp lệ hoặc đã được thanh toán." });
+            }
+            if (hotelCheckoutIds.Any() && dto.VoucherDiscount > 0)
+            {
+                return Json(new { success = false, message = "Voucher POS chưa áp dụng cho hóa đơn có dịch vụ Hotel." });
+            }
+            foreach (var item in dto.Items.Where(item => item.Type == "Hotel"))
+            {
+                if (!item.HotelCheckoutId.HasValue || !hotelCheckouts.TryGetValue(item.HotelCheckoutId.Value, out var statement))
+                    return Json(new { success = false, message = "Thiếu liên kết bảng kê Hotel." });
+                item.Id = statement.HotelBooking.Cage.RoomTypeId.ToString();
+                item.Quantity = 1;
+                item.Price = statement.TotalAmount;
+                item.Total = statement.TotalAmount;
+            }
+            dto.TotalAmount = dto.Items.Sum(item => item.Price * item.Quantity);
+
             // 2. Kiểm tra trùng lặp thanh toán lịch Spa
-            var linkedBookingIds = dto.Items.Where(i => i.BookingId.HasValue).Select(i => i.BookingId.Value).ToList();
+            var linkedBookingIds = dto.Items.Where(i => i.BookingId.HasValue).Select(i => i.BookingId!.Value).ToList();
+            var requiredSpaIds = await _context.HotelStaySpaLinks
+                .Where(link => hotelCheckoutIds.Contains(link.HotelBooking.CheckoutStatement!.CheckoutStatementId))
+                .Select(link => link.SpaBookingId)
+                .ToListAsync();
+            if (requiredSpaIds.Except(linkedBookingIds).Any())
+            {
+                return Json(new { success = false, message = "Lượt Hotel có Spa liên quan; vui lòng thu chung trong cùng hóa đơn." });
+            }
+            var spaLinkedToHotelIds = await _context.HotelStaySpaLinks
+                .Where(link => linkedBookingIds.Contains(link.SpaBookingId))
+                .Select(link => new { link.SpaBookingId, CheckoutId = link.HotelBooking.CheckoutStatement!.CheckoutStatementId })
+                .ToListAsync();
+            if (spaLinkedToHotelIds.Any(link => !hotelCheckoutIds.Contains(link.CheckoutId)))
+            {
+                return Json(new { success = false, message = "Spa thuộc lượt lưu trú phải được thanh toán cùng bảng kê Hotel." });
+            }
             if (linkedBookingIds.Any())
             {
                 var existingLinkedBookings = await _context.SpaBookings
@@ -484,6 +564,13 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                         _context.SpaBookings.Add(spaBooking);
                     }
                 }
+                else if (item.Type == "Hotel" && item.HotelCheckoutId.HasValue)
+                {
+                    orderItem.RoomTypeId = int.Parse(item.Id);
+                    var checkout = hotelCheckouts[item.HotelCheckoutId.Value];
+                    checkout.OrderId = order.OrderId;
+                    checkout.Status = "LinkedToOrder";
+                }
 
                 _context.OrderItems.Add(orderItem);
             }
@@ -584,6 +671,8 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                     .ThenInclude(oi => oi.ProductSkuNavigation)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.SpaService)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.RoomType)
                 .FirstOrDefaultAsync(o => o.OrderId == orderId);
 
             if (order == null)
@@ -607,6 +696,24 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 })
                 .ToListAsync();
 
+            var hotelCheckouts = await _context.HotelCheckoutStatements
+                .AsNoTracking()
+                .Where(statement => statement.OrderId == orderId)
+                .Select(statement => new
+                {
+                    statement.HotelBookingId,
+                    PetName = statement.HotelBooking.Pet.Name,
+                    CageId = statement.HotelBooking.CageId,
+                    RoomType = statement.HotelBooking.Cage.RoomType.Type,
+                    statement.TotalAmount,
+                    Items = statement.Items.OrderBy(item => item.CheckoutItemId).Select(item => new
+                    {
+                        item.Description,
+                        item.Amount
+                    }).ToList()
+                })
+                .ToListAsync();
+
             string? voucherCode = null;
             if (order.CancelReason != null && order.CancelReason.StartsWith("VOUCHER:"))
             {
@@ -626,12 +733,17 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 paymentMethod = order.PaymentMethod,
                 voucherCode = voucherCode,
                 items = order.OrderItems.Select(oi => new {
-                    name = oi.ProductSku != null ? oi.ProductSkuNavigation.Name : oi.SpaService.Name,
+                    name = oi.ProductSku != null
+                        ? oi.ProductSkuNavigation?.Name ?? oi.ProductSku
+                        : oi.SpaServiceId != null
+                            ? oi.SpaService?.Name ?? "Dịch vụ Spa"
+                            : $"Hotel - {oi.RoomType?.Type ?? "Phòng lưu trú"}",
                     quantity = oi.Quantity,
                     price = oi.Price,
                     total = oi.Price * oi.Quantity
                 }).ToList(),
-                spaBookings = spaBookings
+                spaBookings = spaBookings,
+                hotelCheckouts = hotelCheckouts
             });
         }
 
@@ -645,6 +757,8 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                     .ThenInclude(oi => oi.ProductSkuNavigation)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.SpaService)
+                .Include(o => o.OrderItems)
+                    .ThenInclude(oi => oi.RoomType)
                 .FirstOrDefaultAsync(o => o.OrderId == orderId);
 
             if (order == null)

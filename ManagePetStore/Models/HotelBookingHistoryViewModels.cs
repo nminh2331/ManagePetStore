@@ -35,6 +35,12 @@ public class HotelBookingHistoryDetailViewModel
     public bool HasAc { get; set; }
     public bool HasCamera { get; set; }
     public bool HasPremiumFood { get; set; }
+    public string FoodPlanName { get; set; } = "Chủ nuôi tự chuẩn bị";
+    public decimal FoodPricePerDay { get; set; }
+    public int FoodPortionGrams { get; set; }
+    public int FoodMealsPerDay { get; set; }
+    public string? FeedingInstructions { get; set; }
+    public string? FoodAllergyNotes { get; set; }
     public List<HotelBookingAddonHistoryItem> Addons { get; set; } = [];
     public List<HotelBookingTimelineHistoryItem> Timeline { get; set; } = [];
     public List<HotelBookingMedicalHistoryItem> MedicalRecords { get; set; } = [];
@@ -81,6 +87,11 @@ public class HotelBookingCareHistoryItem
     public string? PhotoUrl { get; set; }
     public string? MediaUrl { get; set; }
     public string? MediaType { get; set; }
+    public string? MealType { get; set; }
+    public decimal? ServedGrams { get; set; }
+    public int? ConsumedPercent { get; set; }
+    public bool IsExtraCharge { get; set; }
+    public decimal ExtraChargeAmount { get; set; }
     public string? Note { get; set; }
     public string StaffName { get; set; } = string.Empty;
 }

@@ -150,7 +150,9 @@
         <tbody>
             @foreach (var item in Model.OrderItems)
             {
-                var displayName = item.ProductSku != null ? item.ProductSkuNavigation?.Name : item.SpaService?.Name;
+                var displayName = item.ProductSku != null
+                    ? item.ProductSkuNavigation?.Name
+                    : item.SpaServiceId != null ? item.SpaService?.Name : $"Hotel - {item.RoomType?.Type}";
                 <tr>
                     <td>@displayName</td>
                     <td style="text-align: center;">@item.Quantity</td>
