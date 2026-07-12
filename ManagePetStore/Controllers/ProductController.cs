@@ -13,6 +13,258 @@ public class ProductController : Controller
         _context = context;
     }
 
+    // ============================================================
+    // TRANG DANH SÁCH SẢN PHẨM (public, guest xem được)
+    // ============================================================
+    [HttpGet]
+    public async Task<IActionResult> Index(
+        string? search,
+        int? categoryId,
+        string? animalType,
+        int? supplierId,
+        int? minPrice,
+        int? maxPrice,
+        string sort = "best_selling",
+        int page = 1)
+    {
+        const int pageSize = 12;
+
+        // 1. Track search keyword
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = RemoveDiacritics(search.Trim().ToLowerInvariant());
+            var existingLog = await _context.SearchLogs
+                .FirstOrDefaultAsync(s => s.Keyword == normalizedSearch);
+            if (existingLog != null)
+            {
+                existingLog.SearchCount++;
+                existingLog.LastSearchedAt = DateTime.Now;
+            }
+            else
+            {
+                _context.SearchLogs.Add(new SearchLog
+                {
+                    Keyword = normalizedSearch,
+                    SearchCount = 1,
+                    LastSearchedAt = DateTime.Now
+                });
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        // 2. Base query
+        var query = _context.Products
+            .Include(p => p.Category)
+            .Where(p => !p.IsDeleted && p.Sku != "-1");
+
+        // 3. Filter: category
+        if (categoryId.HasValue)
+            query = query.Where(p => p.CategoryId == categoryId);
+
+        // 4. Filter: animal type
+        if (!string.IsNullOrWhiteSpace(animalType))
+            query = query.Where(p => p.AnimalType == animalType || p.AnimalType == null || p.AnimalType == "Tất cả");
+
+        // 4b. Filter: supplier (Lấy SP theo SupplierProducts table)
+        if (supplierId.HasValue)
+            query = query.Where(p => p.SupplierProducts.Any(sp => sp.SupplierId == supplierId.Value));
+
+        // 4c. Filter: price
+        if (minPrice.HasValue)
+            query = query.Where(p => p.Price >= minPrice.Value);
+        if (maxPrice.HasValue)
+            query = query.Where(p => p.Price <= maxPrice.Value);
+
+        // 5. Filter: search (rất mạnh: bỏ space, chữ hoa chữ thường, không dấu)
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLowerInvariant();
+            var sNoSpace = s.Replace(" ", "");
+            var sNoDiacriticsNoSpace = RemoveDiacritics(sNoSpace);
+
+            // Load tất cả Category ra RAM (rất nhẹ, vài chục record) để match keyword không dấu linh hoạt
+            var allCategories = await _context.ProductCategories
+                .Where(c => !c.IsDeleted)
+                .ToListAsync();
+
+            var matchedCategoryIds = allCategories
+                .Where(c =>
+                    RemoveDiacritics(c.Name.ToLowerInvariant()).Replace(" ", "").Contains(sNoDiacriticsNoSpace) ||
+                    (c.Keywords != null &&
+                     RemoveDiacritics(c.Keywords.ToLowerInvariant()).Replace(" ", "").Contains(sNoDiacriticsNoSpace))
+                )
+                .Select(c => c.CategoryId)
+                .ToList();
+
+            // Kéo Name và Description về RAM vì EF Core không dịch được RemoveDiacritics
+            var allProductsSearch = await _context.Products
+                .Where(p => !p.IsDeleted && p.Sku != "-1")
+                .Select(p => new { p.Sku, p.Name, p.Description, p.CategoryId })
+                .ToListAsync();
+
+            var matchedSkus = allProductsSearch
+                .Where(p =>
+                    RemoveDiacritics(p.Name.ToLowerInvariant()).Replace(" ", "").Contains(sNoDiacriticsNoSpace) ||
+                    (p.Description != null && RemoveDiacritics(p.Description.ToLowerInvariant()).Replace(" ", "").Contains(sNoDiacriticsNoSpace)) ||
+                    (p.CategoryId != null && matchedCategoryIds.Contains(p.CategoryId.Value))
+                )
+                .Select(p => p.Sku)
+                .ToList();
+
+            query = query.Where(p => matchedSkus.Contains(p.Sku));
+        }
+
+        // 6. Sort
+        query = sort switch
+        {
+            "price_asc"    => query.OrderBy(p => p.Price),
+            "price_desc"   => query.OrderByDescending(p => p.Price),
+            "in_stock"     => query.OrderByDescending(p => p.Stock).ThenBy(p => p.Name),
+            "best_selling" => query.OrderByDescending(p =>
+                                  p.OrderItems.Sum(oi => (int?)oi.Quantity) ?? 0),
+            _              => query.OrderByDescending(p => p.Sku) // "newest" — SKU mới hơn = to hơn
+        };
+
+        // 7. Pagination
+        var totalItems = await query.CountAsync();
+        var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+        page = Math.Max(1, Math.Min(page, Math.Max(1, totalPages)));
+
+        var products = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        // 8. Sidebar data
+        var categories = await _context.ProductCategories
+            .Where(c => !c.IsDeleted)
+            .OrderBy(c => c.Name)
+            .ToListAsync();
+
+        var animalTypes = await _context.Products
+            .Where(p => !p.IsDeleted && p.AnimalType != null)
+            .Select(p => p.AnimalType!)
+            .Distinct()
+            .OrderBy(t => t)
+            .ToListAsync();
+
+        var suppliers = await _context.Suppliers
+            .Where(s => s.IsActive && s.SupplierProducts.Any())
+            .OrderBy(s => s.Name)
+            .ToListAsync();
+
+        var categoryCounts = await _context.Products
+            .Where(p => !p.IsDeleted && p.CategoryId != null)
+            .GroupBy(p => p.CategoryId)
+            .Select(g => new { CategoryId = g.Key ?? 0, Count = g.Count() })
+            .ToDictionaryAsync(x => x.CategoryId, x => x.Count);
+
+        ViewBag.Categories   = categories;
+        ViewBag.CategoryCounts = categoryCounts;
+        ViewBag.AnimalTypes  = animalTypes;
+        ViewBag.Suppliers    = suppliers;
+        ViewBag.CategoryId   = categoryId;
+        ViewBag.AnimalType   = animalType;
+        ViewBag.SupplierId   = supplierId;
+        ViewBag.MinPrice     = minPrice;
+        ViewBag.MaxPrice     = maxPrice;
+        ViewBag.Search       = search;
+        ViewBag.Sort         = sort;
+        ViewBag.Page         = page;
+        ViewBag.TotalPages   = totalPages;
+        ViewBag.TotalItems   = totalItems;
+
+        return View(products);
+    }
+
+    // ============================================================
+    // API: GỢI Ý TÌM KIẾM (Live Search)
+    // ============================================================
+    [HttpGet]
+    public async Task<IActionResult> SearchSuggestions(string q)
+    {
+        if (string.IsNullOrWhiteSpace(q))
+            return Json(new object[] { });
+
+        var s = q.Trim().ToLowerInvariant();
+        var sNoSpace = s.Replace(" ", "");
+        var sNoDiacriticsNoSpace = RemoveDiacritics(sNoSpace);
+
+        // 1. Tìm Sản phẩm
+        var query = _context.Products
+            .Where(p => !p.IsDeleted && p.Sku != "-1");
+
+        // Tìm Categories khớp keyword
+        var allCategories = await _context.ProductCategories
+            .Where(c => !c.IsDeleted)
+            .ToListAsync();
+
+        var matchedCategoryIds = allCategories
+            .Where(c =>
+                RemoveDiacritics(c.Name.ToLowerInvariant()).Replace(" ", "").Contains(sNoDiacriticsNoSpace) ||
+                (c.Keywords != null &&
+                 RemoveDiacritics(c.Keywords.ToLowerInvariant()).Replace(" ", "").Contains(sNoDiacriticsNoSpace))
+            )
+            .Select(c => c.CategoryId)
+            .ToList();
+
+        // Kéo TÊN các sản phẩm về RAM để tìm (vì DB không hỗ trợ RemoveDiacritics)
+        var allProducts = await _context.Products
+            .Where(p => !p.IsDeleted && p.Sku != "-1")
+            .Select(p => new { p.Sku, p.Name, p.Description, p.CategoryId })
+            .ToListAsync();
+
+        var matchedSkus = allProducts
+            .Where(p => 
+                RemoveDiacritics(p.Name.ToLowerInvariant()).Replace(" ", "").Contains(sNoDiacriticsNoSpace) ||
+                (p.Description != null && RemoveDiacritics(p.Description.ToLowerInvariant()).Replace(" ", "").Contains(sNoDiacriticsNoSpace)) ||
+                (p.CategoryId != null && matchedCategoryIds.Contains(p.CategoryId.Value))
+            )
+            .Select(p => p.Sku)
+            .ToList();
+
+        // Lọc Products
+        query = query.Where(p => matchedSkus.Contains(p.Sku));
+
+        var topProducts = await query
+            .OrderByDescending(p => p.OrderItems.Sum(oi => (int?)oi.Quantity) ?? 0) // Ưu tiên bán chạy
+            .Take(5)
+            .Select(p => new
+            {
+                Type = "Product",
+                Id = p.Sku,
+                Title = p.Name,
+                ImageUrl = string.IsNullOrEmpty(p.ImageUrl) ? "https://images.unsplash.com/photo-1589924691995-400dc9ecc119?w=100&h=100&fit=crop" : p.ImageUrl,
+                PriceText = p.Price.ToString("N0") + " đ",
+                Url = Url.Action("Details", "Product", new { id = p.Sku })
+            })
+            .ToListAsync();
+
+        // 2. Tương lai: Thêm phần tìm kiếm Dịch vụ / Khách sạn ở đây (nếu cần) và gộp vào list
+        // var topServices = ...
+        // var allResults = topProducts.Concat(topServices).Take(5);
+
+        return Json(topProducts);
+    }
+
+    // Helper: Bỏ dấu tiếng Việt để so sánh keyword
+    private static string RemoveDiacritics(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+        var normalized = text.Normalize(System.Text.NormalizationForm.FormD);
+        var sb = new System.Text.StringBuilder();
+        foreach (var c in normalized)
+        {
+            if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)
+                != System.Globalization.UnicodeCategory.NonSpacingMark)
+                sb.Append(c);
+        }
+        return sb.ToString().Normalize(System.Text.NormalizationForm.FormC);
+    }
+
+    // ============================================================
+    // TRANG CHI TIẾT SẢN PHẨM
+    // ============================================================
     [HttpGet]
     public async Task<IActionResult> Details(string id)
     {
@@ -79,6 +331,19 @@ public class ProductController : Controller
                 if (product != null)
                 {
                     model = MapFromProduct(product);
+
+                    // Fetch related products (same category)
+                    if (product.CategoryId.HasValue)
+                    {
+                        var relatedDbProducts = await _context.Products
+                            .Include(p => p.Category)
+                            .Where(p => p.CategoryId == product.CategoryId && p.Sku != product.Sku && !p.IsDeleted)
+                            .OrderByDescending(p => p.Stock)
+                            .Take(4)
+                            .ToListAsync();
+                            
+                        ViewBag.RelatedProducts = relatedDbProducts.Select(MapFromProduct).ToList();
+                    }
                 }
             }
         }
@@ -148,16 +413,16 @@ public class ProductController : Controller
             Rating = 4.8,
             ReviewCount = 124,
             SoldCount = "1.2k+",
-            Description = "Thức ăn cao cấp được nghiên cứu đặc biệt cho mèo mẹ và mèo con, cung cấp đầy đủ dưỡng chất thiết yếu giúp mèo con phát triển khỏe mạnh.",
+            Description = !string.IsNullOrWhiteSpace(product.Description) 
+                            ? product.Description 
+                            : "Sản phẩm chất lượng cao dành cho thú cưng của bạn.",
             Stock = product.Stock,
             InStock = product.Stock > 0,
             Images =
             [
                 string.IsNullOrEmpty(product.ImageUrl)
                     ? "https://images.unsplash.com/photo-1589924691995-400dc9ecc119?w=600&h=600&fit=crop"
-                    : product.ImageUrl,
-                "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=600&h=600&fit=crop",
-                "https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=600&h=600&fit=crop"
+                    : product.ImageUrl
             ],
             Features =
             [

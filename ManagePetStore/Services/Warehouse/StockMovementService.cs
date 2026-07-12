@@ -91,34 +91,41 @@ public class StockMovementService : IStockMovementService
 
     public async Task ApproveMovement(int movementId, int approvedById, Dictionary<int, DateTime>? expiryDates = null)
     {
-        var movement = await _movementRepo.GetMovementById(movementId);
-        if (movement == null) throw new ServiceException("Không tìm thấy phiếu.");
-        
-        if (movement.Status == "Chờ quản lý duyệt")
+        // Xử lý Race Condition: Sử dụng Transaction với mức Serializable để lock các thao tác đọc/ghi liên quan đến phiếu này
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
         {
-            if (movement.Type == "Nhập hàng")
+            var movement = await _movementRepo.GetMovementById(movementId);
+            if (movement == null) throw new ServiceException("Không tìm thấy phiếu.");
+            
+            string originalStatus = movement.Status;
+
+            if (movement.Status == "Chờ quản lý duyệt")
             {
-                movement.Status = "Chờ kiểm hàng";
-                await _movementRepo.UpdateMovement(movement);
-                return; // Manager duyệt xong thì dừng lại chờ Warehouse kiểm hàng
+                if (movement.Type == "Nhập hàng")
+                {
+                    movement.Status = "Chờ kiểm hàng";
+                    await _movementRepo.UpdateMovement(movement);
+                    await transaction.CommitAsync();
+                    return; // Manager duyệt xong thì dừng lại chờ Warehouse kiểm hàng
+                }
+                else if (movement.Type == "Xuất nội bộ")
+                {
+                    movement.Status = "Hoàn thành";
+                    await _movementRepo.UpdateMovement(movement);
+                    // Tiếp tục xuống dưới để trừ kho
+                }
             }
-            else if (movement.Type == "Xuất nội bộ")
+            else if (movement.Status == "Chờ kiểm hàng" && movement.Type == "Nhập hàng")
             {
                 movement.Status = "Hoàn thành";
                 await _movementRepo.UpdateMovement(movement);
-                // Tiếp tục xuống dưới để trừ kho
+                // Tiếp tục xuống dưới để cộng kho
             }
-        }
-        else if (movement.Status == "Chờ kiểm hàng" && movement.Type == "Nhập hàng")
-        {
-            movement.Status = "Hoàn thành";
-            await _movementRepo.UpdateMovement(movement);
-            // Tiếp tục xuống dưới để cộng kho
-        }
-        else
-        {
-            throw new ServiceException($"Phiếu đang ở trạng thái '{movement.Status}' nên không thể thao tác duyệt.");
-        }
+            else
+            {
+                throw new ServiceException($"Phiếu đang ở trạng thái '{movement.Status}' nên không thể thao tác duyệt.");
+            }
 
         if (movement.Type == "Nhập hàng")
         {
@@ -166,6 +173,20 @@ public class StockMovementService : IStockMovementService
                 await _batchService.DeductStockFIFO(detail.ProductSku, detail.Quantity);
                 // TODO: Tính năng tự động tạo đơn nhập khi sắp hết hàng sẽ được triển khai trong tương lai
             }
+        }
+        
+        await transaction.CommitAsync();
+        }
+        catch (ServiceException)
+        {
+            await transaction.RollbackAsync();
+            throw; // Giữ nguyên thông báo lỗi logic nghiệp vụ
+        }
+        catch (Exception)
+        {
+            await transaction.RollbackAsync();
+            // Đóng gói các lỗi hệ thống (như Deadlock từ SQL Server) thành thông báo thân thiện
+            throw new ServiceException("Hệ thống đang xử lý phiếu này hoặc có lỗi xung đột. Vui lòng tải lại trang và thử lại.");
         }
     }
 

@@ -47,4 +47,19 @@ public class SupplierService : ISupplierService
         // Could add validation to check if supplier has existing stock movements before deleting
         await _supplierRepo.DeleteSupplierAsync(id);
     }
+
+    public async Task UpdateSupplierProductsAsync(int supplierId, List<string> productSkus)
+    {
+        await _supplierRepo.AssignProductsToSupplierAsync(supplierId, productSkus ?? new List<string>());
+    }
+
+    public async Task<List<string>> GetSupplierProductSkusAsync(int supplierId)
+    {
+        return await _supplierRepo.GetSupplierProductSkusAsync(supplierId);
+    }
+
+    public async Task<IEnumerable<Supplier>> GetSuppliersByProductSkuAsync(string sku)
+    {
+        return await _supplierRepo.GetSuppliersByProductSkuAsync(sku);
+    }
 }

@@ -15,4 +15,9 @@ public interface ISupplierRepository
     
     // Category mapping
     Task AssignCategoriesToSupplierAsync(int supplierId, List<int> categoryIds);
+
+    // Product-specific mapping (Phương án A)
+    Task AssignProductsToSupplierAsync(int supplierId, List<string> productSkus);
+    Task<List<string>> GetSupplierProductSkusAsync(int supplierId);
+    Task<IEnumerable<Supplier>> GetSuppliersByProductSkuAsync(string sku);
 }

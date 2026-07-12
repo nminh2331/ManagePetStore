@@ -70,7 +70,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(
-            [Bind("Sku,Name,CategoryId,Unit,Stock,MinStock,ExpiryDate,ShelfLocation,Price,CostPrice,ImageUrl")]
+            [Bind("Sku,Name,CategoryId,Unit,Stock,MinStock,ExpiryDate,ShelfLocation,Price,CostPrice,ImageUrl,AnimalType,Description")]
             Product product,
             IFormFile? ImageFile)
         {
@@ -193,7 +193,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(
             string id,
-            [Bind("Sku,Name,CategoryId,Unit,MinStock,ExpiryDate,ShelfLocation,Price,CostPrice,ImageUrl")]
+            [Bind("Sku,Name,CategoryId,Unit,MinStock,ExpiryDate,ShelfLocation,Price,CostPrice,ImageUrl,AnimalType,Description")]
             Product productUpdate,
             IFormFile? ImageFile)
         {

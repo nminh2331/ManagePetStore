@@ -114,6 +114,18 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return Json(result);
         }
 
+        // AJAX: lấy danh sách nhà cung cấp đã đăng ký sản phẩm cụ thể
+        [HttpGet]
+        public async Task<IActionResult> GetSuppliersByProduct(string sku)
+        {
+            if (string.IsNullOrWhiteSpace(sku))
+                return Json(Array.Empty<object>());
+
+            var suppliers = await _supplierService.GetSuppliersByProductSkuAsync(sku);
+            var result = suppliers.Select(s => new { supplierId = s.SupplierId, name = s.Name });
+            return Json(result);
+        }
+
         // Hiển thị form tạo phiếu xuất kho nội bộ
         public async Task<IActionResult> CreateExport()
         {

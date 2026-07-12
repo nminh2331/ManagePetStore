@@ -79,6 +79,27 @@
                     <span asp-validation-for="ExpiryDate" class="text-danger small"></span>
                 </div>
 
+                <!-- Thêm trường Loại thú cưng và Mô tả sản phẩm (bở sung để hiển thị đúng trên trang khách hàng) -->
+                <div class="col-md-6 mb-3">
+                    <label asp-for="AnimalType" class="form-label fw-bold">Loại thú cưng</label>
+                    <select asp-for="AnimalType" class="form-select" style="border-radius: 8px;">
+                        <option value="Tất cả">Tất cả</option>
+                        <option value="Chó">Chó</option>
+                        <option value="Mèo">Mèo</option>
+                        <option value="Chim">Chim</option>
+                        <option value="Cá">Cá</option>
+                        <option value="Chuột">Chuột</option>
+                        <option value="Thỏ">Thỏ</option>
+                    </select>
+                    <span asp-validation-for="AnimalType" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-12 mb-3">
+                    <label asp-for="Description" class="form-label fw-bold">Mô tả sản phẩm</label>
+                    <textarea asp-for="Description" class="form-control" rows="3" style="border-radius: 8px;" placeholder="Mô tả ngắn gọn về sản phẩm..."></textarea>
+                    <span asp-validation-for="Description" class="text-danger small"></span>
+                </div>
+
                 <div class="col-md-12 mb-4">
                     <label class="form-label fw-bold">Hình ảnh sản phẩm</label>
                     <div class="row g-3">

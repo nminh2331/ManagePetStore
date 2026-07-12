@@ -19,6 +19,52 @@
             <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["ErrorMessage"]
         </div>
     }
+
+    <style>
+        .ps-back-btn {
+            color: #6c757d;
+            font-weight: 600;
+            font-size: 1.1rem;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.2s ease;
+        }
+        .ps-back-btn:hover {
+            color: #ea580c;
+        }
+    </style>
+    
+    <!-- Nút Quay lại trang Sản phẩm (giữ nguyên bộ filter nhờ sessionStorage) -->
+    <div class="mb-3">
+        <a id="btn-back-to-products"
+           href="@Url.Action("Index", "Product")" 
+           class="ps-back-btn">
+            &larr; Quay lại
+        </a>
+    </div>
+
+    <script>
+        // Nếu người dùng vào từ trang sản phẩm, lưu URL đó lại (kể cả khi là khách)
+        (function () {
+            var referrer = document.referrer;
+            var productListPath = '@Url.Action("Index", "Product")';
+
+            if (referrer && referrer.includes(productListPath.split('?')[0])) {
+                // Lưu URL bao gồm toàn bộ filter vào sessionStorage
+                sessionStorage.setItem('productListUrl', referrer);
+            }
+
+            // Gán href cho nút quay lại
+            var savedUrl = sessionStorage.getItem('productListUrl');
+            var backBtn  = document.getElementById('btn-back-to-products');
+            if (savedUrl && backBtn) {
+                backBtn.href = savedUrl;
+            }
+        })();
+    </script>
+
     <div class="ps-pd-grid">
         <div>
             <div class="ps-pd-main-image">
@@ -72,18 +118,6 @@
                 @if (Model.Savings > 0)
                 {
                     <div class="ps-pd-savings">Tiết kiệm: @Model.Savings.ToString("N0")đ</div>
-                }
-            </div>
-
-            <p class="ps-pd-desc">@Model.Description</p>
-
-            <div class="ps-pd-features">
-                @foreach (var feature in Model.Features)
-                {
-                    <div class="ps-pd-feature">
-                        <span class="ps-pd-feature-icon"><i class="bi bi-check-lg"></i></span>
-                        @feature
-                    </div>
                 }
             </div>
 
@@ -322,6 +356,61 @@
         </div>
     </div>
 </section>
+
+<section class="ps-section mt-4 mb-5" style="background: #fff; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,.06); overflow: hidden; max-width: 1200px; margin: 0 auto;">
+    <div style="display: flex; border-bottom: 1px solid #eee; padding: 0 24px;">
+        <div style="padding: 16px 24px; color: #ea580c; font-weight: 700; border-bottom: 2px solid #ea580c; cursor: pointer; font-size: 1rem;">
+            @if (!Model.Sku.StartsWith("SPA-SVC-")) { <text>Mô tả sản phẩm</text> } else { <text>Chi tiết dịch vụ</text> }
+        </div>
+    </div>
+    
+    <div style="padding: 32px 24px;">
+        <h3 style="font-size: 1.15rem; font-weight: 800; color: #111; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">
+            @Model.Name
+        </h3>
+        
+        <div class="product-description-content" style="color: #555; line-height: 1.8; font-size: 0.95rem;">
+            @if (!string.IsNullOrWhiteSpace(Model.Description))
+            {
+                @Html.Raw(Model.Description.Replace("\r\n", "<br/>").Replace("\n", "<br/>"))
+            }
+            else
+            {
+                <p style="color: #888; font-style: italic;">Đang cập nhật thông tin...</p>
+            }
+        </div>
+    </div>
+</section>
+
+@if (!Model.Sku.StartsWith("SPA-SVC-"))
+{
+    @if (ViewBag.RelatedProducts != null && ((List<ManagePetStore.Controllers.ProductDetailViewModel>)ViewBag.RelatedProducts).Any())
+    {
+        <section class="ps-section mt-5" style="max-width: 1200px; margin: 0 auto; padding: 0 16px;">
+            <div class="ps-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 class="ps-section-title" style="font-size: 1.25rem; font-weight: 800; margin: 0;">Các sản phẩm cùng danh mục</h2>
+                <a href="@Url.Action("Index", "Product")" style="color: #ea580c; font-weight: 600; text-decoration: none; font-size: 0.95rem;">Xem tất cả &rarr;</a>
+            </div>
+            <div class="ps-products-grid">
+                @foreach (var p in (List<ManagePetStore.Controllers.ProductDetailViewModel>)ViewBag.RelatedProducts)
+                {
+                    <a asp-controller="Product" asp-action="Details" asp-route-id="@p.Sku" class="ps-product-card">
+                        <div class="ps-product-image">
+                            <img src="@p.Images.FirstOrDefault()" alt="@p.Name" loading="lazy" />
+                        </div>
+                        <div class="ps-product-body">
+                            <div class="ps-product-category">@p.Brand</div>
+                            <h3 class="ps-product-name">@p.Name</h3>
+                            <div class="ps-product-price-row">
+                                <span class="ps-product-price">@p.Price.ToString("N0")đ</span>
+                            </div>
+                        </div>
+                    </a>
+                }
+            </div>
+        </section>
+    }
+}
 
 @section Scripts {
     @{

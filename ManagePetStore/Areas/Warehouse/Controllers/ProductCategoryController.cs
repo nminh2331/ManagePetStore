@@ -47,7 +47,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(
-            [Bind("CategoryId,Name,Description")] ProductCategory category)
+            [Bind("CategoryId,Name,Description,Keywords")] ProductCategory category)
         {
             if (!ModelState.IsValid) return View(category);
 
@@ -79,7 +79,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(
             int id,
-            [Bind("CategoryId,Name,Description")] ProductCategory category)
+            [Bind("CategoryId,Name,Description,Keywords")] ProductCategory category)
         {
             if (!ModelState.IsValid) return View(category);
 

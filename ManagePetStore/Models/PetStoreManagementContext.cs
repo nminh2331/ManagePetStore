@@ -59,6 +59,8 @@ public partial class PetStoreManagementContext : DbContext
 
     public virtual DbSet<Role> Roles { get; set; }
 
+    public virtual DbSet<SearchLog> SearchLogs { get; set; }
+
     public virtual DbSet<RoomMaintenanceLog> RoomMaintenanceLogs { get; set; }
 
     public virtual DbSet<RoomType> RoomTypes { get; set; }
@@ -80,6 +82,8 @@ public partial class PetStoreManagementContext : DbContext
     public virtual DbSet<StockMovementDetail> StockMovementDetails { get; set; }
 
     public virtual DbSet<Supplier> Suppliers { get; set; }
+    
+    public virtual DbSet<SupplierProduct> SupplierProducts { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
 
@@ -753,6 +757,20 @@ public partial class PetStoreManagementContext : DbContext
                         j.HasKey("SupplierId", "CategoryId").HasName("PK__Supplier__EA76F51437B9F7D5");
                         j.ToTable("SupplierCategories");
                     });
+        });
+
+        modelBuilder.Entity<SupplierProduct>(entity =>
+        {
+            entity.HasKey(e => new { e.SupplierId, e.ProductSku });
+            entity.ToTable("SupplierProducts");
+
+            entity.HasOne(d => d.Product).WithMany(p => p.SupplierProducts)
+                .HasForeignKey(d => d.ProductSku)
+                .HasConstraintName("FK_SupplierProducts_Product");
+
+            entity.HasOne(d => d.Supplier).WithMany(p => p.SupplierProducts)
+                .HasForeignKey(d => d.SupplierId)
+                .HasConstraintName("FK_SupplierProducts_Supplier");
         });
 
         modelBuilder.Entity<User>(entity =>
