@@ -33,6 +33,7 @@ public class HomeController : Controller
         var model = GetStaticHomepageData();
         model.Pets = [];
         model.RoomTypes = [];
+        model.HotelFoodOptions = [];
         model.SearchKeyword = search?.Trim();
         model.SelectedCategorySlug = category?.Trim().ToLowerInvariant();
         
@@ -67,7 +68,27 @@ public class HomeController : Controller
                 {
                     Id = r.RoomTypeId,
                     Name = r.Type,
-                    DailyPrice = r.DailyPrice
+                    DailyPrice = r.DailyPrice,
+                    HasPremiumFood = r.HasPremiumFood
+                })
+                .ToListAsync();
+
+            model.HotelFoodOptions = await _context.HotelFoodOptions
+                .AsNoTracking()
+                .Where(option => option.Active)
+                .OrderBy(option => option.PricePerDay)
+                .ThenBy(option => option.Name)
+                .Select(option => new HotelFoodOptionItem
+                {
+                    Id = option.FoodOptionId,
+                    Name = option.Name,
+                    Description = option.Description ?? string.Empty,
+                    TargetSpecies = option.TargetSpecies,
+                    PricePerDay = option.PricePerDay,
+                    PortionGrams = option.DefaultPortionGrams,
+                    MealsPerDay = option.MealsPerDay,
+                    ImageUrl = option.ImageUrl,
+                    IncludedWithPremiumRoom = option.IsIncludedWithPremiumRoom
                 })
                 .ToListAsync();
 

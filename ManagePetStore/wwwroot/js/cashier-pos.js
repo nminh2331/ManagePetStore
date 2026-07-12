@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let selectedPetId = null;
     let appliedVoucher = null;
     let currentPayingOrderId = '';
+    let completedSpaBookings = [];
 
     // Lấy giỏ hàng tạm từ LocalStorage nếu có
     const savedCart = localStorage.getItem('pos_cart');
@@ -75,6 +76,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const empty = document.getElementById('emptySpaPending');
             
             if (data.success && data.data) {
+                completedSpaBookings = data.data;
                 const count = data.data.length;
                 if (badge) badge.textContent = count;
                 
@@ -100,8 +102,8 @@ document.addEventListener('DOMContentLoaded', function () {
                                     </div>
                                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
                                         <strong style="color:#ef4444; font-size:14px;">${formatCurrency(b.price)}</strong>
-                                        <button class="btn-pos-primary" style="padding:4px 8px; font-size:11px; border-radius:6px;" onclick='handleSelectCompletedSpa(${bookingJson})'>
-                                            <i class="bi bi-plus-circle"></i> Thu tiền
+                                        <button class="btn-pos-primary" style="padding:4px 8px; font-size:11px; border-radius:6px;" ${b.heldForHotel ? 'disabled title="Spa thuộc lượt Hotel đang ở"' : `onclick='handleSelectCompletedSpa(${bookingJson})'`}>
+                                            <i class="bi ${b.heldForHotel ? 'bi-hourglass-split' : 'bi-plus-circle'}"></i> ${b.heldForHotel ? 'Chờ Hotel' : 'Thu tiền'}
                                         </button>
                                     </div>
                                 </div>
@@ -115,6 +117,46 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     loadCompletedSpaBookings();
+
+    async function loadReadyHotelCheckouts() {
+        try {
+            const res = await fetch('/Cashier/Order/GetReadyHotelCheckouts');
+            const data = await res.json();
+            const rows = data.success && data.data ? data.data : [];
+            document.getElementById('countHotelPending').textContent = rows.length;
+            document.getElementById('emptyHotelPending').style.display = rows.length ? 'none' : 'block';
+            document.getElementById('listHotelPending').innerHTML = rows.map(item => {
+                const json = JSON.stringify(item).replace(/'/g, "&#39;");
+                return `<div class="pos-spa-item" style="padding:16px;border:1px solid var(--pos-border);border-radius:8px;background:#fff;display:grid;gap:8px;">
+                    <div style="display:flex;justify-content:space-between;"><strong>HB#${item.hotelBookingId}</strong><small>${item.preparedAt}</small></div>
+                    <div style="font-size:12px;"><div><strong>Khách:</strong> ${item.customerName} (${item.customerPhone})</div><div><strong>Pet:</strong> ${item.petName}</div><div><strong>Phòng:</strong> ${item.roomTypeName} · ${item.cageId}</div></div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;"><strong style="color:#ef4444;">${formatCurrency(item.total)}</strong><button class="btn-pos-primary" style="padding:5px 9px;font-size:11px;" onclick='handleSelectHotelCheckout(${json})'><i class="bi bi-plus-circle"></i> Thu tiền</button></div>
+                </div>`;
+            }).join('');
+        } catch (error) {
+            console.error('Lỗi lấy bảng kê Hotel:', error);
+        }
+    }
+    loadReadyHotelCheckouts();
+
+    window.handleSelectHotelCheckout = function (item) {
+        if (currentCustomer && cart.length > 0 && currentCustomer.customerId !== item.customerId) {
+            if (!confirm(`Giỏ hiện thuộc ${currentCustomer.fullName}. Chuyển sang ${item.customerName} và xóa giỏ cũ?`)) return;
+            clearCurrentCartAndCustomer();
+        }
+        handleSelectCustomer({ customerId:item.customerId, fullName:item.customerName, phone:item.customerPhone, membershipTier:'Thành viên', loyaltyPoints:0, pets:[{ petId:item.petId, name:item.petName, weight:item.petWeight }] });
+        cart = cart.filter(row => !(row.type === 'Hotel' && row.hotelCheckoutId === item.hotelCheckoutId));
+        cart.push({ type:'Hotel', id:String(item.roomTypeId), name:`Hotel ${item.roomTypeName} - ${item.petName}`, quantity:1, price:item.total, total:item.total, petId:item.petId, petName:item.petName, hotelCheckoutId:item.hotelCheckoutId });
+
+        (item.linkedSpaBookingIds || []).forEach(spaId => {
+            const spa = completedSpaBookings.find(row => row.bookingId === spaId);
+            if (!spa || cart.some(row => row.type === 'Spa' && row.bookingId === spa.bookingId)) return;
+            cart.push({ type:'Spa', id:String(spa.serviceId), name:spa.serviceName, quantity:1, price:spa.price, total:spa.price, petId:spa.petId, petName:spa.petName, petWeight:spa.petWeight || 5, groomerId:spa.groomerId, appointmentTime:new Date().toISOString(), bookingId:spa.bookingId });
+        });
+        saveCartLocally();
+        renderCart();
+        updateSpaBookingSummary();
+    };
 
     window.handleSelectCompletedSpa = function (b) {
         // 1. Kiểm tra nếu đã chọn khách hàng khác và giỏ hàng không trống
@@ -200,6 +242,8 @@ document.addEventListener('DOMContentLoaded', function () {
             
             if (targetId === 'cart-spa-pending') {
                 loadCompletedSpaBookings();
+            } else if (targetId === 'cart-hotel-pending') {
+                loadReadyHotelCheckouts();
             }
         });
     });
@@ -294,7 +338,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (summary) summary.style.display = 'none';
         
         // Remove Spa items from cart because they require a customer
-        cart = cart.filter(c => c.type !== 'Spa');
+        cart = cart.filter(c => c.type !== 'Spa' && c.type !== 'Hotel');
         saveCartLocally();
         renderCart();
     });
@@ -391,7 +435,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             <button class="btn-remove-item" onclick="removeItem(${idx})"><i class="bi bi-trash"></i></button>
                         </div>
                     `;
-                } else {
+                } else if (item.type === 'Spa') {
                     return `
                         <div class="pos-cart-item">
                             <div class="pos-item-icon"><i class="bi bi-scissors"></i></div>
@@ -408,6 +452,8 @@ document.addEventListener('DOMContentLoaded', function () {
                             <button class="btn-remove-item" onclick="removeItem(${idx})"><i class="bi bi-trash"></i></button>
                         </div>
                     `;
+                } else {
+                    return `<div class="pos-cart-item"><div class="pos-item-icon"><i class="bi bi-house-check"></i></div><div class="pos-item-details"><div class="pos-item-name">${item.name}</div><div class="pos-item-meta">Bảng kê Hotel đã chốt</div></div><div class="pos-qty-control" style="visibility:hidden;"></div><div class="pos-item-price">${formatCurrency(item.total)}</div><button class="btn-remove-item" onclick="removeItem(${idx})"><i class="bi bi-trash"></i></button></div>`;
                 }
             }).join('');
         }
@@ -679,6 +725,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     `).join('');
                 }
 
+                let hotelHtml = '';
+                if (resData.hotelCheckouts && resData.hotelCheckouts.length > 0) {
+                    hotelHtml = resData.hotelCheckouts.map(hotel => `<div style="border-top:2px dashed #000;margin:15px 0;"></div><div style="border:1px dashed #000;padding:12px;text-align:left;"><div style="font-size:13px;font-weight:bold;text-align:center;margin-bottom:8px;">BẢNG KÊ HOTEL HB#${hotel.hotelBookingId}</div><div style="font-size:11px;margin-bottom:6px;">Pet: <strong>${hotel.petName}</strong> · ${hotel.roomType} · chuồng ${hotel.cageId}</div>${(hotel.items || []).map(item => `<div style="display:flex;justify-content:space-between;font-size:11px;"><span>${item.description}</span><strong>${formatCurrency(item.amount)}</strong></div>`).join('')}<div style="display:flex;justify-content:space-between;border-top:1px dashed #000;margin-top:6px;padding-top:5px;"><strong>Tổng Hotel</strong><strong>${formatCurrency(hotel.totalAmount)}</strong></div></div>`).join('');
+                }
+
                 container.innerHTML = `
                     <div style="text-align: center; margin-bottom: 12px;">
                         <h1 style="font-size: 18px; margin: 0 0 5px 0; text-transform: uppercase; font-weight: bold;">PET STORE</h1>
@@ -767,6 +818,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     <!-- PHIẾU DỊCH VỤ SPA -->
                     ${spaHtml}
+                    ${hotelHtml}
                 `;
             } else {
                 container.innerHTML = `<p style="color:var(--pos-danger);text-align:center;padding:20px;">Lỗi tải chi tiết hóa đơn: ${resData.message}</p>`;
@@ -857,7 +909,13 @@ document.addEventListener('DOMContentLoaded', function () {
         // Reset voucher input and state when opening
         appliedVoucher = null;
         const txtVoucher = document.getElementById('txtVoucherCode');
-        if (txtVoucher) txtVoucher.value = '';
+        const hasHotelItem = cart.some(item => item.type === 'Hotel');
+        if (txtVoucher) {
+            txtVoucher.value = '';
+            txtVoucher.disabled = hasHotelItem;
+            txtVoucher.placeholder = hasHotelItem ? 'Voucher chưa áp dụng cho Hotel' : 'Nhập mã voucher (VD: PET20)';
+        }
+        document.getElementById('btnApplyVoucher').disabled = hasHotelItem;
         const voucherMsg = document.getElementById('voucherMessage');
         if (voucherMsg) {
             voucherMsg.style.display = 'none';
@@ -961,6 +1019,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('posSuccessModal').style.display = 'none';
             clearCurrentCartAndCustomer();
             loadCompletedSpaBookings();
+            loadReadyHotelCheckouts();
         });
     }
 

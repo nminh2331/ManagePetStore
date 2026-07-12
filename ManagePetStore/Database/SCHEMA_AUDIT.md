@@ -16,6 +16,8 @@
 Script riêng: `20260710_HotelBookingHistoryAndSchemaSync.sql` và `20260711_DailyCareLogsAndCustomerNotifications.sql`.
 Để cập nhật thủ công cả hai chức năng trong một lần, dùng `20260711_HotelHistoryAndDailyCare_Manual.sql`.
 
+Checkout Hotel, gói ăn và hóa đơn dịch vụ thống nhất dùng script `20260711_HotelFoodAndUnifiedCheckout.sql`.
+
 ## Chênh lệch còn lại
 
 - `CreatedByUserId` hiện lưu dấu vết người tạo nhưng chưa đặt foreign key tới `Users`, nhằm giữ nguyên nhật ký nếu tài khoản nhân viên bị xóa. Nếu hệ thống chuyển sang khóa mềm hoàn toàn, có thể bổ sung quan hệ này.

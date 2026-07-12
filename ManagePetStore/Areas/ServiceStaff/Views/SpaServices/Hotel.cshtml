@@ -1591,10 +1591,17 @@
                                 <span>@b.BaseDailyPrice.ToString("N0")đ/ngày</span>
                             }
                         </div>
-                        <button class="btn-checkout-sm" onclick="confirmCheckout(@b.HotelBookingId, '@b.Pet?.Name', '@b.CageId')">
-                            <i class="fa-solid fa-right-from-bracket" style="margin-right:4px;"></i>
-                            Trả chuồng
-                        </button>
+                        <div class="booking-action-row">
+                            <a class="btn-reception-sm" style="display:inline-flex; align-items:center; text-decoration:none;"
+                               href="/SpaServices/PetDaily/@b.PetId">
+                                <i class="fa-solid fa-book-open" style="margin-right:4px;"></i>
+                                Cập nhật Daily
+                            </a>
+                            <button class="btn-checkout-sm" onclick="confirmCheckout(@b.HotelBookingId, '@b.Pet?.Name', '@b.CageId')">
+                                <i class="fa-solid fa-right-from-bracket" style="margin-right:4px;"></i>
+                                Trả chuồng
+                            </button>
+                        </div>
                     </div>
                 }
             }
@@ -2105,7 +2112,7 @@
                     </div>
                     <div class="hform-group">
                         <label class="hform-label">Bệnh lý / Tình trạng đặc biệt</label>
-                        <input type="text" name="pathology" id="ci-pathology" class="hform-control health-input"
+                        <input type="text" name="pathology" id="ci-pathology" class="hform-control"
                             maxlength="1000"
                             placeholder="VD: Bị dị ứng thức ăn hải sản, đang dùng thuốc tim... (để trống nếu khỏe mạnh)">
                     </div>
@@ -2448,13 +2455,21 @@
                     <p style="font-size:0.9rem; font-weight:700; color:#2D2521; margin:0;" id="checkoutPetName">—</p>
                     <p style="font-size:0.78rem; color:#9E918B; margin:4px 0 0 0;" id="checkoutCageId">Chuồng —</p>
                 </div>
-                <p style="font-size:0.85rem; color:#5D524D; text-align:center;">
-                    Bạn có chắc muốn trả chuồng? Hành động này sẽ cập nhật trạng thái chuồng về <strong>Trống</strong>.
-                </p>
+                <div id="checkoutLoading" style="text-align:center; padding:12px;">Đang tính chi phí...</div>
+                <div id="checkoutCostContent" hidden>
+                    <div id="checkoutCostItems" style="display:grid; gap:6px; margin-bottom:12px;"></div>
+                    <div style="display:flex;justify-content:space-between;border-top:1px solid #eee;padding-top:10px;"><span>Giảm giá phòng</span><strong id="checkoutDiscount">0đ</strong></div>
+                    <div style="display:flex;justify-content:space-between;font-size:1rem;margin-top:8px;"><strong>Tổng chốt</strong><strong id="checkoutTotal" style="color:#DC3545;">0đ</strong></div>
+                    <div id="checkoutOtherFields" style="margin-top:12px;display:grid;gap:8px;">
+                        <input class="form-control" id="checkoutOtherDescription" maxlength="250" placeholder="Chi phí khác (nếu có)" />
+                        <input class="form-control" id="checkoutOtherAmount" type="number" min="0" step="1000" value="0" placeholder="Số tiền" />
+                    </div>
+                    <p id="checkoutPaymentStatus" style="font-size:0.78rem;color:#7A6E68;margin:10px 0 0;"></p>
+                </div>
                 <div class="modal-btn-row">
                     <button type="button" class="btn-modal-cancel" data-bs-dismiss="modal">Hủy</button>
                     <button type="button" class="btn-modal-danger" id="confirmCheckoutBtn">
-                        <i class="fa-solid fa-check" style="margin-right:6px;"></i>Xác nhận trả chuồng
+                        <i class="fa-solid fa-paper-plane" style="margin-right:6px;"></i>Gửi bảng kê thu ngân
                     </button>
                 </div>
             </div>
@@ -2748,6 +2763,10 @@ function isMedicalRecordMode() {
     return getReceptionMode() === 'MedicalRecord';
 }
 
+function isOnlineReception() {
+    return Boolean(document.getElementById('ci-hotelBookingId').value);
+}
+
 function enableNewPetForm() {
     const form = document.getElementById('petNewForm');
     form.style.opacity = '1';
@@ -2809,6 +2828,9 @@ function resetHealthCheckFields() {
     document.getElementById('ci-temperature').value = '';
     document.getElementById('ci-healthNote').value = '';
     document.getElementById('ci-healthConfirmed').checked = false;
+    const pathology = document.getElementById('ci-pathology');
+    pathology.setCustomValidity('');
+    pathology.classList.remove('health-input');
     document.getElementById('healthStatusMessage').style.display = 'none';
     document.getElementById('healthStatusMessage').innerHTML = '';
 }
@@ -2883,7 +2905,7 @@ function setReceptionMode() {
     const label = document.getElementById('existingPetLabel');
     const help = document.getElementById('existingPetHelp');
 
-    select.required = isMedicalMode;
+    select.required = isMedicalMode && !isOnlineReception();
     label.textContent = isMedicalMode
         ? 'Chọn thú cưng có sổ y tế'
         : 'Chọn thú cưng chưa có sổ y tế hoặc tạo hồ sơ mới';
@@ -2937,7 +2959,7 @@ function populateExistingPets(pets) {
         select.appendChild(option);
     });
 
-    select.required = isMedicalMode;
+    select.required = isMedicalMode && !isOnlineReception();
     group.style.display = (eligiblePets.length > 0 || isMedicalMode) ? 'block' : 'none';
     if (isMedicalMode && !eligiblePets.length) {
         help.textContent = 'Khách này chưa có thú cưng nào có sổ y tế. Hãy chuyển sang luồng chưa có sổ y tế.';
@@ -2967,11 +2989,18 @@ function lookupCustomer(phone) {
     }
 
     lookupTimer = setTimeout(() => {
-        const customers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(customers.Select(c => new { c.CustomerId, c.FullName, c.Phone })));
+        const customers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(customers.Select(c => new
+        {
+            customerId = c.CustomerId,
+            fullName = c.FullName,
+            phone = c.Phone
+        })));
         const found = customers.find(c => (c.phone || '').replace(/\D/g, '') === normalizedPhone);
         if (!found) {
             document.getElementById('existingPetGroup').style.display = 'none';
-            resetPetSelection();
+            if (!isOnlineReception()) {
+                resetPetSelection();
+            }
             return;
         }
 
@@ -3059,6 +3088,7 @@ function updateHealthStatus() {
     const message = document.getElementById('healthStatusMessage');
 
     pathology.setCustomValidity('');
+    pathology.classList.toggle('health-input', status === 'Monitor');
     if (status === 'Monitor' && !pathology.value.trim()) {
         pathology.setCustomValidity('Vui lòng ghi rõ tình trạng cần theo dõi.');
     }
@@ -3137,7 +3167,11 @@ document.getElementById('checkInForm').addEventListener('submit', event => {
 
     if (!event.currentTarget.checkValidity()) {
         event.preventDefault();
+        const invalidControl = event.currentTarget.querySelector(':invalid');
+        const message = invalidControl?.validationMessage || 'Vui lòng kiểm tra lại các trường bắt buộc.';
+        setReceptionModeHint(message, 'error');
         event.currentTarget.reportValidity();
+        invalidControl?.focus();
     }
 });
 
@@ -3333,19 +3367,65 @@ function deleteCage(cageId) {
 
 // ===== CONFIRM CHECK-OUT =====
 let checkoutBookingId = null;
+let checkoutCanFinalize = false;
 function confirmCheckout(bookingId, petName, cageId) {
     checkoutBookingId = bookingId;
     document.getElementById('checkoutPetName').textContent = petName;
     document.getElementById('checkoutCageId').textContent = 'Chuồng ' + cageId;
-    new bootstrap.Modal(document.getElementById('checkOutModal')).show();
+    document.getElementById('checkoutLoading').hidden = false;
+    document.getElementById('checkoutCostContent').hidden = true;
+    const modal = new bootstrap.Modal(document.getElementById('checkOutModal'));
+    modal.show();
+    fetch('/SpaServices/HotelCheckoutPreview/' + bookingId)
+        .then(r => r.json())
+        .then(result => {
+            if (!result.success) throw new Error(result.message);
+            renderCheckoutPreview(result.data);
+        })
+        .catch(error => {
+            document.getElementById('checkoutLoading').textContent = error.message || 'Không thể tính chi phí.';
+        });
+}
+
+function renderCheckoutPreview(data) {
+    const format = value => Number(value || 0).toLocaleString('vi-VN') + 'đ';
+    document.getElementById('checkoutLoading').hidden = true;
+    document.getElementById('checkoutCostContent').hidden = false;
+    document.getElementById('checkoutCostItems').innerHTML = (data.items || []).map(item =>
+        `<div style="display:flex;justify-content:space-between;gap:12px;font-size:0.82rem;"><span>${escapeMapHtml(item.description)}</span><strong>${format(item.amount)}</strong></div>`
+    ).join('');
+    document.getElementById('checkoutDiscount').textContent = '-' + format(data.discountAmount);
+    document.getElementById('checkoutTotal').textContent = format(data.totalAmount);
+    checkoutCanFinalize = data.canFinalize === true;
+    const button = document.getElementById('confirmCheckoutBtn');
+    const otherFields = document.getElementById('checkoutOtherFields');
+    if (checkoutCanFinalize) {
+        button.innerHTML = '<i class="fa-solid fa-check"></i> Hoàn tất trả pet';
+        otherFields.hidden = true;
+        document.getElementById('checkoutPaymentStatus').textContent = `Hóa đơn ${data.orderId} đã sẵn sàng hoàn tất.`;
+    } else {
+        button.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Gửi bảng kê thu ngân';
+        otherFields.hidden = data.orderId != null;
+        document.getElementById('checkoutPaymentStatus').textContent = data.orderId
+            ? `Đã gắn hóa đơn ${data.orderId} · trạng thái ${data.orderStatus || 'chờ thanh toán'}.`
+            : data.statementStatus === 'ReadyForPayment' ? 'Bảng kê đang chờ thu ngân.' : 'Kiểm tra chi phí trước khi gửi.';
+    }
 }
 
 document.getElementById('confirmCheckoutBtn').addEventListener('click', () => {
     if (!checkoutBookingId) return;
-    fetch('/SpaServices/CheckOut', {
+    const endpoint = checkoutCanFinalize ? '/SpaServices/CheckOut' : '/SpaServices/PrepareHotelCheckout';
+    const body = checkoutCanFinalize
+        ? 'bookingId=' + checkoutBookingId
+        : new URLSearchParams({
+            HotelBookingId: checkoutBookingId,
+            OtherDescription: document.getElementById('checkoutOtherDescription').value,
+            OtherAmount: document.getElementById('checkoutOtherAmount').value || '0'
+        }).toString();
+    fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': getAntiForgeryToken() },
-        body: 'bookingId=' + checkoutBookingId
+        body
     })
     .then(r => r.json())
     .then(data => {

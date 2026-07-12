@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace ManagePetStore.Areas.Customer.Models;
 
@@ -20,8 +22,63 @@ public class HotelBookingRequest : IValidatableObject
     [DataType(DataType.Date)]
     public DateTime? CheckOutDate { get; set; }
 
+    [Required, StringLength(30)]
+    public string FoodPlanType { get; set; } = "OwnerProvided";
+
+    public int? FoodOptionId { get; set; }
+
+    [StringLength(1000)]
+    public string? FeedingInstructions { get; set; }
+
+    [StringLength(1000)]
+    public string? AllergyNotes { get; set; }
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
+        if (!string.IsNullOrWhiteSpace(FeedingInstructions))
+        {
+            var mealTimes = Regex.Split(
+                    FeedingInstructions.Trim(),
+                    @"\s*(?:,|;|và|and)\s*",
+                    RegexOptions.IgnoreCase)
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .ToArray();
+            var parsedTimes = new List<TimeOnly>();
+
+            if (mealTimes.Length == 0)
+            {
+                yield return new ValidationResult(
+                    "Giờ ăn phải có dạng HH:mm, ví dụ 07:00 và 18:00.",
+                    [nameof(FeedingInstructions)]);
+            }
+
+            foreach (var value in mealTimes)
+            {
+                if (!TimeOnly.TryParseExact(
+                        value,
+                        ["H:mm", "HH:mm"],
+                        CultureInfo.InvariantCulture,
+                        DateTimeStyles.None,
+                        out var mealTime))
+                {
+                    yield return new ValidationResult(
+                        "Giờ ăn phải có dạng HH:mm, ví dụ 07:00 và 18:00.",
+                        [nameof(FeedingInstructions)]);
+                    break;
+                }
+
+                parsedTimes.Add(mealTime);
+            }
+
+            if (parsedTimes.Count == mealTimes.Length &&
+                parsedTimes.Any(time => time < new TimeOnly(7, 0) || time > new TimeOnly(20, 0)))
+            {
+                yield return new ValidationResult(
+                    "Giờ ăn chỉ được trong khoảng 07:00 đến 20:00.",
+                    [nameof(FeedingInstructions)]);
+            }
+        }
+
         if (!CheckInDate.HasValue || !CheckOutDate.HasValue)
         {
             yield break;
