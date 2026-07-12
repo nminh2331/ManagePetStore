@@ -85,9 +85,9 @@ public class HotelCheckoutService : IHotelCheckoutService
             PetId = booking.PetId,
             HotelBookingId = booking.HotelBookingId,
             Date = DateTime.Now,
-            Title = "Chốt chi phí lưu trú",
+            Title = "Gửi bảng kê tạm tính",
             Type = "HotelCheckoutPrepared",
-            Description = $"{staffName} đã chốt bảng kê {preview.TotalAmount:N0}đ và gửi sang quầy thu ngân."
+            Description = $"{staffName} đã lập bảng kê tạm tính {preview.TotalAmount:N0}đ và gửi sang quầy thu ngân. Pet vẫn đang lưu trú cho đến khi hoàn tất trả pet."
         });
 
         var completedSpaIds = await _context.SpaBookings

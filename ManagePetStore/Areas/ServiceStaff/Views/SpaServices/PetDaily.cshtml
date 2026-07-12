@@ -1,0 +1,84 @@
+@model ManagePetStore.Areas.ServiceStaff.Models.PetDailyCareListViewModel
+
+@{
+    Layout = "~/Areas/ServiceStaff/Views/Shared/_ServiceLayout.cshtml";
+    ViewData["Title"] = "Nhật ký chăm sóc theo pet";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/customer-hotel-bookings.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/hotel-booking-history.css" asp-append-version="true" />
+}
+
+<div class="container-fluid py-3">
+    <div class="hbh-page-header">
+        <div>
+            <h1>Nhật ký chăm sóc theo pet</h1>
+            <p>Mỗi pet được xác định bằng mã pet và chủ nuôi; tên trùng nhau không ảnh hưởng đến kết quả.</p>
+        </div>
+        <a href="/SpaServices/Reception" class="hbh-button"><i class="fa-solid fa-clipboard-check"></i> Tiếp nhận mới</a>
+    </div>
+
+    <form method="get" action="/SpaServices/PetDaily" class="hbh-staff-filter pdc-list-filter">
+        <input class="hbh-input" type="search" name="searchTerm" value="@Model.SearchTerm" placeholder="Tên pet, mã pet, chủ nuôi, SĐT hoặc chuồng" />
+        <button type="submit" class="hbh-button"><i class="fa-solid fa-magnifying-glass"></i> Tìm pet</button>
+    </form>
+
+    <section class="hbh-staff-surface">
+        <div class="hbh-staff-surface-header">
+            <h2>Pet đang lưu trú</h2>
+            <span>@Model.Pets.Count pet</span>
+        </div>
+
+        @if (Model.Pets.Count == 0)
+        {
+            <div class="hbh-empty"><i class="bi bi-journal-check"></i> Không có pet đang lưu trú phù hợp.</div>
+        }
+        else
+        {
+            <div class="hbh-care-table-wrap">
+                <table class="hbh-staff-table">
+                    <thead>
+                        <tr>
+                            <th>Thú cưng</th>
+                            <th>Chủ nuôi</th>
+                            <th>Lượt lưu trú</th>
+                            <th>Thời gian</th>
+                            <th>Cập nhật gần nhất</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var pet in Model.Pets)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@pet.PetName</strong>
+                                <small>Pet #@pet.PetId · @pet.Species@(string.IsNullOrWhiteSpace(pet.Breed) ? "" : $" · {pet.Breed}")</small>
+                            </td>
+                            <td>
+                                <strong>@pet.CustomerName</strong>
+                                <small>@pet.CustomerPhone</small>
+                            </td>
+                            <td>
+                                <strong>@pet.DisplayBookingId · @pet.CageId</strong>
+                                <small>@pet.RoomTypeName</small>
+                            </td>
+                            <td>
+                                <strong>@pet.CheckInAt.ToString("dd/MM/yyyy HH:mm")</strong>
+                                <small>đến @(pet.ExpectedCheckOutAt?.ToString("dd/MM/yyyy HH:mm") ?? "chưa xác định")</small>
+                            </td>
+                            <td>
+                                <strong>@(pet.LastCareAt?.ToString("dd/MM/yyyy HH:mm") ?? "Chưa có nhật ký")</strong>
+                                <small>@pet.CareLogCount cập nhật</small>
+                            </td>
+                            <td><a href="/SpaServices/PetDaily/@pet.PetId" class="hbh-table-link"><i class="bi bi-journal-text"></i> Mở nhật ký</a></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>

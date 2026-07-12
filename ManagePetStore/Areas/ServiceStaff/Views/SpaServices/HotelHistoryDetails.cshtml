@@ -31,51 +31,13 @@
 
     @if (Model.Booking.StatusKey == "active")
     {
-        <section class="hbh-care-editor" aria-labelledby="care-log-heading">
-            <div class="hbh-care-editor-heading">
-                <div>
-                    <span class="hbh-eyebrow">@Model.Booking.DisplayBookingId · @Model.Booking.CageId</span>
-                    <h2 id="care-log-heading">Cập nhật nhật ký chăm sóc</h2>
-                    <p>Thông tin được lưu theo đúng booking của @Model.Booking.PetName. Bật thông báo để chủ nuôi nhận ngay trên web.</p>
-                    <p><strong>Gói ăn:</strong> @Model.Booking.FoodPlanName · @Model.Booking.FoodPortionGrams g/bữa · @Model.Booking.FoodMealsPerDay bữa/ngày</p>
-                </div>
-                <i class="bi bi-journal-plus" aria-hidden="true"></i>
+        <div class="hbh-active-care-callout">
+            <div>
+                <strong>@Model.Booking.PetName đang lưu trú tại chuồng @Model.Booking.CageId</strong>
+                <span>Nhật ký hiện được quản lý tập trung theo pet, tách riêng khỏi hồ sơ lịch sử booking.</span>
             </div>
-
-            <form action="/SpaServices/HotelCareLog" method="post" enctype="multipart/form-data" class="hbh-care-form">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="HotelBookingId" value="@Model.Booking.HotelBookingId" />
-
-                <label><span>Loại hoạt động</span><select name="ActivityType" required>
-                    <option value="General">Chăm sóc chung</option><option value="Feeding">Ăn uống</option>
-                    <option value="Health">Sức khỏe</option><option value="Medication">Thuốc</option>
-                    <option value="Exercise">Vận động</option><option value="Hygiene">Vệ sinh</option>
-                    <option value="CameraSnapshot">Ảnh từ camera</option>
-                </select></label>
-                <label><span>Tiêu đề</span><input name="Title" maxlength="150" required placeholder="Ví dụ: Bữa trưa và kiểm tra sức khỏe" /></label>
-                <label><span>Thời gian thực hiện</span><input type="datetime-local" name="OccurredAt" value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" required /></label>
-                <label><span>Tình trạng</span><input name="Status" maxlength="30" required placeholder="Ví dụ: Ăn tốt, tinh thần vui vẻ" /></label>
-                <label><span>Thức ăn</span><input name="FoodType" maxlength="100" placeholder="Để trống nếu không liên quan" /></label>
-                <label><span>Khẩu phần</span><input name="Amount" maxlength="50" placeholder="Ví dụ: 120 g" /></label>
-                <label><span>Bữa ăn</span><select name="MealType"><option value="">Không áp dụng</option><option>Sáng</option><option>Trưa</option><option>Tối</option><option>Ăn thêm</option></select></label>
-                <label><span>Khối lượng phục vụ (g)</span><input type="number" name="ServedGrams" min="0" max="10000" step="0.1" /></label>
-                <label><span>Tỷ lệ đã ăn (%)</span><input type="number" name="ConsumedPercent" min="0" max="100" /></label>
-                <label class="hbh-care-toggle">
-                    <input type="checkbox" name="IsExtraCharge" value="true" />
-                    <input type="hidden" name="IsExtraCharge" value="false" />
-                    <span><strong>Bữa ngoài gói có tính phí</strong></span>
-                </label>
-                <label><span>Phụ phí (đ)</span><input type="number" name="ExtraChargeAmount" min="0" max="100000000" step="1000" value="0" /></label>
-                <label class="hbh-care-form-wide"><span>Ghi chú chi tiết</span><textarea name="Note" maxlength="1000" rows="3" placeholder="Hành vi, phản ứng, thay đổi hoặc lưu ý cho chủ nuôi"></textarea></label>
-                <label class="hbh-care-form-wide"><span>Ảnh hoặc video</span><input type="file" name="MediaFile" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" /><small>Ảnh tối đa 10 MB; video tối đa 50 MB.</small></label>
-                <label class="hbh-care-toggle hbh-care-form-wide">
-                    <input type="checkbox" name="IsVisibleToCustomer" value="true" checked />
-                    <input type="hidden" name="IsVisibleToCustomer" value="false" />
-                    <span><strong>Thông báo cho chủ nuôi</strong><small>Lưu thông báo và đẩy realtime trên web cá nhân.</small></span>
-                </label>
-                <div class="hbh-care-actions hbh-care-form-wide"><button type="submit"><i class="bi bi-send"></i> Đăng nhật ký</button></div>
-            </form>
-        </section>
+            <a href="/SpaServices/PetDaily/@Model.Booking.PetId" class="hbh-button"><i class="bi bi-journal-plus"></i> Mở nhật ký pet</a>
+        </div>
     }
 
     @await Html.PartialAsync("_HotelBookingHistoryDetail", Model.Booking)

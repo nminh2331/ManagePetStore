@@ -1591,10 +1591,17 @@
                                 <span>@b.BaseDailyPrice.ToString("N0")đ/ngày</span>
                             }
                         </div>
-                        <button class="btn-checkout-sm" onclick="confirmCheckout(@b.HotelBookingId, '@b.Pet?.Name', '@b.CageId')">
-                            <i class="fa-solid fa-right-from-bracket" style="margin-right:4px;"></i>
-                            Trả chuồng
-                        </button>
+                        <div class="booking-action-row">
+                            <a class="btn-reception-sm" style="display:inline-flex; align-items:center; text-decoration:none;"
+                               href="/SpaServices/PetDaily/@b.PetId">
+                                <i class="fa-solid fa-book-open" style="margin-right:4px;"></i>
+                                Cập nhật Daily
+                            </a>
+                            <button class="btn-checkout-sm" onclick="confirmCheckout(@b.HotelBookingId, '@b.Pet?.Name', '@b.CageId')">
+                                <i class="fa-solid fa-right-from-bracket" style="margin-right:4px;"></i>
+                                Trả chuồng
+                            </button>
+                        </div>
                     </div>
                 }
             }
@@ -2462,7 +2469,7 @@
                 <div class="modal-btn-row">
                     <button type="button" class="btn-modal-cancel" data-bs-dismiss="modal">Hủy</button>
                     <button type="button" class="btn-modal-danger" id="confirmCheckoutBtn">
-                        <i class="fa-solid fa-paper-plane" style="margin-right:6px;"></i>Chốt và gửi thu ngân
+                        <i class="fa-solid fa-paper-plane" style="margin-right:6px;"></i>Gửi bảng kê thu ngân
                     </button>
                 </div>
             </div>
@@ -3397,7 +3404,7 @@ function renderCheckoutPreview(data) {
         otherFields.hidden = true;
         document.getElementById('checkoutPaymentStatus').textContent = `Hóa đơn ${data.orderId} đã sẵn sàng hoàn tất.`;
     } else {
-        button.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Chốt và gửi thu ngân';
+        button.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Gửi bảng kê thu ngân';
         otherFields.hidden = data.orderId != null;
         document.getElementById('checkoutPaymentStatus').textContent = data.orderId
             ? `Đã gắn hóa đơn ${data.orderId} · trạng thái ${data.orderStatus || 'chờ thanh toán'}.`
