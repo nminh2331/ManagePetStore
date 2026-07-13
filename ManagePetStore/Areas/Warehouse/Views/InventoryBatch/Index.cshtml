@@ -13,8 +13,9 @@
         <h2 class="fw-bold m-0" style="color: #333;">Quản lý lô hàng</h2>
         <p class="text-muted small mt-1 mb-0">Sản phẩm: <span class="fw-bold text-dark">@product?.Name (@product?.Sku)</span></p>
     </div>
-    
-    <a asp-action="Create" asp-route-productSku="@product?.Sku" class="btn btn-primary-custom btn-custom">
+
+    <a asp-area="Warehouse" asp-controller="StockMovement" asp-action="CreateImport"
+       asp-route-productSku="@product?.Sku" class="btn btn-primary-custom btn-custom">
         <i class="fas fa-plus"></i> Nhập lô hàng mới
     </a>
 </div>
@@ -32,7 +33,8 @@
             <h5 class="alert-heading fw-bold mb-1">Cảnh báo mâu thuẫn dữ liệu!</h5>
             <p class="mb-0">Tổng tồn kho của sản phẩm (@productStock) đang lớn hơn tổng số lượng trong các lô hàng (@totalBatchStock).</p>
         </div>
-        <form asp-action="SyncStock" asp-route-productSku="@product?.Sku" method="post" onsubmit="return confirm('Hệ thống sẽ tự động tạo một lô hàng với số lượng bằng mức chênh lệch. Tiếp tục?');">
+        <form asp-action="SyncStock" asp-route-productSku="@product?.Sku" method="post"
+              onsubmit="return confirm('Hệ thống sẽ tự động tạo một lô hàng với số lượng bằng mức chênh lệch. Tiếp tục?');">
             <button type="submit" class="btn btn-warning fw-bold text-dark">
                 <i class="fas fa-sync-alt"></i> Đồng bộ tồn kho
             </button>
@@ -61,7 +63,7 @@
                         {
                             bool isExpired = batch.ExpiryDate.Date < DateTime.Now.Date;
                             bool isExpiringSoon = batch.ExpiryDate.Date <= DateTime.Now.Date.AddDays(30) && !isExpired;
-                            
+
                             <tr>
                                 <td class="px-4 py-3 fw-bold text-muted">#@batch.BatchId</td>
                                 <td class="px-4 py-3">@batch.ReceivedDate.ToString("dd/MM/yyyy HH:mm")</td>
@@ -90,10 +92,12 @@
                                     }
                                 </td>
                                 <td class="px-4 py-3 text-end">
-                                    <a asp-action="Edit" asp-route-id="@batch.BatchId" class="btn btn-sm btn-outline-primary" style="border-radius:8px;" title="Chỉnh sửa">
+                                    <a asp-action="Edit" asp-route-id="@batch.BatchId"
+                                       class="btn btn-sm btn-outline-primary" style="border-radius:8px;" title="Chỉnh sửa">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <form asp-action="Delete" asp-route-id="@batch.BatchId" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc muốn xóa lô hàng này? Số lượng tồn kho sản phẩm sẽ bị giảm đi tương ứng.');">
+                                    <form asp-action="Delete" asp-route-id="@batch.BatchId" method="post" class="d-inline"
+                                          onsubmit="return confirm('Bạn có chắc muốn xóa lô hàng này? Số lượng tồn kho sản phẩm sẽ bị giảm đi tương ứng.');">
                                         <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius:8px;" title="Xóa">
                                             <i class="fas fa-trash"></i>
                                         </button>
@@ -106,8 +110,8 @@
                     {
                         <tr>
                             <td colspan="6" class="text-center py-5 text-muted">
-                                <i class="fas fa-box-open" style="font-size:2rem;opacity:.3;"></i>
-                                <p class="mt-2 mb-0">Chưa có lô hàng nào. Hãy nhập lô hàng đầu tiên!</p>
+                                <i class="fas fa-boxes" style="font-size:2rem;opacity:.3;"></i>
+                                <p class="mt-2 mb-0">Chưa có lô hàng nào được nhập.</p>
                             </td>
                         </tr>
                     }

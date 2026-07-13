@@ -1,12 +1,24 @@
 @{
     ViewData["Title"] = "Tạo Đơn Nhập Hàng";
     var categories = ViewBag.Categories as IEnumerable<ManagePetStore.Models.ProductCategory>;
+    var prefill = ViewBag.PrefillProduct as ManagePetStore.Models.Product;
+    bool hasPrefill = prefill != null;
 }
 
 <div class="mb-4">
-    <a asp-action="Index" class="text-decoration-none text-muted mb-2 d-inline-block">
-        <i class="fas fa-arrow-left"></i> Quay lại lịch sử
-    </a>
+    @if (hasPrefill)
+    {
+        <a asp-area="Warehouse" asp-controller="InventoryBatch" asp-action="Index" asp-route-id="@prefill!.Sku"
+           class="text-decoration-none text-muted mb-2 d-inline-block">
+            <i class="fas fa-arrow-left"></i> Quay lại quản lý lô hàng
+        </a>
+    }
+    else
+    {
+        <a asp-action="Index" class="text-decoration-none text-muted mb-2 d-inline-block">
+            <i class="fas fa-arrow-left"></i> Quay lại lịch sử
+        </a>
+    }
     <h2 class="fw-bold m-0" style="color: #333;">Tạo Đơn Nhập Hàng (Purchase Order)</h2>
     <p class="text-muted small mt-1 mb-0">Tạo phiếu yêu cầu nhập hàng mới. Phiếu sẽ ở trạng thái Chờ duyệt.</p>
 </div>
@@ -27,7 +39,14 @@
                     {
                         foreach (var cat in categories)
                         {
-                            <option value="@cat.CategoryId">@cat.Name</option>
+                            @if (hasPrefill && prefill!.CategoryId == cat.CategoryId)
+                            {
+                                <option value="@cat.CategoryId" selected>@cat.Name</option>
+                            }
+                            else
+                            {
+                                <option value="@cat.CategoryId">@cat.Name</option>
+                            }
                         }
                     }
                 </select>
@@ -63,7 +82,8 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="Quantity" class="form-label fw-bold">Số lượng nhập <span class="text-danger">*</span></label>
-                        <input type="number" id="Quantity" name="Quantity" min="1" class="form-control" style="border-radius: 8px;" required oninput="calcTotal()" />
+                        <input type="number" id="Quantity" name="Quantity" min="1" class="form-control"
+                               style="border-radius: 8px;" required oninput="calcTotal()" />
                     </div>
                     <div class="col-md-6 mb-3">
                         <label for="CostPrice" class="form-label fw-bold">
@@ -71,15 +91,16 @@
                             <span class="badge bg-secondary fw-normal ms-1" style="font-size: 0.7rem;">/ 1 đơn vị</span>
                         </label>
                         <div class="input-group">
-                            <input type="number" id="CostPrice" name="CostPrice" min="0" class="form-control" style="border-radius: 8px 0 0 8px;" required placeholder="0" oninput="calcTotal()" />
+                            <input type="number" id="CostPrice" name="CostPrice" min="0" class="form-control"
+                                   style="border-radius: 8px 0 0 8px;" required placeholder="0" oninput="calcTotal()" />
                             <span class="input-group-text" style="border-radius: 0 8px 8px 0;">đ</span>
                         </div>
                         <div class="form-text text-muted">Giá nhập cho <strong>1 đơn vị</strong> sản phẩm, không phải tổng đơn.</div>
                     </div>
                 </div>
 
-                @* Hiển thị tổng giá trị dự kiến *@
-                <div class="alert alert-info py-2 px-3 mb-3" id="totalPreview" style="display:none; border-radius: 8px; font-size: 0.9rem;">
+                <div class="alert alert-info py-2 px-3 mb-3" id="totalPreview"
+                     style="display:none; border-radius: 8px; font-size: 0.9rem;">
                     <i class="fas fa-calculator me-2"></i>
                     <strong>Tổng giá trị dự kiến:</strong>
                     <span id="totalValue" class="fw-bold text-primary ms-1"></span>
@@ -99,48 +120,56 @@
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
+        var prefillSku = '@(hasPrefill ? prefill!.Sku : "")';
+        var prefillCategoryId = '@(hasPrefill ? prefill!.CategoryId.ToString() : "")';
+
+        window.addEventListener('DOMContentLoaded', function () {
+            if (prefillCategoryId) {
+                loadProductsAndSelectSku(prefillCategoryId, prefillSku);
+            }
+        });
+
         function onCategoryChange(categoryId) {
-            // Ẩn hết các bước phía dưới khi đổi danh mục
             document.getElementById('productSection').style.display = 'none';
             document.getElementById('supplierSection').style.display = 'none';
             document.getElementById('quantitySection').style.display = 'none';
-
             if (!categoryId) return;
-
-            // Chỉ load sản phẩm — NCC sẽ load sau khi chọn sản phẩm
-            loadProducts(categoryId);
+            loadProductsAndSelectSku(categoryId, null);
         }
 
         function onProductChange(sku) {
-            // Ẩn NCC cũ, rồi load NCC theo SKU
             document.getElementById('supplierSection').style.display = 'none';
             if (!sku) return;
             loadSuppliersByProduct(sku);
         }
 
-        function loadProducts(categoryId) {
+        function loadProductsAndSelectSku(categoryId, skuToSelect) {
             var productSelect = document.getElementById('ProductSku');
             productSelect.innerHTML = '<option value="">Đang tải sản phẩm...</option>';
             document.getElementById('productSection').style.display = 'block';
 
             fetch('/Warehouse/StockMovement/GetProductsByCategory?categoryId=' + categoryId)
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
                     productSelect.innerHTML = '<option value="">-- Chọn sản phẩm --</option>';
                     if (data && data.length > 0) {
-                        data.forEach(function(p) {
+                        data.forEach(function (p) {
                             var opt = document.createElement('option');
                             opt.value = p.sku;
                             opt.text = p.name + ' (Tồn: ' + p.stock + ')';
+                            if (p.sku === skuToSelect) opt.selected = true;
                             productSelect.appendChild(opt);
                         });
                     } else {
                         productSelect.innerHTML = '<option value="">-- Không có sản phẩm nào trong danh mục này --</option>';
                     }
-                    // Hiện phần số lượng và nút gửi
-                    document.getElementById('quantitySection').style.display = 'block';
+                    // Chỉ hiện quantitySection khi đã có sản phẩm được chọn
+                    if (skuToSelect) {
+                        document.getElementById('quantitySection').style.display = 'block';
+                        loadSuppliersByProduct(skuToSelect);
+                    }
                 })
-                .catch(function(err) {
+                .catch(function (err) {
                     console.error('Error loading products:', err);
                     productSelect.innerHTML = '<option value="">Lỗi khi tải sản phẩm</option>';
                 });
@@ -155,11 +184,11 @@
             supplierSelect.innerHTML = '<option value="">Đang tải nhà cung cấp...</option>';
 
             fetch('/Warehouse/StockMovement/GetSuppliersByProduct?sku=' + encodeURIComponent(sku))
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
                     if (data && data.length > 0) {
                         supplierSelect.innerHTML = '<option value="">-- Không chọn --</option>';
-                        data.forEach(function(s) {
+                        data.forEach(function (s) {
                             var opt = document.createElement('option');
                             opt.value = s.supplierId;
                             opt.text = s.name;
@@ -172,12 +201,15 @@
                         hint.innerHTML = '⚠️ Chưa có nhà cung cấp nào đăng ký cung cấp sản phẩm này. Bạn có thể bỏ trống để không chọn.';
                         hint.className = 'form-text text-warning';
                     }
+                    // Hiện phần số lượng sau khi load NCC (nếu chưa hiện)
+                    document.getElementById('quantitySection').style.display = 'block';
                 })
-                .catch(function(err) {
+                .catch(function (err) {
                     console.error('Error loading suppliers:', err);
                     supplierSelect.innerHTML = '<option value="">Lỗi khi tải nhà cung cấp</option>';
                 });
         }
+
         function calcTotal() {
             var qty = parseFloat(document.getElementById('Quantity').value) || 0;
             var price = parseFloat(document.getElementById('CostPrice').value) || 0;

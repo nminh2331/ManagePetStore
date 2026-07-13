@@ -7,6 +7,7 @@
  */
 using ManagePetStore.Models;
 using ManagePetStore.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Collections.Generic;
@@ -16,6 +17,7 @@ using System.Threading.Tasks;
 namespace ManagePetStore.Areas.Warehouse.Controllers;
 
 [Area("Warehouse")]
+[Authorize(Roles = "warehouse,admin")]
 public class SupplierController : Controller
 {
     private readonly ISupplierService _supplierService;
@@ -103,6 +105,7 @@ public class SupplierController : Controller
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
     {
         await _supplierService.DeleteSupplierAsync(id);

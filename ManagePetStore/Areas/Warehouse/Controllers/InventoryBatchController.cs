@@ -166,11 +166,8 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
                 await _batchService.CreateBatch(adjustmentBatch);
 
                 // Ghi lại lịch sử (StockMovement)
-                int userId = 1; 
-                try {
-                    var userClaim = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier);
-                    if (userClaim != null && int.TryParse(userClaim.Value, out int uid)) userId = uid;
-                } catch { }
+                var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier);
+                int userId = userIdClaim != null && int.TryParse(userIdClaim.Value, out int parsedId) ? parsedId : 1;
 
                 var movement = new StockMovement
                 {

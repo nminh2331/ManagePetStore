@@ -227,7 +227,7 @@ public class OrderController : Controller
                     {
                         ProductSku = item.ProductSku,
                         Quantity = item.Quantity,
-                        CostPrice = 0
+                        CostPrice = item.Price
                     });
                 }
             }
@@ -240,7 +240,7 @@ public class OrderController : Controller
                 type: "Nhập kho (Hủy đơn)",
                 status: "Đã hoàn thành",
                 supplier: null,
-                totalValue: 0,
+                totalValue: systemStockDetails.Sum(d => d.Quantity * d.CostPrice),
                 details: systemStockDetails
             );
         }

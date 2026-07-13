@@ -133,29 +133,40 @@
             <p class="text-muted small mb-0">Hệ thống quản lý thú cưng</p>
         </div>
         <div class="col-6 text-end">
-            <div class="fs-5 fw-bold text-muted">Mẫu số: 01-VT</div>
+            <div class="fs-5 fw-bold text-muted">Mẫu số: @(Model.Type.StartsWith("Nhập") ? "01-VT" : "02-VT")</div>
         </div>
     </div>
 
     <div class="doc-header">
-        <div class="doc-title">PHIẾU @(Model.Type.ToUpper()) KHO</div>
+        <div class="doc-title">@{
+                string docTitle = Model.Type switch {
+                    "Nhập hàng" => "PHIẾU NHẬP KHO",
+                    "Xuất kho (Bán hàng online)" => "PHIẾU XUẤT KHO (ONLINE)",
+                    "Xuất kho (Bán hàng POS)" => "PHIẾU XUẤT KHO (POS)",
+                    "Nhập kho (Hủy đơn)" => "PHIẾU NHẬP KHO (HOÀN TRẢ)",
+                    "Xuất nội bộ" => "PHIẾU XUẤT NỘI BỘ",
+                    _ => "PHIẾU KHO"
+                };
+            }@docTitle</div>
         <div class="text-muted mt-1">Ngày lập: @Model.Date.ToString("dd/MM/yyyy HH:mm")</div>
         <div>
             @{
                 var badgeClass = Model.Status switch {
                     "Hoàn thành" => "bg-success",
+                    "Đã hoàn thành" => "bg-success",
                     "Chờ quản lý duyệt" => "bg-danger",
                     "Chờ kiểm hàng" => "bg-warning text-dark",
+                    "Đã hủy" => "bg-secondary",
                     _ => "bg-secondary"
                 };
             }
-            <span class="badge @badgeClass mt-2 px-3 py-2">@Model.Status</span>
+            <span class="badge @badgeClass mt-2 px-3 py-2">@(Model.Status == "Đã hoàn thành" ? "Hoàn thành" : Model.Status)</span>
         </div>
     </div>
 
     <div class="row mb-4">
         <div class="col-7">
-            <p class="mb-1"><strong>Người lập phiếu:</strong> @Model.CreatedBy.FullName</p>
+            <p class="mb-1"><strong>Người lập phiếu:</strong> @(Model.CreatedBy?.FullName ?? "N/A")</p>
             <p class="mb-1">
                 <strong>@(Model.Type == "Nhập hàng" ? "Nhà cung cấp" : "Đơn vị nhận"):</strong> 
                 @(Model.SupplierNavigation?.Name ?? Model.Supplier ?? "N/A")
@@ -212,7 +223,7 @@
         <div class="col-4">
             <div class="signature-title">Người lập phiếu</div>
             <div class="text-muted fst-italic mb-5">(Ký, họ tên)</div>
-            <div class="fw-bold mt-5 pt-3">@Model.CreatedBy.FullName</div>
+            <div class="fw-bold mt-5 pt-3">@(Model.CreatedBy?.FullName ?? "N/A")</div>
         </div>
         <div class="col-4">
             <div class="signature-title">Người giao hàng</div>

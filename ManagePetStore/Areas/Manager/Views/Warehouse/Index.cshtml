@@ -1,11 +1,11 @@
 @model IEnumerable<ManagePetStore.Models.StockMovement>
 @{
-    ViewData["Title"] = "Duyệt Phiếu Nhập Kho";
+    ViewData["Title"] = "Duyet Phieu Nhap Kho";
     Layout = "~/Areas/Manager/Views/Shared/_ManagerLayout.cshtml";
     var currentTab = (string)(ViewBag.Tab ?? "manager");
     var allMovements = Model?.ToList() ?? new List<ManagePetStore.Models.StockMovement>();
-    var pendingManager    = allMovements.Where(m => m.Status == "Chờ quản lý duyệt").ToList();
-    var pendingInspection = allMovements.Where(m => m.Status == "Chờ kiểm hàng").ToList();
+    var pendingManager    = allMovements.Where(m => m.Status == "Ch\u1edd qu\u1ea3n l\u00fd duy\u1ec7t").ToList();
+    var pendingInspection = allMovements.Where(m => m.Status == "Ch\u1edd ki\u1ec3m h\u00e0ng").ToList();
     var displayList = allMovements;
     if (currentTab == "manager")    displayList = pendingManager;
     if (currentTab == "inspection") displayList = pendingInspection;
@@ -28,8 +28,8 @@
 
 <div class="mb-4 d-flex justify-content-between align-items-center">
     <div>
-        <h2 class="fw-bold m-0" style="color:#333;">Duyệt Phiếu Nhập Kho</h2>
-        <p class="text-muted small mt-1 mb-0">Xem xét và duyệt các đơn nhập hàng từ thủ kho</p>
+        <h2 class="fw-bold m-0" style="color:#333;">Duyet Phieu Nhap Kho</h2>
+        <p class="text-muted small mt-1 mb-0">Xem xet va duyet cac don nhap hang tu thu kho</p>
     </div>
 </div>
 
@@ -37,21 +37,21 @@
     <li class="nav-item">
         <a class="nav-link @(currentTab == "manager" ? "active fw-bold" : "")"
            asp-area="Manager" asp-controller="Warehouse" asp-action="Index" asp-route-tab="manager">
-            <i class="fas fa-user-tie me-1"></i> Chờ tôi duyệt
+            <i class="fas fa-user-tie me-1"></i> Cho toi duyet
             @if (pendingManager.Count > 0) { <span class="badge bg-danger ms-1">@pendingManager.Count</span> }
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link @(currentTab == "inspection" ? "active fw-bold" : "")"
            asp-area="Manager" asp-controller="Warehouse" asp-action="Index" asp-route-tab="inspection">
-            <i class="fas fa-boxes me-1"></i> Chờ kiểm hàng
+            <i class="fas fa-boxes me-1"></i> Cho kiem hang
             @if (pendingInspection.Count > 0) { <span class="badge bg-warning text-dark ms-1">@pendingInspection.Count</span> }
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link @(currentTab == "all" ? "active fw-bold" : "")"
            asp-area="Manager" asp-controller="Warehouse" asp-action="Index" asp-route-tab="all">
-            <i class="fas fa-list me-1"></i> Tất cả phiếu
+            <i class="fas fa-list me-1"></i> Tat ca phieu
         </a>
     </li>
 </ul>
@@ -62,7 +62,7 @@
         {
             <div class="text-center py-5 text-muted">
                 <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i>
-                <p>Không có phiếu nào ở trạng thái này.</p>
+                <p>Khong co phieu nao o trang thai nay.</p>
             </div>
         }
         else
@@ -70,14 +70,14 @@
             <table class="table table-hover align-middle mb-0">
                 <thead style="background:#f8f9fa;">
                     <tr>
-                        <th class="border-0 px-4 py-3">Mã phiếu</th>
-                        <th class="border-0 px-4 py-3">Ngày tạo</th>
-                        <th class="border-0 px-4 py-3">Loại</th>
-                        <th class="border-0 px-4 py-3">Mặt hàng</th>
-                        <th class="border-0 px-4 py-3">Người tạo</th>
-                        <th class="border-0 px-4 py-3 text-end">Tổng giá trị</th>
-                        <th class="border-0 px-4 py-3 text-center">Trạng thái</th>
-                        <th class="border-0 px-4 py-3 text-end">Thao tác</th>
+                        <th class="border-0 px-4 py-3">Ma phieu</th>
+                        <th class="border-0 px-4 py-3">Ngay tao</th>
+                        <th class="border-0 px-4 py-3">Loai</th>
+                        <th class="border-0 px-4 py-3">Mat hang</th>
+                        <th class="border-0 px-4 py-3">Nguoi tao</th>
+                        <th class="border-0 px-4 py-3 text-end">Tong gia tri</th>
+                        <th class="border-0 px-4 py-3 text-center">Trang thai</th>
+                        <th class="border-0 px-4 py-3 text-end">Thao tac</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -87,38 +87,58 @@
                             <td class="px-4 py-3 fw-bold text-muted">#@item.MovementId</td>
                             <td class="px-4 py-3">@item.Date.ToString("dd/MM/yyyy HH:mm")</td>
                             <td class="px-4 py-3">
-                                @if (item.Type == "Nhập hàng")
-                                { <span class="text-success fw-bold"><i class="fas fa-arrow-down"></i> Nhập hàng</span>
-                                  <div class="text-muted small mt-1"><i class="fas fa-truck"></i> @(item.SupplierNavigation?.Name ?? item.Supplier ?? "N/A")</div> }
+                                @if (item.Type == "Nh\u1eadp h\u00e0ng")
+                                {
+                                    <span class="text-success fw-bold"><i class="fas fa-arrow-down"></i> Nhap hang</span>
+                                    <div class="text-muted small mt-1"><i class="fas fa-truck"></i> @(item.SupplierNavigation?.Name ?? item.Supplier ?? "N/A")</div>
+                                }
+                                else if (item.Type == "Xu\u1ea5t kho (B\u00e1n h\u00e0ng online)")
+                                {
+                                    <span class="text-danger fw-bold"><i class="fas fa-shopping-cart"></i> Xuat kho (Online)</span>
+                                    <div class="text-muted small mt-1"><i class="fas fa-globe"></i> Don hang truc tuyen</div>
+                                }
+                                else if (item.Type == "Xu\u1ea5t kho (B\u00e1n h\u00e0ng POS)")
+                                {
+                                    <span class="text-danger fw-bold"><i class="fas fa-cash-register"></i> Xuat kho (POS)</span>
+                                    <div class="text-muted small mt-1"><i class="fas fa-store"></i> Ban tai quay</div>
+                                }
+                                else if (item.Type == "Nh\u1eadp kho (H\u1ee7y \u0111\u01a1n)")
+                                {
+                                    <span class="text-success fw-bold"><i class="fas fa-undo"></i> Nhap kho (Hoan tra)</span>
+                                    <div class="text-muted small mt-1"><i class="fas fa-info-circle"></i> @(item.Supplier ?? "Huy don")</div>
+                                }
                                 else
-                                { <span class="text-primary fw-bold"><i class="fas fa-arrow-up"></i> Xuất nội bộ</span>
-                                  <div class="text-muted small mt-1">@(item.SupplierNavigation?.Name ?? item.Supplier ?? "N/A")</div> }
+                                {
+                                    <span class="text-warning fw-bold"><i class="fas fa-arrow-up"></i> Xuat noi bo</span>
+                                    <div class="text-muted small mt-1">@(item.SupplierNavigation?.Name ?? item.Supplier ?? "N/A")</div>
+                                }
                             </td>
                             <td class="px-4 py-3">
                                 <ul class="list-unstyled mb-0 small">
                                     @foreach (var d in item.StockMovementDetails.Take(2))
                                     { <li><span class="fw-bold">@d.Quantity</span> x @d.ProductSkuNavigation?.Name</li> }
                                     @if (item.StockMovementDetails.Count > 2)
-                                    { <li class="text-muted fst-italic">+ @(item.StockMovementDetails.Count - 2) mặt hàng khác...</li> }
+                                    { <li class="text-muted fst-italic">+ @(item.StockMovementDetails.Count - 2) mat hang khac...</li> }
                                 </ul>
                             </td>
                             <td class="px-4 py-3">@item.CreatedBy?.FullName</td>
-                            <td class="px-4 py-3 text-end fw-bold">@string.Format("{0:N0} đ", item.TotalValue)</td>
+                            <td class="px-4 py-3 text-end fw-bold">@string.Format("{0:N0} d", item.TotalValue)</td>
                             <td class="px-4 py-3 text-center">
                                 @{
-                                    var bc = item.Status switch {
-                                        "Hoàn thành"           => "bg-success",
-                                        "Chờ quản lý duyệt"   => "bg-danger",
-                                        "Chờ kiểm hàng"        => "bg-warning text-dark",
-                                        _                      => "bg-secondary"
-                                    };
+                                    bool isCompleted = item.Status == "Ho\u00e0n th\u00e0nh" || item.Status == "\u0110\u00e3 ho\u00e0n th\u00e0nh";
+                                    var bc = isCompleted ? "bg-success"
+                                        : item.Status == "Ch\u1edd qu\u1ea3n l\u00fd duy\u1ec7t" ? "bg-danger"
+                                        : item.Status == "Ch\u1edd ki\u1ec3m h\u00e0ng" ? "bg-warning text-dark"
+                                        : item.Status == "\u0110\u00e3 h\u1ee7y" ? "bg-secondary"
+                                        : "bg-secondary";
+                                    var statusLabel = isCompleted ? "Hoan thanh" : item.Status;
                                 }
-                                <span class="badge @bc rounded-pill px-3 py-2">@item.Status</span>
+                                <span class="badge @bc rounded-pill px-3 py-2">@statusLabel</span>
                             </td>
                             <td class="px-4 py-3 text-end">
                                 <a asp-area="Manager" asp-controller="Warehouse" asp-action="Details"
                                    asp-route-id="@item.MovementId" class="btn btn-sm btn-outline-primary">
-                                    <i class="fas fa-eye"></i> Chi tiết
+                                    <i class="fas fa-eye"></i> Chi tiet
                                 </a>
                             </td>
                         </tr>
