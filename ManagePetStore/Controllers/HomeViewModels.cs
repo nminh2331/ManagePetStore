@@ -8,6 +8,7 @@ public class HomepageViewModel
     public FeaturedBlogItem FeaturedBlog { get; set; } = new();
     public List<PetOptionItem> Pets { get; set; } = [];
     public List<RoomTypeOptionItem> RoomTypes { get; set; } = [];
+    public List<HotelFoodOptionItem> HotelFoodOptions { get; set; } = [];
     public int HotelDiscountPercent { get; set; }
     public string HotelMembershipTier { get; set; } = "Thành viên";
     public string? SearchKeyword { get; set; }
@@ -70,6 +71,20 @@ public class RoomTypeOptionItem
     public int Id { get; set; }
     public string Name { get; set; } = "";
     public decimal DailyPrice { get; set; }
+    public bool HasPremiumFood { get; set; }
+}
+
+public class HotelFoodOptionItem
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public string Description { get; set; } = "";
+    public string TargetSpecies { get; set; } = "Tất cả";
+    public decimal PricePerDay { get; set; }
+    public int PortionGrams { get; set; }
+    public int MealsPerDay { get; set; }
+    public string? ImageUrl { get; set; }
+    public bool IncludedWithPremiumRoom { get; set; }
 }
 
 public class ProductDetailViewModel

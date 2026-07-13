@@ -30,6 +30,7 @@ namespace ManagePetStore.Areas.Cashier.Models
         public int? GroomerId { get; set; }
         public DateTime? AppointmentTime { get; set; }
         public int? BookingId { get; set; }
+        public int? HotelCheckoutId { get; set; }
     }
 
     public class PosQuickRegisterDto

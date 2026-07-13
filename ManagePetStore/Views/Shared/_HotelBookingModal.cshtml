@@ -1,6 +1,7 @@
 @{
     var pets = ViewBag.HotelPets as IEnumerable<ManagePetStore.Controllers.PetOptionItem>;
     var roomTypes = ViewBag.HotelRoomTypes as IEnumerable<ManagePetStore.Controllers.RoomTypeOptionItem>;
+    var foodOptions = ViewBag.HotelFoodOptions as IEnumerable<ManagePetStore.Controllers.HotelFoodOptionItem> ?? [];
     var discountPercent = ViewBag.HotelDiscountPercent is int value ? value : 0;
     var membershipTier = ViewBag.HotelMembershipTier as string ?? "Thành viên";
     var hasBookingOptions = pets?.Any() == true && roomTypes?.Any() == true;
@@ -104,7 +105,7 @@
                                 <option value="">Chọn loại phòng</option>
                                 @foreach (var room in roomTypes)
                                 {
-                                    <option value="@room.Id" data-price="@room.DailyPrice">
+                                    <option value="@room.Id" data-price="@room.DailyPrice" data-premium-food="@room.HasPremiumFood.ToString().ToLowerInvariant()">
                                         @room.Name - @room.DailyPrice.ToString("N0")đ/đêm
                                     </option>
                                 }
@@ -131,6 +132,41 @@
                     </div>
                 </div>
 
+                <div class="hotel-food-section">
+                    <label class="hotel-label" for="hotelFoodPlanType"><i class="bi bi-cup-straw"></i> CHẾ ĐỘ THỨC ĂN</label>
+                    <select class="hotel-select" id="hotelFoodPlanType" name="FoodPlanType" required>
+                        <option value="">Chọn chế độ thức ăn</option>
+                        <option value="OwnerProvided">Chủ nuôi tự chuẩn bị · 0đ</option>
+                        <option value="HotelFood">Chọn gói thức ăn của Hotel</option>
+                    </select>
+                    <div id="hotelFoodOptionWrap" class="mt-2" hidden>
+                        <select class="hotel-select" id="hotelFoodOption" name="FoodOptionId">
+                            <option value="">Chọn loại thức ăn</option>
+                            @foreach (var food in foodOptions)
+                            {
+                                <option value="@food.Id"
+                                        data-price="@food.PricePerDay"
+                                        data-included-premium="@food.IncludedWithPremiumRoom.ToString().ToLowerInvariant()"
+                                        data-description="@food.Description"
+                                        data-portion="@food.PortionGrams"
+                                        data-meals="@food.MealsPerDay">
+                                    @food.Name · @food.PricePerDay.ToString("N0")đ/ngày
+                                </option>
+                            }
+                        </select>
+                        <div class="hotel-date-help" id="hotelFoodDescription">Giá được khóa theo booking và tính theo ngày sử dụng.</div>
+                    </div>
+                    <div id="hotelFeedingScheduleWrap" class="mt-2" hidden>
+                        <label class="hotel-label" for="hotelFeedingSchedule"><i class="bi bi-clock"></i> GIỜ ĂN MONG MUỐN</label>
+                        <input class="hotel-select"
+                               id="hotelFeedingSchedule"
+                               name="FeedingInstructions"
+                               type="text"
+                               maxlength="200"
+                               placeholder="07:00 - 20:00, ví dụ: 07:00 và 18:00" />
+                    </div>
+                </div>
+
                 <div class="hotel-date-help">
                     Đặt trước tối đa 365 ngày, mỗi lượt từ 1 đến 90 đêm.
                 </div>
@@ -143,6 +179,10 @@
                     <div class="hotel-summary-row">
                         <span>Số đêm</span>
                         <strong id="hotelNights">1 đêm</strong>
+                    </div>
+                    <div class="hotel-summary-row">
+                        <span>Gói thức ăn</span>
+                        <strong id="hotelFoodTotal">0đ</strong>
                     </div>
                     <div class="hotel-summary-row hotel-total-row">
                         <span>TẠM TÍNH:</span>
