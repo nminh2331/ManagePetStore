@@ -31,7 +31,12 @@ public class HotelCheckoutService : IHotelCheckoutService
             throw new InvalidOperationException("Chỉ có thể chốt chi phí cho pet đang lưu trú.");
         }
 
-        if (booking.CheckoutStatement?.OrderId != null)
+        if (booking.CheckoutStatement?.OrderId != null &&
+            IsCancelledOrder(booking.CheckoutStatement.Order))
+        {
+            await ReleaseCancelledOrderLinkAsync(booking.CheckoutStatement);
+        }
+        else if (booking.CheckoutStatement?.OrderId != null)
         {
             throw new InvalidOperationException("Bảng kê đã được thu ngân liên kết hóa đơn và không thể sửa.");
         }
@@ -115,6 +120,50 @@ public class HotelCheckoutService : IHotelCheckoutService
         await _context.SaveChangesAsync();
         await transaction.CommitAsync();
         return await GetPreviewAsync(booking.HotelBookingId) ?? preview;
+    }
+
+    private static bool IsCancelledOrder(Order? order)
+    {
+        return order?.OrderStatus == 0 ||
+               string.Equals(order?.Status, "Đã hủy", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(order?.Status, "Cancelled", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(order?.Status, "Canceled", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task ReleaseCancelledOrderLinkAsync(HotelCheckoutStatement statement)
+    {
+        string cancelledOrderId = statement.OrderId!;
+        statement.OrderId = null;
+        statement.Order = null;
+        statement.Status = "ReadyForPayment";
+        statement.PaidAt = null;
+
+        var spaBookings = await _context.SpaBookings
+            .Include(booking => booking.Service)
+            .Where(booking => booking.Notes != null && booking.Notes.Contains($"[POS {cancelledOrderId}]"))
+            .ToListAsync();
+        foreach (var booking in spaBookings)
+        {
+            booking.Notes = RemoveCancelledOrderPrefix(
+                booking.Notes,
+                cancelledOrderId,
+                booking.Service.Name);
+        }
+    }
+
+    private static string? RemoveCancelledOrderPrefix(string? notes, string orderId, string serviceName)
+    {
+        if (string.IsNullOrWhiteSpace(notes))
+        {
+            return null;
+        }
+
+        string prefix = $"[POS {orderId}] | Dịch vụ: {serviceName} ";
+        string cleaned = notes.StartsWith(prefix, StringComparison.Ordinal)
+            ? notes[prefix.Length..]
+            : notes.Replace($"[POS {orderId}]", string.Empty, StringComparison.Ordinal)
+                .TrimStart(' ', '|');
+        return string.IsNullOrWhiteSpace(cleaned) ? null : cleaned.Trim();
     }
 
     private async Task<HotelBooking?> LoadBookingAsync(int bookingId, bool noTracking)
