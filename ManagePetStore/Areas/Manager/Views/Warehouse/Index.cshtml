@@ -1,11 +1,11 @@
 @model IEnumerable<ManagePetStore.Models.StockMovement>
 @{
-    ViewData["Title"] = "Duyệt Phiếu Nhập Kho";
+    ViewData["Title"] = "Duyet Phieu Nhap Kho";
     Layout = "~/Areas/Manager/Views/Shared/_ManagerLayout.cshtml";
     var currentTab = (string)(ViewBag.Tab ?? "manager");
     var allMovements = Model?.ToList() ?? new List<ManagePetStore.Models.StockMovement>();
-    var pendingManager    = allMovements.Where(m => m.Status == "Chờ quản lý duyệt").ToList();
-    var pendingInspection = allMovements.Where(m => m.Status == "Chờ kiểm hàng").ToList();
+    var pendingManager    = allMovements.Where(m => m.Status == "Ch\u1edd qu\u1ea3n l\u00fd duy\u1ec7t").ToList();
+    var pendingInspection = allMovements.Where(m => m.Status == "Ch\u1edd ki\u1ec3m h\u00e0ng").ToList();
     var displayList = allMovements;
     if (currentTab == "manager")    displayList = pendingManager;
     if (currentTab == "inspection") displayList = pendingInspection;
@@ -28,30 +28,59 @@
 
 <div class="mb-4 d-flex justify-content-between align-items-center">
     <div>
-        <h2 class="fw-bold m-0" style="color:#333;">Duyệt Phiếu Nhập Kho</h2>
-        <p class="text-muted small mt-1 mb-0">Xem xét và duyệt các đơn nhập hàng từ thủ kho</p>
+        <h2 class="fw-bold m-0" style="color:#333;">Duyệt Phiếu & Lịch Sử Kho</h2>
+        <p class="text-muted small mt-1 mb-0">Xem xét, duyệt các đơn hàng và theo dõi lịch sử nhập xuất kho</p>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4" style="border-radius:12px;">
+    <div class="card-body">
+        <form method="get" asp-area="Manager" asp-controller="Warehouse" asp-action="Index" class="row g-3 align-items-end">
+            <input type="hidden" name="tab" value="@currentTab" />
+            
+            <div class="col-md-4">
+                <label class="form-label small fw-bold text-muted">Tìm kiếm</label>
+                <input type="text" name="search" class="form-control" placeholder="Mã phiếu, nhà cung cấp..." value="@ViewBag.Search">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted">Từ ngày</label>
+                <input type="date" name="fromDate" class="form-control" value="@ViewBag.FromDate">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted">Đến ngày</label>
+                <input type="date" name="toDate" class="form-control" value="@ViewBag.ToDate">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-filter me-1"></i> Lọc
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
 <ul class="nav nav-tabs mb-3">
     <li class="nav-item">
         <a class="nav-link @(currentTab == "manager" ? "active fw-bold" : "")"
-           asp-area="Manager" asp-controller="Warehouse" asp-action="Index" asp-route-tab="manager">
+           asp-area="Manager" asp-controller="Warehouse" asp-action="Index" asp-route-tab="manager"
+           asp-route-search="@ViewBag.Search" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate">
             <i class="fas fa-user-tie me-1"></i> Chờ tôi duyệt
             @if (pendingManager.Count > 0) { <span class="badge bg-danger ms-1">@pendingManager.Count</span> }
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link @(currentTab == "inspection" ? "active fw-bold" : "")"
-           asp-area="Manager" asp-controller="Warehouse" asp-action="Index" asp-route-tab="inspection">
+           asp-area="Manager" asp-controller="Warehouse" asp-action="Index" asp-route-tab="inspection"
+           asp-route-search="@ViewBag.Search" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate">
             <i class="fas fa-boxes me-1"></i> Chờ kiểm hàng
             @if (pendingInspection.Count > 0) { <span class="badge bg-warning text-dark ms-1">@pendingInspection.Count</span> }
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link @(currentTab == "all" ? "active fw-bold" : "")"
-           asp-area="Manager" asp-controller="Warehouse" asp-action="Index" asp-route-tab="all">
-            <i class="fas fa-list me-1"></i> Tất cả phiếu
+           asp-area="Manager" asp-controller="Warehouse" asp-action="Index" asp-route-tab="all"
+           asp-route-search="@ViewBag.Search" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate">
+            <i class="fas fa-history me-1"></i> Lịch sử xuất nhập kho
         </a>
     </li>
 </ul>
@@ -87,12 +116,31 @@
                             <td class="px-4 py-3 fw-bold text-muted">#@item.MovementId</td>
                             <td class="px-4 py-3">@item.Date.ToString("dd/MM/yyyy HH:mm")</td>
                             <td class="px-4 py-3">
-                                @if (item.Type == "Nhập hàng")
-                                { <span class="text-success fw-bold"><i class="fas fa-arrow-down"></i> Nhập hàng</span>
-                                  <div class="text-muted small mt-1"><i class="fas fa-truck"></i> @(item.SupplierNavigation?.Name ?? item.Supplier ?? "N/A")</div> }
+                                @if (item.Type == "Nh\u1eadp h\u00e0ng")
+                                {
+                                    <span class="text-success fw-bold"><i class="fas fa-arrow-down"></i> Nhập hàng</span>
+                                    <div class="text-muted small mt-1"><i class="fas fa-truck"></i> @(item.SupplierNavigation?.Name ?? item.Supplier ?? "N/A")</div>
+                                }
+                                else if (item.Type == "Xu\u1ea5t kho (B\u00e1n h\u00e0ng online)")
+                                {
+                                    <span class="text-danger fw-bold"><i class="fas fa-shopping-cart"></i> Xuất kho (Online)</span>
+                                    <div class="text-muted small mt-1"><i class="fas fa-globe"></i> Đơn hàng trực tuyến</div>
+                                }
+                                else if (item.Type == "Xu\u1ea5t kho (B\u00e1n h\u00e0ng POS)")
+                                {
+                                    <span class="text-danger fw-bold"><i class="fas fa-cash-register"></i> Xuất kho (POS)</span>
+                                    <div class="text-muted small mt-1"><i class="fas fa-store"></i> Bán tại quầy</div>
+                                }
+                                else if (item.Type == "Nh\u1eadp kho (H\u1ee7y \u0111\u01a1n)")
+                                {
+                                    <span class="text-success fw-bold"><i class="fas fa-undo"></i> Nhập kho (Hoàn trả)</span>
+                                    <div class="text-muted small mt-1"><i class="fas fa-info-circle"></i> @(item.Supplier ?? "Hủy đơn")</div>
+                                }
                                 else
-                                { <span class="text-primary fw-bold"><i class="fas fa-arrow-up"></i> Xuất nội bộ</span>
-                                  <div class="text-muted small mt-1">@(item.SupplierNavigation?.Name ?? item.Supplier ?? "N/A")</div> }
+                                {
+                                    <span class="text-warning fw-bold"><i class="fas fa-arrow-up"></i> Xuất nội bộ</span>
+                                    <div class="text-muted small mt-1">@(item.SupplierNavigation?.Name ?? item.Supplier ?? "N/A")</div>
+                                }
                             </td>
                             <td class="px-4 py-3">
                                 <ul class="list-unstyled mb-0 small">
@@ -106,14 +154,15 @@
                             <td class="px-4 py-3 text-end fw-bold">@string.Format("{0:N0} đ", item.TotalValue)</td>
                             <td class="px-4 py-3 text-center">
                                 @{
-                                    var bc = item.Status switch {
-                                        "Hoàn thành"           => "bg-success",
-                                        "Chờ quản lý duyệt"   => "bg-danger",
-                                        "Chờ kiểm hàng"        => "bg-warning text-dark",
-                                        _                      => "bg-secondary"
-                                    };
+                                    bool isCompleted = item.Status == "Ho\u00e0n th\u00e0nh" || item.Status == "\u0110\u00e3 ho\u00e0n th\u00e0nh";
+                                    var bc = isCompleted ? "bg-success"
+                                        : item.Status == "Ch\u1edd qu\u1ea3n l\u00fd duy\u1ec7t" ? "bg-danger"
+                                        : item.Status == "Ch\u1edd ki\u1ec3m h\u00e0ng" ? "bg-warning text-dark"
+                                        : item.Status == "\u0110\u00e3 h\u1ee7y" ? "bg-secondary"
+                                        : "bg-secondary";
+                                    var statusLabel = isCompleted ? "Hoàn thành" : item.Status;
                                 }
-                                <span class="badge @bc rounded-pill px-3 py-2">@item.Status</span>
+                                <span class="badge @bc rounded-pill px-3 py-2">@statusLabel</span>
                             </td>
                             <td class="px-4 py-3 text-end">
                                 <a asp-area="Manager" asp-controller="Warehouse" asp-action="Details"

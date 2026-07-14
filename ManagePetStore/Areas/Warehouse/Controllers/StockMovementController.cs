@@ -41,7 +41,16 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             ViewBag.ToDate = toDate?.ToString("yyyy-MM-dd");
             ViewBag.Tab = tab;
             ViewBag.Search = search;
+
+            // Lấy danh sách đã lọc theo ngày/tìm kiếm để hiển thị
             var movements = await _movementService.GetAllMovements(fromDate, toDate, search);
+
+            // Lấy TOÀN BỘ danh sách (không lọc ngày) để đếm badge "Chờ duyệt" / "Chờ kiểm hàng"
+            // Tránh bug: filter ngày làm mất số đơn đang chờ xử lý
+            var allMovementsUnfiltered = await _movementService.GetAllMovements(null, null, null);
+            ViewBag.PendingManagerCount = allMovementsUnfiltered.Count(m => m.Status == "Chờ quản lý duyệt");
+            ViewBag.PendingInspectionCount = allMovementsUnfiltered.Count(m => m.Status == "Chờ kiểm hàng");
+
             return View(movements);
         }
 

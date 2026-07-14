@@ -50,6 +50,12 @@ public class ProductRepository : IProductRepository
 
     public async Task UpdateProduct(Product product)
     {
+        var trackedEntity = _context.ChangeTracker.Entries<Product>().FirstOrDefault(e => e.Entity.Sku == product.Sku);
+        if (trackedEntity != null)
+        {
+            trackedEntity.State = EntityState.Detached;
+        }
+        
         _context.Products.Update(product);
         await _context.SaveChangesAsync();
     }

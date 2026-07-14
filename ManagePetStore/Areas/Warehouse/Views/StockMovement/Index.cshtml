@@ -37,38 +37,60 @@
 @{
     var currentTab = (string)(ViewBag.Tab ?? "all");
     var allMovements = Model?.ToList() ?? new List<ManagePetStore.Models.StockMovement>();
+    var importOnly = allMovements.Where(m => m.Type == "Nhập hàng").ToList();
+    var exportOnly = allMovements.Where(m => m.Type != "Nhập hàng").ToList();
+
+    // Sử dụng count từ ViewBag (lấy từ toàn bộ DB, không bị filter ngày)
+    int pendingManagerCount = (int)(ViewBag.PendingManagerCount ?? 0);
+    int pendingInspectionCount = (int)(ViewBag.PendingInspectionCount ?? 0);
+
+    // Phân loại để hiển thị từ danh sách đã filter
     var pendingManager = allMovements.Where(m => m.Status == "Chờ quản lý duyệt").ToList();
     var pendingInspection = allMovements.Where(m => m.Status == "Chờ kiểm hàng").ToList();
-    
+
     var displayList = allMovements;
     if (currentTab == "manager") displayList = pendingManager;
-    if (currentTab == "inspection") displayList = pendingInspection;
+    else if (currentTab == "inspection") displayList = pendingInspection;
+    else if (currentTab == "import") displayList = importOnly;
+    else if (currentTab == "export") displayList = exportOnly;
 }
 
 <ul class="nav nav-tabs mb-3">
     <li class="nav-item">
         <a class="nav-link @(currentTab == "all" ? "active fw-bold" : "")" 
-           asp-action="Index" asp-route-tab="all" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate">
+           asp-action="Index" asp-route-tab="all" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate" asp-route-search="@ViewBag.Search">
             <i class="fas fa-list me-1"></i> Tất cả phiếu
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link @(currentTab == "import" ? "active fw-bold" : "")" 
+           asp-action="Index" asp-route-tab="import" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate" asp-route-search="@ViewBag.Search">
+            <i class="fas fa-arrow-down me-1 text-success"></i> Phiếu nhập
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(currentTab == "export" ? "active fw-bold" : "")" 
+           asp-action="Index" asp-route-tab="export" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate" asp-route-search="@ViewBag.Search">
+            <i class="fas fa-arrow-up me-1 text-danger"></i> Phiếu xuất
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link @(currentTab == "manager" ? "active fw-bold" : "")" 
-           asp-action="Index" asp-route-tab="manager" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate">
+           asp-action="Index" asp-route-tab="manager" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate" asp-route-search="@ViewBag.Search">
             <i class="fas fa-user-tie me-1"></i> Chờ quản lý duyệt
-            @if (pendingManager.Count > 0)
+            @if (pendingManagerCount > 0)
             {
-                <span class="badge bg-danger ms-1">@pendingManager.Count</span>
+                <span class="badge bg-danger ms-1">@pendingManagerCount</span>
             }
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link @(currentTab == "inspection" ? "active fw-bold" : "")" 
-           asp-action="Index" asp-route-tab="inspection" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate">
+           asp-action="Index" asp-route-tab="inspection" asp-route-fromDate="@ViewBag.FromDate" asp-route-toDate="@ViewBag.ToDate" asp-route-search="@ViewBag.Search">
             <i class="fas fa-boxes me-1"></i> Chờ kiểm hàng
-            @if (pendingInspection.Count > 0)
+            @if (pendingInspectionCount > 0)
             {
-                <span class="badge bg-warning text-dark ms-1">@pendingInspection.Count</span>
+                <span class="badge bg-warning text-dark ms-1">@pendingInspectionCount</span>
             }
         </a>
     </li>
@@ -133,10 +155,25 @@
                                         <span class="text-success fw-bold"><i class="fas fa-arrow-down"></i> Nhập hàng</span>
                                         <div class="text-muted small mt-1"><i class="fas fa-truck"></i> @(item.SupplierNavigation?.Name ?? item.Supplier ?? "N/A")</div>
                                     }
+                                    else if (item.Type == "Xuất nội bộ")
+                                    {
+                                        <span class="text-warning fw-bold"><i class="fas fa-arrow-up"></i> Xuất nội bộ</span>
+                                        <div class="text-muted small mt-1"><i class="fas fa-sticky-note"></i> @(item.Supplier ?? "Không có ghi chú")</div>
+                                    }
+                                    else if (item.Type == "Xuất kho (Bán hàng online)")
+                                    {
+                                        <span class="text-danger fw-bold"><i class="fas fa-shopping-cart"></i> Xuất kho (Online)</span>
+                                        <div class="text-muted small mt-1"><i class="fas fa-globe"></i> Đơn hàng trực tuyến</div>
+                                    }
+                                    else if (item.Type == "Xuất kho (Bán hàng POS)")
+                                    {
+                                        <span class="text-danger fw-bold"><i class="fas fa-cash-register"></i> Xuất kho (POS)</span>
+                                        <div class="text-muted small mt-1"><i class="fas fa-store"></i> Bán tại quầy (Cashier)</div>
+                                    }
                                     else
                                     {
-                                        <span class="text-danger fw-bold"><i class="fas fa-arrow-up"></i> Xuất nội bộ</span>
-                                        <div class="text-muted small mt-1">@(item.SupplierNavigation?.Name ?? item.Supplier ?? "N/A")</div>
+                                        <span class="text-danger fw-bold"><i class="fas fa-arrow-up"></i> @item.Type</span>
+                                        <div class="text-muted small mt-1">@(item.Supplier ?? "N/A")</div>
                                     }
                                 </td>
                                 <td class="px-4 py-3">
@@ -153,7 +190,7 @@
                                 </td>
                                 <td class="px-4 py-3 text-end fw-bold">@string.Format("{0:N0} đ", item.TotalValue)</td>
                                 <td class="px-4 py-3 text-center">
-                                    @if (item.Status == "Hoàn thành")
+                                    @if (item.Status == "Hoàn thành" || item.Status == "Đã hoàn thành")
                                     {
                                         <span class="badge bg-success rounded-pill px-3 py-2">Hoàn thành</span>
                                     }
@@ -165,13 +202,17 @@
                                     {
                                         <span class="badge bg-warning text-dark rounded-pill px-3 py-2">Chờ kiểm hàng</span>
                                     }
-                                    else
+                                    else if (item.Status == "Đã hủy")
                                     {
                                         <span class="badge bg-secondary rounded-pill px-3 py-2">Đã hủy</span>
                                     }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary rounded-pill px-3 py-2">@item.Status</span>
+                                    }
                                 </td>
                                 <td class="px-4 py-3 text-end">
-                                    @if (item.Type == "Nhập hàng" && item.Status == "Chờ duyệt")
+                                    @if (item.Type == "Nhập hàng" && item.Status == "Chờ kiểm hàng")
                                     {
                                         <a asp-action="Approve" asp-route-id="@item.MovementId" class="btn btn-sm btn-warning fw-bold" style="border-radius:8px;">
                                             <i class="fas fa-clipboard-check"></i> Kiểm hàng
@@ -192,7 +233,7 @@
                         <tr>
                             <td colspan="7" class="text-center py-5 text-muted">
                                 <i class="fas fa-file-invoice" style="font-size:2rem;opacity:.3;"></i>
-                                <p class="mt-2 mb-0">@(currentTab == "pending" ? "Không có đơn nào đang chờ kiểm hàng." : "Chưa có giao dịch xuất/nhập nào.")</p>
+                                <p class="mt-2 mb-0">@(currentTab == "inspection" ? "Không có đơn nào đang chờ kiểm hàng." : "Chưa có giao dịch xuất/nhập nào.")</p>
                             </td>
                         </tr>
                     }

@@ -406,7 +406,7 @@ public class CheckoutController : Controller
                     type: "Xuất kho (Bán hàng online)",
                     status: "Đã hoàn thành",
                     supplier: null,
-                    totalValue: 0,
+                    totalValue: cart.GrandTotal,
                     details: systemStockDetails
                 );
             }
@@ -533,7 +533,13 @@ public class CheckoutController : Controller
 
                             if (payOsCancel == "true" || payOsStatus == "CANCELLED")
                             {
-                                TempData["ErrorMessage"] = "Giao dịch thanh toán đã bị hủy.";
+                                // Hoàn lại tồn kho vì thanh toán bị hủy
+                                await RestoreStockForOrderAsync(order);
+                                order.Status = "Đã hủy";
+                                _context.Entry(order).State = EntityState.Modified;
+                                await _context.SaveChangesAsync();
+
+                                TempData["ErrorMessage"] = "Giao dịch thanh toán đã bị hủy. Tồn kho đã được hoàn trả.";
                                 return RedirectToAction(nameof(Index));
                             }
 
@@ -598,7 +604,13 @@ public class CheckoutController : Controller
                             }
                             else
                             {
-                                TempData["ErrorMessage"] = "Giao dịch thanh toán online không thành công hoặc chưa hoàn tất.";
+                                // Thanh toán không hoàn tất → hoàn kho
+                                await RestoreStockForOrderAsync(order);
+                                order.Status = "Đã hủy";
+                                _context.Entry(order).State = EntityState.Modified;
+                                await _context.SaveChangesAsync();
+
+                                TempData["ErrorMessage"] = "Giao dịch thanh toán online không thành công hoặc chưa hoàn tất. Tồn kho đã được hoàn trả.";
                                 return RedirectToAction(nameof(Index));
                             }
                         }
@@ -657,6 +669,64 @@ public class CheckoutController : Controller
         }
 
         return await _context.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
+    }
+
+    /// <summary>
+    /// Hoàn trả tồn kho cho tất cả sản phẩm trong đơn khi thanh toán thất bại/bị hủy.
+    /// Đồng thời tạo phiếu "Nhập kho (Hủy đơn)" để ghi nhận lịch sử hoàn trả tồn kho.
+    /// </summary>
+    private async Task RestoreStockForOrderAsync(Order order)
+    {
+        // Load order items nếu chưa load
+        if (!order.OrderItems.Any())
+        {
+            await _context.Entry(order).Collection(o => o.OrderItems).LoadAsync();
+        }
+
+        var restoredDetails = new List<StockMovementDetail>();
+
+        foreach (var item in order.OrderItems)
+        {
+            if (string.IsNullOrEmpty(item.ProductSku)) continue; // Bỏ qua SPA service
+            try
+            {
+                await _inventoryBatchService.RestockToBatches(item.ProductSku, item.Quantity);
+                restoredDetails.Add(new StockMovementDetail
+                {
+                    ProductSku = item.ProductSku,
+                    Quantity = item.Quantity,
+                    CostPrice = item.Price
+                });
+            }
+            catch
+            {
+                // Fallback: cộng trực tiếp vào Product.Stock nếu batch service lỗi
+                await _context.Database.ExecuteSqlRawAsync(
+                    "UPDATE Products SET Stock = Stock + {1} WHERE Sku = {0}",
+                    item.ProductSku,
+                    item.Quantity);
+                restoredDetails.Add(new StockMovementDetail
+                {
+                    ProductSku = item.ProductSku,
+                    Quantity = item.Quantity,
+                    CostPrice = item.Price
+                });
+            }
+        }
+
+        // Tạo phiếu nhập hoàn trả để ghi nhận lịch sử rõ ràng trong trang Lịch sử Xuất/Nhập Kho.
+        // Cùng pattern với luồng hủy thủ công trong Customer/OrderController.cs
+        if (restoredDetails.Any())
+        {
+            await _stockMovementService.CreateSystemMovement(
+                systemUserId: 1,
+                type: "Nhập kho (Hủy đơn)",
+                status: "Đã hoàn thành",
+                supplier: $"Hoàn trả đơn {order.OrderId}",
+                totalValue: restoredDetails.Sum(d => d.Quantity * d.CostPrice),
+                details: restoredDetails
+            );
+        }
     }
 
     private static string? NormalizePaymentMethod(string paymentMethod)
