@@ -28,6 +28,10 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         private static readonly string[] MaintenanceCageStatuses = ["Đang dọn dẹp", "Bảo trì", "Khóa"];
         private const decimal MinimumRoomTypeDailyPrice = 150000m;
         private const decimal MinimumRoomTypeHourlyPrice = 40000m;
+        private const decimal MaximumRoomTypePrice = 100000000m;
+        private const int MaximumRoomTypeCapacity = 10;
+        private const int MinimumCagePortionGrams = 10;
+        private const int MaximumCagePortionGrams = 10000;
 
         private readonly PetStoreManagementContext _context;
         private readonly IHotelBookingHistoryService _historyService;
@@ -2034,6 +2038,11 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     return HotelValidationError("Gói thức ăn đã chọn không phù hợp với loài của thú cưng.");
                 }
 
+                if (foodProduct.Price <= 0 && (onlineReservation?.FoodPlan?.BasePricePerDaySnapshot ?? 0) <= 0)
+                {
+                    return HotelValidationError("Gói thức ăn chưa có giá bán hợp lệ.");
+                }
+
                 bool petHasScheduleConflict = await _context.HotelBookings.AnyAsync(b =>
                     b.PetId == pet.PetId &&
                     b.HotelBookingId != (onlineReservation != null ? onlineReservation.HotelBookingId : 0) &&
@@ -2488,10 +2497,17 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         [HttpGet("HotelCheckoutPreview/{bookingId:int}")]
         public async Task<IActionResult> HotelCheckoutPreview(int bookingId)
         {
-            var preview = await _hotelCheckoutService.GetPreviewAsync(bookingId);
-            return preview == null
-                ? Json(new { success = false, message = "Không tìm thấy booking Hotel." })
-                : Json(new { success = true, data = preview });
+            try
+            {
+                var preview = await _hotelCheckoutService.GetPreviewAsync(bookingId);
+                return preview == null
+                    ? Json(new { success = false, message = "Không tìm thấy booking Hotel." })
+                    : Json(new { success = true, data = preview });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
         }
 
         [HttpPost("PrepareHotelCheckout")]
@@ -3013,6 +3029,41 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return "Giá theo giờ không được thấp hơn 40.000đ.";
             }
 
+            if (dailyPrice > MaximumRoomTypePrice || hourlyPrice > MaximumRoomTypePrice)
+            {
+                return "Giá chuồng không được vượt quá 100.000.000đ.";
+            }
+
+            if (hourlyPrice > dailyPrice)
+            {
+                return "Giá theo giờ không được lớn hơn giá theo ngày.";
+            }
+
+            if (dailyPrice % 1000m != 0 || hourlyPrice % 1000m != 0)
+            {
+                return "Giá chuồng phải theo bước 1.000đ.";
+            }
+
+            return null;
+        }
+
+        private static string? ValidateRoomTypeDetails(string? type, string? size, int capacity)
+        {
+            if (string.IsNullOrWhiteSpace(type) || type.Trim().Length > 100)
+            {
+                return "Tên loại chuồng là bắt buộc và không được vượt quá 100 ký tự.";
+            }
+
+            if (string.IsNullOrWhiteSpace(size) || size.Trim().Length > 50)
+            {
+                return "Kích cỡ chuồng là bắt buộc và không được vượt quá 50 ký tự.";
+            }
+
+            if (capacity is < 1 or > MaximumRoomTypeCapacity)
+            {
+                return "Sức chứa phải từ 1 đến 10 thú cưng.";
+            }
+
             return null;
         }
 
@@ -3023,9 +3074,10 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             decimal hourlyPrice, decimal dailyPrice,
             bool hasAc, bool hasCamera, bool hasPremiumFood)
         {
-            if (string.IsNullOrWhiteSpace(type) || capacity <= 0)
+            var detailsError = ValidateRoomTypeDetails(type, size, capacity);
+            if (detailsError != null)
             {
-                TempData["HotelError"] = "Thông tin loại chuồng không hợp lệ.";
+                TempData["HotelError"] = detailsError;
                 return RedirectToAction(nameof(CageCategories));
             }
 
@@ -3076,9 +3128,10 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return RedirectToAction(nameof(CageCategories));
             }
 
-            if (string.IsNullOrWhiteSpace(type) || capacity <= 0)
+            var detailsError = ValidateRoomTypeDetails(type, size, capacity);
+            if (detailsError != null)
             {
-                TempData["HotelError"] = "Thông tin không hợp lệ.";
+                TempData["HotelError"] = detailsError;
                 return RedirectToAction(nameof(CageCategories));
             }
 
@@ -3151,9 +3204,21 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         public async Task<IActionResult> AddCage(
             string cageId, int roomTypeId, string feedSchedule, int portion)
         {
-            if (string.IsNullOrWhiteSpace(cageId) || roomTypeId <= 0)
+            if (string.IsNullOrWhiteSpace(cageId) || cageId.Trim().Length > 20 || roomTypeId <= 0)
             {
-                TempData["HotelError"] = "Thông tin chuồng không hợp lệ.";
+                TempData["HotelError"] = "Mã chuồng là bắt buộc và không được vượt quá 20 ký tự.";
+                return RedirectToAction(nameof(CageCategories));
+            }
+
+            if (feedSchedule?.Trim().Length > 100)
+            {
+                TempData["HotelError"] = "Lịch cho ăn không được vượt quá 100 ký tự.";
+                return RedirectToAction(nameof(CageCategories));
+            }
+
+            if (portion is < MinimumCagePortionGrams or > MaximumCagePortionGrams || portion % 10 != 0)
+            {
+                TempData["HotelError"] = "Khẩu phần phải từ 10 đến 10.000 gram và theo bước 10 gram.";
                 return RedirectToAction(nameof(CageCategories));
             }
 
@@ -3176,7 +3241,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 RoomTypeId = roomTypeId,
                 Status = "Trống",
                 FeedSchedule = feedSchedule?.Trim() ?? "08:00, 12:00, 18:00",
-                Portion = portion > 0 ? portion : 60
+                Portion = portion
             };
 
             _context.Cages.Add(cage);
@@ -3197,6 +3262,18 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return RedirectToAction(nameof(CageCategories));
             }
 
+            if (feedSchedule?.Trim().Length > 100)
+            {
+                TempData["HotelError"] = "Lịch cho ăn không được vượt quá 100 ký tự.";
+                return RedirectToAction(nameof(CageCategories));
+            }
+
+            if (portion is < MinimumCagePortionGrams or > MaximumCagePortionGrams || portion % 10 != 0)
+            {
+                TempData["HotelError"] = "Khẩu phần phải từ 10 đến 10.000 gram và theo bước 10 gram.";
+                return RedirectToAction(nameof(CageCategories));
+            }
+
             var roomType = await _context.RoomTypes.FindAsync(roomTypeId);
             if (roomType == null)
             {
@@ -3206,7 +3283,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             cage.RoomTypeId = roomTypeId;
             cage.FeedSchedule = feedSchedule?.Trim() ?? cage.FeedSchedule;
-            cage.Portion = portion > 0 ? portion : cage.Portion;
+            cage.Portion = portion;
 
             await _context.SaveChangesAsync();
             TempData["HotelSuccess"] = $"Cập nhật chuồng {cageId} thành công!";

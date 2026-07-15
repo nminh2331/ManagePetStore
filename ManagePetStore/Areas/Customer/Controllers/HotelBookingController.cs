@@ -211,6 +211,11 @@ public class HotelBookingController : Controller
                 return BookingError("Gói thức ăn không phù hợp với loài của thú cưng.");
             }
 
+            if (foodProduct.Price <= 0)
+            {
+                return BookingError("Gói thức ăn chưa có giá bán hợp lệ.");
+            }
+
             var foodQuote = HotelFoodPricing.Calculate(foodProduct.Price, pet.Weight, stayDays);
 
             var reservedFoodUnits = await _context.HotelBookingFoodPlans

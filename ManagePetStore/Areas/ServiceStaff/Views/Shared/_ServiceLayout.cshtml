@@ -344,7 +344,7 @@
                     <i class="fa-solid fa-clipboard-check"></i>
                     Tiếp nhận
                 </a>
-                <a href="/SpaServices/CageMap" class="service-nav-item @((servicePath.StartsWith("/SpaServices/CageMap", StringComparison.OrdinalIgnoreCase) || servicePath.StartsWith("/SpaServices/Hotel", StringComparison.OrdinalIgnoreCase)) ? "active" : "")">
+                <a href="/SpaServices/CageMap" class="service-nav-item @(!isHotelHistory && (servicePath.StartsWith("/SpaServices/CageMap", StringComparison.OrdinalIgnoreCase) || servicePath.StartsWith("/SpaServices/Hotel", StringComparison.OrdinalIgnoreCase)) ? "active" : "")">
                     <i class="fa-solid fa-map-location-dot"></i>
                     Sơ đồ Chuồng
                 </a>

@@ -8,6 +8,10 @@ namespace ManagePetStore.Services;
 
 public class HotelCheckoutService : IHotelCheckoutService
 {
+    private static readonly TimeSpan DefaultScheduledCheckoutTime = TimeSpan.FromHours(12);
+    private static readonly TimeSpan LateCheckoutGracePeriod = TimeSpan.FromMinutes(30);
+    private const int HoursPerLateDay = 24;
+
     private readonly PetStoreManagementContext _context;
     private readonly IInventoryBatchService _inventoryBatchService;
 
@@ -22,7 +26,13 @@ public class HotelCheckoutService : IHotelCheckoutService
     public async Task<HotelCheckoutPreviewViewModel?> GetPreviewAsync(int bookingId, DateTime? checkoutAt = null)
     {
         var booking = await LoadBookingAsync(bookingId, true);
-        return booking == null ? null : BuildPreview(booking, checkoutAt ?? booking.CheckoutStatement?.CheckoutAt ?? DateTime.Now);
+        if (booking == null)
+        {
+            return null;
+        }
+
+        ValidateCheckoutPricing(booking);
+        return BuildPreview(booking, checkoutAt ?? booking.CheckoutStatement?.CheckoutAt ?? DateTime.Now);
     }
 
     public async Task<HotelCheckoutPreviewViewModel> PrepareAsync(
@@ -49,6 +59,8 @@ public class HotelCheckoutService : IHotelCheckoutService
                 booking,
                 booking.CheckoutStatement!.CheckoutAt);
         }
+
+        ValidateCheckoutInputs(booking, request);
 
         var checkoutAt = DateTime.Now;
         var chargeableFoodDays = ResolveFoodDays(booking, checkoutAt);
@@ -191,7 +203,8 @@ public class HotelCheckoutService : IHotelCheckoutService
         var extraFoodLogs = booking.FoodDiaryLogs.Where(log => log.IsExtraCharge && log.ExtraChargeAmount > 0).ToList();
         var extraFoodAmount = extraFoodLogs.Sum(log => log.ExtraChargeAmount);
         var addonAmount = booking.BookingAddons.Sum(addon => addon.Price);
-        var lateFee = CalculateLateFee(booking, checkoutAt);
+        var lateFeeQuote = CalculateLateFee(booking, checkoutAt);
+        var lateFee = lateFeeQuote.Amount;
         var savedOtherItem = booking.CheckoutStatement?.Items.FirstOrDefault(item => item.ChargeType == "Other");
         var otherAmount = requestedOtherAmount ?? savedOtherItem?.Amount ?? 0;
         var description = string.IsNullOrWhiteSpace(otherDescription) ? savedOtherItem?.Description : otherDescription.Trim();
@@ -219,7 +232,18 @@ public class HotelCheckoutService : IHotelCheckoutService
         }
         items.AddRange(booking.BookingAddons.Select(addon => new HotelCheckoutPreviewItem { ChargeType = "Addon", Description = addon.Name, Quantity = 1, Unit = "lần", UnitPrice = addon.Price, Amount = addon.Price }));
         items.AddRange(extraFoodLogs.Select(log => new HotelCheckoutPreviewItem { ChargeType = "ExtraFood", Description = $"Bữa phát sinh: {log.FoodType}", Quantity = 1, Unit = "lần", UnitPrice = log.ExtraChargeAmount, Amount = log.ExtraChargeAmount }));
-        if (lateFee > 0) items.Add(new() { ChargeType = "LateFee", Description = "Phụ phí checkout trễ", Quantity = 1, Unit = "lần", UnitPrice = lateFee, Amount = lateFee });
+        if (lateFee > 0)
+        {
+            items.Add(new()
+            {
+                ChargeType = "LateFee",
+                Description = $"Phụ phí trả chuồng trễ {lateFeeQuote.ChargeableHours} giờ sau 30 phút miễn phí",
+                Quantity = 1,
+                Unit = "lần",
+                UnitPrice = lateFee,
+                Amount = lateFee
+            });
+        }
         if (otherAmount > 0) items.Add(new() { ChargeType = "Other", Description = description ?? "Chi phí phát sinh khác", Quantity = 1, Unit = "lần", UnitPrice = otherAmount, Amount = otherAmount });
 
         var orderStatus = booking.CheckoutStatement?.Order?.Status;
@@ -252,15 +276,72 @@ public class HotelCheckoutService : IHotelCheckoutService
         return actualDays;
     }
 
-    private static decimal CalculateLateFee(HotelBooking booking, DateTime checkoutAt)
+    private static LateFeeQuote CalculateLateFee(HotelBooking booking, DateTime checkoutAt)
     {
         var scheduled = booking.ScheduledCheckOutDate ?? booking.CheckOutDate;
         if (scheduled.HasValue && scheduled.Value.TimeOfDay == TimeSpan.Zero)
-            scheduled = scheduled.Value.Date.AddHours(12);
-        if (!scheduled.HasValue || checkoutAt <= scheduled.Value.AddMinutes(30)) return 0;
-        var hours = (int)Math.Ceiling((checkoutAt - scheduled.Value.AddMinutes(30)).TotalHours);
-        var fullDays = hours / 24;
-        var remainingHours = hours % 24;
-        return fullDays * booking.BaseDailyPrice + Math.Min(remainingHours * booking.Cage.RoomType.HourlyPrice, booking.BaseDailyPrice);
+            scheduled = scheduled.Value.Date.Add(DefaultScheduledCheckoutTime);
+
+        if (!scheduled.HasValue || checkoutAt <= scheduled.Value.Add(LateCheckoutGracePeriod))
+        {
+            return LateFeeQuote.None;
+        }
+
+        var chargeableHours = (int)Math.Ceiling(
+            (checkoutAt - scheduled.Value.Add(LateCheckoutGracePeriod)).TotalHours);
+        var fullDays = chargeableHours / HoursPerLateDay;
+        var remainingHours = chargeableHours % HoursPerLateDay;
+        var amount = fullDays * booking.BaseDailyPrice
+            + Math.Min(remainingHours * booking.Cage.RoomType.HourlyPrice, booking.BaseDailyPrice);
+
+        return new LateFeeQuote(chargeableHours, amount);
+    }
+
+    private static void ValidateCheckoutInputs(HotelBooking booking, PrepareHotelCheckoutRequest request)
+    {
+        ValidateCheckoutPricing(booking);
+
+        if (request.OtherAmount < 0 || request.OtherAmount > 100000000m)
+        {
+            throw new InvalidOperationException("Chi phí phát sinh phải từ 0 đến 100.000.000đ.");
+        }
+
+        if (request.OtherAmount > 0 && string.IsNullOrWhiteSpace(request.OtherDescription))
+        {
+            throw new InvalidOperationException("Phải nhập mô tả khi có chi phí phát sinh.");
+        }
+
+        if (request.OtherAmount % 1000m != 0)
+        {
+            throw new InvalidOperationException("Chi phí phát sinh phải theo bước 1.000đ.");
+        }
+    }
+
+    private static void ValidateCheckoutPricing(HotelBooking booking)
+    {
+        if (booking.BaseDailyPrice <= 0 || booking.Subtotal < 0)
+        {
+            throw new InvalidOperationException("Giá phòng của booking không hợp lệ. Vui lòng kiểm tra lại trước khi checkout.");
+        }
+
+        if (booking.Cage.RoomType.HourlyPrice <= 0)
+        {
+            throw new InvalidOperationException("Giá theo giờ của loại chuồng không hợp lệ nên chưa thể tính phí trễ.");
+        }
+
+        if (booking.Discount < 0 || booking.Discount > booking.Subtotal)
+        {
+            throw new InvalidOperationException("Số tiền giảm giá của booking không hợp lệ.");
+        }
+
+        if (booking.FoodPlan?.PricePerDaySnapshot < 0 || booking.BookingAddons.Any(addon => addon.Price < 0))
+        {
+            throw new InvalidOperationException("Booking có khoản phí âm. Vui lòng kiểm tra dữ liệu trước khi checkout.");
+        }
+    }
+
+    private readonly record struct LateFeeQuote(int ChargeableHours, decimal Amount)
+    {
+        public static LateFeeQuote None => new(0, 0);
     }
 }

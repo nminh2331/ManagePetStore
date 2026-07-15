@@ -120,10 +120,10 @@ public sealed class HotelCheckInRequest : IValidatableObject
 
         if (CheckInDate.HasValue && CheckOutDate.HasValue)
         {
-            if (CheckOutDate.Value < CheckInDate.Value)
+            if (CheckOutDate.Value <= CheckInDate.Value)
             {
                 yield return new ValidationResult(
-                    "Ngày trả dự kiến không được trước ngày nhận.",
+                    "Ngày trả dự kiến phải sau ngày nhận.",
                     new[] { nameof(CheckOutDate) });
             }
             else if ((CheckOutDate.Value - CheckInDate.Value).TotalDays > 365)

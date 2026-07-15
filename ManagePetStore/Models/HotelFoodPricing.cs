@@ -10,12 +10,22 @@ public static class HotelFoodPricing
 
     public static HotelFoodPriceQuote Calculate(decimal basePricePerDay, decimal petWeightKg, int chargeableDays)
     {
+        if (basePricePerDay <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(basePricePerDay), "Giá gói thức ăn mỗi ngày phải lớn hơn 0.");
+        }
+
         if (petWeightKg <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(petWeightKg), "Cân nặng thú cưng phải lớn hơn 0.");
         }
 
-        int days = Math.Max(1, chargeableDays);
+        if (chargeableDays <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(chargeableDays), "Số ngày tính phí phải lớn hơn 0.");
+        }
+
+        int days = chargeableDays;
         decimal normalizedWeight = decimal.Round(petWeightKg, 2, MidpointRounding.AwayFromZero);
         decimal multiplier = ResolvePortionMultiplier(normalizedWeight);
         decimal adjustedPrice = RoundUp(basePricePerDay * multiplier, PriceRoundingStep);

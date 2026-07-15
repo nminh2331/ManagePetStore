@@ -200,7 +200,7 @@
     /* ===== MAIN LAYOUT ===== */
     .hotel-main-layout {
         display: grid;
-        grid-template-columns: 1fr 380px;
+        grid-template-columns: minmax(0, 1fr);
         gap: 24px;
         align-items: start;
     }
@@ -795,83 +795,6 @@
     .tbl-action-btn:hover { background: #FAF9F7; }
     .tbl-action-btn.danger:hover { background: #FDE8E8; border-color: #FBBCBC; color: #DC3545; }
     .tbl-action-btn.edit:hover { background: #FFF1E6; border-color: #FFD8C2; color: #FF7815; }
-
-    /* ===== RIGHT SIDEBAR (Dark) ===== */
-    .hotel-sidebar-card {
-        background: #312723;
-        border-radius: 20px;
-        padding: 24px 20px;
-        color: #FFFFFF;
-        box-shadow: 0 10px 30px rgba(49, 39, 35, 0.2);
-    }
-
-    .sidebar-section-title {
-        font-size: 0.78rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.6px;
-        color: rgba(255,255,255,0.5);
-        margin: 0 0 14px 0;
-    }
-
-    .cage-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
-        margin-bottom: 20px;
-    }
-
-    .cage-cell {
-        background: #3C312D;
-        border: 1px solid rgba(255,255,255,0.06);
-        border-radius: 12px;
-        padding: 10px 8px;
-        text-align: center;
-        transition: all 0.2s;
-        cursor: default;
-    }
-
-    .cage-cell.empty {
-        border-color: rgba(23, 138, 69, 0.3);
-        background: rgba(23, 138, 69, 0.08);
-    }
-
-    .cage-cell.occupied {
-        border-color: rgba(220, 53, 69, 0.3);
-        background: rgba(220, 53, 69, 0.08);
-    }
-
-    .cage-cell-id {
-        font-size: 0.72rem;
-        font-weight: 800;
-        color: #FFFFFF;
-        margin: 0;
-    }
-
-    .cage-cell-status {
-        font-size: 0.55rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.4px;
-        margin: 3px 0 0 0;
-    }
-
-    .cage-cell.empty .cage-cell-status { color: #4ADE80; }
-    .cage-cell.occupied .cage-cell-status { color: #F87171; }
-    .cage-cell-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        margin: 4px auto 0;
-    }
-    .cage-cell.empty .cage-cell-dot { background: #4ADE80; }
-    .cage-cell.occupied .cage-cell-dot { background: #F87171; }
-
-    .sidebar-divider {
-        height: 1px;
-        background: rgba(255,255,255,0.06);
-        margin: 20px 0;
-    }
 
     /* ===== MODALS ===== */
     .hotel-modal-dialog {
@@ -1860,43 +1783,6 @@
         }
     </div>
 
-    <!-- RIGHT SIDEBAR -->
-    <div>
-        <div class="hotel-sidebar-card">
-            <p class="sidebar-section-title"><i class="fa-solid fa-compass" style="color:#FF7815;"></i> Vận hành sơ đồ</p>
-            <div style="display:grid; gap:10px;">
-                <div style="background:rgba(255,255,255,.05); border-radius:12px; padding:12px;">
-                    <p style="font-size:.75rem; font-weight:700; margin:0 0 4px;">Xem thông tin phòng</p>
-                    <p style="font-size:.68rem; color:rgba(255,255,255,.48); margin:0;">Chọn một ô trên sơ đồ để xem pet, chủ nuôi, thiết bị và lịch chăm sóc.</p>
-                </div>
-                <div style="background:rgba(255,255,255,.05); border-radius:12px; padding:12px;">
-                    <p style="font-size:.75rem; font-weight:700; margin:0 0 4px;">Chuyển chuồng</p>
-                    <p style="font-size:.68rem; color:rgba(255,255,255,.48); margin:0;">Kéo phòng có thú cưng sang phòng trống, hoặc chọn phòng đích trong cửa sổ chi tiết.</p>
-                </div>
-                <div style="display:flex; justify-content:space-between; gap:10px;">
-                    <span style="font-size:.7rem; color:#FFD28A;"><i class="fa-solid fa-screwdriver-wrench"></i> @maintenanceCageCount cần vận hành</span>
-                    <span style="font-size:.7rem; color:#9DE1B8;"><i class="fa-solid fa-door-open"></i> @emptyCageCount trống</span>
-                </div>
-            </div>
-
-            <div class="sidebar-divider"></div>
-
-            <p class="sidebar-section-title"><i class="fa-solid fa-tags" style="color:#FF7815;"></i> Bảng giá chuồng</p>
-            @foreach (var rt in activeRoomTypes.Take(5))
-            {
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.05);">
-                    <div>
-                        <p style="font-size:0.8rem; font-weight:700; color:#FFFFFF; margin:0;">@rt.Type</p>
-                        <p style="font-size:0.65rem; color:rgba(255,255,255,0.4); margin:2px 0 0 0;">@rt.Size · @rt.Capacity thú</p>
-                    </div>
-                    <div style="text-align:right;">
-                        <p style="font-size:0.82rem; font-weight:800; color:#FF7815; margin:0;">@rt.DailyPrice.ToString("N0")đ</p>
-                        <p style="font-size:0.62rem; color:rgba(255,255,255,0.35); margin:0;">/ngày</p>
-                    </div>
-                </div>
-            }
-        </div>
-    </div>
 </div>
 }
 
@@ -2222,7 +2108,7 @@
                     <div class="grid-2">
                         <div class="hform-group">
                             <label class="hform-label">Tên loại chuồng <span class="req">*</span></label>
-                            <input type="text" name="type" class="hform-control" placeholder="VD: Phòng VIP, Chuồng tiêu chuẩn..." required>
+                            <input type="text" name="type" class="hform-control" maxlength="100" placeholder="VD: Phòng VIP, Chuồng tiêu chuẩn..." required>
                         </div>
                         <div class="hform-group">
                             <label class="hform-label">Kích cỡ <span class="req">*</span></label>
@@ -2241,11 +2127,11 @@
                     <div class="grid-2">
                         <div class="hform-group">
                             <label class="hform-label">Giá theo ngày (VNĐ) <span class="req">*</span></label>
-                            <input type="number" name="dailyPrice" class="hform-control" placeholder="150000" min="150000" step="1000" required>
+                            <input type="number" name="dailyPrice" class="hform-control" placeholder="150000" min="150000" max="100000000" step="1000" required>
                         </div>
                         <div class="hform-group">
                             <label class="hform-label">Giá theo giờ (VNĐ)</label>
-                            <input type="number" name="hourlyPrice" class="hform-control" placeholder="40000" min="40000" step="1000" value="40000" required>
+                            <input type="number" name="hourlyPrice" class="hform-control" placeholder="40000" min="40000" max="100000000" step="1000" value="40000" required>
                         </div>
                     </div>
 
@@ -2300,7 +2186,7 @@
                     <div class="grid-2">
                         <div class="hform-group">
                             <label class="hform-label">Tên loại chuồng <span class="req">*</span></label>
-                            <input type="text" name="type" id="edit-rt-type" class="hform-control" required>
+                            <input type="text" name="type" id="edit-rt-type" class="hform-control" maxlength="100" required>
                         </div>
                         <div class="hform-group">
                             <label class="hform-label">Kích cỡ <span class="req">*</span></label>
@@ -2314,16 +2200,16 @@
                     </div>
                     <div class="hform-group">
                         <label class="hform-label">Sức chứa <span class="req">*</span></label>
-                        <input type="number" name="capacity" id="edit-rt-capacity" class="hform-control" min="1" required>
+                        <input type="number" name="capacity" id="edit-rt-capacity" class="hform-control" min="1" max="10" required>
                     </div>
                     <div class="grid-2">
                         <div class="hform-group">
                             <label class="hform-label">Giá ngày (VNĐ) <span class="req">*</span></label>
-                            <input type="number" name="dailyPrice" id="edit-rt-daily" class="hform-control" min="150000" step="1000" required>
+                            <input type="number" name="dailyPrice" id="edit-rt-daily" class="hform-control" min="150000" max="100000000" step="1000" required>
                         </div>
                         <div class="hform-group">
                             <label class="hform-label">Giá giờ (VNĐ)</label>
-                            <input type="number" name="hourlyPrice" id="edit-rt-hourly" class="hform-control" min="40000" step="1000" required>
+                            <input type="number" name="hourlyPrice" id="edit-rt-hourly" class="hform-control" min="40000" max="100000000" step="1000" required>
                         </div>
                     </div>
                     <div class="hform-group">
@@ -2374,7 +2260,7 @@
                     <div class="grid-2">
                         <div class="hform-group">
                             <label class="hform-label">Mã chuồng <span class="req">*</span></label>
-                            <input type="text" name="cageId" class="hform-control" placeholder="VD: A01, B02..."
+                        <input type="text" name="cageId" class="hform-control" maxlength="20" placeholder="VD: A01, B02..."
                                 style="text-transform:uppercase;" required>
                         </div>
                         <div class="hform-group">
@@ -2390,11 +2276,11 @@
                     </div>
                     <div class="hform-group">
                         <label class="hform-label">Lịch cho ăn</label>
-                        <input type="text" name="feedSchedule" class="hform-control" placeholder="VD: 08:00, 12:00, 18:00" value="08:00, 12:00, 18:00">
+                        <input type="text" name="feedSchedule" class="hform-control" maxlength="100" placeholder="VD: 08:00, 12:00, 18:00" value="08:00, 12:00, 18:00">
                     </div>
                     <div class="hform-group">
                         <label class="hform-label">Khẩu phần (gram)</label>
-                        <input type="number" name="portion" class="hform-control" value="60" min="10">
+                        <input type="number" name="portion" class="hform-control" value="60" min="10" max="10000" step="10" required>
                     </div>
                     <div class="modal-btn-row">
                         <button type="button" class="btn-modal-cancel" data-bs-dismiss="modal">Hủy</button>
@@ -2436,11 +2322,11 @@
                     </div>
                     <div class="hform-group">
                         <label class="hform-label">Lịch cho ăn</label>
-                        <input type="text" name="feedSchedule" id="edit-cage-feed" class="hform-control">
+                        <input type="text" name="feedSchedule" id="edit-cage-feed" class="hform-control" maxlength="100">
                     </div>
                     <div class="hform-group">
                         <label class="hform-label">Khẩu phần (gram)</label>
-                        <input type="number" name="portion" id="edit-cage-portion" class="hform-control" min="10">
+                        <input type="number" name="portion" id="edit-cage-portion" class="hform-control" min="10" max="10000" step="10" required>
                     </div>
                     <div class="modal-btn-row">
                         <button type="button" class="btn-modal-cancel" data-bs-dismiss="modal">Hủy</button>
@@ -2480,7 +2366,7 @@
                     <div style="display:flex;justify-content:space-between;font-size:1rem;margin-top:8px;"><strong>Tổng chốt</strong><strong id="checkoutTotal" style="color:#DC3545;">0đ</strong></div>
                     <div id="checkoutOtherFields" style="margin-top:12px;display:grid;gap:8px;">
                         <input class="form-control" id="checkoutOtherDescription" maxlength="250" placeholder="Chi phí khác (nếu có)" />
-                        <input class="form-control" id="checkoutOtherAmount" type="number" min="0" step="1000" value="0" placeholder="Số tiền" />
+                        <input class="form-control" id="checkoutOtherAmount" type="number" min="0" max="100000000" step="1000" value="0" placeholder="Số tiền" />
                     </div>
                     <p id="checkoutPaymentStatus" style="font-size:0.78rem;color:#7A6E68;margin:10px 0 0;"></p>
                 </div>
@@ -2499,6 +2385,7 @@
 <script>
 const MIN_ROOM_TYPE_DAILY_PRICE = 150000;
 const MIN_ROOM_TYPE_HOURLY_PRICE = 40000;
+const MAX_ROOM_TYPE_PRICE = 100000000;
 
 // ===== AUTO-DISMISS TOAST =====
 setTimeout(() => {
@@ -3392,12 +3279,18 @@ function validateRoomTypePriceForm(form) {
     const dailyPrice = Number(dailyInput.value);
     const hourlyPrice = Number(hourlyInput.value);
 
-    if (dailyInput.value && dailyPrice < MIN_ROOM_TYPE_DAILY_PRICE) {
+    if (dailyInput.value && (!Number.isFinite(dailyPrice) || dailyPrice < MIN_ROOM_TYPE_DAILY_PRICE)) {
         dailyInput.setCustomValidity('Giá theo ngày không được thấp hơn 150.000đ.');
+    } else if (dailyPrice > MAX_ROOM_TYPE_PRICE) {
+        dailyInput.setCustomValidity('Giá theo ngày không được vượt quá 100.000.000đ.');
     }
 
-    if (hourlyInput.value && hourlyPrice < MIN_ROOM_TYPE_HOURLY_PRICE) {
+    if (hourlyInput.value && (!Number.isFinite(hourlyPrice) || hourlyPrice < MIN_ROOM_TYPE_HOURLY_PRICE)) {
         hourlyInput.setCustomValidity('Giá theo giờ không được thấp hơn 40.000đ.');
+    } else if (hourlyPrice > MAX_ROOM_TYPE_PRICE) {
+        hourlyInput.setCustomValidity('Giá theo giờ không được vượt quá 100.000.000đ.');
+    } else if (dailyInput.value && hourlyInput.value && hourlyPrice > dailyPrice) {
+        hourlyInput.setCustomValidity('Giá theo giờ không được lớn hơn giá theo ngày.');
     }
 
     return dailyInput.validity.valid && hourlyInput.validity.valid;
@@ -3519,6 +3412,35 @@ function renderCheckoutPreview(data) {
 
 document.getElementById('confirmCheckoutBtn').addEventListener('click', () => {
     if (!checkoutBookingId) return;
+
+    if (!checkoutCanFinalize) {
+        const descriptionInput = document.getElementById('checkoutOtherDescription');
+        const amountInput = document.getElementById('checkoutOtherAmount');
+        const otherAmount = Number(amountInput.value || 0);
+        amountInput.setCustomValidity('');
+        descriptionInput.setCustomValidity('');
+
+        if (!Number.isFinite(otherAmount) || otherAmount < 0 || otherAmount > 100000000) {
+            amountInput.setCustomValidity('Chi phí phát sinh phải từ 0 đến 100.000.000đ.');
+        } else if (otherAmount % 1000 !== 0) {
+            amountInput.setCustomValidity('Chi phí phát sinh phải theo bước 1.000đ.');
+        }
+
+        if (otherAmount > 0 && !descriptionInput.value.trim()) {
+            descriptionInput.setCustomValidity('Phải nhập mô tả khi có chi phí phát sinh.');
+        }
+
+        if (!amountInput.checkValidity()) {
+            amountInput.reportValidity();
+            return;
+        }
+
+        if (!descriptionInput.checkValidity()) {
+            descriptionInput.reportValidity();
+            return;
+        }
+    }
+
     const submitButton = document.getElementById('confirmCheckoutBtn');
     const originalButtonHtml = submitButton.innerHTML;
     submitButton.disabled = true;

@@ -3,6 +3,7 @@
 @{
     var scheduledCheckIn = Model.ScheduledCheckInDate ?? Model.CheckInDate;
     var scheduledCheckOut = Model.ScheduledCheckOutDate ?? Model.CheckOutDate ?? scheduledCheckIn.AddDays(Math.Max(Model.StayDays, 1));
+    var showTimeline = ViewData["ShowHotelTimeline"] as bool? ?? true;
 }
 
 <div class="hbh-summary-band">
@@ -81,6 +82,8 @@
             </dl>
         </section>
 
+        @if (showTimeline)
+        {
         <section class="hbh-section">
             <div class="hbh-section-heading">
                 <div>
@@ -111,6 +114,7 @@
                 </ol>
             }
         </section>
+        }
 
         <section class="hbh-section">
             <div class="hbh-section-heading">
