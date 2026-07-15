@@ -5,9 +5,10 @@
     int totalCategories = ViewBag.TotalCategories ?? 0;
     int totalProducts   = ViewBag.TotalProducts   ?? 0;
     int emptyCategories = ViewBag.EmptyCategories ?? 0;
+    bool showDeleted    = ViewBag.ShowDeleted      ?? false;
 }
 
-<!-- ── Stat Cards ───────────────────────────────────────────── -->
+<!-- ── Stat Cards ─────────────────────────────────────────────── -->
 <div class="row g-3 mb-4">
     <div class="col-6 col-xl-4">
         <div class="stat-card" style="--accent:#e65c00;">
@@ -23,7 +24,7 @@
     <div class="col-6 col-xl-4">
         <div class="stat-card" style="--accent:#10b981;">
             <div class="stat-icon" style="background:rgba(16,185,129,.12);">
-                <i class="fas fa-boxes" style="color:#10b981;"></i>
+                <i class="fas fa-box-open" style="color:#10b981;"></i>
             </div>
             <div>
                 <p class="stat-label">Tổng sản phẩm</p>
@@ -32,9 +33,9 @@
         </div>
     </div>
     <div class="col-6 col-xl-4">
-        <div class="stat-card" style="--accent:#6366f1;">
-            <div class="stat-icon" style="background:rgba(99,102,241,.12);">
-                <i class="fas fa-folder-open" style="color:#6366f1;"></i>
+        <div class="stat-card" style="--accent:#f59e0b;">
+            <div class="stat-icon" style="background:rgba(245,158,11,.12);">
+                <i class="fas fa-folder-open" style="color:#f59e0b;"></i>
             </div>
             <div>
                 <p class="stat-label">Danh mục trống</p>
@@ -44,114 +45,136 @@
     </div>
 </div>
 
-<!-- ── Header ─────────────────────────────────────────────── -->
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+<!-- ── Header ─────────────────────────────────────────────────── -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
-        <h2 class="fw-bold m-0" style="color:#333;">
-            <i class="fas fa-tags" style="color:#e65c00;"></i> Danh mục Sản phẩm
-        </h2>
-        <p class="text-muted small mb-0">@totalCategories danh mục · @totalProducts sản phẩm</p>
+        <h2 class="fw-bold m-0" style="color:#333;">Danh mục Sản phẩm</h2>
+        <p class="text-muted small mb-0 mt-1">Quản lý các nhóm phân loại sản phẩm trong hệ thống.</p>
     </div>
-
-    <form method="get" class="d-flex gap-2 align-items-center" style="background:#fff; padding:6px 12px; border-radius:8px; border:1px solid #ddd;">
-        <div class="form-check form-switch m-0" title="Hiển thị cả các danh mục đã xóa">
-            <input class="form-check-input" type="checkbox" name="showDeleted" value="true" id="showDeletedCheck" @(ViewBag.ShowDeleted == true ? "checked" : "") onchange="this.form.submit()" style="cursor:pointer;" />
-            <label class="form-check-label small text-muted" for="showDeletedCheck" style="cursor:pointer;">Hiện danh mục đã xóa</label>
-        </div>
-    </form>
-
-    <a asp-action="Create" class="btn btn-primary-custom btn-custom">
-        <i class="fas fa-plus"></i> Thêm danh mục
-    </a>
+    <div class="d-flex gap-3 align-items-center">
+        <a asp-action="Index" asp-route-showDeleted="@(!showDeleted)"
+           class="btn btn-light d-flex align-items-center gap-2"
+           style="border-radius:20px; font-size:14px; font-weight:500; border:1px solid #ddd; background:#fff;">
+            <i class="fas fa-eye text-muted"></i>
+            @(showDeleted ? "Ẩn danh mục đã xóa" : "Hiện danh mục đã xóa")
+        </a>
+        <a asp-action="Create" class="btn btn-primary-custom btn-custom">
+            <i class="fas fa-plus"></i> Thêm danh mục
+        </a>
+    </div>
 </div>
 
-<!-- ── Table ──────────────────────────────────────────────── -->
-<div class="table-custom">
-    <table class="table mb-0">
-        <thead>
-            <tr>
-                <th style="width:60px;">#</th>
-                <th>Tên danh mục</th>
-                <th>Mô tả</th>
-                <th style="width:130px;">Số sản phẩm</th>
-                <th class="text-end">Hành động</th>
-            </tr>
-        </thead>
-        <tbody>
-            @if (Model != null && Model.Any())
-            {
-                int idx = 1;
-                foreach (var item in Model)
-                {
-                    var isDeletedRowStyle = item.IsDeleted ? "opacity: 0.6; background-color: #f9f9f9;" : "";
-                    int productCount = item.Products?.Count ?? 0;
-                    <tr style="@isDeletedRowStyle">
-                        <td class="text-muted">@(idx++)</td>
-                        <td class="fw-bold">
-                            <i class="fas fa-tag me-1" style="color:#e65c00;font-size:.85rem;"></i>
-                            @item.Name
-                            @if (item.IsDeleted)
-                            {
-                                <span class="badge bg-secondary ms-2" style="font-size:0.7rem;">Đã xóa</span>
-                            }
-                        </td>
-                        <td class="text-muted">
-                            @(string.IsNullOrEmpty(item.Description) ? "—" : item.Description)
-                        </td>
-                        <td>
-                            @if (productCount == 0)
-                            {
-                                <span class="badge" style="background:#f3f4f6;color:#6b7280;border-radius:20px;padding:4px 10px;">
-                                    Chưa có SP
-                                </span>
-                            }
-                            else
-                            {
-                                <span class="badge" style="background:#fff3e0;color:#e65c00;font-weight:600;border-radius:20px;padding:4px 12px;">
-                                    @productCount sản phẩm
-                                </span>
-                            }
-                        </td>
-                        <td class="text-end">
-                            <a asp-action="Edit" asp-route-id="@item.CategoryId"
-                               class="btn btn-sm btn-outline-primary" style="border-radius:8px;" title="Chỉnh sửa">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            @if (!item.IsDeleted)
-                            {
-                                <form asp-action="Delete" asp-route-id="@item.CategoryId" method="post"
-                                      class="d-inline" onsubmit="return confirm('Xóa danh mục \'@item.Name\'? Các sản phẩm sẽ mất danh mục!');">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger"
-                                            style="border-radius:8px;" title="Xóa">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                            }
-                            else
-                            {
-                                <form asp-action="Restore" asp-route-id="@item.CategoryId" method="post"
-                                      class="d-inline" onsubmit="return confirm('Bạn có chắc muốn khôi phục danh mục này?');">
-                                    <button type="submit" class="btn btn-sm btn-outline-success"
-                                            style="border-radius:8px;" title="Khôi phục">
-                                        <i class="fas fa-undo"></i>
-                                    </button>
-                                </form>
-                            }
-                        </td>
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert d-flex align-items-center gap-2 mb-3"
+         style="background:#f0fdf4; border:1px solid #86efac; border-radius:10px; color:#166534;">
+        <i class="fas fa-check-circle" style="color:#10b981;"></i>
+        <span>@TempData["SuccessMessage"]</span>
+    </div>
+}
+
+<!-- ── Table ──────────────────────────────────────────────────── -->
+<div class="card border-0 shadow-sm" style="border-radius:16px;">
+    <div class="card-body p-0">
+        @if (Model != null && Model.Any())
+        {
+            <table class="table table-hover align-middle mb-0">
+                <thead style="background:#f8f9fa;">
+                    <tr>
+                        <th class="border-0 px-4 py-3">#</th>
+                        <th class="border-0 px-4 py-3">Tên danh mục</th>
+                        <th class="border-0 px-4 py-3">Mô tả</th>
+                        <th class="border-0 px-4 py-3 text-center">Số sản phẩm</th>
+                        <th class="border-0 px-4 py-3 text-center">Trạng thái</th>
+                        <th class="border-0 px-4 py-3 text-end pe-4">Hành động</th>
                     </tr>
-                }
-            }
-            else
-            {
-                <tr>
-                    <td colspan="5" class="text-center py-5 text-muted">
-                        <i class="fas fa-tags" style="font-size:2rem;opacity:.3;"></i>
-                        <p class="mt-2 mb-0">Chưa có danh mục nào. Hãy tạo danh mục đầu tiên!</p>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+                </thead>
+                <tbody>
+                    @{ int i = 1; }
+                    @foreach (var item in Model)
+                    {
+                        var rowStyle = item.IsDeleted ? "opacity:0.6; background:#fcfcfc;" : "";
+                        <tr style="@rowStyle">
+                            <td class="px-4 py-3 text-muted fw-bold">@(i++)</td>
+                            <td class="px-4 py-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span style="width:10px; height:10px; border-radius:50%; background:@(item.IsDeleted ? "#d1d5db" : "#e65c00"); display:inline-block;"></span>
+                                    <span class="fw-bold">@item.Name</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 text-muted">@(string.IsNullOrEmpty(item.Description) ? "—" : item.Description)</td>
+                            <td class="px-4 py-3 text-center">
+                                @if (item.Products.Count > 0)
+                                {
+                                    <span class="badge" style="background:#fff3e0; color:#e65c00; padding:6px 12px; border-radius:16px; font-weight:600;">
+                                        @item.Products.Count sản phẩm
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">Trống</span>
+                                }
+                            </td>
+                            <td class="px-4 py-3 text-center">
+                                @if (!item.IsDeleted)
+                                {
+                                    <span class="badge" style="background:#dcfce7; color:#166534; padding:6px 12px; border-radius:16px; font-weight:600;">
+                                        <i class="fas fa-check-circle me-1"></i> Đang dùng
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge" style="background:#f3f4f6; color:#6b7280; padding:6px 12px; border-radius:16px; font-weight:600;">
+                                        <i class="fas fa-ban me-1"></i> Đã ẩn
+                                    </span>
+                                }
+                            </td>
+                            <td class="px-4 py-3 text-end pe-4">
+                                <div class="d-flex align-items-center justify-content-end gap-2">
+                                    <a asp-action="Edit" asp-route-id="@item.CategoryId"
+                                       class="btn btn-sm btn-light fw-bold"
+                                       style="border-radius:20px; padding:6px 16px; border:1px solid #ddd; color:#ff8c00;">
+                                        <i class="fas fa-edit me-1"></i> Sửa
+                                    </a>
+                                    @if (!item.IsDeleted)
+                                    {
+                                        <form asp-action="Delete" asp-route-id="@item.CategoryId" method="post"
+                                              onsubmit="return confirm('Ẩn danh mục: @item.Name?');" class="m-0">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-light"
+                                                    style="border-radius:50%; width:34px; height:34px; color:#ef4444; border:1px solid #fee2e2;"
+                                                    title="Ngừng sử dụng">
+                                                <i class="fas fa-power-off"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="Restore" asp-route-id="@item.CategoryId" method="post"
+                                              onsubmit="return confirm('Khôi phục danh mục: @item.Name?');" class="m-0">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-light"
+                                                    style="border-radius:50%; width:34px; height:34px; color:#10b981; border:1px solid #d1fae5;"
+                                                    title="Khôi phục">
+                                                <i class="fas fa-power-off"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-tags text-muted" style="font-size:3rem; opacity:.3;"></i>
+                <p class="mt-3 text-muted">Không có dữ liệu phù hợp.</p>
+            </div>
+        }
+    </div>
 </div>
 
 <style>
