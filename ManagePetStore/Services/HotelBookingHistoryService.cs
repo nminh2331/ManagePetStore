@@ -9,6 +9,7 @@ public class HotelBookingHistoryService : IHotelBookingHistoryService
     [
         "HotelBookingCreated",
         "HotelBookingCancelled",
+        "HotelReceptionRejected",
         "HealthCheckIn",
         "PetCheckIn",
         "HotelCageMove",
@@ -34,6 +35,7 @@ public class HotelBookingHistoryService : IHotelBookingHistoryService
                 .ThenInclude(cage => cage.RoomType)
             .Include(booking => booking.BookingAddons)
             .Include(booking => booking.FoodPlan)
+            .Include(booking => booking.CheckInAssessment)
             .Where(booking => booking.HotelBookingId == hotelBookingId);
 
         if (customerId.HasValue)
@@ -56,14 +58,14 @@ public class HotelBookingHistoryService : IHotelBookingHistoryService
         var timeline = await _context.PetBioTimelines
             .AsNoTracking()
             .Where(item =>
-                item.HotelBookingId == booking.HotelBookingId ||
-                (item.HotelBookingId == null &&
-                 item.PetId == booking.PetId &&
-                 LegacyHotelTimelineTypes.Contains(item.Type) &&
-                 item.Date >= legacyRangeStart &&
-                 item.Date <= legacyRangeEnd))
-            .OrderByDescending(item => item.Date)
-            .ThenByDescending(item => item.TimelineId)
+                LegacyHotelTimelineTypes.Contains(item.Type) &&
+                (item.HotelBookingId == booking.HotelBookingId ||
+                 (item.HotelBookingId == null &&
+                  item.PetId == booking.PetId &&
+                  item.Date >= legacyRangeStart &&
+                  item.Date <= legacyRangeEnd)))
+            .OrderBy(item => item.Date)
+            .ThenBy(item => item.TimelineId)
             .Select(item => new HotelBookingTimelineHistoryItem
             {
                 OccurredAt = item.Date,
@@ -122,9 +124,6 @@ public class HotelBookingHistoryService : IHotelBookingHistoryService
                 PhotoUrl = log.PhotoUrl,
                 MediaUrl = log.MediaUrl,
                 MediaType = log.MediaType,
-                MealType = log.MealType,
-                ServedGrams = log.ServedGrams,
-                ConsumedPercent = log.ConsumedPercent,
                 IsExtraCharge = log.IsExtraCharge,
                 ExtraChargeAmount = log.ExtraChargeAmount,
                 Note = log.Note,
@@ -168,12 +167,20 @@ public class HotelBookingHistoryService : IHotelBookingHistoryService
             HasPremiumFood = booking.Cage.RoomType.HasPremiumFood,
             FoodPlanName = booking.FoodPlan?.FoodNameSnapshot ?? "Chưa ghi nhận gói ăn",
             FoodProductSku = booking.FoodPlan?.ProductSku,
-            FoodProductUnit = booking.FoodPlan?.ProductUnitSnapshot ?? HotelFoodCatalog.DailyUnit,
+            FoodBasePricePerDay = booking.FoodPlan?.BasePricePerDaySnapshot ?? 0,
+            FoodPetWeight = booking.FoodPlan?.PetWeightSnapshot,
+            FoodPortionMultiplier = booking.FoodPlan?.PortionMultiplierSnapshot ?? HotelFoodPricing.SmallPetMultiplier,
+            FoodInventoryUnits = booking.FoodPlan?.InventoryQuantityDeducted ?? 0,
             FoodPricePerDay = booking.FoodPlan?.PricePerDaySnapshot ?? 0,
             FoodPortionGrams = booking.FoodPlan?.PortionGrams ?? 0,
             FoodMealsPerDay = booking.FoodPlan?.MealsPerDay ?? 0,
             FeedingInstructions = booking.FoodPlan?.FeedingInstructions,
             FoodAllergyNotes = booking.FoodPlan?.AllergyNotes,
+            HealthAssessmentMedicalRecordId = booking.CheckInAssessment?.MedicalRecordId,
+            HealthAssessmentDecision = booking.CheckInAssessment?.Decision,
+            HealthAssessmentNote = booking.CheckInAssessment?.Note,
+            HealthAssessedByName = booking.CheckInAssessment?.AssessedByName,
+            HealthAssessedAt = booking.CheckInAssessment?.AssessedAt,
             Addons = booking.BookingAddons
                 .OrderBy(addon => addon.AddonId)
                 .Select(addon => new HotelBookingAddonHistoryItem
@@ -195,7 +202,7 @@ public class HotelBookingHistoryService : IHotelBookingHistoryService
             "đã đặt" => "reserved",
             "active" or "đang ở" => "active",
             "đã trả" => "completed",
-            "đã hủy" or "cancelled" => "cancelled",
+            "đã hủy" or "cancelled" or "từ chối tiếp nhận" => "cancelled",
             _ => "other"
         };
     }

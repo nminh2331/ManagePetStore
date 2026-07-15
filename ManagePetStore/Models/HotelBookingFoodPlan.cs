@@ -9,6 +9,9 @@ public class HotelBookingFoodPlan
     public string PlanType { get; set; } = "OwnerProvided";
     public string FoodNameSnapshot { get; set; } = "Chủ nuôi tự chuẩn bị";
     public string ProductUnitSnapshot { get; set; } = HotelFoodCatalog.DailyUnit;
+    public decimal BasePricePerDaySnapshot { get; set; }
+    public decimal? PetWeightSnapshot { get; set; }
+    public decimal PortionMultiplierSnapshot { get; set; } = HotelFoodPricing.SmallPetMultiplier;
     public decimal PricePerDaySnapshot { get; set; }
     public int PortionGrams { get; set; }
     public int MealsPerDay { get; set; }

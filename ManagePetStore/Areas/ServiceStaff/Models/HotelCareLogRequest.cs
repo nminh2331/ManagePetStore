@@ -20,9 +20,6 @@ public class HotelCareLogRequest
     [StringLength(100)]
     public string? FoodType { get; set; }
 
-    [StringLength(50)]
-    public string? Amount { get; set; }
-
     [StringLength(1000)]
     public string? Note { get; set; }
 
@@ -32,9 +29,7 @@ public class HotelCareLogRequest
 
     public IFormFile? MediaFile { get; set; }
 
-    public string? MealType { get; set; }
     [Range(0, 10000)] public decimal? ServedGrams { get; set; }
-    [Range(0, 100)] public int? ConsumedPercent { get; set; }
     public bool IsExtraCharge { get; set; }
     [Range(0, 100000000)] public decimal ExtraChargeAmount { get; set; }
     public bool ReturnToPetDaily { get; set; }

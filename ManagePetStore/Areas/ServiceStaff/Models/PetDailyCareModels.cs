@@ -59,7 +59,6 @@ public class PetDailyCareStayViewModel
     public string StatusKey { get; set; } = string.Empty;
     public string FoodPlanName { get; set; } = "Chưa ghi nhận gói ăn";
     public string? FoodProductSku { get; set; }
-    public string FoodProductUnit { get; set; } = HotelFoodCatalog.DailyUnit;
     public int PortionGrams { get; set; }
     public int MealsPerDay { get; set; }
 }
@@ -76,8 +75,6 @@ public class PetDailyCareLogViewModel
     public string Status { get; set; } = string.Empty;
     public string FoodType { get; set; } = string.Empty;
     public string Amount { get; set; } = string.Empty;
-    public string? MealType { get; set; }
-    public int? ConsumedPercent { get; set; }
     public bool IsExtraCharge { get; set; }
     public decimal ExtraChargeAmount { get; set; }
     public string StaffName { get; set; } = string.Empty;

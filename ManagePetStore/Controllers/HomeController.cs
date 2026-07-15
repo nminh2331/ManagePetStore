@@ -134,14 +134,17 @@ public class HomeController : Controller
                     {
                         model.Pets = await _context.Pets
                             .AsNoTracking()
-                            .Where(p => p.CustomerId == customer.CustomerId && p.Status == "Active")
+                            .Where(p => p.CustomerId == customer.CustomerId &&
+                                        p.Status == "Active" &&
+                                        p.Weight > 0)
                             .OrderBy(p => p.Name)
                             .Select(p => new PetOptionItem
                             {
-                                Id = p.PetId,
-                                Name = p.Name,
-                                Breed = p.Breed ?? p.Species
-                            })
+                                    Id = p.PetId,
+                                    Name = p.Name,
+                                    Breed = p.Breed ?? p.Species,
+                                    ProfileWeightKg = p.Weight
+                                })
                             .ToListAsync();
 
                         model.HotelMembershipTier = customer.MembershipTier;

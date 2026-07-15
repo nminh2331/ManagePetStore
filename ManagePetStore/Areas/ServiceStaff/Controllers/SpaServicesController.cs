@@ -1211,8 +1211,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     .ThenInclude(cage => cage.RoomType)
                 .Include(booking => booking.FoodPlan)
                 .Where(booking => booking.PetId == petId)
-                .OrderByDescending(booking => booking.ActualCheckInAt ?? booking.CheckInDate)
-                .ThenByDescending(booking => booking.HotelBookingId)
+                .OrderByDescending(booking => booking.HotelBookingId)
                 .ToListAsync();
 
             var activeBooking = bookings.FirstOrDefault(booking => ActiveHotelStatuses.Contains(booking.Status));
@@ -1235,8 +1234,6 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     Status = log.Status,
                     FoodType = log.FoodType,
                     Amount = log.Amount,
-                    MealType = log.MealType,
-                    ConsumedPercent = log.ConsumedPercent,
                     IsExtraCharge = log.IsExtraCharge,
                     ExtraChargeAmount = log.ExtraChargeAmount,
                     StaffName = log.StaffName,
@@ -1258,7 +1255,6 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 StatusKey = ResolveHotelStatusKey(booking.Status),
                 FoodPlanName = booking.FoodPlan?.FoodNameSnapshot ?? "Chưa ghi nhận gói ăn",
                 FoodProductSku = booking.FoodPlan?.ProductSku,
-                FoodProductUnit = booking.FoodPlan?.ProductUnitSnapshot ?? HotelFoodCatalog.DailyUnit,
                 PortionGrams = booking.FoodPlan?.PortionGrams ?? 0,
                 MealsPerDay = booking.FoodPlan?.MealsPerDay ?? 0
             }).ToList();
@@ -1341,7 +1337,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 "reserved" => query.Where(booking => booking.Status == "Đã đặt"),
                 "active" => query.Where(booking => booking.Status == "Active" || booking.Status == "Đang ở"),
                 "completed" => query.Where(booking => booking.Status == "Đã trả"),
-                "cancelled" => query.Where(booking => booking.Status == "Đã hủy" || booking.Status == "Cancelled"),
+                "cancelled" => query.Where(booking => booking.Status == "Đã hủy" || booking.Status == "Cancelled" || booking.Status == "Từ chối tiếp nhận"),
                 _ => query
             };
 
@@ -1354,8 +1350,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             }
 
             var bookings = await query
-                .OrderByDescending(booking => booking.CheckInDate)
-                .ThenByDescending(booking => booking.HotelBookingId)
+                .OrderByDescending(booking => booking.HotelBookingId)
                 .Skip((currentPage - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -1512,7 +1507,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     : request.FoodType.Trim(),
                 Amount = request.ServedGrams.HasValue
                     ? $"{request.ServedGrams:0.##} g"
-                    : string.IsNullOrWhiteSpace(request.Amount) ? "Không áp dụng" : request.Amount.Trim(),
+                    : "Không áp dụng",
                 PhotoUrl = media?.MediaType == "Image" ? media.PublicUrl : null,
                 MediaUrl = media?.PublicUrl,
                 MediaType = media?.MediaType,
@@ -1523,24 +1518,14 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 IsVisibleToCustomer = request.IsVisibleToCustomer,
                 CreatedByUserId = staffUserId,
                 FoodPlanId = request.ActivityType == "Feeding" ? booking.FoodPlan?.FoodPlanId : null,
-                MealType = string.IsNullOrWhiteSpace(request.MealType) ? null : request.MealType.Trim(),
+                MealType = null,
                 ServedGrams = request.ServedGrams,
-                ConsumedPercent = request.ConsumedPercent,
+                ConsumedPercent = null,
                 IsExtraCharge = request.IsExtraCharge,
                 ExtraChargeAmount = request.IsExtraCharge ? request.ExtraChargeAmount : 0
             };
 
             _context.FoodDiaryLogs.Add(careLog);
-            _context.PetBioTimelines.Add(new PetBioTimeline
-            {
-                PetId = booking.PetId,
-                HotelBookingId = booking.HotelBookingId,
-                Date = occurredAt,
-                Title = safeTitle.Length > 100 ? safeTitle[..100] : safeTitle,
-                Type = "HotelDailyCare",
-                Description = notificationMessage
-            });
-
             CustomerNotification? notification = null;
             if (request.IsVisibleToCustomer)
             {
@@ -1759,7 +1744,10 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 .ToList();
             var petIdsWithMedicalRecords = await _context.MedicalRecords
                 .AsNoTracking()
-                .Where(record => onlinePetIds.Contains(record.PetId) && record.HotelBookingId == null)
+                .Where(record =>
+                    onlinePetIds.Contains(record.PetId) &&
+                    record.HotelBookingId == null &&
+                    record.Weight > 0)
                 .Select(record => record.PetId)
                 .Distinct()
                 .ToListAsync();
@@ -1783,37 +1771,46 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         [HttpGet("SearchAvailableHotelMedicalRecords")]
-        public async Task<IActionResult> SearchAvailableHotelMedicalRecords(string phone, int? hotelBookingId = null)
+        public async Task<IActionResult> SearchAvailableHotelMedicalRecords(string? phone, int? hotelBookingId = null)
         {
-            string normalizedPhone = new((phone ?? string.Empty).Where(char.IsDigit).ToArray());
-            if (normalizedPhone.Length is < 10 or > 11)
-            {
-                return BadRequest(new { success = false, message = "Số điện thoại không hợp lệ." });
-            }
-
-            var customer = await _context.Customers
-                .AsNoTracking()
-                .FirstOrDefaultAsync(item => item.Phone == normalizedPhone);
-            if (customer == null)
-            {
-                return NotFound(new { success = false, message = "Không tìm thấy khách hàng theo số điện thoại này." });
-            }
-
+            ManagePetStore.Models.Customer? customer;
             int? reservedPetId = null;
+            string? reservedPetName = null;
+            string? reservedPetSpecies = null;
             if (hotelBookingId.HasValue)
             {
                 var reservation = await _context.HotelBookings
                     .AsNoTracking()
+                    .Include(booking => booking.Customer)
+                    .Include(booking => booking.Pet)
                     .FirstOrDefaultAsync(booking =>
                         booking.HotelBookingId == hotelBookingId.Value &&
-                        booking.CustomerId == customer.CustomerId &&
                         booking.Status == "Đã đặt");
                 if (reservation == null)
                 {
                     return NotFound(new { success = false, message = "Lịch đặt online không còn khả dụng." });
                 }
 
+                customer = reservation.Customer;
                 reservedPetId = reservation.PetId;
+                reservedPetName = reservation.Pet.Name;
+                reservedPetSpecies = reservation.Pet.Species;
+            }
+            else
+            {
+                string normalizedPhone = new((phone ?? string.Empty).Where(char.IsDigit).ToArray());
+                if (normalizedPhone.Length is < 10 or > 11)
+                {
+                    return BadRequest(new { success = false, message = "Số điện thoại không hợp lệ." });
+                }
+
+                customer = await _context.Customers
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(item => item.Phone == normalizedPhone);
+                if (customer == null)
+                {
+                    return NotFound(new { success = false, message = "Không tìm thấy khách hàng theo số điện thoại này." });
+                }
             }
 
             int excludedBookingId = hotelBookingId ?? 0;
@@ -1821,6 +1818,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 .AsNoTracking()
                 .Where(record =>
                     record.HotelBookingId == null &&
+                    record.Weight > 0 &&
                     record.Pet.CustomerId == customer.CustomerId &&
                     record.Pet.Status == "Active" &&
                     (!reservedPetId.HasValue || record.PetId == reservedPetId.Value) &&
@@ -1845,6 +1843,10 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             {
                 success = true,
                 customerName = customer.FullName,
+                customerPhone = customer.Phone,
+                reservedPetId,
+                reservedPetName,
+                reservedPetSpecies,
                 records
             });
         }
@@ -1854,7 +1856,9 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         {
             var record = await _context.MedicalRecords
                 .AsNoTracking()
-                .Where(item => item.RecordId == recordId && item.HotelBookingId == null)
+                .Where(item => item.RecordId == recordId &&
+                               item.HotelBookingId == null &&
+                               item.Weight > 0)
                 .Select(item => new
                 {
                     item.RecordId,
@@ -1898,7 +1902,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             if (request.HealthStatus == HotelCheckInRequest.RejectedStatus)
             {
-                return HotelValidationError("Thú cưng được kết luận không đủ điều kiện lưu trú nên không thể nhận vào chuồng.");
+                return await RejectHotelReceptionAsync(request);
             }
 
             string customerPhone = new(request.CustomerPhone.Where(char.IsDigit).ToArray());
@@ -1941,6 +1945,12 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 if (medicalRecord.HotelBookingId.HasValue)
                 {
                     return HotelValidationError("Sổ y tế này đã được sử dụng cho một lượt lưu trú khác.");
+                }
+
+                if (medicalRecord.Weight <= 0)
+                {
+                    return HotelValidationError(
+                        "Sổ y tế chưa có cân nặng hợp lệ. Vui lòng cập nhật sổ trước khi tiếp nhận Hotel.");
                 }
 
                 var pet = medicalRecord.Pet;
@@ -2053,6 +2063,15 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     ? Math.Max(1, (int)Math.Ceiling((checkOutDate.Value - checkInDate).TotalDays))
                     : 1;
                 decimal subtotal = dailyPrice * stayDays;
+                bool keepReservedFoodSnapshot = onlineReservation?.FoodPlan?.ProductSku == foodProduct.Sku;
+                decimal baseFoodPricePerDay = keepReservedFoodSnapshot &&
+                    onlineReservation!.FoodPlan!.BasePricePerDaySnapshot > 0
+                        ? onlineReservation.FoodPlan.BasePricePerDaySnapshot
+                        : foodProduct.Price;
+                var foodQuote = HotelFoodPricing.Calculate(
+                    baseFoodPricePerDay,
+                    medicalRecord.Weight,
+                    stayDays);
                 int currentBookingId = onlineReservation?.HotelBookingId ?? 0;
                 int reservedFoodUnits = await _context.HotelBookingFoodPlans
                     .Where(plan => plan.ProductSku == foodProduct.Sku &&
@@ -2066,17 +2085,15 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 int availableFoodUnits = Math.Max(
                     0,
                     foodProduct.Stock + currentReservedFoodUnits - reservedFoodUnits);
-                if (availableFoodUnits < stayDays)
+                if (availableFoodUnits < foodQuote.InventoryUnits)
                 {
                     return HotelValidationError(
-                        $"{foodProduct.Name} chỉ còn {availableFoodUnits} suất khả dụng, không đủ cho {stayDays} ngày lưu trú.");
+                        $"{foodProduct.Name} chỉ còn {availableFoodUnits} suất chuẩn, " +
+                        $"không đủ {foodQuote.InventoryUnits} suất cho {stayDays} ngày ({foodQuote.WeightBand}).");
                 }
 
-                bool keepReservedFoodSnapshot = onlineReservation?.FoodPlan?.ProductSku == foodProduct.Sku;
-                decimal foodPricePerDay = keepReservedFoodSnapshot
-                    ? onlineReservation!.FoodPlan!.PricePerDaySnapshot
-                    : foodProduct.Price;
-                decimal foodTotal = foodPricePerDay * stayDays;
+                decimal foodPricePerDay = foodQuote.PricePerDay;
+                decimal foodTotal = foodQuote.TotalAmount;
 
                 HotelBooking hotelBooking;
                 if (onlineReservation != null)
@@ -2145,14 +2162,17 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 {
                     foodPlan.FoodNameSnapshot = foodProduct.Name;
                     foodPlan.ProductUnitSnapshot = foodProduct.Unit;
-                    foodPlan.PricePerDaySnapshot = foodPricePerDay;
                 }
+                foodPlan.BasePricePerDaySnapshot = foodQuote.BasePricePerDay;
+                foodPlan.PetWeightSnapshot = foodQuote.PetWeightKg;
+                foodPlan.PortionMultiplierSnapshot = foodQuote.PortionMultiplier;
+                foodPlan.PricePerDaySnapshot = foodPricePerDay;
                 foodPlan.PortionGrams = 0;
                 foodPlan.MealsPerDay = 0;
                 foodPlan.ChargeableDays = stayDays;
                 foodPlan.TotalAmount = foodTotal;
 
-                int inventoryToDeduct = stayDays - foodPlan.InventoryQuantityDeducted;
+                int inventoryToDeduct = foodQuote.InventoryUnits - foodPlan.InventoryQuantityDeducted;
                 if (inventoryToDeduct > 0)
                 {
                     await _inventoryBatchService.DeductStockFIFO(foodProduct.Sku, inventoryToDeduct);
@@ -2161,7 +2181,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 {
                     await _inventoryBatchService.RestockToBatches(foodProduct.Sku, -inventoryToDeduct);
                 }
-                foodPlan.InventoryQuantityDeducted = stayDays;
+                foodPlan.InventoryQuantityDeducted = foodQuote.InventoryUnits;
 
                 _context.PetBioTimelines.Add(new PetBioTimeline
                 {
@@ -2188,6 +2208,18 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                         checkOutDate)
                 });
 
+                var assessor = GetCurrentStaffSnapshot();
+                _context.HotelCheckInAssessments.Add(new HotelCheckInAssessment
+                {
+                    HotelBooking = hotelBooking,
+                    MedicalRecord = medicalRecord,
+                    Decision = request.HealthStatus,
+                    Note = string.IsNullOrWhiteSpace(healthNote) ? null : healthNote,
+                    AssessedByUserId = assessor.UserId,
+                    AssessedByName = assessor.Name,
+                    AssessedAt = DateTime.Now
+                });
+
                 medicalRecord.HotelBooking = hotelBooking;
 
                 cage.Status = "Đang dùng";
@@ -2212,6 +2244,115 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 await transaction.RollbackAsync();
                 _logger.LogError(ex, "Không thể kiểm tra sức khỏe và tiếp nhận thú cưng vào chuồng {CageId}", cageId);
                 TempData["HotelError"] = "Không thể tiếp nhận thú cưng do lỗi hệ thống. Vui lòng thử lại.";
+            }
+
+            return RedirectToAction(nameof(Reception));
+        }
+
+        private async Task<IActionResult> RejectHotelReceptionAsync(HotelCheckInRequest request)
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            try
+            {
+                var booking = await _context.HotelBookings
+                    .Include(item => item.Pet)
+                        .ThenInclude(pet => pet.Customer)
+                    .Include(item => item.FoodPlan)
+                    .Include(item => item.CheckInAssessment)
+                    .FirstOrDefaultAsync(item =>
+                        item.HotelBookingId == request.HotelBookingId!.Value &&
+                        item.Status == "Đã đặt");
+                if (booking == null)
+                {
+                    return HotelValidationError("Booking không còn ở trạng thái chờ tiếp nhận.");
+                }
+
+                if (booking.CheckInDate.Date > DateTime.Today)
+                {
+                    return HotelValidationError("Chưa đến ngày nhận của booking này.");
+                }
+
+                if (booking.CheckInAssessment != null)
+                {
+                    return HotelValidationError("Booking này đã có kết luận kiểm tra sức khỏe.");
+                }
+
+                var medicalRecord = await _context.MedicalRecords
+                    .FirstOrDefaultAsync(record =>
+                        record.RecordId == request.MedicalRecordId!.Value &&
+                        record.PetId == booking.PetId &&
+                        record.HotelBookingId == null &&
+                        record.Weight > 0);
+                if (medicalRecord == null)
+                {
+                    return HotelValidationError("Sổ y tế không còn khả dụng hoặc không thuộc pet trong booking.");
+                }
+
+                string submittedPhone = new(request.CustomerPhone.Where(char.IsDigit).ToArray());
+                string storedPhone = new((booking.Pet.Customer.Phone ?? string.Empty).Where(char.IsDigit).ToArray());
+                if (!string.Equals(submittedPhone, storedPhone, StringComparison.Ordinal))
+                {
+                    return HotelValidationError("Số điện thoại không khớp với chủ của pet trong booking.");
+                }
+
+                if (booking.FoodPlan?.ProductSku != null && booking.FoodPlan.InventoryQuantityDeducted > 0)
+                {
+                    await _inventoryBatchService.RestockToBatches(
+                        booking.FoodPlan.ProductSku,
+                        booking.FoodPlan.InventoryQuantityDeducted);
+                    booking.FoodPlan.InventoryQuantityDeducted = 0;
+                }
+
+                string rejectionNote = request.HealthNote!.Trim();
+                var assessor = GetCurrentStaffSnapshot();
+                _context.HotelCheckInAssessments.Add(new HotelCheckInAssessment
+                {
+                    HotelBooking = booking,
+                    MedicalRecord = medicalRecord,
+                    Decision = HotelCheckInRequest.RejectedStatus,
+                    Note = rejectionNote,
+                    AssessedByUserId = assessor.UserId,
+                    AssessedByName = assessor.Name,
+                    AssessedAt = DateTime.Now
+                });
+
+                booking.Status = "Từ chối tiếp nhận";
+                _context.PetBioTimelines.Add(new PetBioTimeline
+                {
+                    PetId = booking.PetId,
+                    HotelBooking = booking,
+                    Date = DateTime.Now,
+                    Title = "Từ chối tiếp nhận lưu trú",
+                    Type = "HotelReceptionRejected",
+                    Description = $"Sổ y tế #{medicalRecord.RecordId}; lý do: {rejectionNote}. " +
+                        $"Người đánh giá: {assessor.Name}. Chuồng và suất ăn đã giữ được giải phóng."
+                });
+                _context.CustomerNotifications.Add(new CustomerNotification
+                {
+                    CustomerId = booking.CustomerId,
+                    HotelBooking = booking,
+                    Type = "HotelReceptionRejected",
+                    Title = $"Không thể tiếp nhận {booking.Pet.Name}",
+                    Message = $"Booking #{booking.HotelBookingId} bị từ chối tiếp nhận sau kiểm tra sức khỏe. Lý do: {rejectionNote}",
+                    LinkUrl = $"/Customer/HotelBooking/Details/{booking.HotelBookingId}",
+                    IsRead = false,
+                    CreatedAt = DateTime.Now
+                });
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                TempData["HotelSuccess"] = $"Đã lưu quyết định từ chối tiếp nhận {booking.Pet.Name} và hoàn lại tài nguyên đã giữ.";
+            }
+            catch (ManagePetStore.Exceptions.ServiceException ex)
+            {
+                await transaction.RollbackAsync();
+                return HotelValidationError(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Không thể lưu quyết định từ chối booking Hotel {BookingId}.", request.HotelBookingId);
+                return HotelValidationError("Không thể lưu quyết định từ chối do lỗi hệ thống. Vui lòng thử lại.");
             }
 
             return RedirectToAction(nameof(Reception));
@@ -2267,7 +2408,9 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         {
             string checkedBy = User.FindFirst("FullName")?.Value ?? User.Identity?.Name ?? "Nhân viên dịch vụ";
             string expectedCheckout = checkOutDate.HasValue
-                ? checkOutDate.Value.ToString("dd/MM/yyyy HH:mm")
+                ? checkOutDate.Value.TimeOfDay == TimeSpan.Zero
+                    ? checkOutDate.Value.ToString("dd/MM/yyyy")
+                    : checkOutDate.Value.ToString("dd/MM/yyyy HH:mm")
                 : "Chưa xác định";
 
             return $"Hình thức tiếp nhận: Dùng sổ y tế có sẵn\n"
@@ -3090,9 +3233,46 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         [HttpGet("MedicalRecords")]
-        public async Task<IActionResult> MedicalRecords(string? species)
+        public async Task<IActionResult> MedicalRecords(
+            string? species,
+            int? petId = null,
+            int? hotelBookingId = null,
+            string? returnUrl = null)
         {
+            if (petId.HasValue)
+            {
+                if (hotelBookingId.HasValue)
+                {
+                    bool validReservation = await _context.HotelBookings
+                        .AsNoTracking()
+                        .AnyAsync(booking =>
+                            booking.HotelBookingId == hotelBookingId.Value &&
+                            booking.PetId == petId.Value &&
+                            booking.Status == "Đã đặt");
+                    if (!validReservation)
+                    {
+                        return NotFound("Booking không còn khả dụng hoặc không khớp với thú cưng.");
+                    }
+                }
+
+                var selectedPet = await _context.Pets
+                    .Include(pet => pet.Customer)
+                    .Include(pet => pet.MedicalRecords)
+                    .FirstOrDefaultAsync(pet => pet.PetId == petId.Value && pet.Status == "Active");
+                if (selectedPet == null)
+                {
+                    return NotFound("Không tìm thấy hồ sơ thú cưng đang hoạt động.");
+                }
+
+                ViewBag.SelectedSpecies = selectedPet.Species;
+                ViewBag.Pets = new List<Pet> { selectedPet };
+                ViewBag.PreselectedPetId = selectedPet.PetId;
+                ViewBag.ReturnUrl = Url.IsLocalUrl(returnUrl) ? returnUrl : "/SpaServices/PetCheckIn";
+                return View("~/Areas/ServiceStaff/Views/SpaServices/MedicalRecords.cshtml");
+            }
+
             ViewBag.SelectedSpecies = species;
+            ViewBag.ReturnUrl = Url.IsLocalUrl(returnUrl) ? returnUrl : null;
             
             if (!string.IsNullOrEmpty(species))
             {
@@ -3159,6 +3339,16 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             if (pet == null)
             {
                 return Json(new { success = false, message = "Không tìm thấy thú cưng." });
+            }
+
+            if (weight <= 0 || weight > 999.99m)
+            {
+                return Json(new { success = false, message = "Cân nặng trong sổ y tế phải lớn hơn 0 và không vượt quá 999,99kg." });
+            }
+
+            if (string.IsNullOrWhiteSpace(healthStatus))
+            {
+                return Json(new { success = false, message = "Phải ghi nhận tình trạng sức khỏe trong sổ y tế." });
             }
 
             int? activeHotelBookingId = await _context.HotelBookings

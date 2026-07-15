@@ -1463,7 +1463,7 @@
                 {
                     bool hasMedicalRecord = petIdsWithMedicalRecords.Contains(b.PetId);
                     bool isReceptionDateReached = b.CheckInDate.Date <= DateTime.Today;
-                    bool canReceiveBooking = isReceptionDateReached && hasMedicalRecord;
+                    bool canReceiveBooking = isReceptionDateReached;
                     string expectedCheckOutValue = b.CheckOutDate.HasValue
                         ? b.CheckOutDate.Value.ToString("yyyy-MM-ddTHH:mm")
                         : string.Empty;
@@ -1507,9 +1507,9 @@
                                     data-food-option-id="@(b.FoodPlan?.ProductSku ?? "")"
                                     onclick="startOnlineReception(this)"
                                     disabled="@(!canReceiveBooking ? "disabled" : null)"
-                                    title="@(canReceiveBooking ? "Tiếp nhận lịch đặt online này" : !hasMedicalRecord ? "Thú cưng chưa có sổ y tế khả dụng" : "Chưa đến ngày nhận")">
+                                    title="@(canReceiveBooking ? (hasMedicalRecord ? "Tiếp nhận bằng sổ y tế hiện có" : "Tiếp nhận và tạo sổ y tế trước khi vào chuồng") : "Chưa đến ngày nhận")">
                                 <i class="fa-solid fa-clipboard-check" style="margin-right:4px;"></i>
-                                @(canReceiveBooking ? "Tiếp nhận" : !hasMedicalRecord ? "Chưa có sổ y tế" : "Chưa đến ngày")
+                                @(canReceiveBooking ? (hasMedicalRecord ? "Tiếp nhận" : "Tiếp nhận · cần tạo sổ") : "Chưa đến ngày")
                             </button>
                             <button type="button"
                                     class="btn-cancel-reception-sm"
@@ -1555,7 +1555,9 @@
                         || checkoutOrder?.Status == "Đã hủy"
                         || checkoutOrder?.Status == "Cancelled"
                         || checkoutOrder?.Status == "Canceled";
-                    bool canStartCheckout = checkoutStatement == null || checkoutOrderCancelled;
+                    bool checkoutAlreadyPrepared = checkoutStatement != null
+                        && (checkoutStatement.Status == "ReadyForPayment" || checkoutStatement.OrderId != null);
+                    bool canStartCheckout = !checkoutAlreadyPrepared;
                     bool canFinalizeCheckout = checkoutStatement?.OrderId != null
                         && (checkoutOrder?.Status == "Chờ xử lý" || checkoutOrder?.Status == "Đã thanh toán");
                     <div class="booking-item">
@@ -1620,8 +1622,8 @@
                             else
                             {
                                 <span class="checkout-pending-label" data-checkout-pending-id="@b.HotelBookingId">
-                                    <i class="fa-solid fa-clock"></i>
-                                    Chờ thu ngân xử lý
+                                    <i class="fa-solid @(checkoutOrderCancelled ? "fa-circle-exclamation" : "fa-clock")"></i>
+                                    @(checkoutOrderCancelled ? "Hóa đơn đã hủy" : "Chờ thu ngân xử lý")
                                 </span>
                             }
                         </div>
@@ -2024,7 +2026,20 @@
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="hotelBookingId" id="ci-hotelBookingId" value="">
 
-                    <p class="form-section-label"><i class="fa-solid fa-magnifying-glass"></i> Bước 1 · Tìm sổ y tế</p>
+                    <p class="form-section-label"><i class="fa-solid fa-notes-medical"></i> Bước 1 · Chọn hình thức tiếp nhận</p>
+                    <div class="hform-group">
+                        <label class="hform-label" for="ci-receptionSource">Nguồn thông tin sức khỏe <span class="req">*</span></label>
+                        <select name="receptionSource" id="ci-receptionSource" class="hform-control" required onchange="updateReceptionSource()">
+                            <option value="">— Chọn hình thức tiếp nhận —</option>
+                            <option value="ExistingMedicalRecord">Dùng sổ y tế có sẵn</option>
+                        </select>
+                        <small style="display:block; color:#9E918B; margin-top:6px; font-size:.74rem;">
+                            Form không nhập lại thông tin khám; nhân viên chỉ chọn và xem sổ y tế đã có.
+                        </small>
+                    </div>
+
+                    <fieldset id="existingMedicalRecordLookup" hidden disabled style="border:0; padding:0; margin:0; min-width:0;">
+                    <p class="form-section-label"><i class="fa-solid fa-magnifying-glass"></i> Bước 2 · Tìm và chọn sổ y tế</p>
                     <div id="receptionModeHint" class="health-warning-strip">
                         <i class="fa-solid fa-circle-info"></i>
                         Nhập số điện thoại chủ nuôi để tìm các sổ y tế chưa dùng cho Hotel.
@@ -2051,15 +2066,24 @@
                             <option value="">— Chọn sổ y tế —</option>
                         </select>
                         <small id="medicalRecordHelp" style="display:block; color:#9E918B; margin-top:6px; font-size:.74rem;">
-                            Chỉ hiển thị sổ chưa gắn với lượt Hotel và thú cưng không có lịch đặt/lưu trú khác.
+                            Chỉ hiển thị sổ có cân nặng hợp lệ, chưa gắn với lượt Hotel và pet không có lịch lưu trú khác.
                         </small>
+                        <a id="ci-createMedicalRecord"
+                           class="btn-reception-sm"
+                           href="#"
+                           hidden
+                           style="display:inline-block; margin-top:10px; text-decoration:none;">
+                            <i class="fa-solid fa-notes-medical" style="margin-right:5px;"></i>
+                            Tạo/khám sổ y tế cho pet này
+                        </a>
                     </div>
 
                     <div id="medicalRecordSummary" class="medical-record-summary" aria-live="polite"></div>
+                    </fieldset>
 
                     <!-- TÌNH TRẠNG SỨC KHỎE -->
                     <section id="checkInDecisionSection" hidden>
-                    <p class="form-section-label"><i class="fa-solid fa-user-check"></i> Bước 2 · Quyết định điều kiện lưu trú</p>
+                    <p class="form-section-label"><i class="fa-solid fa-user-check"></i> Bước 3 · Quyết định điều kiện lưu trú</p>
 
                     <div class="health-warning-strip">
                         <i class="fa-solid fa-stethoscope"></i>
@@ -2075,15 +2099,12 @@
                             <option value="Rejected">Không đủ điều kiện lưu trú</option>
                         </select>
                     </div>
-                    </section>
 
-                    <section id="checkInCompletionSection" hidden>
-                    <p class="form-section-label"><i class="fa-solid fa-list-check"></i> Bước 3 · Ghi chú, thức ăn và phân chuồng</p>
                     <div class="hform-group">
-                        <label class="hform-label">Ghi chú tiếp nhận</label>
+                        <label class="hform-label">Ghi chú tiếp nhận / lý do từ chối</label>
                         <textarea name="healthNote" id="ci-healthNote" class="hform-control" rows="2"
                             maxlength="1000"
-                            placeholder="Ghi chú thêm cho nhân viên chăm sóc (nếu có). Trường hợp cần theo dõi phải ghi rõ lưu ý."></textarea>
+                            placeholder="Ghi chú thêm cho nhân viên chăm sóc; bắt buộc nếu cần theo dõi hoặc từ chối."></textarea>
                     </div>
                     <div id="healthStatusMessage" class="health-warning-strip" style="display:none;"></div>
                     <div class="hform-group" style="display:flex; gap:9px; align-items:flex-start;">
@@ -2093,11 +2114,15 @@
                             <span class="req">*</span>
                         </label>
                     </div>
+                    </section>
+
+                    <section id="checkInCompletionSection" hidden>
+                    <p class="form-section-label"><i class="fa-solid fa-list-check"></i> Bước 4 · Ghi chú, thức ăn và phân chuồng</p>
 
                     <!-- CHỌN THỨC ĂN -->
                     <p class="form-section-label"><i class="fa-solid fa-bowl-food"></i> Kế hoạch ăn</p>
                     <div class="hform-group">
-                        <label class="hform-label" for="ci-foodOption">Thức ăn sử dụng</label>
+                        <label class="hform-label" for="ci-foodOption">Thức ăn sử dụng <span class="req">*</span></label>
                         <select name="foodProductSku" id="ci-foodOption" class="hform-control" onchange="calcStay()" required>
                             <option value="">— Chọn gói thức ăn từ kho —</option>
                             @if (!hotelFoodOptions.Any())
@@ -2111,7 +2136,7 @@
                                         data-price="@food.Price.ToString("0.##", CultureInfo.InvariantCulture)"
                                         data-stock="@food.Stock"
                                         data-unit="@food.Unit">
-                                    @food.Name · SKU @food.Sku · @food.Price.ToString("N0")đ/ngày · tồn @food.Stock @food.Unit
+                                    @food.Name · SKU @food.Sku · từ @food.Price.ToString("N0")đ/ngày · tồn @food.Stock suất chuẩn
                                 </option>
                             }
                         </select>
@@ -2166,14 +2191,15 @@
                         <p style="font-size:0.72rem; color:#9E918B; margin:4px 0 0 0;" id="pricePreviewDetail"></p>
                     </div>
 
-                    <div class="modal-btn-row">
+                    </section>
+
+                    <div class="modal-btn-row" id="checkInActionRow" hidden>
                         <button type="button" class="btn-modal-cancel" data-bs-dismiss="modal">Hủy</button>
                         <button type="submit" class="btn-modal-submit" id="checkInSubmitBtn">
                             <i class="fa-solid fa-clipboard-check" style="margin-right:6px;"></i>
-                            Xác nhận tiếp nhận
+                            <span id="checkInSubmitText">Xác nhận tiếp nhận</span>
                         </button>
                     </div>
-                    </section>
                 </form>
             </div>
         </div>
@@ -2750,6 +2776,7 @@ let medicalRecordSummarySequence = 0;
 let pendingReceptionPetId = '';
 let pendingFoodOptionId = '';
 let selectedReceptionSpecies = '';
+let selectedReceptionWeight = null;
 
 function hideMedicalRecordSummary() {
     const summary = document.getElementById('medicalRecordSummary');
@@ -2765,6 +2792,26 @@ function setReceptionModeHint(message, type = 'info') {
     hint.append(icon, document.createTextNode(' ' + message));
 }
 
+function updateReceptionSource() {
+    const source = document.getElementById('ci-receptionSource').value;
+    const lookup = document.getElementById('existingMedicalRecordLookup');
+    const useExistingRecord = source === 'ExistingMedicalRecord';
+    lookup.hidden = !useExistingRecord;
+    lookup.disabled = !useExistingRecord;
+
+    if (!useExistingRecord) {
+        medicalRecordSearchSequence++;
+        medicalRecordSummarySequence++;
+        document.getElementById('ci-phone').value = '';
+        document.getElementById('ci-customerName').value = '';
+        document.getElementById('medicalRecordGroup').hidden = true;
+        resetMedicalRecordSteps();
+        return;
+    }
+
+    setReceptionModeHint('Nhập số điện thoại chủ nuôi để tìm sổ y tế khả dụng.');
+}
+
 function clearOnlineReceptionContext() {
     medicalRecordSearchSequence++;
     medicalRecordSummarySequence++;
@@ -2777,11 +2824,20 @@ function clearOnlineReceptionContext() {
     pendingReceptionPetId = '';
     pendingFoodOptionId = '';
     selectedReceptionSpecies = '';
+    selectedReceptionWeight = null;
     document.getElementById('ci-hotelBookingId').value = '';
+    document.getElementById('ci-phone').readOnly = false;
+    const createMedicalRecordLink = document.getElementById('ci-createMedicalRecord');
+    createMedicalRecordLink.hidden = true;
+    createMedicalRecordLink.removeAttribute('href');
+    const lookup = document.getElementById('existingMedicalRecordLookup');
+    lookup.hidden = true;
+    lookup.disabled = true;
     document.getElementById('medicalRecordGroup').hidden = true;
     document.getElementById('ci-medicalRecord').innerHTML = '<option value="">— Chọn sổ y tế —</option>';
     document.getElementById('checkInDecisionSection').hidden = true;
     document.getElementById('checkInCompletionSection').hidden = true;
+    document.getElementById('checkInActionRow').hidden = true;
     document.getElementById('ci-cage').innerHTML = '<option value="">— Chọn loại chuồng trước —</option>';
     document.getElementById('pricePreview').style.display = 'none';
     hideMedicalRecordSummary();
@@ -2796,7 +2852,7 @@ function clearOnlineReceptionContext() {
     checkOutInput.value = '';
     checkOutInput.min = nowValue;
 
-    setReceptionModeHint('Nhập số điện thoại chủ nuôi để tìm sổ y tế khả dụng.');
+    setReceptionModeHint('Chọn “Dùng sổ y tế có sẵn” để bắt đầu.');
 }
 
 function resetHealthCheckFields() {
@@ -2808,12 +2864,16 @@ function resetHealthCheckFields() {
 }
 
 function startOnlineReception(button) {
+    clearOnlineReceptionContext();
     const data = button.dataset;
     pendingReceptionPetId = data.petId || '';
     pendingFoodOptionId = data.foodOptionId || '';
 
+    document.getElementById('ci-receptionSource').value = 'ExistingMedicalRecord';
+    updateReceptionSource();
     document.getElementById('ci-hotelBookingId').value = data.bookingId || '';
     document.getElementById('ci-phone').value = data.customerPhone || '';
+    document.getElementById('ci-phone').readOnly = true;
     document.getElementById('ci-customerName').value = data.customerName || '';
     resetHealthCheckFields();
     document.getElementById('checkInDecisionSection').hidden = true;
@@ -2830,7 +2890,7 @@ function startOnlineReception(button) {
     }
 
     setReceptionModeHint('Đang tìm sổ y tế phù hợp cho lịch đặt online này.');
-    searchAvailableMedicalRecords(data.customerPhone || '', true);
+    searchAvailableMedicalRecords('', true);
 }
 
 function cancelOnlineReception(button) {
@@ -2866,29 +2926,35 @@ function resetMedicalRecordSteps() {
     document.getElementById('ci-medicalRecord').value = '';
     document.getElementById('checkInDecisionSection').hidden = true;
     document.getElementById('checkInCompletionSection').hidden = true;
+    document.getElementById('checkInActionRow').hidden = true;
+    document.getElementById('ci-createMedicalRecord').hidden = true;
     selectedReceptionSpecies = '';
+    selectedReceptionWeight = null;
     resetHealthCheckFields();
     hideMedicalRecordSummary();
     filterFoodOptions('');
 }
 
 function searchAvailableMedicalRecords(phone, immediate = false) {
+    if (document.getElementById('ci-receptionSource').value !== 'ExistingMedicalRecord') return;
+
     clearTimeout(lookupTimer);
     const searchSequence = ++medicalRecordSearchSequence;
     const normalizedPhone = (phone || '').replace(/\D/g, '');
+    const bookingId = document.getElementById('ci-hotelBookingId').value;
     const group = document.getElementById('medicalRecordGroup');
     const select = document.getElementById('ci-medicalRecord');
     document.getElementById('ci-customerName').value = '';
     resetMedicalRecordSteps();
 
-    if (normalizedPhone.length < 10) {
+    if (!bookingId && normalizedPhone.length < 10) {
         group.hidden = true;
         return;
     }
 
     const executeSearch = () => {
-        const bookingId = document.getElementById('ci-hotelBookingId').value;
-        const query = new URLSearchParams({ phone: normalizedPhone });
+        const query = new URLSearchParams();
+        if (normalizedPhone) query.set('phone', normalizedPhone);
         if (bookingId) query.set('hotelBookingId', bookingId);
 
         select.innerHTML = '<option value="">Đang tìm sổ y tế...</option>';
@@ -2921,6 +2987,7 @@ function populateAvailableMedicalRecords(result) {
     const select = document.getElementById('ci-medicalRecord');
     const records = result.records || [];
     document.getElementById('ci-customerName').value = result.customerName || '';
+    if (result.customerPhone) document.getElementById('ci-phone').value = result.customerPhone;
     select.replaceChildren();
 
     const initialOption = document.createElement('option');
@@ -2944,7 +3011,24 @@ function populateAvailableMedicalRecords(result) {
         : 'Không có sổ y tế chưa dùng cho thú cưng đủ điều kiện.';
     setReceptionModeHint(records.length
         ? 'Chọn đúng sổ y tế để xem lại toàn bộ thông tin khám.'
-        : 'Không có sổ y tế khả dụng cho số điện thoại này.', records.length ? 'info' : 'error');
+        : (result.reservedPetId
+            ? 'Pet trong booking chưa có sổ y tế khả dụng. Hãy tạo/khám sổ trước khi tiếp nhận.'
+            : 'Không có sổ y tế khả dụng cho số điện thoại này.'), records.length ? 'info' : 'error');
+
+    const createMedicalRecordLink = document.getElementById('ci-createMedicalRecord');
+    const bookingId = document.getElementById('ci-hotelBookingId').value;
+    if (!records.length && bookingId && result.reservedPetId) {
+        const query = new URLSearchParams({
+            petId: result.reservedPetId,
+            hotelBookingId: bookingId,
+            returnUrl: '/SpaServices/PetCheckIn'
+        });
+        createMedicalRecordLink.href = '/SpaServices/MedicalRecords?' + query.toString();
+        createMedicalRecordLink.hidden = false;
+    } else {
+        createMedicalRecordLink.hidden = true;
+        createMedicalRecordLink.removeAttribute('href');
+    }
 
     if (pendingReceptionPetId) {
         const matchingOption = Array.from(select.options)
@@ -3023,6 +3107,8 @@ function renderMedicalRecordSummary(record) {
     summary.classList.add('visible');
 
     selectedReceptionSpecies = record.species || '';
+    const recordWeight = Number(record.weight);
+    selectedReceptionWeight = Number.isFinite(recordWeight) && recordWeight > 0 ? recordWeight : null;
     filterFoodOptions(selectedReceptionSpecies);
     if (pendingFoodOptionId) {
         const foodOption = Array.from(document.getElementById('ci-foodOption').options)
@@ -3061,16 +3147,27 @@ function updateHealthStatus() {
     const completionSection = document.getElementById('checkInCompletionSection');
     const note = document.getElementById('ci-healthNote');
     const message = document.getElementById('healthStatusMessage');
+    const actionRow = document.getElementById('checkInActionRow');
+    const submitText = document.getElementById('checkInSubmitText');
+    const rejected = status === 'Rejected';
 
-    note.required = status === 'Monitor';
+    note.required = status === 'Monitor' || rejected;
     note.setCustomValidity('');
-    if (status === 'Monitor' && !note.value.trim()) {
-        note.setCustomValidity('Vui lòng ghi rõ lưu ý cần theo dõi.');
+    if ((status === 'Monitor' || rejected) && !note.value.trim()) {
+        note.setCustomValidity(rejected
+            ? 'Vui lòng ghi rõ lý do không đủ điều kiện lưu trú.'
+            : 'Vui lòng ghi rõ lưu ý cần theo dõi.');
     }
 
-    if (status === 'Rejected') {
+    completionSection.querySelectorAll('input, select, textarea').forEach(control => {
+        control.disabled = rejected;
+    });
+    actionRow.hidden = !(status === 'Fit' || status === 'Monitor' || rejected);
+    submitText.textContent = rejected ? 'Lưu quyết định từ chối' : 'Xác nhận tiếp nhận';
+
+    if (rejected) {
         completionSection.hidden = true;
-        setReceptionModeHint('Thú cưng không đủ điều kiện nên quy trình dừng tại đây và không thể phân chuồng.', 'error');
+        setReceptionModeHint('Quyết định từ chối sẽ được lưu; booking, chuồng và suất ăn đã giữ sẽ được giải phóng.', 'error');
     } else if (status === 'Fit' || status === 'Monitor') {
         completionSection.hidden = false;
         message.style.display = 'none';
@@ -3142,12 +3239,6 @@ document.getElementById('checkInForm').addEventListener('submit', event => {
         return;
     }
 
-    if (healthStatus === 'Rejected') {
-        event.preventDefault();
-        alert('Thú cưng không đủ điều kiện lưu trú nên không thể nhận vào chuồng.');
-        return;
-    }
-
     if (!event.currentTarget.checkValidity()) {
         event.preventDefault();
         const invalidControl = event.currentTarget.querySelector(':invalid');
@@ -3190,6 +3281,14 @@ function loadAvailableCages(roomTypeId, selectedCageId = '') {
 }
 
 // ===== CALC STAY & PREVIEW PRICE =====
+function resolveHotelFoodWeightMultiplier(weight) {
+    if (!weight) return 0;
+    if (weight <= 5) return 1;
+    if (weight <= 15) return 1.25;
+    if (weight <= 30) return 1.5;
+    return 1.8;
+}
+
 function calcStay() {
     const checkIn = document.getElementById('ci-checkIn').value;
     const checkOut = document.getElementById('ci-checkOut').value;
@@ -3207,7 +3306,11 @@ function calcStay() {
     const dailyPrice = parseFloat(opt?.dataset?.price || '0');
     const foodSelect = document.getElementById('ci-foodOption');
     const foodOption = foodSelect.options[foodSelect.selectedIndex];
-    const foodPrice = parseFloat(foodOption?.dataset?.price || '0');
+    const foodBasePrice = parseFloat(foodOption?.dataset?.price || '0');
+    const foodMultiplier = resolveHotelFoodWeightMultiplier(selectedReceptionWeight);
+    const foodPrice = foodBasePrice > 0
+        ? Math.ceil((foodBasePrice * foodMultiplier) / 1000) * 1000
+        : 0;
     const d1 = new Date(checkIn);
     const d2 = new Date(checkOut);
     if (!validateStayDates() || d2 < d1) {
@@ -3219,10 +3322,12 @@ function calcStay() {
 
     const roomTotal = dailyPrice * diffDays;
     const foodTotal = foodPrice * diffDays;
+    const inventoryUnits = Math.ceil(diffDays * foodMultiplier);
     const total = roomTotal + foodTotal;
     priceVal.textContent = total.toLocaleString('vi-VN') + 'đ';
     priceDet.textContent = `${diffDays} ngày × phòng ${dailyPrice.toLocaleString('vi-VN')}đ`
-        + ` + thức ăn ${foodPrice.toLocaleString('vi-VN')}đ/ngày`;
+        + ` + thức ăn ${foodPrice.toLocaleString('vi-VN')}đ/ngày`
+        + ` (pet ${selectedReceptionWeight?.toLocaleString('vi-VN') || '—'}kg, hệ số ${foodMultiplier.toLocaleString('vi-VN')}, ${inventoryUnits} suất chuẩn)`;
     pricePreview.style.display = 'block';
 }
 
@@ -3390,9 +3495,8 @@ function renderCheckoutPreview(data) {
     const otherFields = document.getElementById('checkoutOtherFields');
     const cancelledOrderStatuses = ['Đã hủy', 'Cancelled', 'Canceled'];
     const checkoutOrderCancelled = cancelledOrderStatuses.includes(data.orderStatus);
-    const checkoutIsWaiting = !checkoutCanFinalize
-        && !checkoutOrderCancelled
-        && (data.statementStatus === 'ReadyForPayment' || data.orderId != null);
+    const checkoutAlreadyPrepared = data.statementStatus === 'ReadyForPayment' || data.orderId != null;
+    const checkoutIsWaiting = !checkoutCanFinalize && checkoutAlreadyPrepared;
     button.hidden = checkoutIsWaiting;
     if (checkoutCanFinalize) {
         button.innerHTML = '<i class="fa-solid fa-check"></i> Hoàn tất trả pet';
@@ -3400,16 +3504,16 @@ function renderCheckoutPreview(data) {
         document.getElementById('checkoutPaymentStatus').textContent = `Hóa đơn ${data.orderId} đã sẵn sàng hoàn tất.`;
     } else if (checkoutIsWaiting) {
         otherFields.hidden = true;
-        document.getElementById('checkoutPaymentStatus').textContent = data.orderId
-            ? `Hóa đơn ${data.orderId} đang chờ thu ngân xử lý.`
-            : 'Bảng kê đang chờ thu ngân xử lý.';
+        document.getElementById('checkoutPaymentStatus').textContent = checkoutOrderCancelled
+            ? `Hóa đơn ${data.orderId || ''} đã hủy. Vui lòng liên hệ thu ngân.`.replace('  ', ' ')
+            : data.orderId
+                ? `Hóa đơn ${data.orderId} đang chờ thu ngân xử lý.`
+                : 'Bảng kê đang chờ thu ngân xử lý.';
     } else {
         button.hidden = false;
         button.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Gửi bảng kê thu ngân';
         otherFields.hidden = false;
-        document.getElementById('checkoutPaymentStatus').textContent = checkoutOrderCancelled
-            ? 'Hóa đơn trước đã hủy. Kiểm tra chi phí trước khi gửi lại.'
-            : 'Kiểm tra chi phí trước khi gửi.';
+        document.getElementById('checkoutPaymentStatus').textContent = 'Kiểm tra chi phí trước khi gửi.';
     }
 }
 
@@ -3436,8 +3540,16 @@ document.getElementById('confirmCheckoutBtn').addEventListener('click', () => {
     .then(data => {
         if (data.success) {
             if (!checkoutCanFinalize) {
-                document.querySelector(`[data-checkout-booking-id="${checkoutBookingId}"]`)?.remove();
+                const checkoutButton = document.querySelector(`[data-checkout-booking-id="${checkoutBookingId}"]`);
+                if (checkoutButton) {
+                    const pendingLabel = document.createElement('span');
+                    pendingLabel.className = 'checkout-pending-label';
+                    pendingLabel.dataset.checkoutPendingId = checkoutBookingId;
+                    pendingLabel.innerHTML = '<i class="fa-solid fa-clock"></i> Chờ thu ngân xử lý';
+                    checkoutButton.replaceWith(pendingLabel);
+                }
             }
+            bootstrap.Modal.getInstance(document.getElementById('checkOutModal'))?.hide();
             location.reload();
             return;
         }

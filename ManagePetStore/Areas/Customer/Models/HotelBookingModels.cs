@@ -146,6 +146,7 @@ public class HotelBookingListItemViewModel
     public string Status { get; set; } = "";
     public string StatusKey { get; set; } = "";
     public bool CanCancel { get; set; }
+    public bool ShowCannotCancelOnline { get; set; }
 }
 
 public class HotelBookingDetailPageViewModel : CustomerSidebarViewModel

@@ -37,12 +37,20 @@ public class HotelBookingHistoryDetailViewModel
     public bool HasPremiumFood { get; set; }
     public string FoodPlanName { get; set; } = "Chưa ghi nhận gói ăn";
     public string? FoodProductSku { get; set; }
-    public string FoodProductUnit { get; set; } = HotelFoodCatalog.DailyUnit;
+    public decimal FoodBasePricePerDay { get; set; }
+    public decimal? FoodPetWeight { get; set; }
+    public decimal FoodPortionMultiplier { get; set; } = HotelFoodPricing.SmallPetMultiplier;
+    public int FoodInventoryUnits { get; set; }
     public decimal FoodPricePerDay { get; set; }
     public int FoodPortionGrams { get; set; }
     public int FoodMealsPerDay { get; set; }
     public string? FeedingInstructions { get; set; }
     public string? FoodAllergyNotes { get; set; }
+    public int? HealthAssessmentMedicalRecordId { get; set; }
+    public string? HealthAssessmentDecision { get; set; }
+    public string? HealthAssessmentNote { get; set; }
+    public string? HealthAssessedByName { get; set; }
+    public DateTime? HealthAssessedAt { get; set; }
     public List<HotelBookingAddonHistoryItem> Addons { get; set; } = [];
     public List<HotelBookingTimelineHistoryItem> Timeline { get; set; } = [];
     public List<HotelBookingMedicalHistoryItem> MedicalRecords { get; set; } = [];
@@ -89,9 +97,6 @@ public class HotelBookingCareHistoryItem
     public string? PhotoUrl { get; set; }
     public string? MediaUrl { get; set; }
     public string? MediaType { get; set; }
-    public string? MealType { get; set; }
-    public decimal? ServedGrams { get; set; }
-    public int? ConsumedPercent { get; set; }
     public bool IsExtraCharge { get; set; }
     public decimal ExtraChargeAmount { get; set; }
     public string? Note { get; set; }

@@ -39,9 +39,15 @@ public class HotelCheckoutService : IHotelCheckoutService
             throw new InvalidOperationException("Chỉ có thể chốt chi phí cho pet đang lưu trú.");
         }
 
-        if (booking.CheckoutStatement?.OrderId != null)
+        bool checkoutAlreadyPrepared = booking.CheckoutStatement != null &&
+            (string.Equals(booking.CheckoutStatement.Status, "ReadyForPayment", StringComparison.OrdinalIgnoreCase) ||
+             booking.CheckoutStatement.OrderId != null);
+        if (checkoutAlreadyPrepared)
         {
-            throw new InvalidOperationException("Bảng kê đã được thu ngân liên kết hóa đơn và không thể sửa.");
+            // Idempotent: a stale browser click must not create or update the checkout again.
+            return BuildPreview(
+                booking,
+                booking.CheckoutStatement!.CheckoutAt);
         }
 
         var checkoutAt = DateTime.Now;
@@ -135,7 +141,10 @@ public class HotelCheckoutService : IHotelCheckoutService
             return;
         }
 
-        int difference = chargeableFoodDays - foodPlan.InventoryQuantityDeducted;
+        int requiredInventoryUnits = HotelFoodPricing.CalculateInventoryUnits(
+            chargeableFoodDays,
+            foodPlan.PortionMultiplierSnapshot);
+        int difference = requiredInventoryUnits - foodPlan.InventoryQuantityDeducted;
         try
         {
             if (difference > 0)
@@ -154,7 +163,7 @@ public class HotelCheckoutService : IHotelCheckoutService
                 ex);
         }
 
-        foodPlan.InventoryQuantityDeducted = chargeableFoodDays;
+        foodPlan.InventoryQuantityDeducted = requiredInventoryUnits;
     }
 
     private async Task<HotelBooking?> LoadBookingAsync(int bookingId, bool noTracking)
@@ -194,7 +203,20 @@ public class HotelCheckoutService : IHotelCheckoutService
             new() { ChargeType = "Room", Description = $"Phòng {booking.Cage.RoomType.Type} · chuồng {booking.CageId}", Quantity = booking.StayDays, Unit = "ngày", UnitPrice = booking.BaseDailyPrice, Amount = roomAmount }
         };
         if (planFoodAmount > 0)
-            items.Add(new() { ChargeType = "FoodPlan", Description = booking.FoodPlan!.FoodNameSnapshot, Quantity = foodDays, Unit = "ngày", UnitPrice = booking.FoodPlan.PricePerDaySnapshot, Amount = planFoodAmount });
+        {
+            string weightDetail = booking.FoodPlan!.PetWeightSnapshot.HasValue
+                ? $" · {booking.FoodPlan.PetWeightSnapshot:0.##}kg · hệ số {booking.FoodPlan.PortionMultiplierSnapshot:0.##}"
+                : " · dữ liệu cũ chưa có cân nặng snapshot";
+            items.Add(new()
+            {
+                ChargeType = "FoodPlan",
+                Description = booking.FoodPlan.FoodNameSnapshot + weightDetail,
+                Quantity = foodDays,
+                Unit = "ngày",
+                UnitPrice = booking.FoodPlan.PricePerDaySnapshot,
+                Amount = planFoodAmount
+            });
+        }
         items.AddRange(booking.BookingAddons.Select(addon => new HotelCheckoutPreviewItem { ChargeType = "Addon", Description = addon.Name, Quantity = 1, Unit = "lần", UnitPrice = addon.Price, Amount = addon.Price }));
         items.AddRange(extraFoodLogs.Select(log => new HotelCheckoutPreviewItem { ChargeType = "ExtraFood", Description = $"Bữa phát sinh: {log.FoodType}", Quantity = 1, Unit = "lần", UnitPrice = log.ExtraChargeAmount, Amount = log.ExtraChargeAmount }));
         if (lateFee > 0) items.Add(new() { ChargeType = "LateFee", Description = "Phụ phí checkout trễ", Quantity = 1, Unit = "lần", UnitPrice = lateFee, Amount = lateFee });

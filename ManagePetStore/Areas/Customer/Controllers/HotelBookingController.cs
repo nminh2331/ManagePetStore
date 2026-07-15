@@ -49,8 +49,7 @@ public class HotelBookingController : Controller
             .Include(b => b.Cage)
                 .ThenInclude(c => c.RoomType)
             .Where(b => b.CustomerId == layout.Customer.CustomerId)
-            .OrderByDescending(b => b.CheckInDate)
-            .ThenByDescending(b => b.HotelBookingId)
+            .OrderByDescending(b => b.HotelBookingId)
             .ToListAsync();
 
         var mappedBookings = bookings.Select(MapToListItem).ToList();
@@ -173,6 +172,13 @@ public class HotelBookingController : Controller
                 return BookingError("Hồ sơ thú cưng đã chọn không còn hoạt động.");
             }
 
+            if (pet.Weight <= 0)
+            {
+                return BookingError(
+                    $"Hồ sơ của {pet.Name} chưa có cân nặng hợp lệ. " +
+                    "Vui lòng cập nhật hồ sơ thú cưng trước khi đặt Hotel.");
+            }
+
             var roomType = await _context.RoomTypes
                 .AsNoTracking()
                 .FirstOrDefaultAsync(r => r.RoomTypeId == roomTypeId && r.Status);
@@ -205,16 +211,19 @@ public class HotelBookingController : Controller
                 return BookingError("Gói thức ăn không phù hợp với loài của thú cưng.");
             }
 
+            var foodQuote = HotelFoodPricing.Calculate(foodProduct.Price, pet.Weight, stayDays);
+
             var reservedFoodUnits = await _context.HotelBookingFoodPlans
                 .Where(plan => plan.ProductSku == foodProduct.Sku &&
                                plan.InventoryQuantityDeducted == 0 &&
                                BlockingStatuses.Contains(plan.HotelBooking.Status))
                 .SumAsync(plan => (int?)plan.ChargeableDays) ?? 0;
             var availableFoodUnits = Math.Max(0, foodProduct.Stock - reservedFoodUnits);
-            if (availableFoodUnits < stayDays)
+            if (availableFoodUnits < foodQuote.InventoryUnits)
             {
                 return BookingError(
-                    $"{foodProduct.Name} chỉ còn {availableFoodUnits} suất chưa được đặt, không đủ cho {stayDays} ngày lưu trú.");
+                    $"{foodProduct.Name} chỉ còn {availableFoodUnits} suất chuẩn, " +
+                    $"không đủ {foodQuote.InventoryUnits} suất cho {stayDays} ngày ({foodQuote.WeightBand}).");
             }
 
             var petHasConflict = await _context.HotelBookings.AnyAsync(b =>
@@ -254,11 +263,11 @@ public class HotelBookingController : Controller
             var subtotal = roomType.DailyPrice * stayDays;
             var discountRate = ResolveDiscountRate(customer.MembershipTier);
             var discount = decimal.Round(subtotal * discountRate, 0, MidpointRounding.AwayFromZero);
-            var foodPricePerDay = foodProduct.Price;
-            var foodTotal = foodPricePerDay * stayDays;
+            var foodPricePerDay = foodQuote.PricePerDay;
+            var foodTotal = foodQuote.TotalAmount;
             var finalAmount = subtotal - discount + foodTotal;
 
-            await _inventoryBatchService.DeductStockFIFO(foodProduct.Sku, stayDays);
+            await _inventoryBatchService.DeductStockFIFO(foodProduct.Sku, foodQuote.InventoryUnits);
 
             var booking = new HotelBooking
             {
@@ -286,13 +295,16 @@ public class HotelBookingController : Controller
                 PlanType = "HotelProduct",
                 FoodNameSnapshot = foodProduct.Name,
                 ProductUnitSnapshot = foodProduct.Unit,
+                BasePricePerDaySnapshot = foodQuote.BasePricePerDay,
+                PetWeightSnapshot = foodQuote.PetWeightKg,
+                PortionMultiplierSnapshot = foodQuote.PortionMultiplier,
                 PricePerDaySnapshot = foodPricePerDay,
                 PortionGrams = 0,
                 MealsPerDay = 0,
                 FeedingInstructions = string.IsNullOrWhiteSpace(request.FeedingInstructions) ? null : request.FeedingInstructions.Trim(),
                 AllergyNotes = string.IsNullOrWhiteSpace(request.AllergyNotes) ? null : request.AllergyNotes.Trim(),
                 ChargeableDays = stayDays,
-                InventoryQuantityDeducted = stayDays,
+                InventoryQuantityDeducted = foodQuote.InventoryUnits,
                 TotalAmount = foodTotal,
                 CreatedAt = DateTime.Now
             });
@@ -303,7 +315,10 @@ public class HotelBookingController : Controller
                 Date = DateTime.Now,
                 Title = "Đặt phòng Hotel",
                 Type = "HotelBookingCreated",
-                Description = $"Khách hàng đặt chuồng {cage.CageId} từ {checkIn:dd/MM/yyyy} đến {checkOut:dd/MM/yyyy}; gói ăn {foodProduct.Name} ({foodProduct.Sku}) {foodPricePerDay:N0}đ/ngày."
+                Description = $"Khách hàng đặt chuồng {cage.CageId} từ {checkIn:dd/MM/yyyy} đến {checkOut:dd/MM/yyyy}; " +
+                    $"gói ăn {foodProduct.Name} ({foodProduct.Sku}) {foodPricePerDay:N0}đ/ngày, " +
+                    $"tạm tính theo cân nặng hồ sơ {foodQuote.PetWeightKg:0.##}kg, hệ số {foodQuote.PortionMultiplier:0.##} ({foodQuote.WeightBand}). " +
+                    "Giá và khẩu phần cuối cùng được xác nhận khi tiếp nhận."
             });
 
             await _context.SaveChangesAsync();
@@ -466,6 +481,9 @@ public class HotelBookingController : Controller
     {
         var statusKey = ResolveStatusKey(booking.Status);
 
+        bool canCancel = statusKey == "reserved" &&
+            (booking.ScheduledCheckInDate ?? booking.CheckInDate).Date > DateTime.Today;
+
         return new HotelBookingListItemViewModel
         {
             HotelBookingId = booking.HotelBookingId,
@@ -480,8 +498,8 @@ public class HotelBookingController : Controller
             FinalAmount = booking.FinalAmount,
             Status = booking.Status,
             StatusKey = statusKey,
-            CanCancel = statusKey == "reserved" &&
-                (booking.ScheduledCheckInDate ?? booking.CheckInDate).Date > DateTime.Today
+            CanCancel = canCancel,
+            ShowCannotCancelOnline = statusKey == "reserved" && !canCancel
         };
     }
 
@@ -492,7 +510,7 @@ public class HotelBookingController : Controller
             "đã đặt" => "reserved",
             "active" or "đang ở" => "active",
             "đã trả" => "completed",
-            "đã hủy" or "cancelled" => "cancelled",
+            "đã hủy" or "cancelled" or "từ chối tiếp nhận" => "cancelled",
             _ => "other"
         };
     }

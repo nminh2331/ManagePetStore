@@ -4,7 +4,7 @@
     var foodOptions = ViewBag.HotelFoodOptions as IEnumerable<ManagePetStore.Controllers.HotelFoodOptionItem> ?? [];
     var discountPercent = ViewBag.HotelDiscountPercent is int value ? value : 0;
     var membershipTier = ViewBag.HotelMembershipTier as string ?? "Thành viên";
-    var hasBookingOptions = pets?.Any() == true && roomTypes?.Any() == true;
+    var hasBookingOptions = pets?.Any() == true && roomTypes?.Any() == true && foodOptions.Any();
     var isHomeBookingForm = pets != null && roomTypes != null;
 }
 
@@ -69,11 +69,15 @@
                         <span>
                             @if (pets?.Any() != true)
                             {
-                                <text>Bạn cần có ít nhất một hồ sơ thú cưng đang hoạt động.</text>
+                                <text>Bạn cần có ít nhất một hồ sơ pet đang hoạt động và có cân nặng hợp lệ.</text>
+                            }
+                            else if (roomTypes?.Any() != true)
+                            {
+                                <text>Hiện chưa có loại phòng Hotel nào sẵn sàng nhận đặt trước.</text>
                             }
                             else
                             {
-                                <text>Hiện chưa có loại phòng Hotel nào sẵn sàng nhận đặt trước.</text>
+                                <text>Kho chưa có gói thức ăn Hotel đủ tồn để nhận đặt phòng.</text>
                             }
                         </span>
                     </div>
@@ -88,12 +92,15 @@
                                 <option value="">Chọn thú cưng</option>
                                 @foreach (var pet in pets)
                                 {
-                                    <option value="@pet.Id">@pet.Name (@pet.Breed)</option>
+                                    <option value="@pet.Id"
+                                            data-weight="@(pet.ProfileWeightKg?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) ?? "")">
+                                        @pet.Name (@pet.Breed) · @(pet.ProfileWeightKg?.ToString("0.##"))kg
+                                    </option>
                                 }
                             }
                             else
                             {
-                                <option value="">Chưa có hồ sơ thú cưng</option>
+                                <option value="">Chưa có hồ sơ pet đủ thông tin</option>
                             }
                         </select>
                     </div>
@@ -148,11 +155,12 @@
                                         data-unit="@food.Unit"
                                         data-available="@food.AvailableUnits"
                                         data-species="@food.TargetSpecies">
-                                    @food.Name · @food.PricePerDay.ToString("N0")đ/ngày · còn @food.AvailableUnits suất
+                                    @food.Name · từ @food.PricePerDay.ToString("N0")đ/ngày · còn @food.AvailableUnits suất chuẩn
                                 </option>
                             }
                     </select>
                     <div class="hotel-date-help" id="hotelFoodDescription">Gói ăn lấy từ sản phẩm và tồn kho thực tế của cửa hàng; giá được tính theo ngày.</div>
+                    <div class="hotel-date-help" id="hotelFoodPricingNote">Chọn pet để xem giá tạm tính theo cân nặng trong hồ sơ.</div>
                     <div id="hotelFeedingScheduleWrap" class="mt-2">
                         <label class="hotel-label" for="hotelFeedingSchedule"><i class="bi bi-clock"></i> GIỜ ĂN MONG MUỐN</label>
                         <input class="hotel-select"
@@ -189,10 +197,14 @@
 
                 @if (pets?.Any() != true)
                 {
-                    <a asp-area="Customer" asp-controller="Pet" asp-action="Index" class="hotel-secondary-link">
-                        Tạo hồ sơ thú cưng trước
-                    </a>
+                    <div class="hotel-date-help">
+                        Booking online chỉ cần hồ sơ pet có cân nặng hợp lệ. Sổ y tế sẽ được kiểm tra hoặc tạo trước khi ServiceStaff tiếp nhận pet vào chuồng.
+                    </div>
                 }
+
+                <div class="hotel-date-help">
+                    Giá thức ăn đang là tạm tính theo cân nặng trong hồ sơ pet; giá và khẩu phần cuối cùng được xác nhận khi tiếp nhận.
+                </div>
 
                 <button type="submit" class="hotel-submit-btn" disabled="@(!hasBookingOptions ? "disabled" : null)">
                     Xác nhận đặt phòng
