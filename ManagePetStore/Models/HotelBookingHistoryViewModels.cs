@@ -35,7 +35,9 @@ public class HotelBookingHistoryDetailViewModel
     public bool HasAc { get; set; }
     public bool HasCamera { get; set; }
     public bool HasPremiumFood { get; set; }
-    public string FoodPlanName { get; set; } = "Chủ nuôi tự chuẩn bị";
+    public string FoodPlanName { get; set; } = "Chưa ghi nhận gói ăn";
+    public string? FoodProductSku { get; set; }
+    public string FoodProductUnit { get; set; } = HotelFoodCatalog.DailyUnit;
     public decimal FoodPricePerDay { get; set; }
     public int FoodPortionGrams { get; set; }
     public int FoodMealsPerDay { get; set; }

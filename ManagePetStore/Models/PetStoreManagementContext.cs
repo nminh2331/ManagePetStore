@@ -476,6 +476,7 @@ public partial class PetStoreManagementContext : DbContext
         {
             entity.HasKey(e => e.CategoryId);
 
+            entity.Property(e => e.Code).HasMaxLength(50);
             entity.Property(e => e.Description).HasMaxLength(500);
             entity.Property(e => e.Name).HasMaxLength(150);
         });

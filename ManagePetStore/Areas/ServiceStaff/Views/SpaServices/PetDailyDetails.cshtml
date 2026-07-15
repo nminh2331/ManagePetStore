@@ -75,7 +75,17 @@
                 <div>
                     <span class="hbh-eyebrow">@Model.CurrentStay.DisplayBookingId · Chuồng @Model.CurrentStay.CageId</span>
                     <h2 id="care-log-heading">Cập nhật nhật ký chăm sóc</h2>
-                    <p>Gói ăn: @Model.CurrentStay.FoodPlanName · @Model.CurrentStay.PortionGrams g/bữa · @Model.CurrentStay.MealsPerDay bữa/ngày.</p>
+                    <p>
+                        Gói ăn: @Model.CurrentStay.FoodPlanName
+                        @if (!string.IsNullOrWhiteSpace(Model.CurrentStay.FoodProductSku))
+                        {
+                            <text> · SKU @Model.CurrentStay.FoodProductSku · @Model.CurrentStay.FoodProductUnit.</text>
+                        }
+                        else
+                        {
+                            <text> · @Model.CurrentStay.PortionGrams g/bữa · @Model.CurrentStay.MealsPerDay bữa/ngày.</text>
+                        }
+                    </p>
                 </div>
                 <i class="bi bi-journal-plus" aria-hidden="true"></i>
             </div>
@@ -230,7 +240,17 @@
                             <td><strong>@stay.CageId</strong><small>@stay.RoomTypeName</small></td>
                             <td><strong>@stay.CheckInAt.ToString("dd/MM/yyyy HH:mm")</strong><small>đến @(stay.CheckOutAt?.ToString("dd/MM/yyyy HH:mm") ?? "chưa xác định")</small></td>
                             <td><span class="hb-status hb-status-@stay.StatusKey">@stay.Status</span></td>
-                            <td><strong>@stay.FoodPlanName</strong><small>@stay.PortionGrams g/bữa · @stay.MealsPerDay bữa/ngày</small></td>
+                            <td>
+                                <strong>@stay.FoodPlanName</strong>
+                                @if (!string.IsNullOrWhiteSpace(stay.FoodProductSku))
+                                {
+                                    <small>SKU @stay.FoodProductSku · @stay.FoodProductUnit</small>
+                                }
+                                else
+                                {
+                                    <small>@stay.PortionGrams g/bữa · @stay.MealsPerDay bữa/ngày</small>
+                                }
+                            </td>
                             <td><a href="/SpaServices/HotelHistory/@stay.HotelBookingId" class="hbh-table-link hbh-table-link-secondary">Chi tiết</a></td>
                         </tr>
                     }

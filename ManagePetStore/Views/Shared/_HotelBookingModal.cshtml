@@ -133,30 +133,27 @@
                 </div>
 
                 <div class="hotel-food-section">
-                    <label class="hotel-label" for="hotelFoodPlanType"><i class="bi bi-cup-straw"></i> CHẾ ĐỘ THỨC ĂN</label>
-                    <select class="hotel-select" id="hotelFoodPlanType" name="FoodPlanType" required>
-                        <option value="">Chọn chế độ thức ăn</option>
-                        <option value="OwnerProvided">Chủ nuôi tự chuẩn bị · 0đ</option>
-                        <option value="HotelFood">Chọn gói thức ăn của Hotel</option>
-                    </select>
-                    <div id="hotelFoodOptionWrap" class="mt-2" hidden>
-                        <select class="hotel-select" id="hotelFoodOption" name="FoodOptionId">
-                            <option value="">Chọn loại thức ăn</option>
+                    <label class="hotel-label" for="hotelFoodOption"><i class="bi bi-cup-straw"></i> GÓI THỨC ĂN BẮT BUỘC</label>
+                    <select class="hotel-select" id="hotelFoodOption" name="FoodProductSku" required>
+                            <option value="">Chọn gói thức ăn</option>
+                            @if (!foodOptions.Any())
+                            {
+                                <option value="" disabled>Kho chưa có suất ăn khả dụng</option>
+                            }
                             @foreach (var food in foodOptions)
                             {
-                                <option value="@food.Id"
+                                <option value="@food.Sku"
                                         data-price="@food.PricePerDay"
-                                        data-included-premium="@food.IncludedWithPremiumRoom.ToString().ToLowerInvariant()"
                                         data-description="@food.Description"
-                                        data-portion="@food.PortionGrams"
-                                        data-meals="@food.MealsPerDay">
-                                    @food.Name · @food.PricePerDay.ToString("N0")đ/ngày
+                                        data-unit="@food.Unit"
+                                        data-available="@food.AvailableUnits"
+                                        data-species="@food.TargetSpecies">
+                                    @food.Name · @food.PricePerDay.ToString("N0")đ/ngày · còn @food.AvailableUnits suất
                                 </option>
                             }
-                        </select>
-                        <div class="hotel-date-help" id="hotelFoodDescription">Giá được khóa theo booking và tính theo ngày sử dụng.</div>
-                    </div>
-                    <div id="hotelFeedingScheduleWrap" class="mt-2" hidden>
+                    </select>
+                    <div class="hotel-date-help" id="hotelFoodDescription">Gói ăn lấy từ sản phẩm và tồn kho thực tế của cửa hàng; giá được tính theo ngày.</div>
+                    <div id="hotelFeedingScheduleWrap" class="mt-2">
                         <label class="hotel-label" for="hotelFeedingSchedule"><i class="bi bi-clock"></i> GIỜ ĂN MONG MUỐN</label>
                         <input class="hotel-select"
                                id="hotelFeedingSchedule"

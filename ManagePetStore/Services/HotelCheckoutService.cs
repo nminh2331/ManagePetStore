@@ -1,6 +1,7 @@
 using System.Data;
 using ManagePetStore.Areas.ServiceStaff.Models;
 using ManagePetStore.Models;
+using ManagePetStore.Services.Warehouse;
 using Microsoft.EntityFrameworkCore;
 
 namespace ManagePetStore.Services;
@@ -8,8 +9,15 @@ namespace ManagePetStore.Services;
 public class HotelCheckoutService : IHotelCheckoutService
 {
     private readonly PetStoreManagementContext _context;
+    private readonly IInventoryBatchService _inventoryBatchService;
 
-    public HotelCheckoutService(PetStoreManagementContext context) => _context = context;
+    public HotelCheckoutService(
+        PetStoreManagementContext context,
+        IInventoryBatchService inventoryBatchService)
+    {
+        _context = context;
+        _inventoryBatchService = inventoryBatchService;
+    }
 
     public async Task<HotelCheckoutPreviewViewModel?> GetPreviewAsync(int bookingId, DateTime? checkoutAt = null)
     {
@@ -42,6 +50,8 @@ public class HotelCheckoutService : IHotelCheckoutService
         }
 
         var checkoutAt = DateTime.Now;
+        var chargeableFoodDays = ResolveFoodDays(booking, checkoutAt);
+        await ReconcileFoodInventoryAsync(booking, chargeableFoodDays);
         var preview = BuildPreview(booking, checkoutAt, request.OtherDescription, request.OtherAmount);
         var statement = booking.CheckoutStatement ?? new HotelCheckoutStatement
         {
@@ -81,7 +91,7 @@ public class HotelCheckoutService : IHotelCheckoutService
 
         if (booking.FoodPlan != null)
         {
-            booking.FoodPlan.ChargeableDays = ResolveFoodDays(booking, checkoutAt);
+            booking.FoodPlan.ChargeableDays = chargeableFoodDays;
             booking.FoodPlan.TotalAmount = preview.FoodAmount - booking.FoodDiaryLogs.Where(log => log.IsExtraCharge).Sum(log => log.ExtraChargeAmount);
         }
         booking.FinalAmount = preview.TotalAmount;
@@ -120,6 +130,36 @@ public class HotelCheckoutService : IHotelCheckoutService
         await _context.SaveChangesAsync();
         await transaction.CommitAsync();
         return await GetPreviewAsync(booking.HotelBookingId) ?? preview;
+    }
+
+    private async Task ReconcileFoodInventoryAsync(HotelBooking booking, int chargeableFoodDays)
+    {
+        var foodPlan = booking.FoodPlan;
+        if (foodPlan == null || string.IsNullOrWhiteSpace(foodPlan.ProductSku))
+        {
+            return;
+        }
+
+        int difference = chargeableFoodDays - foodPlan.InventoryQuantityDeducted;
+        try
+        {
+            if (difference > 0)
+            {
+                await _inventoryBatchService.DeductStockFIFO(foodPlan.ProductSku, difference);
+            }
+            else if (difference < 0)
+            {
+                await _inventoryBatchService.RestockToBatches(foodPlan.ProductSku, -difference);
+            }
+        }
+        catch (ManagePetStore.Exceptions.ServiceException ex)
+        {
+            throw new InvalidOperationException(
+                $"Không thể đối soát tồn kho gói ăn khi checkout: {ex.Message}",
+                ex);
+        }
+
+        foodPlan.InventoryQuantityDeducted = chargeableFoodDays;
     }
 
     private static bool IsCancelledOrder(Order? order)

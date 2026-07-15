@@ -1,3 +1,5 @@
+using ManagePetStore.Models;
+
 namespace ManagePetStore.Areas.ServiceStaff.Models;
 
 public class PetDailyCareListViewModel
@@ -55,7 +57,9 @@ public class PetDailyCareStayViewModel
     public DateTime? CheckOutAt { get; set; }
     public string Status { get; set; } = string.Empty;
     public string StatusKey { get; set; } = string.Empty;
-    public string FoodPlanName { get; set; } = "Chủ nuôi tự chuẩn bị";
+    public string FoodPlanName { get; set; } = "Chưa ghi nhận gói ăn";
+    public string? FoodProductSku { get; set; }
+    public string FoodProductUnit { get; set; } = HotelFoodCatalog.DailyUnit;
     public int PortionGrams { get; set; }
     public int MealsPerDay { get; set; }
 }

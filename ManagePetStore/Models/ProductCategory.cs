@@ -9,6 +9,8 @@ public partial class ProductCategory
 
     public string Name { get; set; } = null!;
 
+    public string? Code { get; set; }
+
     public string? Description { get; set; }
 
     public bool IsDeleted { get; set; }

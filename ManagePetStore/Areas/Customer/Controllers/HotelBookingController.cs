@@ -3,6 +3,7 @@ using System.Security.Claims;
 using ManagePetStore.Areas.Customer.Models;
 using ManagePetStore.Models;
 using ManagePetStore.Services;
+using ManagePetStore.Services.Warehouse;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,15 +18,18 @@ public class HotelBookingController : Controller
 
     private readonly PetStoreManagementContext _context;
     private readonly IHotelBookingHistoryService _historyService;
+    private readonly IInventoryBatchService _inventoryBatchService;
     private readonly ILogger<HotelBookingController> _logger;
 
     public HotelBookingController(
         PetStoreManagementContext context,
         IHotelBookingHistoryService historyService,
+        IInventoryBatchService inventoryBatchService,
         ILogger<HotelBookingController> logger)
     {
         _context = context;
         _historyService = historyService;
+        _inventoryBatchService = inventoryBatchService;
         _logger = logger;
     }
 
@@ -178,28 +182,39 @@ public class HotelBookingController : Controller
                 return BookingError("Loại phòng đã chọn hiện không còn hoạt động.");
             }
 
-            HotelFoodOption? foodOption = null;
-            var foodPlanType = request.FoodPlanType?.Trim() ?? "OwnerProvided";
-            if (foodPlanType == "HotelFood")
-            {
-                if (!request.FoodOptionId.HasValue)
-                {
-                    return BookingError("Vui lòng chọn gói thức ăn của Hotel.");
-                }
+            var foodProductSku = request.FoodProductSku.Trim();
+            var foodProduct = await _context.Products
+                .AsNoTracking()
+                .Include(product => product.Category)
+                .FirstOrDefaultAsync(product =>
+                    product.Sku == foodProductSku &&
+                    !product.IsDeleted &&
+                    product.Stock > 0 &&
+                    product.Unit == HotelFoodCatalog.DailyUnit &&
+                    product.Category != null &&
+                    !product.Category.IsDeleted &&
+                    product.Category.Code == HotelFoodCatalog.CategoryCode);
 
-                foodOption = await _context.HotelFoodOptions
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(option => option.FoodOptionId == request.FoodOptionId && option.Active);
-                if (foodOption == null ||
-                    (!string.Equals(foodOption.TargetSpecies, "Tất cả", StringComparison.OrdinalIgnoreCase) &&
-                     !string.Equals(foodOption.TargetSpecies, pet.Species, StringComparison.OrdinalIgnoreCase)))
-                {
-                    return BookingError("Gói thức ăn không phù hợp với thú cưng đã chọn.");
-                }
-            }
-            else if (foodPlanType != "OwnerProvided")
+            if (foodProduct == null)
             {
-                return BookingError("Hình thức thức ăn không hợp lệ.");
+                return BookingError("Gói thức ăn không còn được cung cấp từ kho cửa hàng.");
+            }
+
+            if (!HotelFoodCatalog.IsSpeciesCompatible(foodProduct.AnimalType, pet.Species))
+            {
+                return BookingError("Gói thức ăn không phù hợp với loài của thú cưng.");
+            }
+
+            var reservedFoodUnits = await _context.HotelBookingFoodPlans
+                .Where(plan => plan.ProductSku == foodProduct.Sku &&
+                               plan.InventoryQuantityDeducted == 0 &&
+                               BlockingStatuses.Contains(plan.HotelBooking.Status))
+                .SumAsync(plan => (int?)plan.ChargeableDays) ?? 0;
+            var availableFoodUnits = Math.Max(0, foodProduct.Stock - reservedFoodUnits);
+            if (availableFoodUnits < stayDays)
+            {
+                return BookingError(
+                    $"{foodProduct.Name} chỉ còn {availableFoodUnits} suất chưa được đặt, không đủ cho {stayDays} ngày lưu trú.");
             }
 
             var petHasConflict = await _context.HotelBookings.AnyAsync(b =>
@@ -239,13 +254,11 @@ public class HotelBookingController : Controller
             var subtotal = roomType.DailyPrice * stayDays;
             var discountRate = ResolveDiscountRate(customer.MembershipTier);
             var discount = decimal.Round(subtotal * discountRate, 0, MidpointRounding.AwayFromZero);
-            var foodPricePerDay = foodOption == null
-                ? 0
-                : roomType.HasPremiumFood && foodOption.IsIncludedWithPremiumRoom
-                    ? 0
-                    : foodOption.PricePerDay;
+            var foodPricePerDay = foodProduct.Price;
             var foodTotal = foodPricePerDay * stayDays;
             var finalAmount = subtotal - discount + foodTotal;
+
+            await _inventoryBatchService.DeductStockFIFO(foodProduct.Sku, stayDays);
 
             var booking = new HotelBooking
             {
@@ -269,15 +282,17 @@ public class HotelBookingController : Controller
             _context.HotelBookingFoodPlans.Add(new HotelBookingFoodPlan
             {
                 HotelBooking = booking,
-                FoodOptionId = foodOption?.FoodOptionId,
-                PlanType = foodOption == null ? "OwnerProvided" : "HotelFood",
-                FoodNameSnapshot = foodOption?.Name ?? "Chủ nuôi tự chuẩn bị",
+                ProductSku = foodProduct.Sku,
+                PlanType = "HotelProduct",
+                FoodNameSnapshot = foodProduct.Name,
+                ProductUnitSnapshot = foodProduct.Unit,
                 PricePerDaySnapshot = foodPricePerDay,
-                PortionGrams = foodOption?.DefaultPortionGrams ?? 0,
-                MealsPerDay = foodOption?.MealsPerDay ?? 0,
+                PortionGrams = 0,
+                MealsPerDay = 0,
                 FeedingInstructions = string.IsNullOrWhiteSpace(request.FeedingInstructions) ? null : request.FeedingInstructions.Trim(),
                 AllergyNotes = string.IsNullOrWhiteSpace(request.AllergyNotes) ? null : request.AllergyNotes.Trim(),
                 ChargeableDays = stayDays,
+                InventoryQuantityDeducted = stayDays,
                 TotalAmount = foodTotal,
                 CreatedAt = DateTime.Now
             });
@@ -288,7 +303,7 @@ public class HotelBookingController : Controller
                 Date = DateTime.Now,
                 Title = "Đặt phòng Hotel",
                 Type = "HotelBookingCreated",
-                Description = $"Khách hàng đặt chuồng {cage.CageId} từ {checkIn:dd/MM/yyyy} đến {checkOut:dd/MM/yyyy}."
+                Description = $"Khách hàng đặt chuồng {cage.CageId} từ {checkIn:dd/MM/yyyy} đến {checkOut:dd/MM/yyyy}; gói ăn {foodProduct.Name} ({foodProduct.Sku}) {foodPricePerDay:N0}đ/ngày."
             });
 
             await _context.SaveChangesAsync();
@@ -297,6 +312,11 @@ public class HotelBookingController : Controller
             TempData["SuccessMessage"] =
                 $"Đặt phòng thành công cho {pet.Name}. Chuồng dự kiến: {cage.CageId}.";
             return RedirectToAction(nameof(Index));
+        }
+        catch (ManagePetStore.Exceptions.ServiceException ex)
+        {
+            await transaction.RollbackAsync();
+            return BookingError(ex.Message);
         }
         catch (Exception ex)
         {
@@ -322,6 +342,7 @@ public class HotelBookingController : Controller
 
         var booking = await _context.HotelBookings
             .Include(b => b.Pet)
+            .Include(b => b.FoodPlan)
             .FirstOrDefaultAsync(b =>
                 b.HotelBookingId == id &&
                 b.CustomerId == customer.CustomerId);
@@ -344,17 +365,36 @@ public class HotelBookingController : Controller
             return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
         }
 
-        booking.Status = "Đã hủy";
-        _context.PetBioTimelines.Add(new PetBioTimeline
+        await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        try
         {
-            PetId = booking.PetId,
-            HotelBookingId = booking.HotelBookingId,
-            Date = DateTime.Now,
-            Title = "Hủy lịch lưu trú",
-            Type = "HotelBookingCancelled",
-            Description = "Khách hàng đã hủy lịch đặt phòng qua hệ thống."
-        });
-        await _context.SaveChangesAsync();
+            if (booking.FoodPlan?.ProductSku != null && booking.FoodPlan.InventoryQuantityDeducted > 0)
+            {
+                await _inventoryBatchService.RestockToBatches(
+                    booking.FoodPlan.ProductSku,
+                    booking.FoodPlan.InventoryQuantityDeducted);
+                booking.FoodPlan.InventoryQuantityDeducted = 0;
+            }
+
+            booking.Status = "Đã hủy";
+            _context.PetBioTimelines.Add(new PetBioTimeline
+            {
+                PetId = booking.PetId,
+                HotelBookingId = booking.HotelBookingId,
+                Date = DateTime.Now,
+                Title = "Hủy lịch lưu trú",
+                Type = "HotelBookingCancelled",
+                Description = "Khách hàng đã hủy lịch đặt phòng qua hệ thống; suất ăn đã giữ được hoàn lại kho."
+            });
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch (ManagePetStore.Exceptions.ServiceException ex)
+        {
+            await transaction.RollbackAsync();
+            TempData["ErrorMessage"] = ex.Message;
+            return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
+        }
 
         TempData["SuccessMessage"] = $"Đã hủy lịch Hotel của {booking.Pet.Name}.";
         return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });

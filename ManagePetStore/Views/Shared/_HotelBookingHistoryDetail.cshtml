@@ -39,7 +39,14 @@
             <div class="hbh-section-heading"><div><h3><i class="bi bi-cup-straw"></i> Kế hoạch ăn</h3></div></div>
             <dl class="hbh-data-list">
                 <div><dt>Gói thức ăn</dt><dd>@Model.FoodPlanName</dd></div>
-                <div><dt>Khẩu phần</dt><dd>@Model.FoodPortionGrams g · @Model.FoodMealsPerDay bữa/ngày</dd></div>
+                @if (!string.IsNullOrWhiteSpace(Model.FoodProductSku))
+                {
+                    <div><dt>Nguồn sản phẩm</dt><dd>SKU @Model.FoodProductSku · @Model.FoodProductUnit</dd></div>
+                }
+                else
+                {
+                    <div><dt>Khẩu phần cũ</dt><dd>@Model.FoodPortionGrams g · @Model.FoodMealsPerDay bữa/ngày</dd></div>
+                }
                 <div><dt>Giá/ngày</dt><dd>@Model.FoodPricePerDay.ToString("N0")đ</dd></div>
                 <div><dt>Hướng dẫn</dt><dd>@(Model.FeedingInstructions ?? "Không có")</dd></div>
                 <div><dt>Dị ứng/lưu ý</dt><dd>@(Model.FoodAllergyNotes ?? "Không ghi nhận")</dd></div>
