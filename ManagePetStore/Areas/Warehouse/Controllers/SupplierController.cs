@@ -106,10 +106,26 @@ public class SupplierController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Deactivate(int id)
     {
         await _supplierService.DeleteSupplierAsync(id);
-        TempData["SuccessMessage"] = "Xóa nhà cung cấp thành công!";
+        TempData["SuccessMessage"] = "Đã đánh dấu nhà cung cấp ngừng hoạt động.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Activate(int id)
+    {
+        var supplier = await _supplierService.GetSupplierByIdAsync(id);
+        if (supplier != null)
+        {
+            supplier.IsActive = true;
+            // Since UpdateSupplierAsync expects categoryIds, we can pass existing ones
+            var categoryIds = supplier.Categories.Select(c => c.CategoryId).ToList();
+            await _supplierService.UpdateSupplierAsync(supplier, categoryIds);
+            TempData["SuccessMessage"] = "Đã kích hoạt lại nhà cung cấp.";
+        }
         return RedirectToAction(nameof(Index));
     }
 

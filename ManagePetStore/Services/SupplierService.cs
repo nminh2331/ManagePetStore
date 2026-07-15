@@ -44,7 +44,7 @@ public class SupplierService : ISupplierService
 
     public async Task DeleteSupplierAsync(int id)
     {
-        // Could add validation to check if supplier has existing stock movements before deleting
+        // Soft delete: đánh dấu IsActive = false, không xóa khỏi DB
         await _supplierRepo.DeleteSupplierAsync(id);
     }
 

@@ -2,102 +2,202 @@
 @{
     ViewData["Title"] = "Quản lý Nhà cung cấp";
     Layout = "~/Areas/Warehouse/Views/Shared/_WarehouseLayout.cshtml";
+    var activeCount   = Model?.Count(s => s.IsActive)   ?? 0;
+    var inactiveCount = Model?.Count(s => !s.IsActive)  ?? 0;
+    var totalCount    = Model?.Count()                   ?? 0;
 }
 
-<div class="container-fluid py-4">
-    <div class="row mb-4 align-items-center">
-        <div class="col">
-            <h2 class="mb-0 text-primary"><i class="fas fa-truck text-primary me-2"></i>Quản lý Nhà cung cấp</h2>
-            <p class="text-muted mb-0">Quản lý danh sách các đối tác cung cấp hàng hóa</p>
-        </div>
-        <div class="col-auto text-end">
-            <a asp-action="Create" class="btn btn-primary shadow-sm">
-                <i class="fas fa-plus me-1"></i> Thêm Nhà cung cấp
-            </a>
+<!-- ── Stat Cards ─────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-4">
+        <div class="stat-card" style="--accent:#e65c00;">
+            <div class="stat-icon" style="background:rgba(230,92,0,.12);">
+                <i class="fas fa-truck" style="color:#e65c00;"></i>
+            </div>
+            <div>
+                <p class="stat-label">Tổng nhà cung cấp</p>
+                <h3 class="stat-value">@totalCount</h3>
+            </div>
         </div>
     </div>
-
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fas fa-check-circle me-2"></i>@TempData["SuccessMessage"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    <div class="col-6 col-xl-4">
+        <div class="stat-card" style="--accent:#10b981;">
+            <div class="stat-icon" style="background:rgba(16,185,129,.12);">
+                <i class="fas fa-check-circle" style="color:#10b981;"></i>
+            </div>
+            <div>
+                <p class="stat-label">Đang hoạt động</p>
+                <h3 class="stat-value">@activeCount</h3>
+            </div>
         </div>
-    }
-
-    <div class="card shadow border-0 rounded-3">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="bg-light text-secondary">
-                        <tr>
-                            <th class="ps-4">Tên nhà cung cấp</th>
-                            <th>Liên hệ</th>
-                            <th>Địa chỉ</th>
-                            <th>Cung cấp danh mục</th>
-                            <th>Trạng thái</th>
-                            <th class="text-end pe-4">Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody class="border-top-0">
-                        @foreach (var item in Model)
-                        {
-                            <tr>
-                                <td class="ps-4 fw-bold text-dark">
-                                    @item.Name
-                                </td>
-                                <td>
-                                    <div><i class="fas fa-phone-alt text-muted me-2" style="width: 15px"></i> @(item.Phone ?? "-")</div>
-                                    <div class="small text-muted"><i class="fas fa-envelope text-muted me-2" style="width: 15px"></i> @(item.Email ?? "-")</div>
-                                </td>
-                                <td>@item.Address</td>
-                                <td>
-                                    @if (item.Categories != null && item.Categories.Any())
-                                    {
-                                        foreach (var cat in item.Categories)
-                                        {
-                                            <span class="badge bg-info text-dark mb-1">@cat.Name</span>
-                                        }
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted small">Chưa phân loại</span>
-                                    }
-                                </td>
-                                <td>
-                                    @if (item.IsActive)
-                                    {
-                                        <span class="badge bg-success bg-opacity-10 text-success px-2 py-1"><i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>Đang hoạt động</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-danger bg-opacity-10 text-danger px-2 py-1"><i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>Ngừng cung cấp</span>
-                                    }
-                                </td>
-                                <td class="text-end pe-4">
-                                    <a asp-action="Edit" asp-route-id="@item.SupplierId" class="btn btn-sm btn-outline-primary" title="Sửa">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <form asp-action="Delete" asp-route-id="@item.SupplierId" method="post" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa nhà cung cấp này?');">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                        }
-                        @if (!Model.Any())
-                        {
-                            <tr>
-                                <td colspan="6" class="text-center py-5 text-muted">
-                                    <i class="fas fa-box-open fs-1 text-light mb-3"></i>
-                                    <p class="mb-0">Chưa có nhà cung cấp nào.</p>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+    </div>
+    <div class="col-6 col-xl-4">
+        <div class="stat-card" style="--accent:#6b7280;">
+            <div class="stat-icon" style="background:rgba(107,114,128,.12);">
+                <i class="fas fa-ban" style="color:#6b7280;"></i>
+            </div>
+            <div>
+                <p class="stat-label">Ngừng hoạt động</p>
+                <h3 class="stat-value">@inactiveCount</h3>
             </div>
         </div>
     </div>
 </div>
+
+<!-- ── Header ─────────────────────────────────────────────────── -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h2 class="fw-bold m-0" style="color:#333;">Quản lý Nhà cung cấp</h2>
+        <p class="text-muted small mb-0 mt-1">Quản lý danh sách các đối tác cung cấp hàng hóa.</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary-custom btn-custom">
+        <i class="fas fa-plus"></i> Thêm nhà cung cấp
+    </a>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert d-flex align-items-center gap-2 mb-3"
+         style="background:#f0fdf4; border:1px solid #86efac; border-radius:10px; color:#166534;">
+        <i class="fas fa-check-circle" style="color:#10b981;"></i>
+        <span>@TempData["SuccessMessage"]</span>
+    </div>
+}
+
+<!-- ── Table ──────────────────────────────────────────────────── -->
+<div class="card border-0 shadow-sm" style="border-radius:16px;">
+    <div class="card-body p-0">
+        @if (Model != null && Model.Any())
+        {
+            <table class="table table-hover align-middle mb-0">
+                <thead style="background:#f8f9fa;">
+                    <tr>
+                        <th class="border-0 px-4 py-3">Tên nhà cung cấp</th>
+                        <th class="border-0 px-4 py-3">Liên hệ</th>
+                        <th class="border-0 px-4 py-3">Địa chỉ</th>
+                        <th class="border-0 px-4 py-3">Danh mục</th>
+                        <th class="border-0 px-4 py-3 text-center">Trạng thái</th>
+                        <th class="border-0 px-4 py-3 text-end pe-4">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        var rowStyle = !item.IsActive ? "opacity:0.6; background:#fcfcfc;" : "";
+                        <tr style="@rowStyle">
+                            <td class="px-4 py-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span style="width:10px; height:10px; border-radius:50%; background:@(item.IsActive ? "#e65c00" : "#d1d5db"); display:inline-block;"></span>
+                                    <span class="fw-bold">@item.Name</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div><i class="fas fa-phone-alt text-muted me-2" style="width:15px;"></i>@(item.Phone ?? "—")</div>
+                                <div class="small text-muted"><i class="fas fa-envelope text-muted me-2" style="width:15px;"></i>@(item.Email ?? "—")</div>
+                            </td>
+                            <td class="px-4 py-3 text-muted">@(item.Address ?? "—")</td>
+                            <td class="px-4 py-3">
+                                @if (item.Categories != null && item.Categories.Any())
+                                {
+                                    foreach (var cat in item.Categories)
+                                    {
+                                        <span class="badge me-1 mb-1" style="background:#fff3e0; color:#e65c00; padding:5px 10px; border-radius:12px;">@cat.Name</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">Chưa phân loại</span>
+                                }
+                            </td>
+                            <td class="px-4 py-3 text-center">
+                                @if (item.IsActive)
+                                {
+                                    <span class="badge" style="background:#dcfce7; color:#166534; padding:6px 12px; border-radius:16px; font-weight:600;">
+                                        <i class="fas fa-check-circle me-1"></i> Hoạt động
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge" style="background:#f3f4f6; color:#6b7280; padding:6px 12px; border-radius:16px; font-weight:600;">
+                                        <i class="fas fa-ban me-1"></i> Ngừng cung cấp
+                                    </span>
+                                }
+                            </td>
+                            <td class="px-4 py-3 text-end pe-4">
+                                <div class="d-flex align-items-center justify-content-end gap-2">
+                                    <a asp-action="Edit" asp-route-id="@item.SupplierId"
+                                       class="btn btn-sm btn-light fw-bold"
+                                       style="border-radius:20px; padding:6px 16px; border:1px solid #ddd; color:#ff8c00;">
+                                        <i class="fas fa-edit me-1"></i> Sửa
+                                    </a>
+                                    @if (item.IsActive)
+                                    {
+                                        <form asp-action="Deactivate" asp-route-id="@item.SupplierId" method="post"
+                                              onsubmit="return confirm('Ngừng hoạt động nhà cung cấp: @item.Name?');" class="m-0">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-light"
+                                                    style="border-radius:50%; width:34px; height:34px; color:#ef4444; border:1px solid #fee2e2;"
+                                                    title="Ngừng hoạt động">
+                                                <i class="fas fa-power-off"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="Activate" asp-route-id="@item.SupplierId" method="post"
+                                              onsubmit="return confirm('Kích hoạt lại nhà cung cấp: @item.Name?');" class="m-0">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-light"
+                                                    style="border-radius:50%; width:34px; height:34px; color:#10b981; border:1px solid #d1fae5;"
+                                                    title="Kích hoạt lại">
+                                                <i class="fas fa-power-off"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-truck text-muted" style="font-size:3rem; opacity:.3;"></i>
+                <p class="mt-3 text-muted">Chưa có nhà cung cấp nào.</p>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .stat-card {
+        background: #fff;
+        border-radius: 14px;
+        padding: 1.1rem 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,.06);
+        border-left: 4px solid var(--accent);
+        transition: transform .2s, box-shadow .2s;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.1); }
+    .stat-icon {
+        width: 48px; height: 48px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.3rem; flex-shrink: 0;
+    }
+    .stat-label { font-size: .78rem; color: #888; margin: 0; font-weight: 500; }
+    .stat-value { font-size: 1.4rem; font-weight: 700; margin: 0; color: #222; }
+    .btn-primary-custom {
+        background-color: #ff8c00;
+        color: #fff;
+        border: none;
+        border-radius: 20px;
+        padding: 8px 20px;
+        font-weight: 600;
+    }
+    .btn-primary-custom:hover { background-color: #e67e00; color: #fff; }
+</style>

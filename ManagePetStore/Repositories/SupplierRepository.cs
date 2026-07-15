@@ -53,13 +53,8 @@ public class SupplierRepository : ISupplierRepository
         var supplier = await _context.Suppliers.FindAsync(id);
         if (supplier != null)
         {
-            // Instead of hard delete, maybe soft delete? Or hard delete if no relations.
-            // Entity Framework will automatically handle the many-to-many join table deletion
-            // when we remove the supplier if cascade delete is configured, or we can clear categories.
-            await _context.Entry(supplier).Collection(s => s.Categories).LoadAsync();
-            supplier.Categories.Clear();
-            
-            _context.Suppliers.Remove(supplier);
+            // Soft delete: đánh dấu ngừng hoạt động thay vì xóa khỏi DB
+            supplier.IsActive = false;
             await _context.SaveChangesAsync();
         }
     }
