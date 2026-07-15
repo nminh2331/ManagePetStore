@@ -29,16 +29,5 @@
         <div class="hbh-alert hbh-alert-error" role="alert"><i class="bi bi-exclamation-circle"></i> @errorMessage</div>
     }
 
-    @if (Model.Booking.StatusKey == "active")
-    {
-        <div class="hbh-active-care-callout">
-            <div>
-                <strong>@Model.Booking.PetName đang lưu trú tại chuồng @Model.Booking.CageId</strong>
-                <span>Nhật ký hiện được quản lý tập trung theo pet, tách riêng khỏi hồ sơ lịch sử booking.</span>
-            </div>
-            <a href="/SpaServices/PetDaily/@Model.Booking.PetId" class="hbh-button"><i class="bi bi-journal-plus"></i> Mở nhật ký pet</a>
-        </div>
-    }
-
     @await Html.PartialAsync("_HotelBookingHistoryDetail", Model.Booking)
 </div>

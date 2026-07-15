@@ -58,14 +58,18 @@ public class ProductCategoryService : IProductCategoryService
         if (routeId != category.CategoryId)
             throw new ServiceException("ID danh mục không khớp.");
 
-        if (!await _categoryRepo.CategoryExists(category.CategoryId))
+        var existing = await _categoryRepo.GetCategoryById(category.CategoryId);
+        if (existing == null)
             throw new ServiceException($"Không tìm thấy danh mục ID = {category.CategoryId}.");
 
         SanitizeCategory(category);
+        existing.Name = category.Name;
+        existing.Description = category.Description;
+        existing.Keywords = category.Keywords;
 
         try
         {
-            await _categoryRepo.UpdateCategory(category);
+            await _categoryRepo.UpdateCategory(existing);
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -77,6 +81,13 @@ public class ProductCategoryService : IProductCategoryService
 
     public async Task DeleteCategory(int id)
     {
+        var category = await _categoryRepo.GetCategoryById(id);
+        if (category?.Code == HotelFoodCatalog.CategoryCode)
+        {
+            throw new ServiceException(
+                "Danh mục Thức ăn cho Pet lưu trú là danh mục hệ thống và không thể xóa.");
+        }
+
         await _categoryRepo.DeleteCategory(id);
     }
 

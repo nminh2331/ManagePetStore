@@ -3,6 +3,7 @@
 @{
     Layout = "/Views/Shared/_PetStoreLayout.cshtml";
     ViewData["Title"] = $"Chi tiết {Model.Booking.DisplayBookingId}";
+    ViewData["ShowHotelTimeline"] = false;
 }
 
 @section Styles {
@@ -19,7 +20,7 @@
             <div>
                 <a asp-action="Index" class="hbh-back-link"><i class="bi bi-arrow-left"></i> Lịch sử lưu trú</a>
                 <h1>Chi tiết lần lưu trú</h1>
-                <p>Toàn bộ thông tin và hoạt động được ghi theo từng booking của thú cưng.</p>
+                <p>Thông tin lưu trú, chi phí và hồ sơ sức khỏe của thú cưng.</p>
             </div>
         </div>
 

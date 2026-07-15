@@ -18,7 +18,7 @@
     var activeBookings = ViewBag.ActiveBookings as List<HotelBooking> ?? new List<HotelBooking>();
     var onlineBookings = ViewBag.OnlineBookings as List<HotelBooking> ?? new List<HotelBooking>();
     var petIdsWithMedicalRecords = ViewBag.PetIdsWithMedicalRecords as HashSet<int> ?? new HashSet<int>();
-    var customers = ViewBag.Customers as List<Customer> ?? new List<Customer>();
+    var hotelFoodOptions = ViewBag.HotelFoodOptions as List<Product> ?? new List<Product>();
     var activeBookingByCage = activeBookings
         .GroupBy(b => b.CageId, StringComparer.OrdinalIgnoreCase)
         .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
@@ -37,7 +37,7 @@
             ? "Quản lý Danh mục Chuồng"
             : "Sơ đồ Chuồng";
     string pageSubtitle = isCheckInPage
-        ? "Chọn tiếp nhận bằng sổ y tế hoặc kiểm tra ban đầu, sau đó phân chuồng trên cùng một màn"
+        ? "Tra cứu sổ y tế theo số điện thoại, duyệt điều kiện, chọn thức ăn và phân chuồng"
         : isCategoryPage
             ? "Quản lý loại chuồng, chuồng cụ thể, giá và trang thiết bị"
             : "Theo dõi sơ đồ phòng, xem chi tiết thú cưng và chuyển chuồng";
@@ -88,44 +88,6 @@
         color: #FFFFFF;
     }
 
-    .reception-mode-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
-        margin-bottom: 14px;
-    }
-
-    .reception-mode-option {
-        border: 1px solid #E8DDD5;
-        border-radius: 12px;
-        padding: 14px;
-        cursor: pointer;
-        background: #FFFFFF;
-        transition: border-color .2s, box-shadow .2s, background .2s;
-    }
-
-    .reception-mode-option:has(input:checked) {
-        border-color: #FF7815;
-        background: #FFF8F1;
-        box-shadow: 0 0 0 3px rgba(255, 120, 21, .12);
-    }
-
-    .reception-mode-option strong,
-    .reception-mode-option small {
-        display: block;
-    }
-
-    .reception-mode-option strong {
-        color: #2D2521;
-        font-size: .86rem;
-    }
-
-    .reception-mode-option small {
-        color: #7D706A;
-        line-height: 1.4;
-        margin: 4px 0 0 24px;
-    }
-
     .medical-record-summary {
         display: none;
         background: #F4FBF6;
@@ -142,8 +104,40 @@
         display: block;
     }
 
+    .medical-record-summary > strong {
+        display: block;
+        margin-bottom: 10px;
+    }
+
+    .medical-record-grid {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .medical-record-grid > div {
+        background: rgba(255, 255, 255, .72);
+        border: 1px solid #DDEBE1;
+        border-radius: 8px;
+        display: grid;
+        gap: 2px;
+        padding: 8px 10px;
+    }
+
+    .medical-record-grid span {
+        color: #698171;
+        font-size: .68rem;
+        text-transform: uppercase;
+    }
+
+    .medical-record-grid b {
+        color: #244B30;
+        font-size: .76rem;
+        overflow-wrap: anywhere;
+    }
+
     @@media (max-width: 620px) {
-        .reception-mode-grid { grid-template-columns: 1fr; }
+        .medical-record-grid { grid-template-columns: 1fr; }
     }
 
     /* ===== STAT CARDS ===== */
@@ -206,7 +200,7 @@
     /* ===== MAIN LAYOUT ===== */
     .hotel-main-layout {
         display: grid;
-        grid-template-columns: 1fr 380px;
+        grid-template-columns: minmax(0, 1fr);
         gap: 24px;
         align-items: start;
     }
@@ -619,6 +613,20 @@
         color: #FFFFFF;
     }
 
+    .checkout-pending-label {
+        align-items: center;
+        background: #FFF8E8;
+        border: 1px solid #F5D993;
+        border-radius: 8px;
+        color: #8A6414;
+        display: inline-flex;
+        font-size: 0.72rem;
+        font-weight: 700;
+        gap: 5px;
+        padding: 6px 10px;
+        white-space: nowrap;
+    }
+
     .btn-reception-sm {
         background: #FFF1E6;
         border: 1px solid #FFD0AF;
@@ -787,83 +795,6 @@
     .tbl-action-btn:hover { background: #FAF9F7; }
     .tbl-action-btn.danger:hover { background: #FDE8E8; border-color: #FBBCBC; color: #DC3545; }
     .tbl-action-btn.edit:hover { background: #FFF1E6; border-color: #FFD8C2; color: #FF7815; }
-
-    /* ===== RIGHT SIDEBAR (Dark) ===== */
-    .hotel-sidebar-card {
-        background: #312723;
-        border-radius: 20px;
-        padding: 24px 20px;
-        color: #FFFFFF;
-        box-shadow: 0 10px 30px rgba(49, 39, 35, 0.2);
-    }
-
-    .sidebar-section-title {
-        font-size: 0.78rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.6px;
-        color: rgba(255,255,255,0.5);
-        margin: 0 0 14px 0;
-    }
-
-    .cage-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
-        margin-bottom: 20px;
-    }
-
-    .cage-cell {
-        background: #3C312D;
-        border: 1px solid rgba(255,255,255,0.06);
-        border-radius: 12px;
-        padding: 10px 8px;
-        text-align: center;
-        transition: all 0.2s;
-        cursor: default;
-    }
-
-    .cage-cell.empty {
-        border-color: rgba(23, 138, 69, 0.3);
-        background: rgba(23, 138, 69, 0.08);
-    }
-
-    .cage-cell.occupied {
-        border-color: rgba(220, 53, 69, 0.3);
-        background: rgba(220, 53, 69, 0.08);
-    }
-
-    .cage-cell-id {
-        font-size: 0.72rem;
-        font-weight: 800;
-        color: #FFFFFF;
-        margin: 0;
-    }
-
-    .cage-cell-status {
-        font-size: 0.55rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.4px;
-        margin: 3px 0 0 0;
-    }
-
-    .cage-cell.empty .cage-cell-status { color: #4ADE80; }
-    .cage-cell.occupied .cage-cell-status { color: #F87171; }
-    .cage-cell-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        margin: 4px auto 0;
-    }
-    .cage-cell.empty .cage-cell-dot { background: #4ADE80; }
-    .cage-cell.occupied .cage-cell-dot { background: #F87171; }
-
-    .sidebar-divider {
-        height: 1px;
-        background: rgba(255,255,255,0.06);
-        margin: 20px 0;
-    }
 
     /* ===== MODALS ===== */
     .hotel-modal-dialog {
@@ -1418,7 +1349,7 @@
                 <div style="background:#FFF8F1; border:1px solid #FFD8C2; border-radius:14px; padding:18px;">
                     <p style="font-size:.9rem; font-weight:700; color:#2D2521; margin:0 0 6px;">Luồng tiếp nhận lưu trú</p>
                     <p style="font-size:.78rem; color:#7D706A; margin:0 0 14px;">
-                        Chọn một trong hai luồng: dùng sổ y tế có sẵn hoặc kiểm tra ban đầu khi chưa có sổ. Dù ở luồng nào, nhân viên vẫn phải xác nhận tình trạng thực tế trước khi phân chuồng.
+                        Tìm khách bằng số điện thoại, chọn sổ y tế chưa dùng cho Hotel, xem lại thông tin khám và quyết định đủ điều kiện trước khi phân chuồng.
                     </p>
                     <button class="btn-checkin-primary" data-bs-toggle="modal" data-bs-target="#checkInModal" onclick="clearOnlineReceptionContext()">
                         <i class="fa-solid fa-clipboard-list"></i>
@@ -1454,7 +1385,8 @@
                 @foreach (var b in onlineBookings)
                 {
                     bool hasMedicalRecord = petIdsWithMedicalRecords.Contains(b.PetId);
-                    bool canReceiveBooking = b.CheckInDate.Date <= DateTime.Today;
+                    bool isReceptionDateReached = b.CheckInDate.Date <= DateTime.Today;
+                    bool canReceiveBooking = isReceptionDateReached;
                     string expectedCheckOutValue = b.CheckOutDate.HasValue
                         ? b.CheckOutDate.Value.ToString("yyyy-MM-ddTHH:mm")
                         : string.Empty;
@@ -1489,25 +1421,18 @@
                                     data-bs-toggle="modal"
                                     data-bs-target="#checkInModal"
                                     data-booking-id="@b.HotelBookingId"
-                                    data-customer-id="@b.CustomerId"
                                     data-customer-phone="@(b.Customer?.Phone ?? "")"
                                     data-customer-name="@(b.Customer?.FullName ?? "")"
                                     data-pet-id="@b.PetId"
-                                    data-pet-name="@(b.Pet?.Name ?? "")"
-                                    data-pet-species="@(b.Pet?.Species ?? "Chó")"
-                                    data-pet-breed="@(b.Pet?.Breed ?? "")"
-                                    data-pet-age="@(b.Pet?.Age ?? "")"
-                                    data-pet-weight="@((b.Pet?.Weight ?? 0m).ToString("0.##", CultureInfo.InvariantCulture))"
-                                    data-pet-pathology="@(b.Pet?.Pathology ?? "")"
                                     data-room-type-id="@(b.Cage != null ? b.Cage.RoomTypeId.ToString() : "")"
                                     data-cage-id="@b.CageId"
                                     data-check-out="@expectedCheckOutValue"
-                                    data-has-medical-record="@hasMedicalRecord.ToString().ToLowerInvariant()"
+                                    data-food-option-id="@(b.FoodPlan?.ProductSku ?? "")"
                                     onclick="startOnlineReception(this)"
                                     disabled="@(!canReceiveBooking ? "disabled" : null)"
-                                    title="@(canReceiveBooking ? "Tiếp nhận lịch đặt online này" : "Chưa đến ngày nhận")">
+                                    title="@(canReceiveBooking ? (hasMedicalRecord ? "Tiếp nhận bằng sổ y tế hiện có" : "Tiếp nhận và tạo sổ y tế trước khi vào chuồng") : "Chưa đến ngày nhận")">
                                 <i class="fa-solid fa-clipboard-check" style="margin-right:4px;"></i>
-                                @(canReceiveBooking ? "Tiếp nhận" : "Chưa đến ngày")
+                                @(canReceiveBooking ? (hasMedicalRecord ? "Tiếp nhận" : "Tiếp nhận · cần tạo sổ") : "Chưa đến ngày")
                             </button>
                             <button type="button"
                                     class="btn-cancel-reception-sm"
@@ -1547,6 +1472,17 @@
                 @foreach (var b in activeBookings)
                 {
                     bool hasPathology = !string.IsNullOrWhiteSpace(b.Pet?.Pathology) && b.Pet.Pathology.ToLower() != "khỏe mạnh";
+                    var checkoutStatement = b.CheckoutStatement;
+                    var checkoutOrder = checkoutStatement?.Order;
+                    bool checkoutOrderCancelled = checkoutOrder?.OrderStatus == 0
+                        || checkoutOrder?.Status == "Đã hủy"
+                        || checkoutOrder?.Status == "Cancelled"
+                        || checkoutOrder?.Status == "Canceled";
+                    bool checkoutAlreadyPrepared = checkoutStatement != null
+                        && (checkoutStatement.Status == "ReadyForPayment" || checkoutStatement.OrderId != null);
+                    bool canStartCheckout = !checkoutAlreadyPrepared;
+                    bool canFinalizeCheckout = checkoutStatement?.OrderId != null
+                        && (checkoutOrder?.Status == "Chờ xử lý" || checkoutOrder?.Status == "Đã thanh toán");
                     <div class="booking-item">
                         <div class="booking-cage-badge">
                             @b.CageId
@@ -1597,10 +1533,22 @@
                                 <i class="fa-solid fa-book-open" style="margin-right:4px;"></i>
                                 Cập nhật Daily
                             </a>
-                            <button class="btn-checkout-sm" onclick="confirmCheckout(@b.HotelBookingId, '@b.Pet?.Name', '@b.CageId')">
-                                <i class="fa-solid fa-right-from-bracket" style="margin-right:4px;"></i>
-                                Trả chuồng
-                            </button>
+                            @if (canStartCheckout || canFinalizeCheckout)
+                            {
+                                <button class="btn-checkout-sm"
+                                        data-checkout-booking-id="@b.HotelBookingId"
+                                        onclick="confirmCheckout(@b.HotelBookingId, '@b.Pet?.Name', '@b.CageId')">
+                                    <i class="fa-solid @(canFinalizeCheckout ? "fa-check" : "fa-right-from-bracket")" style="margin-right:4px;"></i>
+                                    @(canFinalizeCheckout ? "Hoàn tất trả pet" : "Trả chuồng")
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="checkout-pending-label" data-checkout-pending-id="@b.HotelBookingId">
+                                    <i class="fa-solid @(checkoutOrderCancelled ? "fa-circle-exclamation" : "fa-clock")"></i>
+                                    @(checkoutOrderCancelled ? "Hóa đơn đã hủy" : "Chờ thu ngân xử lý")
+                                </span>
+                            }
                         </div>
                     </div>
                 }
@@ -1835,43 +1783,6 @@
         }
     </div>
 
-    <!-- RIGHT SIDEBAR -->
-    <div>
-        <div class="hotel-sidebar-card">
-            <p class="sidebar-section-title"><i class="fa-solid fa-compass" style="color:#FF7815;"></i> Vận hành sơ đồ</p>
-            <div style="display:grid; gap:10px;">
-                <div style="background:rgba(255,255,255,.05); border-radius:12px; padding:12px;">
-                    <p style="font-size:.75rem; font-weight:700; margin:0 0 4px;">Xem thông tin phòng</p>
-                    <p style="font-size:.68rem; color:rgba(255,255,255,.48); margin:0;">Chọn một ô trên sơ đồ để xem pet, chủ nuôi, thiết bị và lịch chăm sóc.</p>
-                </div>
-                <div style="background:rgba(255,255,255,.05); border-radius:12px; padding:12px;">
-                    <p style="font-size:.75rem; font-weight:700; margin:0 0 4px;">Chuyển chuồng</p>
-                    <p style="font-size:.68rem; color:rgba(255,255,255,.48); margin:0;">Kéo phòng có thú cưng sang phòng trống, hoặc chọn phòng đích trong cửa sổ chi tiết.</p>
-                </div>
-                <div style="display:flex; justify-content:space-between; gap:10px;">
-                    <span style="font-size:.7rem; color:#FFD28A;"><i class="fa-solid fa-screwdriver-wrench"></i> @maintenanceCageCount cần vận hành</span>
-                    <span style="font-size:.7rem; color:#9DE1B8;"><i class="fa-solid fa-door-open"></i> @emptyCageCount trống</span>
-                </div>
-            </div>
-
-            <div class="sidebar-divider"></div>
-
-            <p class="sidebar-section-title"><i class="fa-solid fa-tags" style="color:#FF7815;"></i> Bảng giá chuồng</p>
-            @foreach (var rt in activeRoomTypes.Take(5))
-            {
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.05);">
-                    <div>
-                        <p style="font-size:0.8rem; font-weight:700; color:#FFFFFF; margin:0;">@rt.Type</p>
-                        <p style="font-size:0.65rem; color:rgba(255,255,255,0.4); margin:2px 0 0 0;">@rt.Size · @rt.Capacity thú</p>
-                    </div>
-                    <div style="text-align:right;">
-                        <p style="font-size:0.82rem; font-weight:800; color:#FF7815; margin:0;">@rt.DailyPrice.ToString("N0")đ</p>
-                        <p style="font-size:0.62rem; color:rgba(255,255,255,0.35); margin:0;">/ngày</p>
-                    </div>
-                </div>
-            }
-        </div>
-    </div>
 </div>
 }
 
@@ -2001,134 +1912,123 @@
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="hotelBookingId" id="ci-hotelBookingId" value="">
 
-                    <p class="form-section-label"><i class="fa-solid fa-route"></i> Hình thức tiếp nhận</p>
-                    <div class="reception-mode-grid" role="radiogroup" aria-label="Hình thức tiếp nhận">
-                        <label class="reception-mode-option" for="ci-mode-medical">
-                            <input type="radio" name="receptionMode" id="ci-mode-medical" value="MedicalRecord" required onchange="setReceptionMode()">
-                            <strong>Dùng sổ y tế có sẵn</strong>
-                            <small>Chọn thú cưng có sổ y tế, hệ thống hiển thị thông tin gần nhất để đối chiếu.</small>
-                        </label>
-                        <label class="reception-mode-option" for="ci-mode-new">
-                            <input type="radio" name="receptionMode" id="ci-mode-new" value="NoMedicalRecord" required onchange="setReceptionMode()">
-                            <strong>Chưa có sổ y tế</strong>
-                            <small>Kiểm tra ban đầu và tạo bản ghi y tế đầu tiên từ lần tiếp nhận này.</small>
-                        </label>
-                    </div>
-                    <div id="receptionModeHint" class="health-warning-strip">
-                        <i class="fa-solid fa-circle-info"></i>
-                        Chọn hình thức trước khi tra cứu thú cưng.
+                    <p class="form-section-label"><i class="fa-solid fa-notes-medical"></i> Bước 1 · Chọn hình thức tiếp nhận</p>
+                    <div class="hform-group">
+                        <label class="hform-label" for="ci-receptionSource">Nguồn thông tin sức khỏe <span class="req">*</span></label>
+                        <select name="receptionSource" id="ci-receptionSource" class="hform-control" required onchange="updateReceptionSource()">
+                            <option value="">— Chọn hình thức tiếp nhận —</option>
+                            <option value="ExistingMedicalRecord">Dùng sổ y tế có sẵn</option>
+                        </select>
+                        <small style="display:block; color:#9E918B; margin-top:6px; font-size:.74rem;">
+                            Form không nhập lại thông tin khám; nhân viên chỉ chọn và xem sổ y tế đã có.
+                        </small>
                     </div>
 
-                    <!-- THÔNG TIN CHỦ -->
-                    <p class="form-section-label"><i class="fa-solid fa-user"></i> Thông tin chủ thú cưng</p>
+                    <fieldset id="existingMedicalRecordLookup" hidden disabled style="border:0; padding:0; margin:0; min-width:0;">
+                    <p class="form-section-label"><i class="fa-solid fa-magnifying-glass"></i> Bước 2 · Tìm và chọn sổ y tế</p>
+                    <div id="receptionModeHint" class="health-warning-strip">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Nhập số điện thoại chủ nuôi để tìm các sổ y tế chưa dùng cho Hotel.
+                    </div>
 
                     <div class="grid-2">
                         <div class="hform-group">
-                            <label class="hform-label">Số điện thoại <span class="req">*</span></label>
+                            <label class="hform-label">Tìm theo số điện thoại <span class="req">*</span></label>
                             <input type="tel" name="customerPhone" id="ci-phone" class="hform-control"
                                 placeholder="0912345678" required maxlength="15" pattern="0(?:[\s.-]?\d){9,10}"
                                 title="Số điện thoại phải bắt đầu bằng 0 và gồm 10-11 chữ số."
-                                oninput="lookupCustomer(this.value)">
+                                oninput="searchAvailableMedicalRecords(this.value)">
                         </div>
                         <div class="hform-group">
-                            <label class="hform-label">Họ tên chủ thú cưng <span class="req">*</span></label>
-                            <input type="text" name="customerName" id="ci-customerName" class="hform-control"
-                                placeholder="Nhập họ tên..." required maxlength="100">
+                            <label class="hform-label">Chủ thú cưng</label>
+                            <input type="text" id="ci-customerName" class="hform-control"
+                                placeholder="Tự động hiển thị sau khi tìm" readonly>
                         </div>
                     </div>
 
-                    <!-- THÔNG TIN THÚ CƯNG -->
-                    <p class="form-section-label"><i class="fa-solid fa-paw"></i> Thông tin thú cưng</p>
-
-                    <!-- Dropdown chọn pet có sẵn hoặc tạo mới -->
-                    <div class="hform-group" id="existingPetGroup" style="display:none;">
-                        <label class="hform-label" id="existingPetLabel">Chọn thú cưng đã có hồ sơ</label>
-                        <select id="ci-existingPet" class="hform-control" onchange="fillExistingPet(this)">
-                            <option value="">— Tạo mới —</option>
+                    <div class="hform-group" id="medicalRecordGroup" hidden>
+                        <label class="hform-label" for="ci-medicalRecord">Chọn sổ y tế khả dụng <span class="req">*</span></label>
+                        <select name="medicalRecordId" id="ci-medicalRecord" class="hform-control" required onchange="selectMedicalRecord(this.value)">
+                            <option value="">— Chọn sổ y tế —</option>
                         </select>
-                        <small id="existingPetHelp" style="display:block; color:#9E918B; margin-top:6px; font-size:.74rem;"></small>
+                        <small id="medicalRecordHelp" style="display:block; color:#9E918B; margin-top:6px; font-size:.74rem;">
+                            Chỉ hiển thị sổ có cân nặng hợp lệ, chưa gắn với lượt Hotel và pet không có lịch lưu trú khác.
+                        </small>
+                        <a id="ci-createMedicalRecord"
+                           class="btn-reception-sm"
+                           href="#"
+                           hidden
+                           style="display:inline-block; margin-top:10px; text-decoration:none;">
+                            <i class="fa-solid fa-notes-medical" style="margin-right:5px;"></i>
+                            Tạo/khám sổ y tế cho pet này
+                        </a>
                     </div>
-                    <input type="hidden" name="existingPetId" id="ci-existingPetHidden" value="">
 
                     <div id="medicalRecordSummary" class="medical-record-summary" aria-live="polite"></div>
-
-                    <div id="petNewForm">
-                        <div class="grid-3">
-                            <div class="hform-group">
-                                <label class="hform-label">Tên thú cưng <span class="req">*</span></label>
-                                <input type="text" name="petName" id="ci-petName" class="hform-control" placeholder="VD: Mochi" required maxlength="50">
-                            </div>
-                            <div class="hform-group">
-                                <label class="hform-label">Loài <span class="req">*</span></label>
-                                <select name="species" id="ci-species" class="hform-control">
-                                    <option value="Chó">🐕 Chó</option>
-                                    <option value="Mèo">🐈 Mèo</option>
-                                    <option value="Thỏ">🐇 Thỏ</option>
-                                    <option value="Hamster">🐹 Hamster</option>
-                                    <option value="Khác">Khác</option>
-                                </select>
-                            </div>
-                            <div class="hform-group">
-                                <label class="hform-label">Giống</label>
-                                <input type="text" name="breed" id="ci-breed" class="hform-control" placeholder="VD: Poodle" maxlength="50">
-                            </div>
-                        </div>
-                        <div class="grid-2">
-                            <div class="hform-group">
-                                <label class="hform-label">Tuổi</label>
-                                <input type="text" name="age" id="ci-age" class="hform-control" placeholder="VD: 2 tuổi" maxlength="30">
-                            </div>
-                            <div class="hform-group">
-                                <label class="hform-label">Cân nặng (kg) <span class="req">*</span></label>
-                                <input type="number" name="weight" id="ci-weight" class="hform-control" placeholder="4.5"
-                                    step="0.01" min="0.1" max="200" required>
-                            </div>
-                        </div>
-                    </div>
+                    </fieldset>
 
                     <!-- TÌNH TRẠNG SỨC KHỎE -->
-                    <p class="form-section-label"><i class="fa-solid fa-heart-pulse"></i> Kiểm tra sức khỏe khi tiếp nhận</p>
+                    <section id="checkInDecisionSection" hidden>
+                    <p class="form-section-label"><i class="fa-solid fa-user-check"></i> Bước 3 · Quyết định điều kiện lưu trú</p>
 
                     <div class="health-warning-strip">
-                        <i class="fa-solid fa-triangle-exclamation"></i>
-                        Phải hoàn tất và xác nhận kiểm tra sức khỏe trước khi hệ thống nhận thú cưng vào chuồng.
+                        <i class="fa-solid fa-stethoscope"></i>
+                        Dựa trên sổ y tế vừa chọn, nhân viên dịch vụ quyết định có tiếp nhận lưu trú hay không.
                     </div>
 
-                    <div class="grid-2">
-                        <div class="hform-group">
-                            <label class="hform-label">Kết luận kiểm tra <span class="req">*</span></label>
-                            <select name="healthStatus" id="ci-healthStatus" class="hform-control" required onchange="updateHealthStatus()">
-                                <option value="">— Chọn kết luận —</option>
-                                <option value="Fit">Đủ điều kiện lưu trú</option>
-                                <option value="Monitor">Đủ điều kiện, cần theo dõi</option>
-                                <option value="Rejected">Không đủ điều kiện lưu trú</option>
-                            </select>
-                        </div>
-                        <div class="hform-group">
-                            <label class="hform-label">Nhiệt độ cơ thể (°C) <span class="req">*</span></label>
-                            <input type="number" name="bodyTemperature" id="ci-temperature" class="hform-control"
-                                placeholder="VD: 38.5" step="0.1" min="30" max="45" required>
-                        </div>
-                    </div>
                     <div class="hform-group">
-                        <label class="hform-label">Bệnh lý / Tình trạng đặc biệt</label>
-                        <input type="text" name="pathology" id="ci-pathology" class="hform-control"
-                            maxlength="1000"
-                            placeholder="VD: Bị dị ứng thức ăn hải sản, đang dùng thuốc tim... (để trống nếu khỏe mạnh)">
+                        <label class="hform-label">Kết luận của nhân viên <span class="req">*</span></label>
+                        <select name="healthStatus" id="ci-healthStatus" class="hform-control" required onchange="updateHealthStatus()">
+                            <option value="">— Chọn kết luận —</option>
+                            <option value="Fit">Đủ điều kiện lưu trú</option>
+                            <option value="Monitor">Đủ điều kiện, cần theo dõi</option>
+                            <option value="Rejected">Không đủ điều kiện lưu trú</option>
+                        </select>
                     </div>
+
                     <div class="hform-group">
-                        <label class="hform-label">Kết quả quan sát / Ghi chú kiểm tra <span class="req">*</span></label>
+                        <label class="hform-label">Ghi chú tiếp nhận / lý do từ chối</label>
                         <textarea name="healthNote" id="ci-healthNote" class="hform-control" rows="2"
-                            required minlength="5" maxlength="1000"
-                            placeholder="VD: Tỉnh táo, ăn uống bình thường, không có vết thương ngoài da..."></textarea>
+                            maxlength="1000"
+                            placeholder="Ghi chú thêm cho nhân viên chăm sóc; bắt buộc nếu cần theo dõi hoặc từ chối."></textarea>
                     </div>
                     <div id="healthStatusMessage" class="health-warning-strip" style="display:none;"></div>
                     <div class="hform-group" style="display:flex; gap:9px; align-items:flex-start;">
                         <input type="checkbox" name="healthCheckConfirmed" id="ci-healthConfirmed" value="true" required style="margin-top:3px;">
                         <label for="ci-healthConfirmed" class="hform-label" style="text-transform:none; line-height:1.45; cursor:pointer;">
-                            Tôi xác nhận đã trực tiếp kiểm tra và ghi nhận đúng tình trạng sức khỏe của thú cưng.
+                            Tôi đã xem sổ y tế và chịu trách nhiệm về quyết định tiếp nhận này.
                             <span class="req">*</span>
                         </label>
+                    </div>
+                    </section>
+
+                    <section id="checkInCompletionSection" hidden>
+                    <p class="form-section-label"><i class="fa-solid fa-list-check"></i> Bước 4 · Ghi chú, thức ăn và phân chuồng</p>
+
+                    <!-- CHỌN THỨC ĂN -->
+                    <p class="form-section-label"><i class="fa-solid fa-bowl-food"></i> Kế hoạch ăn</p>
+                    <div class="hform-group">
+                        <label class="hform-label" for="ci-foodOption">Thức ăn sử dụng <span class="req">*</span></label>
+                        <select name="foodProductSku" id="ci-foodOption" class="hform-control" onchange="calcStay()" required>
+                            <option value="">— Chọn gói thức ăn từ kho —</option>
+                            @if (!hotelFoodOptions.Any())
+                            {
+                                <option value="" disabled>Kho chưa có sản phẩm trong danh mục Hotel Food</option>
+                            }
+                            @foreach (var food in hotelFoodOptions)
+                            {
+                                <option value="@food.Sku"
+                                        data-target-species="@(food.AnimalType ?? "Tất cả")"
+                                        data-price="@food.Price.ToString("0.##", CultureInfo.InvariantCulture)"
+                                        data-stock="@food.Stock"
+                                        data-unit="@food.Unit">
+                                    @food.Name · SKU @food.Sku · từ @food.Price.ToString("N0")đ/ngày · tồn @food.Stock suất chuẩn
+                                </option>
+                            }
+                        </select>
+                        <small id="foodOptionHelp" style="display:block; color:#9E918B; margin-top:6px; font-size:.74rem;">
+                            Bắt buộc chọn sản phẩm thuộc danh mục “Thức ăn cho Pet lưu trú” và còn tồn kho.
+                        </small>
                     </div>
 
                     <!-- CHỌN CHUỒNG -->
@@ -2141,7 +2041,9 @@
                                 <option value="">— Chọn loại chuồng —</option>
                                 @foreach (var rt in activeRoomTypes)
                                 {
-                                    <option value="@rt.RoomTypeId" data-price="@rt.DailyPrice">
+                                    <option value="@rt.RoomTypeId"
+                                            data-price="@rt.DailyPrice"
+                                            data-has-premium-food="@rt.HasPremiumFood.ToString().ToLowerInvariant()">
                                         @rt.Type — @rt.DailyPrice.ToString("N0")đ/ngày
                                     </option>
                                 }
@@ -2175,11 +2077,13 @@
                         <p style="font-size:0.72rem; color:#9E918B; margin:4px 0 0 0;" id="pricePreviewDetail"></p>
                     </div>
 
-                    <div class="modal-btn-row">
+                    </section>
+
+                    <div class="modal-btn-row" id="checkInActionRow" hidden>
                         <button type="button" class="btn-modal-cancel" data-bs-dismiss="modal">Hủy</button>
                         <button type="submit" class="btn-modal-submit" id="checkInSubmitBtn">
                             <i class="fa-solid fa-clipboard-check" style="margin-right:6px;"></i>
-                            Xác nhận tiếp nhận
+                            <span id="checkInSubmitText">Xác nhận tiếp nhận</span>
                         </button>
                     </div>
                 </form>
@@ -2204,7 +2108,7 @@
                     <div class="grid-2">
                         <div class="hform-group">
                             <label class="hform-label">Tên loại chuồng <span class="req">*</span></label>
-                            <input type="text" name="type" class="hform-control" placeholder="VD: Phòng VIP, Chuồng tiêu chuẩn..." required>
+                            <input type="text" name="type" class="hform-control" maxlength="100" placeholder="VD: Phòng VIP, Chuồng tiêu chuẩn..." required>
                         </div>
                         <div class="hform-group">
                             <label class="hform-label">Kích cỡ <span class="req">*</span></label>
@@ -2223,11 +2127,11 @@
                     <div class="grid-2">
                         <div class="hform-group">
                             <label class="hform-label">Giá theo ngày (VNĐ) <span class="req">*</span></label>
-                            <input type="number" name="dailyPrice" class="hform-control" placeholder="150000" min="150000" step="1000" required>
+                            <input type="number" name="dailyPrice" class="hform-control" placeholder="150000" min="150000" max="100000000" step="1000" required>
                         </div>
                         <div class="hform-group">
                             <label class="hform-label">Giá theo giờ (VNĐ)</label>
-                            <input type="number" name="hourlyPrice" class="hform-control" placeholder="40000" min="40000" step="1000" value="40000" required>
+                            <input type="number" name="hourlyPrice" class="hform-control" placeholder="40000" min="40000" max="100000000" step="1000" value="40000" required>
                         </div>
                     </div>
 
@@ -2282,7 +2186,7 @@
                     <div class="grid-2">
                         <div class="hform-group">
                             <label class="hform-label">Tên loại chuồng <span class="req">*</span></label>
-                            <input type="text" name="type" id="edit-rt-type" class="hform-control" required>
+                            <input type="text" name="type" id="edit-rt-type" class="hform-control" maxlength="100" required>
                         </div>
                         <div class="hform-group">
                             <label class="hform-label">Kích cỡ <span class="req">*</span></label>
@@ -2296,16 +2200,16 @@
                     </div>
                     <div class="hform-group">
                         <label class="hform-label">Sức chứa <span class="req">*</span></label>
-                        <input type="number" name="capacity" id="edit-rt-capacity" class="hform-control" min="1" required>
+                        <input type="number" name="capacity" id="edit-rt-capacity" class="hform-control" min="1" max="10" required>
                     </div>
                     <div class="grid-2">
                         <div class="hform-group">
                             <label class="hform-label">Giá ngày (VNĐ) <span class="req">*</span></label>
-                            <input type="number" name="dailyPrice" id="edit-rt-daily" class="hform-control" min="150000" step="1000" required>
+                            <input type="number" name="dailyPrice" id="edit-rt-daily" class="hform-control" min="150000" max="100000000" step="1000" required>
                         </div>
                         <div class="hform-group">
                             <label class="hform-label">Giá giờ (VNĐ)</label>
-                            <input type="number" name="hourlyPrice" id="edit-rt-hourly" class="hform-control" min="40000" step="1000" required>
+                            <input type="number" name="hourlyPrice" id="edit-rt-hourly" class="hform-control" min="40000" max="100000000" step="1000" required>
                         </div>
                     </div>
                     <div class="hform-group">
@@ -2356,7 +2260,7 @@
                     <div class="grid-2">
                         <div class="hform-group">
                             <label class="hform-label">Mã chuồng <span class="req">*</span></label>
-                            <input type="text" name="cageId" class="hform-control" placeholder="VD: A01, B02..."
+                        <input type="text" name="cageId" class="hform-control" maxlength="20" placeholder="VD: A01, B02..."
                                 style="text-transform:uppercase;" required>
                         </div>
                         <div class="hform-group">
@@ -2372,11 +2276,11 @@
                     </div>
                     <div class="hform-group">
                         <label class="hform-label">Lịch cho ăn</label>
-                        <input type="text" name="feedSchedule" class="hform-control" placeholder="VD: 08:00, 12:00, 18:00" value="08:00, 12:00, 18:00">
+                        <input type="text" name="feedSchedule" class="hform-control" maxlength="100" placeholder="VD: 08:00, 12:00, 18:00" value="08:00, 12:00, 18:00">
                     </div>
                     <div class="hform-group">
                         <label class="hform-label">Khẩu phần (gram)</label>
-                        <input type="number" name="portion" class="hform-control" value="60" min="10">
+                        <input type="number" name="portion" class="hform-control" value="60" min="10" max="10000" step="10" required>
                     </div>
                     <div class="modal-btn-row">
                         <button type="button" class="btn-modal-cancel" data-bs-dismiss="modal">Hủy</button>
@@ -2418,11 +2322,11 @@
                     </div>
                     <div class="hform-group">
                         <label class="hform-label">Lịch cho ăn</label>
-                        <input type="text" name="feedSchedule" id="edit-cage-feed" class="hform-control">
+                        <input type="text" name="feedSchedule" id="edit-cage-feed" class="hform-control" maxlength="100">
                     </div>
                     <div class="hform-group">
                         <label class="hform-label">Khẩu phần (gram)</label>
-                        <input type="number" name="portion" id="edit-cage-portion" class="hform-control" min="10">
+                        <input type="number" name="portion" id="edit-cage-portion" class="hform-control" min="10" max="10000" step="10" required>
                     </div>
                     <div class="modal-btn-row">
                         <button type="button" class="btn-modal-cancel" data-bs-dismiss="modal">Hủy</button>
@@ -2462,7 +2366,7 @@
                     <div style="display:flex;justify-content:space-between;font-size:1rem;margin-top:8px;"><strong>Tổng chốt</strong><strong id="checkoutTotal" style="color:#DC3545;">0đ</strong></div>
                     <div id="checkoutOtherFields" style="margin-top:12px;display:grid;gap:8px;">
                         <input class="form-control" id="checkoutOtherDescription" maxlength="250" placeholder="Chi phí khác (nếu có)" />
-                        <input class="form-control" id="checkoutOtherAmount" type="number" min="0" step="1000" value="0" placeholder="Số tiền" />
+                        <input class="form-control" id="checkoutOtherAmount" type="number" min="0" max="100000000" step="1000" value="0" placeholder="Số tiền" />
                     </div>
                     <p id="checkoutPaymentStatus" style="font-size:0.78rem;color:#7A6E68;margin:10px 0 0;"></p>
                 </div>
@@ -2481,6 +2385,7 @@
 <script>
 const MIN_ROOM_TYPE_DAILY_PRICE = 150000;
 const MIN_ROOM_TYPE_HOURLY_PRICE = 40000;
+const MAX_ROOM_TYPE_PRICE = 100000000;
 
 // ===== AUTO-DISMISS TOAST =====
 setTimeout(() => {
@@ -2751,27 +2656,14 @@ function switchTab(tabName, btn) {
     btn.classList.add('active');
 }
 
-// ===== RECEPTION: MEDICAL RECORD OR INITIAL HEALTH CHECK =====
+// ===== RECEPTION: EXISTING MEDICAL RECORD =====
 let lookupTimer;
+let medicalRecordSearchSequence = 0;
+let medicalRecordSummarySequence = 0;
 let pendingReceptionPetId = '';
-
-function getReceptionMode() {
-    return document.querySelector('input[name="receptionMode"]:checked')?.value || '';
-}
-
-function isMedicalRecordMode() {
-    return getReceptionMode() === 'MedicalRecord';
-}
-
-function isOnlineReception() {
-    return Boolean(document.getElementById('ci-hotelBookingId').value);
-}
-
-function enableNewPetForm() {
-    const form = document.getElementById('petNewForm');
-    form.style.opacity = '1';
-    form.style.pointerEvents = 'auto';
-}
+let pendingFoodOptionId = '';
+let selectedReceptionSpecies = '';
+let selectedReceptionWeight = null;
 
 function hideMedicalRecordSummary() {
     const summary = document.getElementById('medicalRecordSummary');
@@ -2787,15 +2679,29 @@ function setReceptionModeHint(message, type = 'info') {
     hint.append(icon, document.createTextNode(' ' + message));
 }
 
-function resetPetSelection() {
-    const select = document.getElementById('ci-existingPet');
-    select.value = '';
-    document.getElementById('ci-existingPetHidden').value = '';
-    enableNewPetForm();
-    hideMedicalRecordSummary();
+function updateReceptionSource() {
+    const source = document.getElementById('ci-receptionSource').value;
+    const lookup = document.getElementById('existingMedicalRecordLookup');
+    const useExistingRecord = source === 'ExistingMedicalRecord';
+    lookup.hidden = !useExistingRecord;
+    lookup.disabled = !useExistingRecord;
+
+    if (!useExistingRecord) {
+        medicalRecordSearchSequence++;
+        medicalRecordSummarySequence++;
+        document.getElementById('ci-phone').value = '';
+        document.getElementById('ci-customerName').value = '';
+        document.getElementById('medicalRecordGroup').hidden = true;
+        resetMedicalRecordSteps();
+        return;
+    }
+
+    setReceptionModeHint('Nhập số điện thoại chủ nuôi để tìm sổ y tế khả dụng.');
 }
 
 function clearOnlineReceptionContext() {
+    medicalRecordSearchSequence++;
+    medicalRecordSummarySequence++;
     const form = document.getElementById('checkInForm');
     const token = form.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
     form.reset();
@@ -2803,14 +2709,27 @@ function clearOnlineReceptionContext() {
     if (tokenInput) tokenInput.value = token;
 
     pendingReceptionPetId = '';
+    pendingFoodOptionId = '';
+    selectedReceptionSpecies = '';
+    selectedReceptionWeight = null;
     document.getElementById('ci-hotelBookingId').value = '';
-    document.getElementById('ci-existingPetHidden').value = '';
-    document.getElementById('existingPetGroup').style.display = 'none';
+    document.getElementById('ci-phone').readOnly = false;
+    const createMedicalRecordLink = document.getElementById('ci-createMedicalRecord');
+    createMedicalRecordLink.hidden = true;
+    createMedicalRecordLink.removeAttribute('href');
+    const lookup = document.getElementById('existingMedicalRecordLookup');
+    lookup.hidden = true;
+    lookup.disabled = true;
+    document.getElementById('medicalRecordGroup').hidden = true;
+    document.getElementById('ci-medicalRecord').innerHTML = '<option value="">— Chọn sổ y tế —</option>';
+    document.getElementById('checkInDecisionSection').hidden = true;
+    document.getElementById('checkInCompletionSection').hidden = true;
+    document.getElementById('checkInActionRow').hidden = true;
     document.getElementById('ci-cage').innerHTML = '<option value="">— Chọn loại chuồng trước —</option>';
     document.getElementById('pricePreview').style.display = 'none';
-    enableNewPetForm();
     hideMedicalRecordSummary();
     resetHealthCheckFields();
+    filterFoodOptions('');
 
     const nowValue = formatDateTimeLocal(new Date());
     const checkInInput = document.getElementById('ci-checkIn');
@@ -2820,42 +2739,33 @@ function clearOnlineReceptionContext() {
     checkOutInput.value = '';
     checkOutInput.min = nowValue;
 
-    setReceptionModeHint('Chọn hình thức trước khi tra cứu thú cưng.');
+    setReceptionModeHint('Chọn “Dùng sổ y tế có sẵn” để bắt đầu.');
 }
 
 function resetHealthCheckFields() {
     document.getElementById('ci-healthStatus').value = '';
-    document.getElementById('ci-temperature').value = '';
     document.getElementById('ci-healthNote').value = '';
     document.getElementById('ci-healthConfirmed').checked = false;
-    const pathology = document.getElementById('ci-pathology');
-    pathology.setCustomValidity('');
-    pathology.classList.remove('health-input');
     document.getElementById('healthStatusMessage').style.display = 'none';
     document.getElementById('healthStatusMessage').innerHTML = '';
 }
 
 function startOnlineReception(button) {
+    clearOnlineReceptionContext();
     const data = button.dataset;
     pendingReceptionPetId = data.petId || '';
+    pendingFoodOptionId = data.foodOptionId || '';
 
+    document.getElementById('ci-receptionSource').value = 'ExistingMedicalRecord';
+    updateReceptionSource();
     document.getElementById('ci-hotelBookingId').value = data.bookingId || '';
     document.getElementById('ci-phone').value = data.customerPhone || '';
+    document.getElementById('ci-phone').readOnly = true;
     document.getElementById('ci-customerName').value = data.customerName || '';
-    document.getElementById('ci-petName').value = data.petName || '';
-    document.getElementById('ci-species').value = data.petSpecies || 'Chó';
-    document.getElementById('ci-breed').value = data.petBreed || '';
-    document.getElementById('ci-age').value = data.petAge || '';
-    document.getElementById('ci-weight').value = data.petWeight || '';
-    document.getElementById('ci-pathology').value = data.petPathology || '';
     resetHealthCheckFields();
-
-    const modeInput = data.hasMedicalRecord === 'true'
-        ? document.getElementById('ci-mode-medical')
-        : document.getElementById('ci-mode-new');
-    modeInput.checked = true;
-    setReceptionMode();
-    document.getElementById('ci-existingPetHidden').value = data.petId || '';
+    document.getElementById('checkInDecisionSection').hidden = true;
+    document.getElementById('checkInCompletionSection').hidden = true;
+    hideMedicalRecordSummary();
 
     const nowValue = formatDateTimeLocal(new Date());
     document.getElementById('ci-checkIn').value = nowValue;
@@ -2866,7 +2776,8 @@ function startOnlineReception(button) {
         loadAvailableCages(data.roomTypeId, data.cageId);
     }
 
-    setReceptionModeHint('Đang tiếp nhận từ lịch đặt online. Vui lòng kiểm tra sức khỏe thực tế rồi xác nhận vào chuồng.');
+    setReceptionModeHint('Đang tìm sổ y tế phù hợp cho lịch đặt online này.');
+    searchAvailableMedicalRecords('', true);
 }
 
 function cancelOnlineReception(button) {
@@ -2898,118 +2809,148 @@ function cancelOnlineReception(button) {
     .catch(() => alert('Không thể hủy lịch đặt online. Vui lòng thử lại.'));
 }
 
-function setReceptionMode() {
-    const mode = getReceptionMode();
-    const isMedicalMode = mode === 'MedicalRecord';
-    const select = document.getElementById('ci-existingPet');
-    const label = document.getElementById('existingPetLabel');
-    const help = document.getElementById('existingPetHelp');
-
-    select.required = isMedicalMode && !isOnlineReception();
-    label.textContent = isMedicalMode
-        ? 'Chọn thú cưng có sổ y tế'
-        : 'Chọn thú cưng chưa có sổ y tế hoặc tạo hồ sơ mới';
-    help.textContent = isMedicalMode
-        ? 'Chỉ hiển thị thú cưng đã có sổ y tế trên hệ thống.'
-        : 'Lần tiếp nhận này sẽ tạo bản ghi y tế đầu tiên cho thú cưng được chọn hoặc thú cưng mới.';
-    setReceptionModeHint(isMedicalMode
-        ? 'Thông tin sổ y tế chỉ dùng để đối chiếu. Kiểm tra thực tế vẫn là bắt buộc.'
-        : 'Hệ thống sẽ lưu kết quả kiểm tra này thành bản ghi y tế đầu tiên.');
-
-    resetPetSelection();
-    const phone = document.getElementById('ci-phone').value;
-    if (phone.replace(/\D/g, '').length >= 10) {
-        lookupCustomer(phone);
-    }
+function resetMedicalRecordSteps() {
+    document.getElementById('ci-medicalRecord').value = '';
+    document.getElementById('checkInDecisionSection').hidden = true;
+    document.getElementById('checkInCompletionSection').hidden = true;
+    document.getElementById('checkInActionRow').hidden = true;
+    document.getElementById('ci-createMedicalRecord').hidden = true;
+    selectedReceptionSpecies = '';
+    selectedReceptionWeight = null;
+    resetHealthCheckFields();
+    hideMedicalRecordSummary();
+    filterFoodOptions('');
 }
 
-function populateExistingPets(pets) {
-    if (!getReceptionMode()) {
-        document.getElementById('existingPetGroup').style.display = 'none';
+function searchAvailableMedicalRecords(phone, immediate = false) {
+    if (document.getElementById('ci-receptionSource').value !== 'ExistingMedicalRecord') return;
+
+    clearTimeout(lookupTimer);
+    const searchSequence = ++medicalRecordSearchSequence;
+    const normalizedPhone = (phone || '').replace(/\D/g, '');
+    const bookingId = document.getElementById('ci-hotelBookingId').value;
+    const group = document.getElementById('medicalRecordGroup');
+    const select = document.getElementById('ci-medicalRecord');
+    document.getElementById('ci-customerName').value = '';
+    resetMedicalRecordSteps();
+
+    if (!bookingId && normalizedPhone.length < 10) {
+        group.hidden = true;
         return;
     }
 
-    const isMedicalMode = isMedicalRecordMode();
-    const select = document.getElementById('ci-existingPet');
-    const group = document.getElementById('existingPetGroup');
-    const help = document.getElementById('existingPetHelp');
-    const eligiblePets = isMedicalMode
-        ? pets.filter(p => p.hasMedicalRecord)
-        : pets.filter(p => !p.hasMedicalRecord);
+    const executeSearch = () => {
+        const query = new URLSearchParams();
+        if (normalizedPhone) query.set('phone', normalizedPhone);
+        if (bookingId) query.set('hotelBookingId', bookingId);
 
+        select.innerHTML = '<option value="">Đang tìm sổ y tế...</option>';
+        group.hidden = false;
+        fetch('/SpaServices/SearchAvailableHotelMedicalRecords?' + query.toString())
+            .then(async response => {
+                const result = await response.json();
+                if (!response.ok || result.success !== true) {
+                    throw new Error(result.message || 'Không thể tìm sổ y tế.');
+                }
+                return result;
+            })
+            .then(result => {
+                if (searchSequence !== medicalRecordSearchSequence) return;
+                populateAvailableMedicalRecords(result);
+            })
+            .catch(error => {
+                if (searchSequence !== medicalRecordSearchSequence) return;
+                select.innerHTML = '<option value="">— Không có sổ y tế khả dụng —</option>';
+                document.getElementById('medicalRecordHelp').textContent = error.message;
+                setReceptionModeHint(error.message, 'error');
+            });
+    };
+
+    if (immediate) executeSearch();
+    else lookupTimer = setTimeout(executeSearch, 400);
+}
+
+function populateAvailableMedicalRecords(result) {
+    const select = document.getElementById('ci-medicalRecord');
+    const records = result.records || [];
+    document.getElementById('ci-customerName').value = result.customerName || '';
+    if (result.customerPhone) document.getElementById('ci-phone').value = result.customerPhone;
     select.replaceChildren();
+
     const initialOption = document.createElement('option');
     initialOption.value = '';
-    initialOption.textContent = isMedicalMode
-        ? (eligiblePets.length ? '— Chọn thú cưng có sổ y tế —' : '— Không có thú cưng có sổ y tế —')
-        : '— Tạo hồ sơ thú cưng mới —';
+    initialOption.textContent = records.length
+        ? '— Chọn sổ y tế —'
+        : '— Không có sổ y tế khả dụng —';
     select.appendChild(initialOption);
 
-    eligiblePets.forEach(p => {
+    records.forEach(record => {
         const option = document.createElement('option');
-        option.value = p.petId;
-        option.textContent = `${p.name} (${p.species})`;
-        option.dataset.name = p.name;
-        option.dataset.species = p.species;
-        option.dataset.breed = p.breed;
-        option.dataset.age = p.age;
-        option.dataset.weight = p.weight;
-        option.dataset.pathology = p.pathology;
-        option.dataset.hasMedicalRecord = p.hasMedicalRecord ? 'true' : 'false';
+        option.value = record.recordId;
+        option.dataset.petId = record.petId;
+        option.dataset.species = record.species || '';
+        option.textContent = `Sổ #${record.recordId} · ${record.petName} (${record.species}, ${record.breed}) · ${record.dateCreated} · ${record.healthStatus}`;
         select.appendChild(option);
     });
 
-    select.required = isMedicalMode && !isOnlineReception();
-    group.style.display = (eligiblePets.length > 0 || isMedicalMode) ? 'block' : 'none';
-    if (isMedicalMode && !eligiblePets.length) {
-        help.textContent = 'Khách này chưa có thú cưng nào có sổ y tế. Hãy chuyển sang luồng chưa có sổ y tế.';
+    document.getElementById('medicalRecordHelp').textContent = records.length
+        ? `Tìm thấy ${records.length} sổ y tế khả dụng. Tên thú có thể trùng, hãy đối chiếu mã sổ và ngày khám.`
+        : 'Không có sổ y tế chưa dùng cho thú cưng đủ điều kiện.';
+    setReceptionModeHint(records.length
+        ? 'Chọn đúng sổ y tế để xem lại toàn bộ thông tin khám.'
+        : (result.reservedPetId
+            ? 'Pet trong booking chưa có sổ y tế khả dụng. Hãy tạo/khám sổ trước khi tiếp nhận.'
+            : 'Không có sổ y tế khả dụng cho số điện thoại này.'), records.length ? 'info' : 'error');
+
+    const createMedicalRecordLink = document.getElementById('ci-createMedicalRecord');
+    const bookingId = document.getElementById('ci-hotelBookingId').value;
+    if (!records.length && bookingId && result.reservedPetId) {
+        const query = new URLSearchParams({
+            petId: result.reservedPetId,
+            hotelBookingId: bookingId,
+            returnUrl: '/SpaServices/PetCheckIn'
+        });
+        createMedicalRecordLink.href = '/SpaServices/MedicalRecords?' + query.toString();
+        createMedicalRecordLink.hidden = false;
+    } else {
+        createMedicalRecordLink.hidden = true;
+        createMedicalRecordLink.removeAttribute('href');
     }
 
     if (pendingReceptionPetId) {
-        const selectedPetId = pendingReceptionPetId;
+        const matchingOption = Array.from(select.options)
+            .find(option => option.dataset.petId === pendingReceptionPetId);
         pendingReceptionPetId = '';
-        const matchingOption = Array.from(select.options).find(option => option.value === selectedPetId);
         if (matchingOption) {
-            select.value = selectedPetId;
-            fillExistingPet(select);
-        } else {
-            setReceptionModeHint('Thú cưng trong lịch online không khớp với hình thức tiếp nhận đã chọn.', 'error');
+            select.value = matchingOption.value;
+            selectMedicalRecord(matchingOption.value);
         }
     }
 }
 
-function lookupCustomer(phone) {
-    clearTimeout(lookupTimer);
-    const normalizedPhone = phone.replace(/\D/g, '');
-    if (normalizedPhone.length < 10) {
-        document.getElementById('existingPetGroup').style.display = 'none';
-        document.getElementById('ci-customerName').value = '';
-        resetPetSelection();
+function selectMedicalRecord(recordId) {
+    const summarySequence = ++medicalRecordSummarySequence;
+    resetHealthCheckFields();
+    document.getElementById('checkInCompletionSection').hidden = true;
+    if (!recordId) {
+        document.getElementById('checkInDecisionSection').hidden = true;
+        hideMedicalRecordSummary();
         return;
     }
 
-    lookupTimer = setTimeout(() => {
-        const customers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(customers.Select(c => new
-        {
-            customerId = c.CustomerId,
-            fullName = c.FullName,
-            phone = c.Phone
-        })));
-        const found = customers.find(c => (c.phone || '').replace(/\D/g, '') === normalizedPhone);
-        if (!found) {
-            document.getElementById('existingPetGroup').style.display = 'none';
-            if (!isOnlineReception()) {
-                resetPetSelection();
-            }
-            return;
-        }
+    loadMedicalRecordSummary(recordId, summarySequence);
+}
 
-        document.getElementById('ci-customerName').value = found.fullName;
-        fetch('/SpaServices/GetHotelPetsByCustomer?customerId=' + encodeURIComponent(found.customerId))
-            .then(response => response.ok ? response.json() : Promise.reject())
-            .then(populateExistingPets)
-            .catch(() => setReceptionModeHint('Không thể tải hồ sơ thú cưng của khách. Vui lòng thử lại.', 'error'));
-    }, 400);
+function filterFoodOptions(species) {
+    const select = document.getElementById('ci-foodOption');
+    Array.from(select.options).forEach(option => {
+        const targetSpecies = option.dataset.targetSpecies || 'Tất cả';
+        const compatible = !species || targetSpecies === 'Tất cả' || targetSpecies.toLocaleLowerCase('vi') === species.toLocaleLowerCase('vi');
+        option.hidden = !compatible;
+        option.disabled = !compatible;
+    });
+
+    if (select.selectedOptions[0]?.disabled) select.value = '';
 }
 
 function renderMedicalRecordSummary(record) {
@@ -3017,92 +2958,118 @@ function renderMedicalRecordSummary(record) {
     summary.replaceChildren();
 
     const title = document.createElement('strong');
-    title.textContent = 'Sổ y tế gần nhất';
+    title.textContent = `Sổ y tế #${record.recordId} · ${record.petName} (${record.species}, ${record.breed})`;
     summary.appendChild(title);
 
     const fields = [
-        ['Ngày ghi nhận', record.dateCreated],
-        ['Tình trạng', record.healthStatus],
+        ['Chủ nuôi', `${record.customerName} · ${record.customerPhone}`],
+        ['Tuổi', record.age],
+        ['Ngày khám', record.dateCreated],
+        ['Cân nặng', `${record.weight} kg`],
+        ['Tình trạng sức khỏe', record.healthStatus],
         ['Triệu chứng / bệnh lý', record.symptoms],
+        ['Hướng xử lý / điều trị', record.treatment],
         ['Tiêm phòng', record.vaccinationStatus],
-        ['Kiểm tra thể chất', record.physicalCheck]
+        ['Phòng ký sinh trùng', record.parasitePrevention],
+        ['Kiểm tra thể chất', record.physicalCheck],
+        ['Tình trạng mai', record.shellStatus],
+        ['Điều kiện nuôi', record.rearingConditions],
+        ['Triệu chứng bất thường', record.abnormalSymptoms],
+        ['Răng cửa', record.incisorCheck],
+        ['Lông / da', record.furSkinCheck],
+        ['Dấu hiệu tiêu hóa', record.digestiveSigns]
     ];
+    const grid = document.createElement('div');
+    grid.className = 'medical-record-grid';
     fields.forEach(([label, value]) => {
         const line = document.createElement('div');
-        line.textContent = `${label}: ${value || 'Chưa ghi nhận'}`;
-        summary.appendChild(line);
+        const labelElement = document.createElement('span');
+        labelElement.textContent = label;
+        const valueElement = document.createElement('b');
+        valueElement.textContent = value || 'Chưa ghi nhận';
+        line.append(labelElement, valueElement);
+        grid.appendChild(line);
     });
+    summary.appendChild(grid);
     summary.classList.add('visible');
+
+    selectedReceptionSpecies = record.species || '';
+    const recordWeight = Number(record.weight);
+    selectedReceptionWeight = Number.isFinite(recordWeight) && recordWeight > 0 ? recordWeight : null;
+    filterFoodOptions(selectedReceptionSpecies);
+    if (pendingFoodOptionId) {
+        const foodOption = Array.from(document.getElementById('ci-foodOption').options)
+            .find(option => option.value === pendingFoodOptionId && !option.disabled);
+        if (foodOption) document.getElementById('ci-foodOption').value = pendingFoodOptionId;
+        pendingFoodOptionId = '';
+    }
+    calcStay();
+    document.getElementById('checkInDecisionSection').hidden = false;
+    setReceptionModeHint('Đã chọn sổ y tế. Hãy đưa ra kết luận lưu trú.');
 }
 
-function loadMedicalRecordSummary(petId) {
+function loadMedicalRecordSummary(recordId, summarySequence) {
     hideMedicalRecordSummary();
-    fetch('/SpaServices/GetPetMedicalSummary?petId=' + encodeURIComponent(petId))
-        .then(response => response.ok ? response.json() : Promise.reject())
-        .then(result => renderMedicalRecordSummary(result.record))
-        .catch(() => setReceptionModeHint('Không đọc được sổ y tế của thú cưng. Vui lòng đổi sang luồng chưa có sổ y tế.', 'error'));
-}
-
-function fillExistingPet(select) {
-    const opt = select.options[select.selectedIndex];
-    const hidden = document.getElementById('ci-existingPetHidden');
-    if (!opt.value) {
-        hidden.value = '';
-        enableNewPetForm();
-        hideMedicalRecordSummary();
-        return;
-    }
-
-    const hasMedicalRecord = opt.dataset.hasMedicalRecord === 'true';
-    if ((isMedicalRecordMode() && !hasMedicalRecord) || (!isMedicalRecordMode() && hasMedicalRecord)) {
-        select.value = '';
-        hidden.value = '';
-        enableNewPetForm();
-        hideMedicalRecordSummary();
-        setReceptionModeHint('Lựa chọn thú cưng không khớp với hình thức tiếp nhận.', 'error');
-        return;
-    }
-
-    hidden.value = opt.value;
-    document.getElementById('ci-petName').value = opt.dataset.name || '';
-    document.getElementById('ci-species').value = opt.dataset.species || 'Chó';
-    document.getElementById('ci-breed').value = opt.dataset.breed || '';
-    document.getElementById('ci-age').value = opt.dataset.age || '';
-    document.getElementById('ci-weight').value = opt.dataset.weight || '';
-    document.getElementById('ci-pathology').value = opt.dataset.pathology || '';
-    const form = document.getElementById('petNewForm');
-    form.style.opacity = '0.7';
-    form.style.pointerEvents = 'none';
-
-    if (isMedicalRecordMode()) {
-        loadMedicalRecordSummary(opt.value);
-    } else {
-        hideMedicalRecordSummary();
-    }
+    fetch('/SpaServices/GetHotelMedicalRecordSummary?recordId=' + encodeURIComponent(recordId))
+        .then(async response => {
+            const result = await response.json();
+            if (!response.ok || result.success !== true) throw new Error(result.message || 'Không thể đọc sổ y tế.');
+            return result;
+        })
+        .then(result => {
+            if (summarySequence !== medicalRecordSummarySequence) return;
+            renderMedicalRecordSummary(result.record);
+        })
+        .catch(error => {
+            if (summarySequence !== medicalRecordSummarySequence) return;
+            document.getElementById('checkInDecisionSection').hidden = true;
+            document.getElementById('checkInCompletionSection').hidden = true;
+            setReceptionModeHint(error.message, 'error');
+        });
 }
 
 // ===== HEALTH CHECK VALIDATION =====
 function updateHealthStatus() {
     const status = document.getElementById('ci-healthStatus').value;
-    const pathology = document.getElementById('ci-pathology');
+    const completionSection = document.getElementById('checkInCompletionSection');
+    const note = document.getElementById('ci-healthNote');
     const message = document.getElementById('healthStatusMessage');
+    const actionRow = document.getElementById('checkInActionRow');
+    const submitText = document.getElementById('checkInSubmitText');
+    const rejected = status === 'Rejected';
 
-    pathology.setCustomValidity('');
-    pathology.classList.toggle('health-input', status === 'Monitor');
-    if (status === 'Monitor' && !pathology.value.trim()) {
-        pathology.setCustomValidity('Vui lòng ghi rõ tình trạng cần theo dõi.');
+    note.required = status === 'Monitor' || rejected;
+    note.setCustomValidity('');
+    if ((status === 'Monitor' || rejected) && !note.value.trim()) {
+        note.setCustomValidity(rejected
+            ? 'Vui lòng ghi rõ lý do không đủ điều kiện lưu trú.'
+            : 'Vui lòng ghi rõ lưu ý cần theo dõi.');
     }
 
-    if (status === 'Rejected') {
-        message.style.display = 'flex';
-        message.innerHTML = '<i class="fa-solid fa-ban"></i> Kết luận này sẽ bị hệ thống chặn, không thể nhận thú cưng vào chuồng.';
+    completionSection.querySelectorAll('input, select, textarea').forEach(control => {
+        control.disabled = rejected;
+    });
+    actionRow.hidden = !(status === 'Fit' || status === 'Monitor' || rejected);
+    submitText.textContent = rejected ? 'Lưu quyết định từ chối' : 'Xác nhận tiếp nhận';
+
+    if (rejected) {
+        completionSection.hidden = true;
+        setReceptionModeHint('Quyết định từ chối sẽ được lưu; booking, chuồng và suất ăn đã giữ sẽ được giải phóng.', 'error');
+    } else if (status === 'Fit' || status === 'Monitor') {
+        completionSection.hidden = false;
+        message.style.display = 'none';
+        message.innerHTML = '';
+        setReceptionModeHint(status === 'Monitor'
+            ? 'Có thể tiếp nhận nhưng phải ghi rõ lưu ý cần theo dõi.'
+            : 'Thú cưng đủ điều kiện. Hoàn tất ghi chú, thức ăn và phân chuồng.');
     } else {
+        completionSection.hidden = true;
         message.style.display = 'none';
         message.innerHTML = '';
     }
 }
 
-document.getElementById('ci-pathology').addEventListener('input', updateHealthStatus);
+document.getElementById('ci-healthNote').addEventListener('input', updateHealthStatus);
 
 function formatDateTimeLocal(date) {
     const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
@@ -3149,19 +3116,13 @@ document.getElementById('checkInForm').addEventListener('submit', event => {
     updateHealthStatus();
     validateStayDates();
 
-    const receptionMode = getReceptionMode();
     const healthStatus = document.getElementById('ci-healthStatus').value;
+    const medicalRecordId = document.getElementById('ci-medicalRecord').value;
 
-    if (receptionMode === 'MedicalRecord' && !document.getElementById('ci-existingPetHidden').value) {
+    if (!medicalRecordId) {
         event.preventDefault();
-        setReceptionModeHint('Tiếp nhận bằng sổ y tế yêu cầu chọn thú cưng đã có sổ y tế.', 'error');
-        document.getElementById('ci-existingPet').focus();
-        return;
-    }
-
-    if (healthStatus === 'Rejected') {
-        event.preventDefault();
-        alert('Thú cưng không đủ điều kiện lưu trú nên không thể nhận vào chuồng.');
+        setReceptionModeHint('Vui lòng tìm và chọn một sổ y tế khả dụng.', 'error');
+        document.getElementById('ci-medicalRecord').focus();
         return;
     }
 
@@ -3207,6 +3168,14 @@ function loadAvailableCages(roomTypeId, selectedCageId = '') {
 }
 
 // ===== CALC STAY & PREVIEW PRICE =====
+function resolveHotelFoodWeightMultiplier(weight) {
+    if (!weight) return 0;
+    if (weight <= 5) return 1;
+    if (weight <= 15) return 1.25;
+    if (weight <= 30) return 1.5;
+    return 1.8;
+}
+
 function calcStay() {
     const checkIn = document.getElementById('ci-checkIn').value;
     const checkOut = document.getElementById('ci-checkOut').value;
@@ -3222,6 +3191,13 @@ function calcStay() {
 
     const opt = roomSel.options[roomSel.selectedIndex];
     const dailyPrice = parseFloat(opt?.dataset?.price || '0');
+    const foodSelect = document.getElementById('ci-foodOption');
+    const foodOption = foodSelect.options[foodSelect.selectedIndex];
+    const foodBasePrice = parseFloat(foodOption?.dataset?.price || '0');
+    const foodMultiplier = resolveHotelFoodWeightMultiplier(selectedReceptionWeight);
+    const foodPrice = foodBasePrice > 0
+        ? Math.ceil((foodBasePrice * foodMultiplier) / 1000) * 1000
+        : 0;
     const d1 = new Date(checkIn);
     const d2 = new Date(checkOut);
     if (!validateStayDates() || d2 < d1) {
@@ -3231,9 +3207,14 @@ function calcStay() {
 
     const diffDays = Math.max(1, Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24)));
 
-    const total = dailyPrice * diffDays;
+    const roomTotal = dailyPrice * diffDays;
+    const foodTotal = foodPrice * diffDays;
+    const inventoryUnits = Math.ceil(diffDays * foodMultiplier);
+    const total = roomTotal + foodTotal;
     priceVal.textContent = total.toLocaleString('vi-VN') + 'đ';
-    priceDet.textContent = `${diffDays} ngày × ${dailyPrice.toLocaleString('vi-VN')}đ/ngày`;
+    priceDet.textContent = `${diffDays} ngày × phòng ${dailyPrice.toLocaleString('vi-VN')}đ`
+        + ` + thức ăn ${foodPrice.toLocaleString('vi-VN')}đ/ngày`
+        + ` (pet ${selectedReceptionWeight?.toLocaleString('vi-VN') || '—'}kg, hệ số ${foodMultiplier.toLocaleString('vi-VN')}, ${inventoryUnits} suất chuẩn)`;
     pricePreview.style.display = 'block';
 }
 
@@ -3298,12 +3279,18 @@ function validateRoomTypePriceForm(form) {
     const dailyPrice = Number(dailyInput.value);
     const hourlyPrice = Number(hourlyInput.value);
 
-    if (dailyInput.value && dailyPrice < MIN_ROOM_TYPE_DAILY_PRICE) {
+    if (dailyInput.value && (!Number.isFinite(dailyPrice) || dailyPrice < MIN_ROOM_TYPE_DAILY_PRICE)) {
         dailyInput.setCustomValidity('Giá theo ngày không được thấp hơn 150.000đ.');
+    } else if (dailyPrice > MAX_ROOM_TYPE_PRICE) {
+        dailyInput.setCustomValidity('Giá theo ngày không được vượt quá 100.000.000đ.');
     }
 
-    if (hourlyInput.value && hourlyPrice < MIN_ROOM_TYPE_HOURLY_PRICE) {
+    if (hourlyInput.value && (!Number.isFinite(hourlyPrice) || hourlyPrice < MIN_ROOM_TYPE_HOURLY_PRICE)) {
         hourlyInput.setCustomValidity('Giá theo giờ không được thấp hơn 40.000đ.');
+    } else if (hourlyPrice > MAX_ROOM_TYPE_PRICE) {
+        hourlyInput.setCustomValidity('Giá theo giờ không được vượt quá 100.000.000đ.');
+    } else if (dailyInput.value && hourlyInput.value && hourlyPrice > dailyPrice) {
+        hourlyInput.setCustomValidity('Giá theo giờ không được lớn hơn giá theo ngày.');
     }
 
     return dailyInput.validity.valid && hourlyInput.validity.valid;
@@ -3399,21 +3386,65 @@ function renderCheckoutPreview(data) {
     checkoutCanFinalize = data.canFinalize === true;
     const button = document.getElementById('confirmCheckoutBtn');
     const otherFields = document.getElementById('checkoutOtherFields');
+    const cancelledOrderStatuses = ['Đã hủy', 'Cancelled', 'Canceled'];
+    const checkoutOrderCancelled = cancelledOrderStatuses.includes(data.orderStatus);
+    const checkoutAlreadyPrepared = data.statementStatus === 'ReadyForPayment' || data.orderId != null;
+    const checkoutIsWaiting = !checkoutCanFinalize && checkoutAlreadyPrepared;
+    button.hidden = checkoutIsWaiting;
     if (checkoutCanFinalize) {
         button.innerHTML = '<i class="fa-solid fa-check"></i> Hoàn tất trả pet';
         otherFields.hidden = true;
         document.getElementById('checkoutPaymentStatus').textContent = `Hóa đơn ${data.orderId} đã sẵn sàng hoàn tất.`;
+    } else if (checkoutIsWaiting) {
+        otherFields.hidden = true;
+        document.getElementById('checkoutPaymentStatus').textContent = checkoutOrderCancelled
+            ? `Hóa đơn ${data.orderId || ''} đã hủy. Vui lòng liên hệ thu ngân.`.replace('  ', ' ')
+            : data.orderId
+                ? `Hóa đơn ${data.orderId} đang chờ thu ngân xử lý.`
+                : 'Bảng kê đang chờ thu ngân xử lý.';
     } else {
+        button.hidden = false;
         button.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Gửi bảng kê thu ngân';
-        otherFields.hidden = data.orderId != null;
-        document.getElementById('checkoutPaymentStatus').textContent = data.orderId
-            ? `Đã gắn hóa đơn ${data.orderId} · trạng thái ${data.orderStatus || 'chờ thanh toán'}.`
-            : data.statementStatus === 'ReadyForPayment' ? 'Bảng kê đang chờ thu ngân.' : 'Kiểm tra chi phí trước khi gửi.';
+        otherFields.hidden = false;
+        document.getElementById('checkoutPaymentStatus').textContent = 'Kiểm tra chi phí trước khi gửi.';
     }
 }
 
 document.getElementById('confirmCheckoutBtn').addEventListener('click', () => {
     if (!checkoutBookingId) return;
+
+    if (!checkoutCanFinalize) {
+        const descriptionInput = document.getElementById('checkoutOtherDescription');
+        const amountInput = document.getElementById('checkoutOtherAmount');
+        const otherAmount = Number(amountInput.value || 0);
+        amountInput.setCustomValidity('');
+        descriptionInput.setCustomValidity('');
+
+        if (!Number.isFinite(otherAmount) || otherAmount < 0 || otherAmount > 100000000) {
+            amountInput.setCustomValidity('Chi phí phát sinh phải từ 0 đến 100.000.000đ.');
+        } else if (otherAmount % 1000 !== 0) {
+            amountInput.setCustomValidity('Chi phí phát sinh phải theo bước 1.000đ.');
+        }
+
+        if (otherAmount > 0 && !descriptionInput.value.trim()) {
+            descriptionInput.setCustomValidity('Phải nhập mô tả khi có chi phí phát sinh.');
+        }
+
+        if (!amountInput.checkValidity()) {
+            amountInput.reportValidity();
+            return;
+        }
+
+        if (!descriptionInput.checkValidity()) {
+            descriptionInput.reportValidity();
+            return;
+        }
+    }
+
+    const submitButton = document.getElementById('confirmCheckoutBtn');
+    const originalButtonHtml = submitButton.innerHTML;
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang xử lý...';
     const endpoint = checkoutCanFinalize ? '/SpaServices/CheckOut' : '/SpaServices/PrepareHotelCheckout';
     const body = checkoutCanFinalize
         ? 'bookingId=' + checkoutBookingId
@@ -3429,8 +3460,30 @@ document.getElementById('confirmCheckoutBtn').addEventListener('click', () => {
     })
     .then(r => r.json())
     .then(data => {
-        if (data.success) { location.reload(); }
-        else { alert('Lỗi: ' + data.message); }
+        if (data.success) {
+            if (!checkoutCanFinalize) {
+                const checkoutButton = document.querySelector(`[data-checkout-booking-id="${checkoutBookingId}"]`);
+                if (checkoutButton) {
+                    const pendingLabel = document.createElement('span');
+                    pendingLabel.className = 'checkout-pending-label';
+                    pendingLabel.dataset.checkoutPendingId = checkoutBookingId;
+                    pendingLabel.innerHTML = '<i class="fa-solid fa-clock"></i> Chờ thu ngân xử lý';
+                    checkoutButton.replaceWith(pendingLabel);
+                }
+            }
+            bootstrap.Modal.getInstance(document.getElementById('checkOutModal'))?.hide();
+            location.reload();
+            return;
+        }
+
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalButtonHtml;
+        alert('Lỗi: ' + data.message);
+    })
+    .catch(() => {
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalButtonHtml;
+        alert('Lỗi: Không thể kết nối đến máy chủ.');
     });
 });
 

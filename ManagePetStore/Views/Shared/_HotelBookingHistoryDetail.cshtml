@@ -3,8 +3,7 @@
 @{
     var scheduledCheckIn = Model.ScheduledCheckInDate ?? Model.CheckInDate;
     var scheduledCheckOut = Model.ScheduledCheckOutDate ?? Model.CheckOutDate ?? scheduledCheckIn.AddDays(Math.Max(Model.StayDays, 1));
-    var displayedCheckIn = Model.ActualCheckInAt ?? Model.CheckInDate;
-    var displayedCheckOut = Model.ActualCheckOutAt ?? scheduledCheckOut;
+    var showTimeline = ViewData["ShowHotelTimeline"] as bool? ?? true;
 }
 
 <div class="hbh-summary-band">
@@ -28,24 +27,63 @@
 
 <div class="hbh-facts" aria-label="Thông tin lượt lưu trú">
     <div><span>Chuồng</span><strong>@Model.CageId</strong><small>@Model.RoomTypeName · @Model.RoomSize</small></div>
-    <div><span>@(Model.ActualCheckInAt.HasValue ? "Nhận thực tế" : "Nhận dự kiến")</span><strong>@displayedCheckIn.ToString("dd/MM/yyyy HH:mm")</strong><small>Dự kiến: @scheduledCheckIn.ToString("dd/MM/yyyy HH:mm")</small></div>
-    <div><span>@(Model.ActualCheckOutAt.HasValue ? "Trả thực tế" : "Trả dự kiến")</span><strong>@displayedCheckOut.ToString("dd/MM/yyyy HH:mm")</strong><small>Dự kiến: @scheduledCheckOut.ToString("dd/MM/yyyy HH:mm")</small></div>
+    <div>
+        <span>@(Model.ActualCheckInAt.HasValue ? "Nhận thực tế" : "Nhận dự kiến")</span>
+        <strong>@(Model.ActualCheckInAt?.ToString("dd/MM/yyyy HH:mm") ?? scheduledCheckIn.ToString("dd/MM/yyyy"))</strong>
+        @if (Model.ActualCheckInAt.HasValue) { <small>Dự kiến: @scheduledCheckIn.ToString("dd/MM/yyyy")</small> }
+    </div>
+    <div>
+        <span>@(Model.ActualCheckOutAt.HasValue ? "Trả thực tế" : "Trả dự kiến")</span>
+        <strong>@(Model.ActualCheckOutAt?.ToString("dd/MM/yyyy HH:mm") ?? scheduledCheckOut.ToString("dd/MM/yyyy"))</strong>
+        @if (Model.ActualCheckOutAt.HasValue) { <small>Dự kiến: @scheduledCheckOut.ToString("dd/MM/yyyy")</small> }
+    </div>
     <div><span>Thời gian</span><strong>@Model.StayDays ngày</strong></div>
 </div>
 
 <div class="hbh-detail-grid">
     <div class="hbh-detail-main">
+        @if (!string.IsNullOrWhiteSpace(Model.HealthAssessmentDecision))
+        {
+            var decisionLabel = Model.HealthAssessmentDecision switch
+            {
+                "Fit" => "Đủ điều kiện lưu trú",
+                "Monitor" => "Đủ điều kiện, cần theo dõi",
+                "Rejected" => "Không đủ điều kiện lưu trú",
+                _ => Model.HealthAssessmentDecision
+            };
+            <section class="hbh-section">
+                <div class="hbh-section-heading"><div><h3><i class="bi bi-clipboard2-pulse"></i> Kết luận tiếp nhận</h3></div></div>
+                <dl class="hbh-data-list">
+                    <div><dt>Kết luận</dt><dd>@decisionLabel</dd></div>
+                    <div><dt>Sổ y tế</dt><dd>#@Model.HealthAssessmentMedicalRecordId</dd></div>
+                    <div><dt>Nhân viên</dt><dd>@Model.HealthAssessedByName</dd></div>
+                    <div><dt>Thời gian</dt><dd>@Model.HealthAssessedAt?.ToString("dd/MM/yyyy HH:mm")</dd></div>
+                    <div><dt>Ghi chú</dt><dd>@(Model.HealthAssessmentNote ?? "Không có")</dd></div>
+                </dl>
+            </section>
+        }
+
         <section class="hbh-section">
             <div class="hbh-section-heading"><div><h3><i class="bi bi-cup-straw"></i> Kế hoạch ăn</h3></div></div>
             <dl class="hbh-data-list">
                 <div><dt>Gói thức ăn</dt><dd>@Model.FoodPlanName</dd></div>
-                <div><dt>Khẩu phần</dt><dd>@Model.FoodPortionGrams g · @Model.FoodMealsPerDay bữa/ngày</dd></div>
-                <div><dt>Giá/ngày</dt><dd>@Model.FoodPricePerDay.ToString("N0")đ</dd></div>
+                @if (!string.IsNullOrWhiteSpace(Model.FoodProductSku))
+                {
+                    <div><dt>Mã sản phẩm</dt><dd>SKU @Model.FoodProductSku</dd></div>
+                }
+                else
+                {
+                    <div><dt>Khẩu phần cũ</dt><dd>@Model.FoodPortionGrams g · @Model.FoodMealsPerDay bữa/ngày</dd></div>
+                }
+                <div><dt>Cân nặng tính giá</dt><dd>@(Model.FoodPetWeight.HasValue ? $"{Model.FoodPetWeight:0.##} kg" : "Chưa ghi nhận (dữ liệu cũ)")</dd></div>
+                <div><dt>Giá thức ăn/ngày</dt><dd>@Model.FoodPricePerDay.ToString("N0")đ</dd></div>
                 <div><dt>Hướng dẫn</dt><dd>@(Model.FeedingInstructions ?? "Không có")</dd></div>
                 <div><dt>Dị ứng/lưu ý</dt><dd>@(Model.FoodAllergyNotes ?? "Không ghi nhận")</dd></div>
             </dl>
         </section>
 
+        @if (showTimeline)
+        {
         <section class="hbh-section">
             <div class="hbh-section-heading">
                 <div>
@@ -76,6 +114,7 @@
                 </ol>
             }
         </section>
+        }
 
         <section class="hbh-section">
             <div class="hbh-section-heading">
@@ -156,8 +195,8 @@
                                 <td><strong>@log.Title</strong><small class="hbh-care-type">@log.ActivityType</small></td>
                                 <td>@log.Status</td>
                                 <td>
-                                    @log.FoodType · @log.Amount
-                                    @if (!string.IsNullOrWhiteSpace(log.MealType)) { <small class="hbh-care-type">Bữa @log.MealType · đã ăn @(log.ConsumedPercent?.ToString() ?? "—")%</small> }
+                                    @log.FoodType
+                                    @if (!string.IsNullOrWhiteSpace(log.Amount) && log.Amount != "Không áp dụng") { <small class="hbh-care-type">@log.Amount</small> }
                                     @if (log.IsExtraCharge) { <small class="hbh-care-type">Phụ phí: @log.ExtraChargeAmount.ToString("N0")đ</small> }
                                 </td>
                                 <td>@log.StaffName</td>

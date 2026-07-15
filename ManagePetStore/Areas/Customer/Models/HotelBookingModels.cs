@@ -22,10 +22,9 @@ public class HotelBookingRequest : IValidatableObject
     [DataType(DataType.Date)]
     public DateTime? CheckOutDate { get; set; }
 
-    [Required, StringLength(30)]
-    public string FoodPlanType { get; set; } = "OwnerProvided";
-
-    public int? FoodOptionId { get; set; }
+    [Required(ErrorMessage = "Vui lòng chọn gói thức ăn cho thời gian lưu trú.")]
+    [StringLength(50)]
+    public string FoodProductSku { get; set; } = string.Empty;
 
     [StringLength(1000)]
     public string? FeedingInstructions { get; set; }
@@ -147,6 +146,7 @@ public class HotelBookingListItemViewModel
     public string Status { get; set; } = "";
     public string StatusKey { get; set; } = "";
     public bool CanCancel { get; set; }
+    public bool ShowCannotCancelOnline { get; set; }
 }
 
 public class HotelBookingDetailPageViewModel : CustomerSidebarViewModel

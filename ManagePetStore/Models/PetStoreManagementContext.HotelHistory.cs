@@ -10,6 +10,7 @@ public partial class PetStoreManagementContext
     public virtual DbSet<HotelCheckoutStatement> HotelCheckoutStatements => Set<HotelCheckoutStatement>();
     public virtual DbSet<HotelCheckoutItem> HotelCheckoutItems => Set<HotelCheckoutItem>();
     public virtual DbSet<HotelStaySpaLink> HotelStaySpaLinks => Set<HotelStaySpaLink>();
+    public virtual DbSet<HotelCheckInAssessment> HotelCheckInAssessments => Set<HotelCheckInAssessment>();
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
     {
@@ -69,6 +70,11 @@ public partial class PetStoreManagementContext
             entity.HasIndex(plan => plan.HotelBookingId).IsUnique();
             entity.Property(plan => plan.PlanType).HasMaxLength(30);
             entity.Property(plan => plan.FoodNameSnapshot).HasMaxLength(150);
+            entity.Property(plan => plan.ProductSku).HasMaxLength(50);
+            entity.Property(plan => plan.ProductUnitSnapshot).HasMaxLength(30);
+            entity.Property(plan => plan.BasePricePerDaySnapshot).HasColumnType("decimal(18,2)");
+            entity.Property(plan => plan.PetWeightSnapshot).HasColumnType("decimal(5,2)");
+            entity.Property(plan => plan.PortionMultiplierSnapshot).HasColumnType("decimal(5,2)");
             entity.Property(plan => plan.PricePerDaySnapshot).HasColumnType("decimal(18,2)");
             entity.Property(plan => plan.TotalAmount).HasColumnType("decimal(18,2)");
             entity.Property(plan => plan.FeedingInstructions).HasMaxLength(1000);
@@ -84,6 +90,11 @@ public partial class PetStoreManagementContext
                 .HasForeignKey(plan => plan.FoodOptionId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("FK_HotelBookingFoodPlans_HotelFoodOptions");
+            entity.HasOne(plan => plan.Product)
+                .WithMany()
+                .HasForeignKey(plan => plan.ProductSku)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_HotelBookingFoodPlans_Products");
         });
 
         modelBuilder.Entity<HotelCheckoutStatement>(entity =>
@@ -149,6 +160,35 @@ public partial class PetStoreManagementContext
                 .HasForeignKey<HotelStaySpaLink>(link => link.SpaBookingId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("FK_HotelStaySpaLinks_SpaBookings");
+        });
+
+        modelBuilder.Entity<HotelCheckInAssessment>(entity =>
+        {
+            entity.HasKey(assessment => assessment.AssessmentId);
+            entity.HasIndex(assessment => assessment.HotelBookingId).IsUnique();
+            entity.HasIndex(assessment => assessment.MedicalRecordId);
+            entity.Property(assessment => assessment.Decision).HasMaxLength(30);
+            entity.Property(assessment => assessment.Note).HasMaxLength(1000);
+            entity.Property(assessment => assessment.AssessedByName).HasMaxLength(100);
+            entity.Property(assessment => assessment.AssessedAt).HasColumnType("datetime");
+
+            entity.HasOne(assessment => assessment.HotelBooking)
+                .WithOne(booking => booking.CheckInAssessment)
+                .HasForeignKey<HotelCheckInAssessment>(assessment => assessment.HotelBookingId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_HotelCheckInAssessments_HotelBookings");
+
+            entity.HasOne(assessment => assessment.MedicalRecord)
+                .WithMany()
+                .HasForeignKey(assessment => assessment.MedicalRecordId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_HotelCheckInAssessments_MedicalRecords");
+
+            entity.HasOne(assessment => assessment.AssessedByUser)
+                .WithMany()
+                .HasForeignKey(assessment => assessment.AssessedByUserId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_HotelCheckInAssessments_Users");
         });
 
         modelBuilder.Entity<CustomerNotification>(entity =>
