@@ -824,7 +824,7 @@
                                     <td><strong style="color: var(--admin-primary);">${formatVND(item.total)}</strong></td>
                                     <td><span class="badge-pill-outline">${item.paymentMethod}</span></td>
                                     <td>
-                                        <a href="/Manager/Order/Details?id=${item.orderId}" class="btn btn-sm btn-light border" style="border-radius: 8px;">
+                                        <a href="/Manager/Dashboard/OrderDetail?id=${item.orderId}" target="_blank" class="btn btn-sm btn-light border" style="border-radius: 8px;">
                                             Xem hóa đơn
                                         </a>
                                     </td>
@@ -875,7 +875,7 @@
                                     <td><strong style="color: var(--admin-primary);">${formatVND(item.total)}</strong></td>
                                     <td><span class="badge-pill-outline">${item.paymentMethod}</span></td>
                                     <td>
-                                        <a href="/Manager/Order/Details?id=${item.orderId}" class="btn btn-sm btn-light border" style="border-radius: 8px;">
+                                        <a href="/Manager/Dashboard/OrderDetail?id=${item.orderId}" target="_blank" class="btn btn-sm btn-light border" style="border-radius: 8px;">
                                             Xem hóa đơn
                                         </a>
                                     </td>
@@ -926,7 +926,7 @@
                             // Link hành động tùy thuộc vào Nguồn
                             let actionLink = '';
                             if (item.source === 'Đơn hàng') {
-                                actionLink = `/Manager/Order/Details?id=${item.referenceId}`;
+                                actionLink = `/Manager/Dashboard/OrderDetail?id=${item.referenceId}`;
                             } else if (item.source === 'Nhập kho') {
                                 actionLink = `/Manager/Warehouse/Details?id=${item.referenceId}`;
                             }
@@ -940,7 +940,7 @@
                                     <td><strong class="${amountColor}">${amountPrefix} ${formatVND(item.amount)}</strong></td>
                                     <td><span class="text-xs text-muted">${item.description}</span></td>
                                     <td>
-                                        ${actionLink ? `<a href="${actionLink}" class="btn btn-sm btn-light border" style="border-radius: 8px;">Chi tiết</a>` : 'N/A'}
+                                        ${actionLink ? `<a href="${actionLink}" target="_blank" class="btn btn-sm btn-light border" style="border-radius: 8px;">Chi tiết</a>` : 'N/A'}
                                     </td>
                                 </tr>
                             `;
@@ -991,7 +991,7 @@
                                     <td><span class="badge-pill-outline">${item.paymentMethod}</span></td>
                                     <td><span class="text-xs text-muted font-weight-600">${item.status}</span></td>
                                     <td>
-                                        <a href="/Manager/Order/Details?id=${item.orderId}" class="btn btn-sm btn-light border" style="border-radius: 8px;">
+                                        <a href="/Manager/Dashboard/OrderDetail?id=${item.orderId}" target="_blank" class="btn btn-sm btn-light border" style="border-radius: 8px;">
                                             Hóa đơn gốc
                                         </a>
                                     </td>

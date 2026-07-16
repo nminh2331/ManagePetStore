@@ -45,10 +45,13 @@ public class DashboardController : Controller
         var startDateTime = fromDate.Value.Date;
         var endDateTime = toDate.Value.Date.AddDays(1).AddTicks(-1);
 
-        // 1. Lọc đơn hàng đã hoàn thành trong kỳ
+        // 1. Lọc đơn hàng đã hoàn thành trong kỳ (online & quầy)
         var completedOrders = await _context.Orders
             .Where(o => o.Date >= startDateTime && o.Date <= endDateTime)
-            .Where(o => CompletedStatuses.Contains(o.Status.ToLower()))
+            .Where(o => 
+                (o.OrderId.StartsWith("OD-") && (o.Status == "Chờ xử lý" || o.Status == "Đã thanh toán" || o.Status == "da thanh toan")) ||
+                (o.OrderId.StartsWith("ORD-") && (o.Status == "Completed" || o.Status == "Đã hoàn thành" || o.Status == "hoan thanh" || o.Status == "completed"))
+            )
             .ToListAsync();
 
         decimal totalRevenue = completedOrders.Sum(o => o.Total);
@@ -111,7 +114,10 @@ public class DashboardController : Controller
 
         var orders = await _context.Orders
             .Where(o => o.Date >= startDateTime && o.Date <= endDateTime)
-            .Where(o => CompletedStatuses.Contains(o.Status.ToLower()))
+            .Where(o => 
+                (o.OrderId.StartsWith("OD-") && (o.Status == "Chờ xử lý" || o.Status == "Đã thanh toán" || o.Status == "da thanh toan")) ||
+                (o.OrderId.StartsWith("ORD-") && (o.Status == "Completed" || o.Status == "Đã hoàn thành" || o.Status == "hoan thanh" || o.Status == "completed"))
+            )
             .Select(o => new { o.Date, o.Total })
             .ToListAsync();
 
@@ -164,8 +170,13 @@ public class DashboardController : Controller
         // --- 2. Dữ liệu biểu đồ cơ cấu Doanh thu (Sản phẩm, Spa, Khách sạn) ---
         var orderItems = await _context.OrderItems
             .Include(oi => oi.Order)
+            .Include(oi => oi.SpaService)
+            .Include(oi => oi.RoomType)
             .Where(oi => oi.Order.Date >= startDateTime && oi.Order.Date <= endDateTime)
-            .Where(oi => CompletedStatuses.Contains(oi.Order.Status.ToLower()))
+            .Where(oi => 
+                (oi.Order.OrderId.StartsWith("OD-") && (oi.Order.Status == "Chờ xử lý" || oi.Order.Status == "Đã thanh toán" || oi.Order.Status == "da thanh toan")) ||
+                (oi.Order.OrderId.StartsWith("ORD-") && (oi.Order.Status == "Completed" || oi.Order.Status == "Đã hoàn thành" || oi.Order.Status == "hoan thanh" || oi.Order.Status == "completed"))
+            )
             .ToListAsync();
 
         decimal productRevenue = orderItems.Where(oi => oi.ProductSku != null).Sum(oi => oi.Price * oi.Quantity);
@@ -251,7 +262,10 @@ public class DashboardController : Controller
             .Include(o => o.Customer)
             .Include(o => o.OrderItems)
             .Where(o => o.Date >= startDateTime && o.Date <= endDateTime)
-            .Where(o => CompletedStatuses.Contains(o.Status.ToLower()))
+            .Where(o => 
+                (o.OrderId.StartsWith("OD-") && (o.Status == "Chờ xử lý" || o.Status == "Đã thanh toán" || o.Status == "da thanh toan")) ||
+                (o.OrderId.StartsWith("ORD-") && (o.Status == "Completed" || o.Status == "Đã hoàn thành" || o.Status == "hoan thanh" || o.Status == "completed"))
+            )
             .ToListAsync();
 
         var filtered = new List<RevenueDetailItem>();
@@ -326,7 +340,10 @@ public class DashboardController : Controller
         var orders = await _context.Orders
             .Include(o => o.Customer)
             .Where(o => o.Date >= targetDateStart && o.Date <= targetDateEnd)
-            .Where(o => CompletedStatuses.Contains(o.Status.ToLower()))
+            .Where(o => 
+                (o.OrderId.StartsWith("OD-") && (o.Status == "Chờ xử lý" || o.Status == "Đã thanh toán" || o.Status == "da thanh toan")) ||
+                (o.OrderId.StartsWith("ORD-") && (o.Status == "Completed" || o.Status == "Đã hoàn thành" || o.Status == "hoan thanh" || o.Status == "completed"))
+            )
             .Select(o => new RevenueDetailItem
             {
                 OrderId = o.OrderId,
@@ -367,7 +384,10 @@ public class DashboardController : Controller
             var orders = await _context.Orders
                 .Include(o => o.Customer)
                 .Where(o => o.Date >= startDateTime && o.Date <= endDateTime)
-                .Where(o => CompletedStatuses.Contains(o.Status.ToLower()))
+                .Where(o => 
+                    (o.OrderId.StartsWith("OD-") && (o.Status == "Chờ xử lý" || o.Status == "Đã thanh toán" || o.Status == "da thanh toan")) ||
+                    (o.OrderId.StartsWith("ORD-") && (o.Status == "Completed" || o.Status == "Đã hoàn thành" || o.Status == "hoan thanh" || o.Status == "completed"))
+                )
                 .ToListAsync();
 
             details.AddRange(orders.Select(o => new CashFlowDetailItem
@@ -425,7 +445,10 @@ public class DashboardController : Controller
             .Include(oi => oi.Order)
             .ThenInclude(o => o.Customer)
             .Where(oi => oi.Order.Date >= startDateTime && oi.Order.Date <= endDateTime)
-            .Where(oi => CompletedStatuses.Contains(oi.Order.Status.ToLower()))
+            .Where(oi => 
+                (oi.Order.OrderId.StartsWith("OD-") && (oi.Order.Status == "Chờ xử lý" || oi.Order.Status == "Đã thanh toán" || oi.Order.Status == "da thanh toan")) ||
+                (oi.Order.OrderId.StartsWith("ORD-") && (oi.Order.Status == "Completed" || oi.Order.Status == "Đã hoàn thành" || oi.Order.Status == "hoan thanh" || oi.Order.Status == "completed"))
+            )
             .ToListAsync();
 
         var details = new List<RevenueDetailItem>();
@@ -481,5 +504,45 @@ public class DashboardController : Controller
             ViewCount = blog.ViewCount,
             CreatedAt = blog.CreatedAt
         });
+    }
+
+    // =========================================================================
+    // VIEW: Chi tiết đơn hàng cho Manager
+    // =========================================================================
+    [HttpGet]
+    public async Task<IActionResult> OrderDetail(string id)
+    {
+        ViewData["ManagerNav"] = "dashboard";
+        if (string.IsNullOrEmpty(id))
+        {
+            return NotFound("Mã đơn hàng không hợp lệ.");
+        }
+
+        var order = await _context.Orders
+            .Include(o => o.Customer)
+            .Include(o => o.OrderItems).ThenInclude(oi => oi.ProductSkuNavigation)
+            .Include(o => o.OrderItems).ThenInclude(oi => oi.SpaService)
+            .Include(o => o.OrderItems).ThenInclude(oi => oi.RoomType)
+            .Include(o => o.HotelCheckoutStatements).ThenInclude(h => h.Items)
+            .Include(o => o.HotelCheckoutStatements).ThenInclude(h => h.HotelBooking).ThenInclude(hb => hb.Pet)
+            .Include(o => o.HotelCheckoutStatements).ThenInclude(h => h.HotelBooking).ThenInclude(hb => hb.Cage).ThenInclude(c => c.RoomType)
+            .FirstOrDefaultAsync(o => o.OrderId == id);
+
+        if (order == null)
+        {
+            return NotFound($"Không tìm thấy đơn hàng {id}.");
+        }
+
+        // Lấy thêm các SpaBooking thực tế liên kết bằng ghi chú có chứa [POS {id}]
+        var spaBookings = await _context.SpaBookings
+            .Include(sb => sb.Pet)
+            .Include(sb => sb.Groomer)
+            .Include(sb => sb.Service)
+            .Where(sb => sb.Notes != null && sb.Notes.Contains($"[POS {id}]"))
+            .ToListAsync();
+
+        ViewBag.SpaBookings = spaBookings;
+
+        return View(order);
     }
 }
