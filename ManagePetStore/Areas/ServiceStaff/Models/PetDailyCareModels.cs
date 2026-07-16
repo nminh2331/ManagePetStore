@@ -20,7 +20,9 @@ public class PetDailyCarePetRowViewModel
     public int HotelBookingId { get; set; }
     public string DisplayBookingId => $"HB{HotelBookingId:0000}";
     public string CageId { get; set; } = string.Empty;
+    public string RoomTypeCode { get; set; } = string.Empty;
     public string RoomTypeName { get; set; } = string.Empty;
+    public HotelRoomServiceProfile ServiceProfile => HotelRoomTypeCatalog.GetServiceProfile(RoomTypeCode);
     public DateTime CheckInAt { get; set; }
     public DateTime? ExpectedCheckOutAt { get; set; }
     public int CareLogCount { get; set; }
@@ -52,7 +54,9 @@ public class PetDailyCareStayViewModel
     public int HotelBookingId { get; set; }
     public string DisplayBookingId => $"HB{HotelBookingId:0000}";
     public string CageId { get; set; } = string.Empty;
+    public string RoomTypeCode { get; set; } = string.Empty;
     public string RoomTypeName { get; set; } = string.Empty;
+    public HotelRoomServiceProfile ServiceProfile => HotelRoomTypeCatalog.GetServiceProfile(RoomTypeCode);
     public DateTime CheckInAt { get; set; }
     public DateTime? CheckOutAt { get; set; }
     public string Status { get; set; } = string.Empty;

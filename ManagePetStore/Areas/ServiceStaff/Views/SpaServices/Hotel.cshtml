@@ -19,6 +19,7 @@
     var onlineBookings = ViewBag.OnlineBookings as List<HotelBooking> ?? new List<HotelBooking>();
     var petIdsWithMedicalRecords = ViewBag.PetIdsWithMedicalRecords as HashSet<int> ?? new HashSet<int>();
     var hotelFoodOptions = ViewBag.HotelFoodOptions as List<Product> ?? new List<Product>();
+    var pendingCageChangeRequests = ViewBag.PendingCageChangeRequests as List<HotelCageChangeRequest> ?? new List<HotelCageChangeRequest>();
     var activeBookingByCage = activeBookings
         .GroupBy(b => b.CageId, StringComparer.OrdinalIgnoreCase)
         .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
@@ -613,6 +614,55 @@
         color: #FFFFFF;
     }
 
+    .cage-map-search-row {
+        display: grid;
+        grid-template-columns: minmax(240px, 1fr) minmax(180px, 260px);
+        gap: 10px;
+        padding: 14px 24px 0;
+    }
+
+    .cage-map-search-row input,
+    .cage-map-search-row select,
+    .cage-change-note {
+        width: 100%;
+        border: 1px solid #E6DED8;
+        border-radius: 11px;
+        padding: 9px 12px;
+        background: #fff;
+        color: #2D2521;
+        font-size: .78rem;
+    }
+
+    .cage-map-empty-filter {
+        display: none;
+        grid-column: 1 / -1;
+        padding: 24px;
+        text-align: center;
+        color: #9E918B;
+    }
+
+    .cage-change-request-list {
+        display: grid;
+        gap: 10px;
+        padding: 0 24px 18px;
+    }
+
+    .cage-change-request-item {
+        display: grid;
+        grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) auto;
+        gap: 12px;
+        align-items: center;
+        padding: 13px;
+        border: 1px solid #FFE0C6;
+        border-radius: 13px;
+        background: #FFF9F4;
+        font-size: .76rem;
+    }
+
+    .cage-change-request-item strong { color: #2D2521; }
+    .cage-change-request-item p { margin: 3px 0 0; color: #756862; }
+    .cage-change-actions { display: flex; gap: 7px; }
+
     .checkout-pending-label {
         align-items: center;
         background: #FFF8E8;
@@ -761,6 +811,8 @@
     .amenity-ac { background: #E3F5FF; color: #0369A1; }
     .amenity-cam { background: #F3E8FF; color: #7C3AED; }
     .amenity-food { background: #FEF9C3; color: #854D0E; }
+    .room-service-summary { max-width: 250px; color: #6F625C; font-size: .68rem; line-height: 1.45; }
+    .room-service-summary strong { display: block; color: #2D2521; margin-bottom: 2px; }
 
     /* ===== STATUS BADGES ===== */
     .status-badge {
@@ -1150,14 +1202,7 @@
         <h1><i class="fa-solid @(isCheckInPage ? "fa-clipboard-check" : isCategoryPage ? "fa-layer-group" : "fa-map-location-dot")" style="color:#FF7815; margin-right:10px;"></i>@pageTitle</h1>
         <p>@pageSubtitle</p>
     </div>
-    @if (isCheckInPage)
-    {
-        <button class="btn-checkin-primary" data-bs-toggle="modal" data-bs-target="#checkInModal" onclick="clearOnlineReceptionContext()">
-            <i class="fa-solid fa-plus"></i>
-            Mở form tiếp nhận
-        </button>
-    }
-    else if (isCategoryPage)
+    @if (isCategoryPage)
     {
         <a class="btn-checkin-primary" href="/SpaServices/CageMap">
             <i class="fa-solid fa-map-location-dot"></i>
@@ -1199,6 +1244,36 @@
 
 @if (isMapPage)
 {
+@if (pendingCageChangeRequests.Any())
+{
+    <div class="hotel-card">
+        <div class="hotel-card-header">
+            <h5 class="hotel-card-title"><i class="fa-solid fa-arrow-right-arrow-left"></i> Yêu cầu đổi chuồng</h5>
+            <span style="font-size:.75rem;color:#E0630D;">@pendingCageChangeRequests.Count chờ xử lý</span>
+        </div>
+        <div class="cage-change-request-list">
+            @foreach (var request in pendingCageChangeRequests)
+            {
+                <div class="cage-change-request-item">
+                    <div>
+                        <strong>HB@(request.HotelBookingId.ToString("0000")) · @request.HotelBooking.Pet.Name</strong>
+                        <p>@request.HotelBooking.Customer.FullName · @request.HotelBooking.Customer.Phone</p>
+                        <p>@request.SourceCageId (@request.SourceCage.RoomType.Type) → @request.TargetCageId (@request.TargetCage.RoomType.Type)</p>
+                    </div>
+                    <div>
+                        <p><strong>Lý do:</strong> @request.Reason</p>
+                        <p>Dự kiến @request.RemainingDaysSnapshot ngày · chênh lệch @request.PriceDifferenceSnapshot.ToString("N0")đ</p>
+                        <input class="cage-change-note" id="cageChangeNote-@request.ChangeRequestId" maxlength="1000" placeholder="Ghi chú duyệt/từ chối (không bắt buộc)" />
+                    </div>
+                    <div class="cage-change-actions">
+                        <button type="button" class="btn-reception-sm" onclick="processCageChangeRequest(@request.ChangeRequestId, 'approve')">Duyệt</button>
+                        <button type="button" class="btn-cancel-reception-sm" onclick="processCageChangeRequest(@request.ChangeRequestId, 'reject')">Từ chối</button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
 <!-- ===== INTERACTIVE CAGE MAP DASHBOARD ===== -->
 <div class="hotel-card cage-map-dashboard">
     <div class="cage-map-toolbar">
@@ -1215,6 +1290,17 @@
             <button type="button" class="cage-map-filter" data-map-filter="occupied">Có thú cưng (@occupiedCageCount)</button>
             <button type="button" class="cage-map-filter" data-map-filter="operational">Vận hành (@maintenanceCageCount)</button>
         </div>
+    </div>
+
+    <div class="cage-map-search-row">
+        <input type="search" id="cageMapSearch" placeholder="Tìm mã chuồng, tên pet, chủ nuôi hoặc số điện thoại..." autocomplete="off" />
+        <select id="cageMapRoomTypeFilter" aria-label="Lọc theo loại chuồng">
+            <option value="all">Tất cả loại chuồng</option>
+            @foreach (var roomType in cageMapCages.Select(cage => cage.RoomType).Where(room => room != null).DistinctBy(room => room!.RoomTypeId).OrderBy(room => room!.DailyPrice))
+            {
+                <option value="@roomType!.Code">@roomType.Type</option>
+            }
+        </select>
     </div>
 
     <div class="maintenance-status-row" aria-label="Room Maintenance Status">
@@ -1268,6 +1354,7 @@
             @foreach (var cage in cageMapCages)
             {
                 activeBookingByCage.TryGetValue(cage.CageId, out var currentBooking);
+                var cageServiceProfile = HotelRoomTypeCatalog.GetServiceProfile(cage.RoomType?.Code);
                 string statusKey = currentBooking != null
                     ? "occupied"
                     : cage.Status == "Trống"
@@ -1286,6 +1373,8 @@
                         data-cage-id="@cage.CageId"
                         data-booking-id="@(currentBooking?.HotelBookingId.ToString() ?? "")"
                         data-map-status="@filterKey"
+                        data-room-type="@(cage.RoomType?.Code ?? "")"
+                        data-map-search="@($"{cage.CageId} {cage.RoomType?.Type} {currentBooking?.Pet?.Name} {currentBooking?.Customer?.FullName} {currentBooking?.Customer?.Phone}".ToLowerInvariant())"
                         draggable="@(currentBooking != null ? "true" : "false")"
                         onclick="openCageMapDetail('@cage.CageId')">
                     <span class="cage-map-room-top">
@@ -1314,10 +1403,11 @@
                     <span class="cage-map-amenities" aria-label="Trang thiết bị">
                         @if (cage.RoomType?.HasAc == true) { <span title="Điều hòa"><i class="fa-solid fa-wind"></i></span> }
                         @if (cage.RoomType?.HasCamera == true) { <span title="Camera"><i class="fa-solid fa-camera"></i></span> }
-                        @if (cage.RoomType?.HasPremiumFood == true) { <span title="Thức ăn cao cấp"><i class="fa-solid fa-bowl-food"></i></span> }
+                        <span title="Dịch vụ @cageServiceProfile.DisplayName: @cageServiceProfile.Summary"><i class="fa-solid fa-shield-heart"></i></span>
                     </span>
                 </button>
             }
+            <div class="cage-map-empty-filter" id="cageMapEmptyFilter">Không tìm thấy chuồng phù hợp với điều kiện lọc.</div>
         </div>
         <div class="map-legend-row">
             <span><i class="fa-solid fa-circle" style="color:#36B36A;"></i>Trống</span>
@@ -1349,7 +1439,7 @@
                 <div style="background:#FFF8F1; border:1px solid #FFD8C2; border-radius:14px; padding:18px;">
                     <p style="font-size:.9rem; font-weight:700; color:#2D2521; margin:0 0 6px;">Luồng tiếp nhận lưu trú</p>
                     <p style="font-size:.78rem; color:#7D706A; margin:0 0 14px;">
-                        Tìm khách bằng số điện thoại, chọn sổ y tế chưa dùng cho Hotel, xem lại thông tin khám và quyết định đủ điều kiện trước khi phân chuồng.
+                        Tìm khách bằng số điện thoại, chọn sổ y tế chưa dùng cho lưu trú chuồng, xem lại thông tin khám và quyết định đủ điều kiện trước khi phân chuồng.
                     </p>
                     <button class="btn-checkin-primary" data-bs-toggle="modal" data-bs-target="#checkInModal" onclick="clearOnlineReceptionContext()">
                         <i class="fa-solid fa-clipboard-list"></i>
@@ -1377,7 +1467,7 @@
             {
                 <div class="empty-state">
                     <i class="fa-solid fa-calendar-day"></i>
-                    <p>Hiện chưa có lịch Hotel online sắp tới.</p>
+                    <p>Hiện chưa có lịch đặt chuồng online sắp tới.</p>
                 </div>
             }
             else
@@ -1475,14 +1565,12 @@
                     var checkoutStatement = b.CheckoutStatement;
                     var checkoutOrder = checkoutStatement?.Order;
                     bool checkoutOrderCancelled = checkoutOrder?.OrderStatus == 0
-                        || checkoutOrder?.Status == "Đã hủy"
-                        || checkoutOrder?.Status == "Cancelled"
-                        || checkoutOrder?.Status == "Canceled";
+                        || HotelCheckoutWorkflow.IsCancelled(checkoutOrder?.Status);
                     bool checkoutAlreadyPrepared = checkoutStatement != null
                         && (checkoutStatement.Status == "ReadyForPayment" || checkoutStatement.OrderId != null);
                     bool canStartCheckout = !checkoutAlreadyPrepared;
-                    bool canFinalizeCheckout = checkoutStatement?.OrderId != null
-                        && (checkoutOrder?.Status == "Chờ xử lý" || checkoutOrder?.Status == "Đã thanh toán");
+                    bool canFinalizeCheckout = HotelCheckoutWorkflow.CanFinalize(checkoutStatement?.OrderId, checkoutOrder?.Status);
+                    bool canResetCheckout = HotelCheckoutWorkflow.CanReset(checkoutStatement);
                     <div class="booking-item">
                         <div class="booking-cage-badge">
                             @b.CageId
@@ -1533,22 +1621,35 @@
                                 <i class="fa-solid fa-book-open" style="margin-right:4px;"></i>
                                 Cập nhật Daily
                             </a>
-                            @if (canStartCheckout || canFinalizeCheckout)
-                            {
-                                <button class="btn-checkout-sm"
-                                        data-checkout-booking-id="@b.HotelBookingId"
-                                        onclick="confirmCheckout(@b.HotelBookingId, '@b.Pet?.Name', '@b.CageId')">
-                                    <i class="fa-solid @(canFinalizeCheckout ? "fa-check" : "fa-right-from-bracket")" style="margin-right:4px;"></i>
-                                    @(canFinalizeCheckout ? "Hoàn tất trả pet" : "Trả chuồng")
-                                </button>
-                            }
-                            else
-                            {
-                                <span class="checkout-pending-label" data-checkout-pending-id="@b.HotelBookingId">
-                                    <i class="fa-solid @(checkoutOrderCancelled ? "fa-circle-exclamation" : "fa-clock")"></i>
-                                    @(checkoutOrderCancelled ? "Hóa đơn đã hủy" : "Chờ thu ngân xử lý")
-                                </span>
-                            }
+                            <div class="checkout-action-slot"
+                                 data-checkout-action-slot
+                                 data-booking-id="@b.HotelBookingId"
+                                 data-pet-name="@b.Pet?.Name"
+                                 data-cage-id="@b.CageId">
+                                @if (canStartCheckout || canFinalizeCheckout)
+                                {
+                                    <button class="btn-checkout-sm"
+                                            data-checkout-booking-id="@b.HotelBookingId"
+                                            onclick="confirmCheckoutFromSlot(this)">
+                                        <i class="fa-solid @(canFinalizeCheckout ? "fa-check" : "fa-right-from-bracket")" style="margin-right:4px;"></i>
+                                        @(canFinalizeCheckout ? "Hoàn tất trả pet" : "Trả chuồng")
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span class="checkout-pending-label" data-checkout-pending-id="@b.HotelBookingId">
+                                        <i class="fa-solid @(checkoutOrderCancelled ? "fa-circle-exclamation" : "fa-clock")"></i>
+                                        @(checkoutOrderCancelled ? "Hóa đơn đã hủy" : "Chờ thu ngân xử lý")
+                                    </span>
+                                    @if (canResetCheckout)
+                                    {
+                                        <button type="button" class="btn-checkout-reset" onclick="resetCheckoutFromSlot(this)">
+                                            <i class="fa-solid fa-rotate-left"></i>
+                                            @(checkoutOrderCancelled ? "Tạo lại" : "Thu hồi")
+                                        </button>
+                                    }
+                                }
+                            </div>
                         </div>
                     </div>
                 }
@@ -1582,10 +1683,7 @@
             <div class="tab-content active" id="tabContent-roomtype">
                 <div class="hotel-card-header" style="margin-bottom:14px; padding:0;">
                     <span style="font-size:0.8rem; color:#9E918B;">@ViewBag.TotalRoomTypes loại chuồng</span>
-                    <button class="add-btn-sm" data-bs-toggle="modal" data-bs-target="#addRoomTypeModal">
-                        <i class="fa-solid fa-plus"></i>
-                        Thêm loại chuồng
-                    </button>
+                    <span style="font-size:.74rem;color:#7D706A;"><i class="fa-solid fa-lock"></i> Danh mục cố định: Standard, VIP, Luxury</span>
                 </div>
 
                 @if (!roomTypes.Any())
@@ -1603,15 +1701,16 @@
                                 <th>Loại chuồng</th>
                                 <th>Kích cỡ</th>
                                 <th>Giá ngày</th>
-                                <th>Giá giờ</th>
+                                <th>Phí quá giờ</th>
                                 <th>Tiện ích</th>
+                                <th>Dịch vụ chăm sóc</th>
                                 <th>Trạng thái</th>
-                                <th>Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var rt in roomTypes)
                             {
+                                var serviceProfile = HotelRoomTypeCatalog.GetServiceProfile(rt.Code);
                                 <tr>
                                     <td>
                                         <strong>@rt.Type</strong>
@@ -1624,26 +1723,16 @@
                                         <div class="amenity-tags">
                                             @if (rt.HasAc) { <span class="amenity-tag amenity-ac"><i class="fa-solid fa-wind"></i>A/C</span> }
                                             @if (rt.HasCamera) { <span class="amenity-tag amenity-cam"><i class="fa-solid fa-camera"></i>Cam</span> }
-                                            @if (rt.HasPremiumFood) { <span class="amenity-tag amenity-food"><i class="fa-solid fa-star"></i>VIP</span> }
                                         </div>
                                     </td>
                                     <td>
-                                        <label class="custom-switch" title="Bật/tắt loại chuồng">
-                                            <input type="checkbox" @(rt.Status ? "checked" : "") onchange="toggleRoomType(@rt.RoomTypeId, this)">
-                                            <span class="slider"></span>
-                                        </label>
+                                        <div class="room-service-summary">
+                                            <strong>@serviceProfile.CareChecksPerDay lần kiểm tra · @serviceProfile.CustomerUpdatesPerDay cập nhật/ngày</strong>
+                                            @serviceProfile.Summary
+                                        </div>
                                     </td>
                                     <td>
-                                        <div style="display:flex; gap:6px;">
-                                            <button class="tbl-action-btn edit"
-                                                onclick="openEditRoomType(@rt.RoomTypeId, '@rt.Type.Replace("'","\\'")', '@rt.Size.Replace("'","\\'")', @rt.Capacity, @rt.HourlyPrice, @rt.DailyPrice, @rt.HasAc.ToString().ToLower(), @rt.HasCamera.ToString().ToLower(), @rt.HasPremiumFood.ToString().ToLower())"
-                                                title="Sửa">
-                                                <i class="fa-solid fa-pen"></i>
-                                            </button>
-                                            <button class="tbl-action-btn danger" onclick="deleteRoomType(@rt.RoomTypeId, '@rt.Type.Replace("'","\\'")')" title="Xóa">
-                                                <i class="fa-solid fa-trash"></i>
-                                            </button>
-                                        </div>
+                                        <span class="status-badge @(rt.Status ? "active" : "inactive")">@(rt.Status ? "Hoạt động" : "Ngừng")</span>
                                     </td>
                                 </tr>
                             }
@@ -1928,7 +2017,7 @@
                     <p class="form-section-label"><i class="fa-solid fa-magnifying-glass"></i> Bước 2 · Tìm và chọn sổ y tế</p>
                     <div id="receptionModeHint" class="health-warning-strip">
                         <i class="fa-solid fa-circle-info"></i>
-                        Nhập số điện thoại chủ nuôi để tìm các sổ y tế chưa dùng cho Hotel.
+                        Nhập số điện thoại chủ nuôi để tìm các sổ y tế chưa dùng cho lưu trú chuồng.
                     </div>
 
                     <div class="grid-2">
@@ -1952,7 +2041,7 @@
                             <option value="">— Chọn sổ y tế —</option>
                         </select>
                         <small id="medicalRecordHelp" style="display:block; color:#9E918B; margin-top:6px; font-size:.74rem;">
-                            Chỉ hiển thị sổ có cân nặng hợp lệ, chưa gắn với lượt Hotel và pet không có lịch lưu trú khác.
+                            Chỉ hiển thị sổ có cân nặng hợp lệ, chưa gắn với lượt lưu trú chuồng và pet không có lịch lưu trú khác.
                         </small>
                         <a id="ci-createMedicalRecord"
                            class="btn-reception-sm"
@@ -2013,7 +2102,7 @@
                             <option value="">— Chọn gói thức ăn từ kho —</option>
                             @if (!hotelFoodOptions.Any())
                             {
-                                <option value="" disabled>Kho chưa có sản phẩm trong danh mục Hotel Food</option>
+                                <option value="" disabled>Kho chưa có sản phẩm trong danh mục thức ăn lưu trú</option>
                             }
                             @foreach (var food in hotelFoodOptions)
                             {
@@ -2022,7 +2111,7 @@
                                         data-price="@food.Price.ToString("0.##", CultureInfo.InvariantCulture)"
                                         data-stock="@food.Stock"
                                         data-unit="@food.Unit">
-                                    @food.Name · SKU @food.Sku · từ @food.Price.ToString("N0")đ/ngày · tồn @food.Stock suất chuẩn
+                                    @CageTerminology.ForDisplay(food.Name) · SKU @CageTerminology.ForDisplay(food.Sku) · từ @food.Price.ToString("N0")đ/ngày · tồn @food.Stock suất chuẩn
                                 </option>
                             }
                         </select>
@@ -2041,9 +2130,7 @@
                                 <option value="">— Chọn loại chuồng —</option>
                                 @foreach (var rt in activeRoomTypes)
                                 {
-                                    <option value="@rt.RoomTypeId"
-                                            data-price="@rt.DailyPrice"
-                                            data-has-premium-food="@rt.HasPremiumFood.ToString().ToLowerInvariant()">
+                                    <option value="@rt.RoomTypeId" data-price="@rt.DailyPrice">
                                         @rt.Type — @rt.DailyPrice.ToString("N0")đ/ngày
                                     </option>
                                 }
@@ -2130,7 +2217,7 @@
                             <input type="number" name="dailyPrice" class="hform-control" placeholder="150000" min="150000" max="100000000" step="1000" required>
                         </div>
                         <div class="hform-group">
-                            <label class="hform-label">Giá theo giờ (VNĐ)</label>
+                            <label class="hform-label">Phí quá giờ (VNĐ/giờ)</label>
                             <input type="number" name="hourlyPrice" class="hform-control" placeholder="40000" min="40000" max="100000000" step="1000" value="40000" required>
                         </div>
                     </div>
@@ -2145,10 +2232,6 @@
                             <label class="amenity-checkbox-item">
                                 <input type="checkbox" name="hasCamera" value="true">
                                 <span>📹 Camera theo dõi</span>
-                            </label>
-                            <label class="amenity-checkbox-item">
-                                <input type="checkbox" name="hasPremiumFood" value="true">
-                                <span>⭐ Thức ăn cao cấp</span>
                             </label>
                         </div>
                         <!-- Hidden fields for unchecked boxes -->
@@ -2222,10 +2305,6 @@
                             <label class="amenity-checkbox-item">
                                 <input type="checkbox" name="hasCamera" id="edit-rt-cam" value="true">
                                 <span>📹 Camera</span>
-                            </label>
-                            <label class="amenity-checkbox-item">
-                                <input type="checkbox" name="hasPremiumFood" id="edit-rt-food" value="true">
-                                <span>⭐ Thức ăn VIP</span>
                             </label>
                         </div>
                         <input type="hidden" name="hasAc" value="false">
@@ -2460,7 +2539,6 @@ function openCageMapDetail(cageId) {
             const amenities = [];
             if (room.hasAc) amenities.push('<span class="amenity-tag amenity-ac"><i class="fa-solid fa-wind"></i>A/C</span>');
             if (room.hasCamera) amenities.push('<span class="amenity-tag amenity-cam"><i class="fa-solid fa-camera"></i>Camera</span>');
-            if (room.hasPremiumFood) amenities.push('<span class="amenity-tag amenity-food"><i class="fa-solid fa-star"></i>Thức ăn VIP</span>');
             document.getElementById('mapRoomAmenities').innerHTML = amenities.length
                 ? amenities.join('')
                 : '<span style="font-size:.72rem;color:#9E918B;">Không có thiết bị bổ sung.</span>';
@@ -2556,17 +2634,59 @@ function movePetCage(bookingId, targetCageId) {
     .catch(() => alert('Không thể chuyển chuồng. Vui lòng thử lại.'));
 }
 
+function processCageChangeRequest(requestId, decision) {
+    const actionText = decision === 'approve' ? 'duyệt và chuyển chuồng' : 'từ chối yêu cầu';
+    if (!confirm(`Xác nhận ${actionText}?`)) return;
+
+    const body = new URLSearchParams();
+    body.set('requestId', requestId);
+    body.set('decision', decision);
+    body.set('note', document.getElementById(`cageChangeNote-${requestId}`)?.value.trim() || '');
+    fetch('/SpaServices/ProcessCageChangeRequest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': getAntiForgeryToken() },
+        body: body.toString()
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) location.reload();
+    })
+    .catch(() => alert('Không thể xử lý yêu cầu đổi chuồng. Vui lòng thử lại.'));
+}
+
+function normalizeCageMapSearch(value) {
+    return (value || '').toLocaleLowerCase('vi-VN').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    let activeMapStatus = 'all';
+    const applyMapFilters = () => {
+        const query = normalizeCageMapSearch(document.getElementById('cageMapSearch')?.value);
+        const roomType = document.getElementById('cageMapRoomTypeFilter')?.value || 'all';
+        let visibleCount = 0;
+        document.querySelectorAll('.cage-map-room').forEach(room => {
+            const matchesStatus = activeMapStatus === 'all' || room.dataset.mapStatus === activeMapStatus;
+            const matchesRoomType = roomType === 'all' || room.dataset.roomType === roomType;
+            const matchesSearch = !query || normalizeCageMapSearch(room.dataset.mapSearch).includes(query);
+            const visible = matchesStatus && matchesRoomType && matchesSearch;
+            room.classList.toggle('map-hidden', !visible);
+            if (visible) visibleCount++;
+        });
+        const emptyState = document.getElementById('cageMapEmptyFilter');
+        if (emptyState) emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
+    };
+
     document.querySelectorAll('.cage-map-filter').forEach(button => {
         button.addEventListener('click', () => {
             document.querySelectorAll('.cage-map-filter').forEach(item => item.classList.remove('active'));
             button.classList.add('active');
-            const filter = button.dataset.mapFilter;
-            document.querySelectorAll('.cage-map-room').forEach(room => {
-                room.classList.toggle('map-hidden', filter !== 'all' && room.dataset.mapStatus !== filter);
-            });
+            activeMapStatus = button.dataset.mapFilter || 'all';
+            applyMapFilters();
         });
     });
+    document.getElementById('cageMapSearch')?.addEventListener('input', applyMapFilters);
+    document.getElementById('cageMapRoomTypeFilter')?.addEventListener('change', applyMapFilters);
 
     document.querySelectorAll('.cage-map-room[data-booking-id]:not([data-booking-id=""])').forEach(room => {
         room.addEventListener('dragstart', event => {
@@ -3258,7 +3378,6 @@ function openEditRoomType(id, type, size, capacity, hourly, daily, hasAc, hasCam
     document.getElementById('edit-rt-hourly').value = hourly;
     document.getElementById('edit-rt-ac').checked = hasAc === true || hasAc === 'true';
     document.getElementById('edit-rt-cam').checked = hasCam === true || hasCam === 'true';
-    document.getElementById('edit-rt-food').checked = hasFood === true || hasFood === 'true';
     // Set size dropdown
     const sizeSel = document.getElementById('edit-rt-size');
     for (let i = 0; i < sizeSel.options.length; i++) {
@@ -3286,11 +3405,11 @@ function validateRoomTypePriceForm(form) {
     }
 
     if (hourlyInput.value && (!Number.isFinite(hourlyPrice) || hourlyPrice < MIN_ROOM_TYPE_HOURLY_PRICE)) {
-        hourlyInput.setCustomValidity('Giá theo giờ không được thấp hơn 40.000đ.');
+        hourlyInput.setCustomValidity('Phí quá giờ không được thấp hơn 40.000đ.');
     } else if (hourlyPrice > MAX_ROOM_TYPE_PRICE) {
-        hourlyInput.setCustomValidity('Giá theo giờ không được vượt quá 100.000.000đ.');
+        hourlyInput.setCustomValidity('Phí quá giờ không được vượt quá 100.000.000đ.');
     } else if (dailyInput.value && hourlyInput.value && hourlyPrice > dailyPrice) {
-        hourlyInput.setCustomValidity('Giá theo giờ không được lớn hơn giá theo ngày.');
+        hourlyInput.setCustomValidity('Phí quá giờ không được lớn hơn giá theo ngày.');
     }
 
     return dailyInput.validity.valid && hourlyInput.validity.valid;

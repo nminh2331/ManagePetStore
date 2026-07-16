@@ -79,6 +79,12 @@
                     <span class="hbh-eyebrow">@Model.CurrentStay.DisplayBookingId · Chuồng @Model.CurrentStay.CageId</span>
                     <h2 id="care-log-heading">Cập nhật nhật ký chăm sóc</h2>
                     <p>
+                        Dịch vụ @Model.CurrentStay.ServiceProfile.DisplayName:
+                        @Model.CurrentStay.ServiceProfile.CareChecksPerDay lần kiểm tra và
+                        @Model.CurrentStay.ServiceProfile.CustomerUpdatesPerDay cập nhật cho khách/ngày ·
+                        @Model.CurrentStay.ServiceProfile.Summary.
+                    </p>
+                    <p>
                         Gói ăn: @Model.CurrentStay.FoodPlanName
                         @if (!string.IsNullOrWhiteSpace(Model.CurrentStay.FoodProductSku))
                         {
@@ -228,7 +234,7 @@
         <div class="hbh-staff-surface-header"><h2>Các lượt lưu trú của @Model.PetName</h2><span>@Model.Stays.Count lượt</span></div>
         @if (Model.Stays.Count == 0)
         {
-            <div class="hbh-empty">Pet chưa có lịch sử booking hotel.</div>
+            <div class="hbh-empty">Pet chưa có lịch sử đặt chuồng.</div>
         }
         else
         {

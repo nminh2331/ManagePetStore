@@ -30,6 +30,7 @@ public class HotelBookingHistoryDetailViewModel
     public string CustomerPhone { get; set; } = string.Empty;
     public string? CustomerEmail { get; set; }
     public string CageId { get; set; } = string.Empty;
+    public string RoomTypeCode { get; set; } = string.Empty;
     public string RoomTypeName { get; set; } = string.Empty;
     public string RoomSize { get; set; } = string.Empty;
     public bool HasAc { get; set; }

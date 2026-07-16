@@ -72,9 +72,15 @@ public class PetOptionItem
 public class RoomTypeOptionItem
 {
     public int Id { get; set; }
+    public string Code { get; set; } = "";
     public string Name { get; set; } = "";
+    public string Size { get; set; } = "";
+    public int Capacity { get; set; }
     public decimal DailyPrice { get; set; }
+    public bool HasAc { get; set; }
+    public bool HasCamera { get; set; }
     public bool HasPremiumFood { get; set; }
+    public HotelRoomServiceProfile ServiceProfile => HotelRoomTypeCatalog.GetServiceProfile(Code);
 }
 
 public class HotelFoodOptionItem
