@@ -196,7 +196,7 @@ public class DashboardController : Controller
             {
                 ServiceId = g.Key.RoomTypeId ?? 0,
                 Name = g.Key.Type,
-                Type = "Khách sạn",
+                Type = "Chuồng",
                 UsageCount = g.Sum(oi => oi.Quantity),
                 TotalRevenue = g.Sum(oi => oi.Price * oi.Quantity)
             })

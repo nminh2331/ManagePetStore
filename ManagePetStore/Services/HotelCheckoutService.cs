@@ -42,7 +42,7 @@ public class HotelCheckoutService : IHotelCheckoutService
     {
         await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         var booking = await LoadBookingAsync(request.HotelBookingId, false)
-            ?? throw new InvalidOperationException("Không tìm thấy booking Hotel.");
+            ?? throw new InvalidOperationException("Không tìm thấy lượt đặt chuồng.");
 
         if (booking.Status != "Active" && booking.Status != "Đang ở")
         {
@@ -223,14 +223,14 @@ public class HotelCheckoutService : IHotelCheckoutService
             items.Add(new()
             {
                 ChargeType = "FoodPlan",
-                Description = booking.FoodPlan.FoodNameSnapshot + weightDetail,
+                Description = CageTerminology.ForDisplay(booking.FoodPlan.FoodNameSnapshot) + weightDetail,
                 Quantity = foodDays,
                 Unit = "ngày",
                 UnitPrice = booking.FoodPlan.PricePerDaySnapshot,
                 Amount = planFoodAmount
             });
         }
-        items.AddRange(booking.BookingAddons.Select(addon => new HotelCheckoutPreviewItem { ChargeType = "Addon", Description = addon.Name, Quantity = 1, Unit = "lần", UnitPrice = addon.Price, Amount = addon.Price }));
+        items.AddRange(booking.BookingAddons.Select(addon => new HotelCheckoutPreviewItem { ChargeType = "Addon", Description = CageTerminology.ForDisplay(addon.Name), Quantity = 1, Unit = "lần", UnitPrice = addon.Price, Amount = addon.Price }));
         items.AddRange(extraFoodLogs.Select(log => new HotelCheckoutPreviewItem { ChargeType = "ExtraFood", Description = $"Bữa phát sinh: {log.FoodType}", Quantity = 1, Unit = "lần", UnitPrice = log.ExtraChargeAmount, Amount = log.ExtraChargeAmount }));
         if (lateFee > 0)
         {
@@ -263,7 +263,8 @@ public class HotelCheckoutService : IHotelCheckoutService
             StatementStatus = booking.CheckoutStatement?.Status ?? "Draft",
             OrderId = booking.CheckoutStatement?.OrderId,
             OrderStatus = orderStatus,
-            CanFinalize = booking.CheckoutStatement?.OrderId != null && (orderStatus == "Chờ xử lý" || orderStatus == "Đã thanh toán"),
+            CanFinalize = HotelCheckoutWorkflow.CanFinalize(booking.CheckoutStatement?.OrderId, orderStatus),
+            CanReset = HotelCheckoutWorkflow.CanReset(booking.CheckoutStatement),
             Items = items
         };
     }

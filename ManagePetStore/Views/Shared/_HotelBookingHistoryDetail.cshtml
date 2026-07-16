@@ -4,6 +4,10 @@
     var scheduledCheckIn = Model.ScheduledCheckInDate ?? Model.CheckInDate;
     var scheduledCheckOut = Model.ScheduledCheckOutDate ?? Model.CheckOutDate ?? scheduledCheckIn.AddDays(Math.Max(Model.StayDays, 1));
     var showTimeline = ViewData["ShowHotelTimeline"] as bool? ?? true;
+    var roomServiceProfile = ManagePetStore.Models.HotelRoomTypeCatalog.GetServiceProfile(Model.RoomTypeCode);
+    string FormatScheduledDateTime(DateTime value) => value.TimeOfDay == TimeSpan.Zero
+        ? value.ToString("dd/MM/yyyy")
+        : value.ToString("dd/MM/yyyy HH:mm");
 }
 
 <div class="hbh-summary-band">
@@ -29,13 +33,13 @@
     <div><span>Chuồng</span><strong>@Model.CageId</strong><small>@Model.RoomTypeName · @Model.RoomSize</small></div>
     <div>
         <span>@(Model.ActualCheckInAt.HasValue ? "Nhận thực tế" : "Nhận dự kiến")</span>
-        <strong>@(Model.ActualCheckInAt?.ToString("dd/MM/yyyy HH:mm") ?? scheduledCheckIn.ToString("dd/MM/yyyy"))</strong>
-        @if (Model.ActualCheckInAt.HasValue) { <small>Dự kiến: @scheduledCheckIn.ToString("dd/MM/yyyy")</small> }
+        <strong>@(Model.ActualCheckInAt?.ToString("dd/MM/yyyy HH:mm") ?? FormatScheduledDateTime(scheduledCheckIn))</strong>
+        @if (Model.ActualCheckInAt.HasValue) { <small>Dự kiến: @FormatScheduledDateTime(scheduledCheckIn)</small> }
     </div>
     <div>
         <span>@(Model.ActualCheckOutAt.HasValue ? "Trả thực tế" : "Trả dự kiến")</span>
-        <strong>@(Model.ActualCheckOutAt?.ToString("dd/MM/yyyy HH:mm") ?? scheduledCheckOut.ToString("dd/MM/yyyy"))</strong>
-        @if (Model.ActualCheckOutAt.HasValue) { <small>Dự kiến: @scheduledCheckOut.ToString("dd/MM/yyyy")</small> }
+        <strong>@(Model.ActualCheckOutAt?.ToString("dd/MM/yyyy HH:mm") ?? FormatScheduledDateTime(scheduledCheckOut))</strong>
+        @if (Model.ActualCheckOutAt.HasValue) { <small>Dự kiến: @FormatScheduledDateTime(scheduledCheckOut)</small> }
     </div>
     <div><span>Thời gian</span><strong>@Model.StayDays ngày</strong></div>
 </div>
@@ -247,12 +251,16 @@
         </section>
 
         <section class="hbh-section">
-            <div class="hbh-section-heading"><div><h3><i class="bi bi-house-check"></i> Tiện nghi</h3></div></div>
+            <div class="hbh-section-heading"><div><h3><i class="bi bi-house-check"></i> Tiện nghi và dịch vụ @roomServiceProfile.DisplayName</h3></div></div>
             <ul class="hbh-feature-list">
                 <li class="@(Model.HasAc ? "available" : "")"><i class="bi bi-snow"></i> Điều hòa</li>
                 <li class="@(Model.HasCamera ? "available" : "")"><i class="bi bi-camera-video"></i> Camera</li>
-                <li class="@(Model.HasPremiumFood ? "available" : "")"><i class="bi bi-stars"></i> Thức ăn cao cấp</li>
+                @foreach (var service in roomServiceProfile.IncludedServices)
+                {
+                    <li class="available"><i class="bi bi-shield-check"></i> @service</li>
+                }
             </ul>
+            <small>Gói thức ăn được lựa chọn và tính riêng theo cân nặng của pet.</small>
         </section>
 
         <section class="hbh-section">

@@ -77,6 +77,7 @@ builder.Services.AddSession(options =>
 builder.Services.Configure<ManagePetStore.Services.EmailSettings>(
     builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddScoped<ManagePetStore.Services.IEmailService, ManagePetStore.Services.EmailService>();
+builder.Services.AddScoped<ManagePetStore.Services.IHotelEmailService, ManagePetStore.Services.HotelEmailService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ManagePetStore.Services.Customer.CartProductResolver>();
 builder.Services.AddScoped<ManagePetStore.Services.Customer.ICartService, ManagePetStore.Services.Customer.CartService>();

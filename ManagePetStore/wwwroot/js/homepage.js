@@ -6,17 +6,18 @@
     const form = document.getElementById('hotelBookingForm');
     const petSelect = document.getElementById('hotelPet');
     const roomSelect = document.getElementById('hotelRoomType');
+    const cageSelect = document.getElementById('hotelCage');
+    const roomTypeSummary = document.getElementById('hotelRoomTypeSummary');
+    const cageAvailability = document.getElementById('hotelCageAvailability');
     const checkIn = document.getElementById('hotelCheckIn');
     const checkOut = document.getElementById('hotelCheckOut');
     const totalEl = document.getElementById('hotelTotal');
     const nightsEl = document.getElementById('hotelNights');
     const foodOption = document.getElementById('hotelFoodOption');
-    const foodDescription = document.getElementById('hotelFoodDescription');
     const foodPricingNote = document.getElementById('hotelFoodPricingNote');
-    const feedingScheduleWrap = document.getElementById('hotelFeedingScheduleWrap');
-    const feedingSchedule = document.getElementById('hotelFeedingSchedule');
     const foodTotalEl = document.getElementById('hotelFoodTotal');
     const dayInMilliseconds = 24 * 60 * 60 * 1000;
+    let cageAvailabilitySequence = 0;
 
     function openHotelModal() {
         if (overlay) {
@@ -37,65 +38,81 @@
         return Math.round(amount).toLocaleString('vi-VN') + 'đ';
     }
 
-    function formatDateInput(date) {
+    function formatDateTimeInput(date) {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
-        return year + '-' + month + '-' + day;
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
     }
 
-    function parseDateInput(value) {
-        return value ? new Date(value + 'T00:00:00') : null;
+    function parseDateTimeInput(value) {
+        if (!value) return null;
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
     }
 
-    function getNights() {
-        const start = parseDateInput(checkIn?.value);
-        const end = parseDateInput(checkOut?.value);
+    function getChargeableDays() {
+        const start = parseDateTimeInput(checkIn?.value);
+        const end = parseDateTimeInput(checkOut?.value);
 
         if (!start || !end) return 0;
-        return Math.round((end - start) / dayInMilliseconds);
+        return Math.ceil((end - start) / dayInMilliseconds);
+    }
+
+    function roundUpToQuarterHour(date) {
+        const rounded = new Date(date);
+        const currentMinutes = rounded.getMinutes();
+        rounded.setSeconds(0, 0);
+        rounded.setMinutes(currentMinutes + 15 - (currentMinutes % 15));
+        return rounded;
     }
 
     function configureHotelDates() {
         if (!checkIn || !checkOut) return;
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const latestCheckIn = new Date(today);
+        const now = new Date();
+        const earliestCheckIn = roundUpToQuarterHour(now);
+        const latestCheckIn = new Date(earliestCheckIn);
         latestCheckIn.setDate(latestCheckIn.getDate() + 365);
 
-        checkIn.min = formatDateInput(today);
-        checkIn.max = formatDateInput(latestCheckIn);
+        checkIn.min = formatDateTimeInput(earliestCheckIn);
+        checkIn.max = formatDateTimeInput(latestCheckIn);
 
         if (!checkIn.value) {
-            const tomorrow = new Date(today);
+            const tomorrow = new Date(earliestCheckIn);
             tomorrow.setDate(tomorrow.getDate() + 1);
-            checkIn.value = formatDateInput(tomorrow);
+            tomorrow.setHours(14, 0, 0, 0);
+            checkIn.value = formatDateTimeInput(tomorrow);
         }
 
         updateCheckOutLimits();
 
         if (!checkOut.value) {
-            const defaultCheckOut = parseDateInput(checkIn.value);
+            const defaultCheckOut = parseDateTimeInput(checkIn.value);
             defaultCheckOut.setDate(defaultCheckOut.getDate() + 1);
-            checkOut.value = formatDateInput(defaultCheckOut);
+            checkOut.value = formatDateTimeInput(defaultCheckOut);
         }
     }
 
     function updateCheckOutLimits() {
         if (!checkIn || !checkOut || !checkIn.value) return;
 
-        const start = parseDateInput(checkIn.value);
+        const start = parseDateTimeInput(checkIn.value);
         const minimumCheckOut = new Date(start);
         const maximumCheckOut = new Date(start);
-        minimumCheckOut.setDate(minimumCheckOut.getDate() + 1);
+        minimumCheckOut.setMinutes(minimumCheckOut.getMinutes() + 15);
         maximumCheckOut.setDate(maximumCheckOut.getDate() + 90);
 
-        checkOut.min = formatDateInput(minimumCheckOut);
-        checkOut.max = formatDateInput(maximumCheckOut);
+        checkOut.min = formatDateTimeInput(minimumCheckOut);
+        checkOut.max = formatDateTimeInput(maximumCheckOut);
 
-        if (checkOut.value && getNights() <= 0) {
-            checkOut.value = formatDateInput(minimumCheckOut);
+        const currentCheckOut = parseDateTimeInput(checkOut.value);
+        if (currentCheckOut && (currentCheckOut <= start || currentCheckOut > maximumCheckOut)) {
+            const defaultCheckOut = new Date(start);
+            defaultCheckOut.setDate(defaultCheckOut.getDate() + 1);
+            checkOut.value = formatDateTimeInput(defaultCheckOut);
         }
     }
 
@@ -105,27 +122,94 @@
         checkIn.setCustomValidity('');
         checkOut.setCustomValidity('');
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const start = parseDateInput(checkIn.value);
-        const nights = getNights();
-
-        if (start && start < today) {
-            checkIn.setCustomValidity('Ngày nhận phòng không được ở trong quá khứ.');
+        const now = new Date();
+        const start = parseDateTimeInput(checkIn.value);
+        const end = parseDateTimeInput(checkOut.value);
+        if (start && start < now) {
+            checkIn.setCustomValidity('Thời gian nhận phòng không được ở trong quá khứ.');
             return false;
         }
 
-        if (checkIn.value && checkOut.value && nights <= 0) {
-            checkOut.setCustomValidity('Ngày trả phòng phải sau ngày nhận phòng.');
+        if (start && end && end <= start) {
+            checkOut.setCustomValidity('Thời gian trả phòng phải sau thời gian nhận phòng.');
             return false;
         }
 
-        if (nights > 90) {
-            checkOut.setCustomValidity('Mỗi lượt đặt phòng không được vượt quá 90 đêm.');
+        if (start && end && end - start > 90 * dayInMilliseconds) {
+            checkOut.setCustomValidity('Mỗi lượt đặt phòng không được vượt quá 90 ngày.');
             return false;
         }
 
         return true;
+    }
+
+    function updateRoomTypeSummary() {
+        if (!roomSelect || !roomTypeSummary) return;
+        const selected = roomSelect.options[roomSelect.selectedIndex];
+        if (!selected?.value) {
+            roomTypeSummary.textContent = 'Chọn loại phòng để xem kích thước và tiện ích.';
+            return;
+        }
+
+        const amenities = [];
+        if (selected.dataset.ac === 'true') amenities.push('Điều hòa');
+        if (selected.dataset.camera === 'true') amenities.push('Camera');
+        const serviceSummary = selected.dataset.serviceSummary || 'Chăm sóc tiêu chuẩn';
+        roomTypeSummary.textContent = `${selected.dataset.code} · ${selected.dataset.size} · 1 pet · ${amenities.length ? amenities.join(', ') : 'Tiện ích cơ bản'} · Dịch vụ: ${serviceSummary}`;
+    }
+
+    async function loadAvailableCages() {
+        if (!cageSelect) return;
+        const sequence = ++cageAvailabilitySequence;
+        cageSelect.setCustomValidity('');
+
+        if (!roomSelect?.value || !checkIn?.value || !checkOut?.value || !validateHotelDates()) {
+            cageSelect.disabled = true;
+            cageSelect.innerHTML = '<option value="">Chọn loại phòng và thời gian trước</option>';
+            if (cageAvailability) cageAvailability.textContent = 'Danh sách được kiểm tra theo đúng thời gian nhận và trả.';
+            return;
+        }
+
+        cageSelect.disabled = true;
+        cageSelect.innerHTML = '<option value="">Đang kiểm tra chuồng trống...</option>';
+        if (cageAvailability) cageAvailability.textContent = 'Đang kiểm tra lịch đặt trùng...';
+
+        const query = new URLSearchParams({
+            roomTypeId: roomSelect.value,
+            checkInDate: checkIn.value,
+            checkOutDate: checkOut.value
+        });
+
+        try {
+            const response = await fetch('/Customer/HotelBooking/AvailableCages?' + query.toString(), {
+                headers: { 'Accept': 'application/json' }
+            });
+            const data = await response.json();
+            if (sequence !== cageAvailabilitySequence) return;
+            if (!response.ok || !data.success) throw new Error(data.message || 'Không thể kiểm tra chuồng trống.');
+
+            cageSelect.disabled = false;
+            cageSelect.innerHTML = '<option value="">Chọn chuồng</option>';
+            data.cages.forEach(function (cage) {
+                const option = document.createElement('option');
+                option.value = cage.cageId;
+                option.textContent = `Chuồng ${cage.cageId}`;
+                cageSelect.appendChild(option);
+            });
+
+            if (data.cages.length === 0) {
+                cageSelect.setCustomValidity('Loại phòng này đã hết chuồng trống trong khoảng thời gian đã chọn.');
+                if (cageAvailability) cageAvailability.textContent = 'Không còn chuồng trống. Hãy đổi loại phòng hoặc thời gian.';
+            } else if (cageAvailability) {
+                cageAvailability.textContent = `Có ${data.cages.length} chuồng còn trống trong khoảng thời gian này.`;
+            }
+        } catch (error) {
+            if (sequence !== cageAvailabilitySequence) return;
+            cageSelect.disabled = false;
+            cageSelect.innerHTML = '<option value="">Không thể tải danh sách chuồng</option>';
+            cageSelect.setCustomValidity(error.message || 'Không thể kiểm tra chuồng trống.');
+            if (cageAvailability) cageAvailability.textContent = error.message || 'Không thể kiểm tra chuồng trống.';
+        }
     }
 
     function getSelectedPetWeight() {
@@ -155,7 +239,7 @@
         const basePrice = Number.parseFloat(selectedFood?.dataset.price || '0') || 0;
         const weight = getSelectedPetWeight();
         const multiplier = getWeightMultiplier(weight);
-        const nights = Math.max(1, getNights());
+        const nights = Math.max(1, getChargeableDays());
         const pricePerDay = basePrice > 0 && multiplier > 0
             ? Math.ceil((basePrice * multiplier) / 1000) * 1000
             : 0;
@@ -176,7 +260,7 @@
 
         const selected = roomSelect.options[roomSelect.selectedIndex];
         const dailyPrice = parseFloat(selected?.dataset.price) || 0;
-        const nights = Math.max(1, getNights());
+        const nights = Math.max(1, getChargeableDays());
         const discountPercent = parseFloat(form?.dataset.discountPercent) || 0;
 
         const subtotal = dailyPrice * nights;
@@ -184,27 +268,19 @@
         const foodTotal = getFoodQuote().total;
         totalEl.textContent = formatCurrency(discounted + foodTotal);
         if (foodTotalEl) foodTotalEl.textContent = formatCurrency(foodTotal);
-        if (nightsEl) nightsEl.textContent = nights + ' đêm';
+        if (nightsEl) nightsEl.textContent = nights + ' ngày';
     }
 
     function updateFoodPlan() {
-        if (feedingSchedule) {
-            feedingSchedule.disabled = false;
-            validateFeedingSchedule();
-        }
         const selectedFood = foodOption?.options[foodOption.selectedIndex];
         const quote = getFoodQuote();
-        if (foodDescription && selectedFood?.value) {
-            const detail = selectedFood.dataset.description || 'Gói thức ăn Hotel';
-            foodDescription.textContent = `${detail} · Đơn vị kho: ${selectedFood.dataset.unit || 'suất/ngày'} · Còn ${selectedFood.dataset.available || 0} suất chuẩn`;
-        }
         if (foodPricingNote) {
             if (!selectedFood?.value) {
                 foodPricingNote.textContent = 'Chọn gói thức ăn để xem giá theo cân nặng.';
             } else if (!quote.weight) {
                 foodPricingNote.textContent = 'Hồ sơ pet phải có cân nặng hợp lệ để tính giá tạm tính.';
             } else {
-                foodPricingNote.textContent = `Tạm tính theo hồ sơ ${quote.weight.toLocaleString('vi-VN')}kg · nhóm ${quote.weightBand} · hệ số ${quote.multiplier.toLocaleString('vi-VN')} · ${formatCurrency(quote.pricePerDay)}/ngày · dự kiến dùng ${quote.inventoryUnits} suất chuẩn. Giá cuối cùng xác nhận khi tiếp nhận.`;
+                foodPricingNote.textContent = `Cân nặng hồ sơ ${quote.weight.toLocaleString('vi-VN')}kg · ${formatCurrency(quote.pricePerDay)}/ngày · tổng gói ăn ${formatCurrency(quote.total)}. Giá cuối cùng xác nhận khi tiếp nhận.`;
             }
         }
         validateFoodAvailability();
@@ -221,7 +297,7 @@
         const availableUnits = Number(selectedFood.dataset.available || 0);
         const quote = getFoodQuote();
         if (petSelect?.value && !quote.weight) {
-            petSelect.setCustomValidity('Hồ sơ pet phải có cân nặng hợp lệ trước khi đặt Hotel.');
+            petSelect.setCustomValidity('Hồ sơ pet phải có cân nặng hợp lệ trước khi đặt chuồng.');
             return false;
         }
         const requiredUnits = quote.inventoryUnits;
@@ -229,37 +305,6 @@
             foodOption.setCustomValidity(`Gói này chỉ còn ${availableUnits} suất chuẩn, không đủ ${requiredUnits} suất theo cân nặng và thời gian lưu trú.`);
             return false;
         }
-        return true;
-    }
-
-    function validateFeedingSchedule() {
-        if (!feedingSchedule || feedingSchedule.disabled) return true;
-
-        feedingSchedule.setCustomValidity('');
-        const value = feedingSchedule.value.trim();
-        if (!value) return true;
-
-        const mealTimes = value
-            .split(/\s*(?:,|;|và|and)\s*/iu)
-            .filter(Boolean);
-        const timePattern = /^(?:[01]?\d|2[0-3]):[0-5]\d$/;
-
-        if (mealTimes.length === 0 || mealTimes.some(time => !timePattern.test(time))) {
-            feedingSchedule.setCustomValidity('Giờ ăn phải có dạng HH:mm, ví dụ 07:00 và 18:00.');
-            return false;
-        }
-
-        const outsideAllowedHours = mealTimes.some(time => {
-            const [hours, minutes] = time.split(':').map(Number);
-            const totalMinutes = hours * 60 + minutes;
-            return totalMinutes < 7 * 60 || totalMinutes > 20 * 60;
-        });
-
-        if (outsideAllowedHours) {
-            feedingSchedule.setCustomValidity('Giờ ăn chỉ được trong khoảng 07:00 đến 20:00.');
-            return false;
-        }
-
         return true;
     }
 
@@ -287,10 +332,15 @@
     configureHotelDates();
     updateTotal();
 
-    if (roomSelect) roomSelect.addEventListener('change', updateTotal);
+    updateRoomTypeSummary();
+    loadAvailableCages();
+    if (roomSelect) roomSelect.addEventListener('change', function () {
+        updateRoomTypeSummary();
+        updateTotal();
+        loadAvailableCages();
+    });
     if (petSelect) petSelect.addEventListener('change', updateFoodPlan);
     if (foodOption) foodOption.addEventListener('change', updateFoodPlan);
-    if (feedingSchedule) feedingSchedule.addEventListener('input', validateFeedingSchedule);
     updateFoodPlan();
     if (checkIn) {
         checkIn.addEventListener('change', function () {
@@ -299,6 +349,7 @@
             validateHotelDates();
             validateFoodAvailability();
             updateTotal();
+            loadAvailableCages();
         });
     }
     if (checkOut) {
@@ -307,15 +358,19 @@
             validateHotelDates();
             validateFoodAvailability();
             updateTotal();
+            loadAvailableCages();
         });
     }
 
     if (form) {
         form.addEventListener('submit', function (e) {
             const hasValidDates = validateHotelDates();
-            const hasValidFeedingSchedule = validateFeedingSchedule();
             const hasAvailableFood = validateFoodAvailability();
-            if (!hasValidDates || !hasValidFeedingSchedule || !hasAvailableFood || !form.checkValidity()) {
+            if (cageSelect && (!cageSelect.value || cageSelect.disabled)) {
+                cageSelect.disabled = false;
+                cageSelect.setCustomValidity('Vui lòng chọn một chuồng còn trống.');
+            }
+            if (!hasValidDates || !hasAvailableFood || !form.checkValidity()) {
                 e.preventDefault();
                 form.reportValidity();
             }

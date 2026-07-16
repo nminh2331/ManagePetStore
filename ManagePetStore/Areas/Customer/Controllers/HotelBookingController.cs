@@ -19,17 +19,20 @@ public class HotelBookingController : Controller
     private readonly PetStoreManagementContext _context;
     private readonly IHotelBookingHistoryService _historyService;
     private readonly IInventoryBatchService _inventoryBatchService;
+    private readonly IHotelEmailService _hotelEmailService;
     private readonly ILogger<HotelBookingController> _logger;
 
     public HotelBookingController(
         PetStoreManagementContext context,
         IHotelBookingHistoryService historyService,
         IInventoryBatchService inventoryBatchService,
+        IHotelEmailService hotelEmailService,
         ILogger<HotelBookingController> logger)
     {
         _context = context;
         _historyService = historyService;
         _inventoryBatchService = inventoryBatchService;
+        _hotelEmailService = hotelEmailService;
         _logger = logger;
     }
 
@@ -126,13 +129,76 @@ public class HotelBookingController : Controller
             return NotFound();
         }
 
+        var pendingRequest = await _context.HotelCageChangeRequests
+            .AsNoTracking()
+            .Where(request => request.HotelBookingId == id && request.Status == "Pending")
+            .OrderByDescending(request => request.RequestedAt)
+            .Select(request => new HotelCageChangeRequestItemViewModel
+            {
+                ChangeRequestId = request.ChangeRequestId,
+                SourceCageId = request.SourceCageId,
+                TargetCageId = request.TargetCageId,
+                Reason = request.Reason,
+                Status = request.Status,
+                EstimatedPriceDifference = request.PriceDifferenceSnapshot,
+                RequestedAt = request.RequestedAt
+            })
+            .FirstOrDefaultAsync();
+
+        bool canRequestCageChange = booking.StatusKey is "reserved" or "active";
+        List<HotelCageChangeOptionViewModel> availableCages = canRequestCageChange && pendingRequest == null
+            ? await GetAvailableCageChangeOptionsAsync(booking, layout.Customer.MembershipTier)
+            : [];
+
         return View(new HotelBookingDetailPageViewModel
         {
             User = layout.User,
             Customer = layout.Customer,
             ActiveNav = layout.ActiveNav,
-            Booking = booking
+            Booking = booking,
+            CanRequestCageChange = canRequestCageChange,
+            PendingCageChangeRequest = pendingRequest,
+            AvailableCages = availableCages
         });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> AvailableCages(int roomTypeId, DateTime checkInDate, DateTime checkOutDate)
+    {
+        if (roomTypeId <= 0 || checkOutDate <= checkInDate || checkInDate < DateTime.Now.AddMinutes(-1))
+        {
+            return BadRequest(new { success = false, message = "Khoảng thời gian hoặc loại phòng không hợp lệ." });
+        }
+
+        var roomTypeExists = await _context.RoomTypes
+            .AsNoTracking()
+            .AnyAsync(roomType => roomType.RoomTypeId == roomTypeId &&
+                                  roomType.Status &&
+                                  HotelRoomTypeCatalog.Codes.Contains(roomType.Code));
+        if (!roomTypeExists)
+        {
+            return BadRequest(new { success = false, message = "Loại phòng không còn nhận đặt." });
+        }
+
+        var conflictingCageIds = await _context.HotelBookings
+            .AsNoTracking()
+            .Where(booking => BlockingStatuses.Contains(booking.Status) &&
+                              booking.CheckInDate < checkOutDate &&
+                              (!booking.CheckOutDate.HasValue || booking.CheckOutDate.Value > checkInDate))
+            .Select(booking => booking.CageId)
+            .Distinct()
+            .ToListAsync();
+
+        var availableCages = await _context.Cages
+            .AsNoTracking()
+            .Where(cage => cage.RoomTypeId == roomTypeId &&
+                           cage.Status == "Trống" &&
+                           !conflictingCageIds.Contains(cage.CageId))
+            .OrderBy(cage => cage.CageId)
+            .Select(cage => new { cageId = cage.CageId })
+            .ToListAsync();
+
+        return Json(new { success = true, cages = availableCages });
     }
 
     [HttpPost]
@@ -152,9 +218,10 @@ public class HotelBookingController : Controller
 
         var petId = request.PetId!.Value;
         var roomTypeId = request.RoomTypeId!.Value;
-        var checkIn = request.CheckInDate!.Value.Date;
-        var checkOut = request.CheckOutDate!.Value.Date;
-        var stayDays = (checkOut - checkIn).Days;
+        var requestedCageId = request.CageId.Trim().ToUpperInvariant();
+        var checkIn = request.CheckInDate!.Value;
+        var checkOut = request.CheckOutDate!.Value;
+        var stayDays = Math.Max(1, (int)Math.Ceiling((checkOut - checkIn).TotalHours / 24d));
 
         await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         try
@@ -176,12 +243,14 @@ public class HotelBookingController : Controller
             {
                 return BookingError(
                     $"Hồ sơ của {pet.Name} chưa có cân nặng hợp lệ. " +
-                    "Vui lòng cập nhật hồ sơ thú cưng trước khi đặt Hotel.");
+                    "Vui lòng cập nhật hồ sơ thú cưng trước khi đặt chuồng.");
             }
 
             var roomType = await _context.RoomTypes
                 .AsNoTracking()
-                .FirstOrDefaultAsync(r => r.RoomTypeId == roomTypeId && r.Status);
+                .FirstOrDefaultAsync(r => r.RoomTypeId == roomTypeId &&
+                                          r.Status &&
+                                          HotelRoomTypeCatalog.Codes.Contains(r.Code));
 
             if (roomType == null)
             {
@@ -254,15 +323,15 @@ public class HotelBookingController : Controller
             var cage = await _context.Cages
                 .AsNoTracking()
                 .Where(c =>
+                    c.CageId == requestedCageId &&
                     c.RoomTypeId == roomTypeId &&
                     c.Status == "Trống" &&
                     !conflictingCageIds.Contains(c.CageId))
-                .OrderBy(c => c.CageId)
                 .FirstOrDefaultAsync();
 
             if (cage == null)
             {
-                return BookingError("Loại phòng này đã hết chuồng trống trong khoảng ngày bạn chọn.");
+                return BookingError("Chuồng đã chọn không còn trống trong khoảng thời gian này. Vui lòng chọn lại.");
             }
 
             var subtotal = roomType.DailyPrice * stayDays;
@@ -306,7 +375,7 @@ public class HotelBookingController : Controller
                 PricePerDaySnapshot = foodPricePerDay,
                 PortionGrams = 0,
                 MealsPerDay = 0,
-                FeedingInstructions = string.IsNullOrWhiteSpace(request.FeedingInstructions) ? null : request.FeedingInstructions.Trim(),
+                FeedingInstructions = null,
                 AllergyNotes = string.IsNullOrWhiteSpace(request.AllergyNotes) ? null : request.AllergyNotes.Trim(),
                 ChargeableDays = stayDays,
                 InventoryQuantityDeducted = foodQuote.InventoryUnits,
@@ -318,9 +387,9 @@ public class HotelBookingController : Controller
                 PetId = pet.PetId,
                 HotelBooking = booking,
                 Date = DateTime.Now,
-                Title = "Đặt phòng Hotel",
+                Title = "Đặt chuồng lưu trú",
                 Type = "HotelBookingCreated",
-                Description = $"Khách hàng đặt chuồng {cage.CageId} từ {checkIn:dd/MM/yyyy} đến {checkOut:dd/MM/yyyy}; " +
+                Description = $"Khách hàng đặt chuồng {cage.CageId} từ {checkIn:dd/MM/yyyy HH:mm} đến {checkOut:dd/MM/yyyy HH:mm}; " +
                     $"gói ăn {foodProduct.Name} ({foodProduct.Sku}) {foodPricePerDay:N0}đ/ngày, " +
                     $"tạm tính theo cân nặng hồ sơ {foodQuote.PetWeightKg:0.##}kg, hệ số {foodQuote.PortionMultiplier:0.##} ({foodQuote.WeightBand}). " +
                     "Giá và khẩu phần cuối cùng được xác nhận khi tiếp nhận."
@@ -328,6 +397,17 @@ public class HotelBookingController : Controller
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
+
+            await _hotelEmailService.SendBookingCreatedAsync(
+                customer.Email,
+                customer.FullName,
+                booking.HotelBookingId,
+                pet.Name,
+                cage.CageId,
+                roomType.Type,
+                checkIn,
+                checkOut,
+                finalAmount);
 
             TempData["SuccessMessage"] =
                 $"Đặt phòng thành công cho {pet.Name}. Chuồng dự kiến: {cage.CageId}.";
@@ -379,9 +459,10 @@ public class HotelBookingController : Controller
             return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
         }
 
-        if (booking.CheckInDate.Date <= DateTime.Today)
+        var scheduledCheckIn = booking.ScheduledCheckInDate ?? booking.CheckInDate;
+        if (scheduledCheckIn <= DateTime.Now.AddHours(1))
         {
-            TempData["ErrorMessage"] = "Không thể hủy online vào hoặc sau ngày nhận phòng. Vui lòng liên hệ cửa hàng.";
+            TempData["ErrorMessage"] = "Chỉ có thể hủy online trước giờ nhận phòng ít nhất 1 giờ. Vui lòng liên hệ cửa hàng để được hỗ trợ.";
             return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
         }
 
@@ -416,8 +497,115 @@ public class HotelBookingController : Controller
             return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
         }
 
-        TempData["SuccessMessage"] = $"Đã hủy lịch Hotel của {booking.Pet.Name}.";
+        TempData["SuccessMessage"] = $"Đã hủy lịch đặt chuồng của {booking.Pet.Name}.";
         return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RequestCageChange(int id, string targetCageId, string reason)
+    {
+        var customer = await GetCurrentCustomerAsync();
+        if (customer == null)
+        {
+            return RedirectToAction("Login", "Account", new { area = "Customer" });
+        }
+
+        targetCageId = targetCageId?.Trim().ToUpperInvariant() ?? string.Empty;
+        reason = reason?.Trim() ?? string.Empty;
+        if (targetCageId.Length is < 1 or > 20 || reason.Length is < 10 or > 500)
+        {
+            TempData["ErrorMessage"] = "Vui lòng chọn chuồng đích và nhập lý do từ 10 đến 500 ký tự.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        try
+        {
+            var booking = await _context.HotelBookings
+                .Include(item => item.Cage).ThenInclude(cage => cage.RoomType)
+                .Include(item => item.CheckoutStatement)
+                .FirstOrDefaultAsync(item => item.HotelBookingId == id && item.CustomerId == customer.CustomerId);
+            if (booking == null || ResolveStatusKey(booking.Status) is not ("reserved" or "active"))
+            {
+                TempData["ErrorMessage"] = "Booking không còn đủ điều kiện gửi yêu cầu đổi chuồng.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            if (booking.CheckoutStatement != null)
+            {
+                TempData["ErrorMessage"] = "Chi phí booking đã được chốt, không thể gửi thêm yêu cầu đổi chuồng.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            if (string.Equals(booking.CageId, targetCageId, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["ErrorMessage"] = "Pet đang được xếp tại chuồng này.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            if (await _context.HotelCageChangeRequests.AnyAsync(item =>
+                    item.HotelBookingId == id && item.Status == "Pending"))
+            {
+                TempData["ErrorMessage"] = "Booking đang có một yêu cầu đổi chuồng chờ xử lý.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            var targetCage = await _context.Cages
+                .Include(cage => cage.RoomType)
+                .FirstOrDefaultAsync(cage => cage.CageId == targetCageId &&
+                                             cage.Status == "Trống" &&
+                                             cage.RoomType.Status &&
+                                             HotelRoomTypeCatalog.Codes.Contains(cage.RoomType.Code));
+            if (targetCage == null || await HasCageConflictAsync(booking, targetCageId))
+            {
+                TempData["ErrorMessage"] = "Chuồng đích không còn khả dụng trong thời gian lưu trú.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            int remainingDays = ResolveRemainingChargeDays(booking);
+            decimal discountRate = ResolveDiscountRate(customer.MembershipTier);
+            decimal estimatedDifference = decimal.Round(
+                (targetCage.RoomType.DailyPrice - booking.BaseDailyPrice) * remainingDays * (1 - discountRate),
+                0,
+                MidpointRounding.AwayFromZero);
+
+            _context.HotelCageChangeRequests.Add(new HotelCageChangeRequest
+            {
+                HotelBookingId = booking.HotelBookingId,
+                CustomerId = customer.CustomerId,
+                SourceCageId = booking.CageId,
+                TargetCageId = targetCage.CageId,
+                Reason = reason,
+                Status = "Pending",
+                RemainingDaysSnapshot = remainingDays,
+                SourceDailyPriceSnapshot = booking.BaseDailyPrice,
+                TargetDailyPriceSnapshot = targetCage.RoomType.DailyPrice,
+                PriceDifferenceSnapshot = estimatedDifference,
+                RequestedAt = DateTime.Now
+            });
+            _context.PetBioTimelines.Add(new PetBioTimeline
+            {
+                PetId = booking.PetId,
+                HotelBookingId = booking.HotelBookingId,
+                Date = DateTime.Now,
+                Title = "Yêu cầu đổi chuồng",
+                Type = "CageChangeRequested",
+                Description = $"Khách hàng yêu cầu đổi từ chuồng {booking.CageId} sang {targetCage.CageId}. Lý do: {reason}. Chênh lệch dự kiến: {estimatedDifference:N0}đ."
+            });
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            TempData["SuccessMessage"] = $"Đã gửi yêu cầu đổi sang chuồng {targetCage.CageId}. Nhân viên sẽ kiểm tra và phản hồi.";
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "Cannot create cage change request for HotelBooking {BookingId}.", id);
+            TempData["ErrorMessage"] = "Không thể gửi yêu cầu đổi chuồng lúc này.";
+        }
+
+        return RedirectToAction(nameof(Details), new { id });
     }
 
     private IActionResult BookingError(string message)
@@ -482,12 +670,94 @@ public class HotelBookingController : Controller
         };
     }
 
+    private async Task<List<HotelCageChangeOptionViewModel>> GetAvailableCageChangeOptionsAsync(
+        HotelBookingHistoryDetailViewModel booking,
+        string membershipTier)
+    {
+        var intervalStart = booking.StatusKey == "active" ? DateTime.Now : booking.CheckInDate;
+        var intervalEnd = booking.ScheduledCheckOutDate
+            ?? booking.CheckOutDate
+            ?? booking.CheckInDate.AddDays(Math.Max(booking.StayDays, 1));
+        var conflictingCageIds = await _context.HotelBookings
+            .AsNoTracking()
+            .Where(item => item.HotelBookingId != booking.HotelBookingId &&
+                           BlockingStatuses.Contains(item.Status) &&
+                           item.CheckInDate < intervalEnd &&
+                           (!item.CheckOutDate.HasValue || item.CheckOutDate.Value > intervalStart))
+            .Select(item => item.CageId)
+            .Distinct()
+            .ToListAsync();
+        int remainingDays = booking.StatusKey == "reserved"
+            ? Math.Max(booking.StayDays, 1)
+            : Math.Max(1, (int)Math.Ceiling((intervalEnd - DateTime.Now).TotalHours / 24d));
+        decimal discountRate = ResolveDiscountRate(membershipTier);
+
+        var cages = await _context.Cages
+            .AsNoTracking()
+            .Where(cage => cage.CageId != booking.CageId &&
+                           cage.Status == "Trống" &&
+                           cage.RoomType.Status &&
+                           HotelRoomTypeCatalog.Codes.Contains(cage.RoomType.Code) &&
+                           !conflictingCageIds.Contains(cage.CageId))
+            .OrderBy(cage => cage.RoomType.DailyPrice)
+            .ThenBy(cage => cage.CageId)
+            .Select(cage => new
+            {
+                CageId = cage.CageId,
+                RoomTypeName = cage.RoomType.Type,
+                RoomTypeCode = cage.RoomType.Code,
+                Size = cage.RoomType.Size,
+                DailyPrice = cage.RoomType.DailyPrice
+            })
+            .ToListAsync();
+
+        return cages.Select(cage => new HotelCageChangeOptionViewModel
+        {
+            CageId = cage.CageId,
+            RoomTypeName = cage.RoomTypeName,
+            RoomTypeCode = cage.RoomTypeCode,
+            Size = cage.Size,
+            DailyPrice = cage.DailyPrice,
+            EstimatedPriceDifference = decimal.Round(
+                (cage.DailyPrice - booking.BaseDailyPrice) * remainingDays * (1 - discountRate),
+                0,
+                MidpointRounding.AwayFromZero)
+        }).ToList();
+    }
+
+    private async Task<bool> HasCageConflictAsync(HotelBooking booking, string targetCageId)
+    {
+        var intervalStart = ResolveStatusKey(booking.Status) == "active" ? DateTime.Now : booking.CheckInDate;
+        var intervalEnd = booking.ScheduledCheckOutDate
+            ?? booking.CheckOutDate
+            ?? booking.CheckInDate.AddDays(Math.Max(booking.StayDays, 1));
+        return await _context.HotelBookings.AnyAsync(item =>
+            item.HotelBookingId != booking.HotelBookingId &&
+            item.CageId == targetCageId &&
+            BlockingStatuses.Contains(item.Status) &&
+            item.CheckInDate < intervalEnd &&
+            (!item.CheckOutDate.HasValue || item.CheckOutDate.Value > intervalStart));
+    }
+
+    private static int ResolveRemainingChargeDays(HotelBooking booking)
+    {
+        if (ResolveStatusKey(booking.Status) == "reserved")
+        {
+            return Math.Max(booking.StayDays, 1);
+        }
+
+        var expectedCheckout = booking.ScheduledCheckOutDate
+            ?? booking.CheckOutDate
+            ?? DateTime.Now.AddDays(1);
+        return Math.Max(1, (int)Math.Ceiling((expectedCheckout - DateTime.Now).TotalHours / 24d));
+    }
+
     private static HotelBookingListItemViewModel MapToListItem(HotelBooking booking)
     {
         var statusKey = ResolveStatusKey(booking.Status);
 
         bool canCancel = statusKey == "reserved" &&
-            (booking.ScheduledCheckInDate ?? booking.CheckInDate).Date > DateTime.Today;
+            (booking.ScheduledCheckInDate ?? booking.CheckInDate) > DateTime.Now.AddHours(1);
 
         return new HotelBookingListItemViewModel
         {

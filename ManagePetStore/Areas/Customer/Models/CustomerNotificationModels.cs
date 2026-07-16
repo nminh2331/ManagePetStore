@@ -7,6 +7,8 @@ public class CustomerNotificationItemViewModel
     public string Message { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public bool IsRead { get; set; }
+    public string DisplayTitle => ManagePetStore.Models.CageTerminology.ForDisplay(Title);
+    public string DisplayMessage => ManagePetStore.Models.CageTerminology.ForDisplay(Message);
 }
 
 public class CustomerNotificationMenuViewModel

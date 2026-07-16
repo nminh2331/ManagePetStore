@@ -2,10 +2,13 @@
 
 @{
     Layout = "/Views/Shared/_PetStoreLayout.cshtml";
-    ViewData["Title"] = "Lịch sử lưu trú Hotel";
+    ViewData["Title"] = "Lịch sử lưu trú chuồng";
 
     var showingFrom = Model.TotalFilteredItems == 0 ? 0 : ((Model.Page - 1) * Model.PageSize) + 1;
     var showingTo = Math.Min(Model.Page * Model.PageSize, Model.TotalFilteredItems);
+    string FormatBookingDateTime(DateTime value) => value.TimeOfDay == TimeSpan.Zero
+        ? value.ToString("dd/MM/yyyy")
+        : value.ToString("dd/MM/yyyy HH:mm");
 }
 
 @section Styles {
@@ -30,7 +33,7 @@
     <section class="cp-main">
         <div class="cp-main-header">
             <div>
-                <h1 class="cp-main-title">Lịch sử lưu trú Hotel</h1>
+                <h1 class="cp-main-title">Lịch sử lưu trú chuồng</h1>
                 <p class="cp-main-subtitle">Theo dõi các lần đặt phòng, đang lưu trú, đã trả phòng hoặc đã hủy của thú cưng.</p>
             </div>
             <a asp-area="" asp-controller="Home" asp-action="Index" asp-route-hotel="book" class="cp-btn-add text-decoration-none">
@@ -42,7 +45,7 @@
         {
             <div class="cp-empty">
                 <i class="bi bi-house-heart"></i>
-                <p>Bạn chưa có lịch đặt Hotel nào.</p>
+                <p>Bạn chưa có lịch đặt chuồng nào.</p>
                 <a asp-area="" asp-controller="Home" asp-action="Index" asp-route-hotel="book" class="hb-btn-primary">
                     Đặt phòng ngay
                 </a>
@@ -54,27 +57,34 @@
                 <form asp-action="Index" method="get" class="hb-filter-form">
                     <div class="hb-filter-field hb-filter-search">
                         <label class="hb-filter-label" for="searchTerm">Tìm lịch lưu trú</label>
-                        <input type="text"
-                               id="searchTerm"
-                               name="searchTerm"
-                               value="@Model.SearchTerm"
-                               class="hb-filter-input"
-                               placeholder="Mã lịch, tên thú cưng, chuồng hoặc trạng thái" />
+                        <div class="hb-filter-control">
+                            <i class="bi bi-search"></i>
+                            <input type="text"
+                                   id="searchTerm"
+                                   name="searchTerm"
+                                   value="@Model.SearchTerm"
+                                   class="hb-filter-input"
+                                   placeholder="Mã lịch, tên thú cưng, chuồng hoặc trạng thái" />
+                        </div>
                     </div>
 
                     <div class="hb-filter-field">
                         <label class="hb-filter-label" for="statusFilter">Trạng thái</label>
-                        <select id="statusFilter" name="statusFilter" class="hb-filter-select">
-                            <option value="all" selected="@(Model.StatusFilter == "all")">Tất cả</option>
-                            <option value="reserved" selected="@(Model.StatusFilter == "reserved")">Đã đặt</option>
-                            <option value="active" selected="@(Model.StatusFilter == "active")">Đang lưu trú</option>
-                            <option value="completed" selected="@(Model.StatusFilter == "completed")">Đã trả</option>
-                            <option value="cancelled" selected="@(Model.StatusFilter == "cancelled")">Đã hủy</option>
-                        </select>
+                        <div class="hb-filter-control hb-filter-control-select">
+                            <i class="bi bi-funnel"></i>
+                            <select id="statusFilter" name="statusFilter" class="hb-filter-select">
+                                <option value="all" selected="@(Model.StatusFilter == "all")">Tất cả</option>
+                                <option value="reserved" selected="@(Model.StatusFilter == "reserved")">Đã đặt</option>
+                                <option value="active" selected="@(Model.StatusFilter == "active")">Đang lưu trú</option>
+                                <option value="completed" selected="@(Model.StatusFilter == "completed")">Đã trả</option>
+                                <option value="cancelled" selected="@(Model.StatusFilter == "cancelled")">Đã hủy</option>
+                            </select>
+                            <i class="bi bi-chevron-down hb-filter-chevron"></i>
+                        </div>
                     </div>
 
                     <div class="hb-filter-actions">
-                        <button type="submit" class="hb-btn-primary">Lọc lịch sử</button>
+                        <button type="submit" class="hb-btn-primary"><i class="bi bi-search"></i> Lọc lịch sử</button>
                         @if (!string.IsNullOrWhiteSpace(Model.SearchTerm) || Model.StatusFilter != "all")
                         {
                             <a asp-action="Index" class="hb-btn-reset">Xóa lọc</a>
@@ -83,6 +93,7 @@
                 </form>
 
                 <div class="hb-filter-summary">
+                    <i class="bi bi-info-circle"></i>
                     @if (Model.TotalFilteredItems > 0)
                     {
                         <span>Hiển thị @showingFrom-@showingTo trên @Model.TotalFilteredItems lịch lưu trú</span>
@@ -122,15 +133,15 @@
                             <div class="hb-details">
                                 <div>
                                     <span>Nhận phòng</span>
-                                    <strong>@booking.CheckInDate.ToString("dd/MM/yyyy")</strong>
+                                    <strong>@FormatBookingDateTime(booking.CheckInDate)</strong>
                                 </div>
                                 <div>
                                     <span>Trả phòng</span>
-                                    <strong>@booking.CheckOutDate.ToString("dd/MM/yyyy")</strong>
+                                    <strong>@FormatBookingDateTime(booking.CheckOutDate)</strong>
                                 </div>
                                 <div>
                                     <span>Thời gian</span>
-                                    <strong>@booking.StayDays đêm</strong>
+                                    <strong>@booking.StayDays ngày tính phí</strong>
                                 </div>
                                 <div>
                                     <span>Tạm tính</span>
@@ -154,7 +165,7 @@
                             }
                             else if (booking.ShowCannotCancelOnline)
                             {
-                                <span class="hb-action-note">Không thể hủy online</span>
+                                <span class="hb-action-note">Đã quá hạn hủy trước 1 giờ</span>
                             }
                         </div>
                     </article>
