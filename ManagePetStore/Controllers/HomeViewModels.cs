@@ -107,6 +107,7 @@ public class ProductDetailViewModel
     public List<string> Features { get; set; } = [];
     public List<ProductReviewViewModel> Reviews { get; set; } = new();
     public bool CanReview { get; set; } = false;
+    public bool HasReviewed { get; set; } = false;
 }
 
 public class ProductReviewViewModel
