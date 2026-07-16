@@ -677,6 +677,41 @@
         white-space: nowrap;
     }
 
+    .checkout-action-slot {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 7px;
+        min-height: 31px;
+    }
+
+    .btn-checkout-reset {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 9px;
+        border: 1px solid #e8d7c6;
+        border-radius: 8px;
+        background: #fff;
+        color: #7d5c42;
+        font-size: 0.7rem;
+        font-weight: 800;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+    }
+
+    .btn-checkout-reset:hover {
+        border-color: #ff9a52;
+        background: #fff5ec;
+        color: #df6109;
+    }
+
+    .btn-checkout-reset:disabled {
+        cursor: wait;
+        opacity: 0.65;
+    }
+
     .btn-reception-sm {
         background: #FFF1E6;
         border: 1px solid #FFD0AF;
@@ -3474,6 +3509,95 @@ function deleteCage(cageId) {
 // ===== CONFIRM CHECK-OUT =====
 let checkoutBookingId = null;
 let checkoutCanFinalize = false;
+function confirmCheckoutFromSlot(trigger) {
+    const slot = trigger.closest('[data-checkout-action-slot]');
+    if (!slot) return;
+    confirmCheckout(
+        Number(slot.dataset.bookingId),
+        slot.dataset.petName || 'thú cưng',
+        slot.dataset.cageId || ''
+    );
+}
+
+function renderCheckoutActionSlot(slot, data) {
+    const bookingId = slot.dataset.bookingId;
+    const checkoutOrderCancelled = ['Đã hủy', 'Cancelled', 'Canceled'].includes(data.orderStatus);
+    const checkoutAlreadyPrepared = data.statementStatus === 'ReadyForPayment' || data.orderId != null;
+
+    if (data.canFinalize === true) {
+        slot.innerHTML = `
+            <button class="btn-checkout-sm" data-checkout-booking-id="${bookingId}" onclick="confirmCheckoutFromSlot(this)">
+                <i class="fa-solid fa-check" style="margin-right:4px;"></i> Hoàn tất trả pet
+            </button>`;
+        return;
+    }
+
+    if (!checkoutAlreadyPrepared) {
+        slot.innerHTML = `
+            <button class="btn-checkout-sm" data-checkout-booking-id="${bookingId}" onclick="confirmCheckoutFromSlot(this)">
+                <i class="fa-solid fa-right-from-bracket" style="margin-right:4px;"></i> Trả chuồng
+            </button>`;
+        return;
+    }
+
+    const statusLabel = checkoutOrderCancelled ? 'Hóa đơn đã hủy' : 'Chờ thu ngân xử lý';
+    const statusIcon = checkoutOrderCancelled ? 'fa-circle-exclamation' : 'fa-clock';
+    const resetButton = data.canReset === true
+        ? `<button type="button" class="btn-checkout-reset" onclick="resetCheckoutFromSlot(this)">
+               <i class="fa-solid fa-rotate-left"></i> ${checkoutOrderCancelled ? 'Tạo lại' : 'Thu hồi'}
+           </button>`
+        : '';
+    slot.innerHTML = `
+        <span class="checkout-pending-label" data-checkout-pending-id="${bookingId}">
+            <i class="fa-solid ${statusIcon}"></i> ${statusLabel}
+        </span>
+        ${resetButton}`;
+}
+
+async function refreshPendingCheckoutActions() {
+    if (document.hidden) return;
+    const pendingSlots = [...document.querySelectorAll('[data-checkout-action-slot]')]
+        .filter(slot => slot.querySelector('.checkout-pending-label'));
+
+    await Promise.all(pendingSlots.map(async slot => {
+        try {
+            const response = await fetch('/SpaServices/HotelCheckoutPreview/' + slot.dataset.bookingId, {
+                headers: { 'Accept': 'application/json' }
+            });
+            const result = await response.json();
+            if (result.success) renderCheckoutActionSlot(slot, result.data);
+        } catch {
+            // Giữ nguyên trạng thái hiện tại nếu mạng tạm thời gián đoạn.
+        }
+    }));
+}
+
+async function resetCheckoutFromSlot(trigger) {
+    const slot = trigger.closest('[data-checkout-action-slot]');
+    if (!slot || !confirm('Thu hồi bảng kê hiện tại để kiểm tra và gửi lại quầy thu ngân?')) return;
+
+    trigger.disabled = true;
+    const originalHtml = trigger.innerHTML;
+    trigger.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang thu hồi';
+    try {
+        const response = await fetch('/SpaServices/ResetHotelCheckout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'RequestVerificationToken': getAntiForgeryToken()
+            },
+            body: 'bookingId=' + encodeURIComponent(slot.dataset.bookingId)
+        });
+        const result = await response.json();
+        if (!result.success) throw new Error(result.message || 'Không thể thu hồi bảng kê.');
+        location.reload();
+    } catch (error) {
+        trigger.disabled = false;
+        trigger.innerHTML = originalHtml;
+        alert('Lỗi: ' + (error.message || 'Không thể kết nối đến máy chủ.'));
+    }
+}
+
 function confirmCheckout(bookingId, petName, cageId) {
     checkoutBookingId = bookingId;
     document.getElementById('checkoutPetName').textContent = petName;
@@ -3492,6 +3616,11 @@ function confirmCheckout(bookingId, petName, cageId) {
             document.getElementById('checkoutLoading').textContent = error.message || 'Không thể tính chi phí.';
         });
 }
+
+window.setInterval(refreshPendingCheckoutActions, 8000);
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshPendingCheckoutActions();
+});
 
 function renderCheckoutPreview(data) {
     const format = value => Number(value || 0).toLocaleString('vi-VN') + 'đ';
