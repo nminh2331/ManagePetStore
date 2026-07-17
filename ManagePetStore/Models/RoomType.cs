@@ -7,6 +7,8 @@ public partial class RoomType
 {
     public int RoomTypeId { get; set; }
 
+    public string Code { get; set; } = null!;
+
     public string Type { get; set; } = null!;
 
     public string Size { get; set; } = null!;
@@ -28,4 +30,6 @@ public partial class RoomType
     public virtual ICollection<Cage> Cages { get; set; } = new List<Cage>();
 
     public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+
+    public virtual ICollection<HotelCageStaySegment> HotelCageStaySegments { get; set; } = new List<HotelCageStaySegment>();
 }

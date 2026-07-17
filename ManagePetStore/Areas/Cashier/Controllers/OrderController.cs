@@ -35,23 +35,15 @@ namespace ManagePetStore.Areas.Cashier.Controllers
         [HttpGet]
         public async Task<IActionResult> Create(string? orderId, string? status)
         {
-            if (!string.IsNullOrEmpty(orderId))
+            if (!string.IsNullOrEmpty(orderId) && (status == "PAID" || status == "success"))
             {
-                if (status == "PAID" || status == "success")
+                var order = await _context.Orders.Include(o => o.Customer).FirstOrDefaultAsync(o => o.OrderId == orderId);
+                if (order != null && order.Status == "Chờ thanh toán")
                 {
-                    var order = await _context.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
-                    if (order != null && order.Status == "Chờ thanh toán")
-                    {
-                        order.Status = "Chờ xử lý";
-                        order.OrderStatus = 2;
-                        await _context.SaveChangesAsync();
-                    }
-                }
-                else if (status == "cancel")
-                {
-                    await CancelPendingPaymentOrderAsync(
-                        orderId,
-                        "Khách hàng hủy thanh toán trực tuyến qua PayOS tại quầy.");
+                    order.Status = "Chờ xử lý";
+                    order.OrderStatus = 2;
+                    _context.Entry(order).State = EntityState.Modified;
+                    await _context.SaveChangesAsync();
                 }
             }
             return View();
@@ -63,103 +55,28 @@ namespace ManagePetStore.Areas.Cashier.Controllers
         {
             if (!string.IsNullOrEmpty(orderId))
             {
-                if (status == "PAID" || status == "success")
+                var order = await _context.Orders.Include(o => o.Customer).FirstOrDefaultAsync(o => o.OrderId == orderId);
+                if (order != null && order.Status == "Chờ thanh toán")
                 {
-                    var order = await _context.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
-                    if (order != null && order.Status == "Chờ thanh toán")
+                    if (status == "PAID" || status == "success")
                     {
                         order.Status = "Chờ xử lý";
                         order.OrderStatus = 2;
+                        _context.Entry(order).State = EntityState.Modified;
                         await _context.SaveChangesAsync();
                     }
-                }
-                else if (status == "cancel")
-                {
-                    await CancelPendingPaymentOrderAsync(
-                        orderId,
-                        "Khách hàng hủy thanh toán trực tuyến qua PayOS tại quầy.");
+                    else if (status == "cancel")
+                    {
+                        order.Status = "Đã hủy";
+                        order.OrderStatus = 0; // Canceled
+                        order.CancelReason = "Khách hàng hủy thanh toán trực tuyến qua PayOS tại quầy.";
+                        _context.Entry(order).State = EntityState.Modified;
+                        await _context.SaveChangesAsync();
+                        await ManagePetStore.Services.Customer.CustomerRewardHelper.RecalculateCustomerPointsAndTierAsync(order.CustomerId, _context);
+                    }
                 }
             }
             return View();
-        }
-
-        private async Task<bool> CancelPendingPaymentOrderAsync(string orderId, string reason)
-        {
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-            try
-            {
-                var order = await _context.Orders.FirstOrDefaultAsync(item => item.OrderId == orderId);
-                if (order == null)
-                {
-                    await transaction.RollbackAsync();
-                    return false;
-                }
-
-                bool isAlreadyCancelled = order.OrderStatus == 0 ||
-                    string.Equals(order.Status, "Đã hủy", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(order.Status, "Cancelled", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(order.Status, "Canceled", StringComparison.OrdinalIgnoreCase);
-                if (!isAlreadyCancelled && !string.Equals(order.Status, "Chờ thanh toán", StringComparison.OrdinalIgnoreCase))
-                {
-                    await transaction.RollbackAsync();
-                    return false;
-                }
-
-                order.Status = "Đã hủy";
-                order.OrderStatus = 0;
-                order.CancelReason = reason;
-                order.CanceledAt ??= DateTime.Now;
-                order.CanceledBy ??= User.FindFirstValue("FullName") ?? User.Identity?.Name ?? "Cashier";
-
-                var hotelStatements = await _context.HotelCheckoutStatements
-                    .Where(statement => statement.OrderId == orderId)
-                    .ToListAsync();
-                foreach (var statement in hotelStatements)
-                {
-                    statement.OrderId = null;
-                    statement.Order = null;
-                    statement.Status = "ReadyForPayment";
-                    statement.PaidAt = null;
-                }
-
-                var spaBookings = await _context.SpaBookings
-                    .Include(booking => booking.Service)
-                    .Where(booking => booking.Notes != null && booking.Notes.Contains($"[POS {orderId}]"))
-                    .ToListAsync();
-                foreach (var booking in spaBookings)
-                {
-                    booking.Notes = RemoveCancelledOrderPrefix(
-                        booking.Notes,
-                        orderId,
-                        booking.Service.Name);
-                }
-
-                await _context.SaveChangesAsync();
-                await ManagePetStore.Services.Customer.CustomerRewardHelper
-                    .RecalculateCustomerPointsAndTierAsync(order.CustomerId, _context);
-                await transaction.CommitAsync();
-                return true;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
-        }
-
-        private static string? RemoveCancelledOrderPrefix(string? notes, string orderId, string serviceName)
-        {
-            if (string.IsNullOrWhiteSpace(notes))
-            {
-                return null;
-            }
-
-            string prefix = $"[POS {orderId}] | Dịch vụ: {serviceName} ";
-            string cleaned = notes.StartsWith(prefix, StringComparison.Ordinal)
-                ? notes[prefix.Length..]
-                : notes.Replace($"[POS {orderId}]", string.Empty, StringComparison.Ordinal)
-                    .TrimStart(' ', '|');
-            return string.IsNullOrWhiteSpace(cleaned) ? null : cleaned.Trim();
         }
 
         // API: Tìm kiếm Khách hàng (SĐT, Tên KH, Tên Pet)
@@ -492,16 +409,16 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             if (hotelCheckouts.Count != hotelCheckoutIds.Count ||
                 hotelCheckouts.Values.Any(statement => statement.Status != "ReadyForPayment" || statement.OrderId != null || statement.HotelBooking.CustomerId != dto.CustomerId))
             {
-                return Json(new { success = false, message = "Bảng kê Hotel không còn hợp lệ hoặc đã được thanh toán." });
+                return Json(new { success = false, message = "Bảng kê chuồng không còn hợp lệ hoặc đã được thanh toán." });
             }
             if (hotelCheckoutIds.Any() && dto.VoucherDiscount > 0)
             {
-                return Json(new { success = false, message = "Voucher POS chưa áp dụng cho hóa đơn có dịch vụ Hotel." });
+                return Json(new { success = false, message = "Voucher POS chưa áp dụng cho hóa đơn có dịch vụ lưu trú chuồng." });
             }
             foreach (var item in dto.Items.Where(item => item.Type == "Hotel"))
             {
                 if (!item.HotelCheckoutId.HasValue || !hotelCheckouts.TryGetValue(item.HotelCheckoutId.Value, out var statement))
-                    return Json(new { success = false, message = "Thiếu liên kết bảng kê Hotel." });
+                    return Json(new { success = false, message = "Thiếu liên kết bảng kê chuồng." });
                 item.Id = statement.HotelBooking.Cage.RoomTypeId.ToString();
                 item.Quantity = 1;
                 item.Price = statement.TotalAmount;
@@ -517,7 +434,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 .ToListAsync();
             if (requiredSpaIds.Except(linkedBookingIds).Any())
             {
-                return Json(new { success = false, message = "Lượt Hotel có Spa liên quan; vui lòng thu chung trong cùng hóa đơn." });
+                return Json(new { success = false, message = "Lượt lưu trú chuồng có Spa liên quan; vui lòng thu chung trong cùng hóa đơn." });
             }
             var spaLinkedToHotelIds = await _context.HotelStaySpaLinks
                 .Where(link => linkedBookingIds.Contains(link.SpaBookingId))
@@ -525,7 +442,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 .ToListAsync();
             if (spaLinkedToHotelIds.Any(link => !hotelCheckoutIds.Contains(link.CheckoutId)))
             {
-                return Json(new { success = false, message = "Spa thuộc lượt lưu trú phải được thanh toán cùng bảng kê Hotel." });
+                return Json(new { success = false, message = "Spa thuộc lượt lưu trú phải được thanh toán cùng bảng kê chuồng." });
             }
             if (linkedBookingIds.Any())
             {
@@ -710,9 +627,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                         OrderCode = orderCode,
                         Amount = onlinePayAmount,
                         Description = $"POS {orderCode}",
-                        CancelUrl = dto.IsAtCounter
-                            ? $"{host}/Cashier/Order/CreateAtCounter?orderId={order.OrderId}&status=cancel"
-                            : $"{host}/Cashier/Order/Create?orderId={order.OrderId}&status=cancel",
+                        CancelUrl = dto.IsAtCounter ? $"{host}/Cashier/Order/CreateAtCounter?orderId={order.OrderId}&status=cancel" : $"{host}/Cashier/Order/Create?status=cancel",
                         ReturnUrl = dto.IsAtCounter ? $"{host}/Cashier/Order/CreateAtCounter?orderId={order.OrderId}&status=success" : $"{host}/Cashier/Order/Create?orderId={order.OrderId}&status=success",
                         Items = dto.Items.Select(item => new PaymentLinkItem
                         {
@@ -729,12 +644,6 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                     }
                     catch (Exception ex)
                     {
-                        if (hotelCheckoutIds.Any())
-                        {
-                            await CancelPendingPaymentOrderAsync(
-                                order.OrderId,
-                                "Không thể khởi tạo thanh toán trực tuyến; bảng kê Hotel đã được trả lại quầy thu ngân.");
-                        }
                         return Json(new { success = false, message = $"Lỗi kết nối PayOS: {ex.Message}" });
                     }
                 }
@@ -838,6 +747,20 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 })
                 .ToListAsync();
 
+            var displayHotelCheckouts = hotelCheckouts.Select(statement => new
+            {
+                statement.HotelBookingId,
+                statement.PetName,
+                statement.CageId,
+                RoomType = CageTerminology.ForDisplay(statement.RoomType),
+                statement.TotalAmount,
+                Items = statement.Items.Select(item => new
+                {
+                    Description = CageTerminology.ForDisplay(item.Description),
+                    item.Amount
+                }).ToList()
+            }).ToList();
+
             string? voucherCode = null;
             if (order.CancelReason != null && order.CancelReason.StartsWith("VOUCHER:"))
             {
@@ -858,16 +781,16 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 voucherCode = voucherCode,
                 items = order.OrderItems.Select(oi => new {
                     name = oi.ProductSku != null
-                        ? oi.ProductSkuNavigation?.Name ?? oi.ProductSku
+                        ? CageTerminology.ForDisplay(oi.ProductSkuNavigation?.Name ?? oi.ProductSku)
                         : oi.SpaServiceId != null
                             ? oi.SpaService?.Name ?? "Dịch vụ Spa"
-                            : $"Hotel - {oi.RoomType?.Type ?? "Phòng lưu trú"}",
+                            : $"Chuồng - {oi.RoomType?.Type ?? "Loại chuồng lưu trú"}",
                     quantity = oi.Quantity,
                     price = oi.Price,
                     total = oi.Price * oi.Quantity
                 }).ToList(),
                 spaBookings = spaBookings,
-                hotelCheckouts = hotelCheckouts
+                hotelCheckouts = displayHotelCheckouts
             });
         }
 

@@ -1,3 +1,5 @@
+using ManagePetStore.Models;
+
 namespace ManagePetStore.Areas.ServiceStaff.Models;
 
 public class PetDailyCareListViewModel
@@ -18,7 +20,9 @@ public class PetDailyCarePetRowViewModel
     public int HotelBookingId { get; set; }
     public string DisplayBookingId => $"HB{HotelBookingId:0000}";
     public string CageId { get; set; } = string.Empty;
+    public string RoomTypeCode { get; set; } = string.Empty;
     public string RoomTypeName { get; set; } = string.Empty;
+    public HotelRoomServiceProfile ServiceProfile => HotelRoomTypeCatalog.GetServiceProfile(RoomTypeCode);
     public DateTime CheckInAt { get; set; }
     public DateTime? ExpectedCheckOutAt { get; set; }
     public int CareLogCount { get; set; }
@@ -50,12 +54,15 @@ public class PetDailyCareStayViewModel
     public int HotelBookingId { get; set; }
     public string DisplayBookingId => $"HB{HotelBookingId:0000}";
     public string CageId { get; set; } = string.Empty;
+    public string RoomTypeCode { get; set; } = string.Empty;
     public string RoomTypeName { get; set; } = string.Empty;
+    public HotelRoomServiceProfile ServiceProfile => HotelRoomTypeCatalog.GetServiceProfile(RoomTypeCode);
     public DateTime CheckInAt { get; set; }
     public DateTime? CheckOutAt { get; set; }
     public string Status { get; set; } = string.Empty;
     public string StatusKey { get; set; } = string.Empty;
-    public string FoodPlanName { get; set; } = "Chủ nuôi tự chuẩn bị";
+    public string FoodPlanName { get; set; } = "Chưa ghi nhận gói ăn";
+    public string? FoodProductSku { get; set; }
     public int PortionGrams { get; set; }
     public int MealsPerDay { get; set; }
 }
@@ -72,8 +79,6 @@ public class PetDailyCareLogViewModel
     public string Status { get; set; } = string.Empty;
     public string FoodType { get; set; } = string.Empty;
     public string Amount { get; set; } = string.Empty;
-    public string? MealType { get; set; }
-    public int? ConsumedPercent { get; set; }
     public bool IsExtraCharge { get; set; }
     public decimal ExtraChargeAmount { get; set; }
     public string StaffName { get; set; } = string.Empty;

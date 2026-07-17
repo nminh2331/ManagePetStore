@@ -4,89 +4,51 @@ namespace ManagePetStore.Areas.ServiceStaff.Models;
 
 public sealed class HotelCheckInRequest : IValidatableObject
 {
+    public const string ExistingMedicalRecordSource = "ExistingMedicalRecord";
     public const string FitStatus = "Fit";
     public const string MonitorStatus = "Monitor";
     public const string RejectedStatus = "Rejected";
-    public const string MedicalRecordMode = "MedicalRecord";
-    public const string NoMedicalRecordMode = "NoMedicalRecord";
 
     [Required(ErrorMessage = "Phải chọn hình thức tiếp nhận.")]
-    public string ReceptionMode { get; set; } = string.Empty;
+    public string ReceptionSource { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Số điện thoại chủ thú cưng là bắt buộc.")]
     [RegularExpression(@"^0(?:[\s.-]?\d){9,10}$", ErrorMessage = "Số điện thoại phải bắt đầu bằng 0 và gồm 10-11 chữ số.")]
     public string CustomerPhone { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Họ tên chủ thú cưng là bắt buộc.")]
-    [StringLength(100, ErrorMessage = "Họ tên chủ thú cưng không được vượt quá 100 ký tự.")]
-    public string CustomerName { get; set; } = string.Empty;
-
-    [Required(ErrorMessage = "Tên thú cưng là bắt buộc.")]
-    [StringLength(50, ErrorMessage = "Tên thú cưng không được vượt quá 50 ký tự.")]
-    public string PetName { get; set; } = string.Empty;
-
-    [Required(ErrorMessage = "Loài thú cưng là bắt buộc.")]
-    [StringLength(30, ErrorMessage = "Tên loài không được vượt quá 30 ký tự.")]
-    public string Species { get; set; } = string.Empty;
-
-    [StringLength(50, ErrorMessage = "Giống thú cưng không được vượt quá 50 ký tự.")]
-    public string? Breed { get; set; }
-
-    [StringLength(30, ErrorMessage = "Tuổi thú cưng không được vượt quá 30 ký tự.")]
-    public string? Age { get; set; }
-
-    [Range(typeof(decimal), "0.1", "200", ErrorMessage = "Cân nặng phải nằm trong khoảng 0,1-200 kg.")]
-    public decimal Weight { get; set; }
-
-    [StringLength(1000, ErrorMessage = "Bệnh lý/tình trạng đặc biệt không được vượt quá 1000 ký tự.")]
-    public string? Pathology { get; set; }
+    [Required(ErrorMessage = "Phải chọn sổ y tế dùng để tiếp nhận.")]
+    [Range(1, int.MaxValue, ErrorMessage = "Sổ y tế không hợp lệ.")]
+    public int? MedicalRecordId { get; set; }
 
     [Required(ErrorMessage = "Phải chọn kết luận kiểm tra sức khỏe.")]
     public string HealthStatus { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Nhiệt độ cơ thể là bắt buộc.")]
-    [Range(typeof(decimal), "30", "45", ErrorMessage = "Nhiệt độ cơ thể phải nằm trong khoảng 30-45°C.")]
-    public decimal? BodyTemperature { get; set; }
-
-    [Required(ErrorMessage = "Ghi chú kiểm tra sức khỏe là bắt buộc.")]
-    [StringLength(1000, MinimumLength = 5, ErrorMessage = "Ghi chú kiểm tra sức khỏe phải từ 5-1000 ký tự.")]
-    public string HealthNote { get; set; } = string.Empty;
+    [StringLength(1000, ErrorMessage = "Ghi chú tiếp nhận không được vượt quá 1000 ký tự.")]
+    public string? HealthNote { get; set; }
 
     public bool HealthCheckConfirmed { get; set; }
 
-    [Required(ErrorMessage = "Phải chọn loại chuồng.")]
-    [Range(1, int.MaxValue, ErrorMessage = "Loại chuồng không hợp lệ.")]
     public int? RoomTypeId { get; set; }
 
-    [Required(ErrorMessage = "Phải chọn chuồng.")]
     [StringLength(20, ErrorMessage = "Mã chuồng không được vượt quá 20 ký tự.")]
     public string CageId { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Ngày nhận là bắt buộc.")]
     public DateTime? CheckInDate { get; set; }
 
     public DateTime? CheckOutDate { get; set; }
 
-    public int? ExistingPetId { get; set; }
+    [StringLength(50)]
+    public string FoodProductSku { get; set; } = string.Empty;
 
     public int? HotelBookingId { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        var validReceptionModes = new[] { MedicalRecordMode, NoMedicalRecordMode };
-        if (!validReceptionModes.Contains(ReceptionMode, StringComparer.Ordinal))
+        if (!string.Equals(ReceptionSource, ExistingMedicalRecordSource, StringComparison.Ordinal))
         {
             yield return new ValidationResult(
-                "Hình thức tiếp nhận không hợp lệ.",
-                new[] { nameof(ReceptionMode) });
-        }
-
-        var validSpecies = new[] { "Chó", "Mèo", "Thỏ", "Hamster", "Khác" };
-        if (!validSpecies.Contains(Species, StringComparer.Ordinal))
-        {
-            yield return new ValidationResult(
-                "Loài thú cưng không hợp lệ.",
-                new[] { nameof(Species) });
+                "Hiện chỉ hỗ trợ tiếp nhận bằng sổ y tế có sẵn.",
+                new[] { nameof(ReceptionSource) });
         }
 
         var validHealthStatuses = new[] { FitStatus, MonitorStatus, RejectedStatus };
@@ -97,11 +59,56 @@ public sealed class HotelCheckInRequest : IValidatableObject
                 new[] { nameof(HealthStatus) });
         }
 
-        if (HealthStatus == MonitorStatus && string.IsNullOrWhiteSpace(Pathology))
+        if (HealthStatus == MonitorStatus && string.IsNullOrWhiteSpace(HealthNote))
         {
             yield return new ValidationResult(
-                "Thú cưng cần theo dõi phải ghi rõ bệnh lý hoặc tình trạng đặc biệt.",
-                new[] { nameof(Pathology) });
+                "Thú cưng cần theo dõi phải có ghi chú cho nhân viên chăm sóc.",
+                new[] { nameof(HealthNote) });
+        }
+
+        if (HealthStatus == RejectedStatus && string.IsNullOrWhiteSpace(HealthNote))
+        {
+            yield return new ValidationResult(
+                "Phải ghi rõ lý do không đủ điều kiện lưu trú.",
+                new[] { nameof(HealthNote) });
+        }
+
+        if (HealthStatus == RejectedStatus && !HotelBookingId.HasValue)
+        {
+            yield return new ValidationResult(
+                "Chỉ lưu quyết định từ chối khi đang xử lý một booking đã có.",
+                new[] { nameof(HotelBookingId) });
+        }
+
+        if (HealthStatus != RejectedStatus)
+        {
+            if (!CheckInDate.HasValue)
+            {
+                yield return new ValidationResult(
+                    "Ngày nhận là bắt buộc.",
+                    new[] { nameof(CheckInDate) });
+            }
+
+            if (!RoomTypeId.HasValue || RoomTypeId.Value <= 0)
+            {
+                yield return new ValidationResult(
+                    "Phải chọn loại chuồng.",
+                    new[] { nameof(RoomTypeId) });
+            }
+
+            if (string.IsNullOrWhiteSpace(CageId))
+            {
+                yield return new ValidationResult(
+                    "Phải chọn chuồng.",
+                    new[] { nameof(CageId) });
+            }
+
+            if (string.IsNullOrWhiteSpace(FoodProductSku))
+            {
+                yield return new ValidationResult(
+                    "Phải chọn gói thức ăn từ kho cửa hàng.",
+                    new[] { nameof(FoodProductSku) });
+            }
         }
 
         if (!HealthCheckConfirmed)
@@ -113,10 +120,10 @@ public sealed class HotelCheckInRequest : IValidatableObject
 
         if (CheckInDate.HasValue && CheckOutDate.HasValue)
         {
-            if (CheckOutDate.Value < CheckInDate.Value)
+            if (CheckOutDate.Value <= CheckInDate.Value)
             {
                 yield return new ValidationResult(
-                    "Ngày trả dự kiến không được trước ngày nhận.",
+                    "Ngày trả dự kiến phải sau ngày nhận.",
                     new[] { nameof(CheckOutDate) });
             }
             else if ((CheckOutDate.Value - CheckInDate.Value).TotalDays > 365)

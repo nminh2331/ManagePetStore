@@ -476,6 +476,7 @@ public partial class PetStoreManagementContext : DbContext
         {
             entity.HasKey(e => e.CategoryId);
 
+            entity.Property(e => e.Code).HasMaxLength(50);
             entity.Property(e => e.Description).HasMaxLength(500);
             entity.Property(e => e.Name).HasMaxLength(150);
         });
@@ -560,8 +561,8 @@ public partial class PetStoreManagementContext : DbContext
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
 
-            entity.HasOne(d => d.Cage).WithOne(p => p.RoomMaintenanceLog)
-                .HasForeignKey<RoomMaintenanceLog>(d => d.CageId)
+            entity.HasOne(d => d.Cage).WithMany(p => p.RoomMaintenanceLogs)
+                .HasForeignKey(d => d.CageId)
                 .HasConstraintName("FK_RoomMaintenanceLogs_Cages");
 
             entity.HasOne(d => d.CreatedByUser).WithMany(p => p.RoomMaintenanceLogCreatedByUsers)
@@ -575,7 +576,9 @@ public partial class PetStoreManagementContext : DbContext
 
         modelBuilder.Entity<RoomType>(entity =>
         {
+            entity.HasIndex(e => e.Code, "UX_RoomTypes_Code").IsUnique();
             entity.Property(e => e.Capacity).HasDefaultValue(1);
+            entity.Property(e => e.Code).HasMaxLength(20);
             entity.Property(e => e.DailyPrice).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.HasAc).HasColumnName("HasAC");
             entity.Property(e => e.HourlyPrice).HasColumnType("decimal(18, 2)");

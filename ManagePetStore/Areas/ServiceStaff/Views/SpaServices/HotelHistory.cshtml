@@ -2,7 +2,7 @@
 
 @{
     Layout = "~/Areas/ServiceStaff/Views/Shared/_ServiceLayout.cshtml";
-    ViewData["Title"] = "Lịch sử lưu trú Hotel";
+    ViewData["Title"] = "Lịch sử lưu trú chuồng";
 }
 
 @section Styles {
@@ -75,10 +75,6 @@
                             <td><strong>@booking.FinalAmount.ToString("N0")đ</strong></td>
                             <td>
                                 <div class="hbh-row-actions">
-                                    @if (booking.StatusKey == "active")
-                                    {
-                                        <a href="/SpaServices/PetDaily/@booking.PetId" class="hbh-table-link hbh-table-link-secondary"><i class="bi bi-journal-text"></i> Nhật ký pet</a>
-                                    }
                                     <a href="/SpaServices/HotelHistory/@booking.HotelBookingId" class="hbh-table-link">Chi tiết</a>
                                 </div>
                             </td>

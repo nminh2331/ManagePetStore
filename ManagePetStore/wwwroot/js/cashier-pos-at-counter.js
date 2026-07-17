@@ -145,18 +145,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div style="font-size:12px;text-align:left;"><div><strong>Khách:</strong> ${item.customerName} (${item.customerPhone})</div><div><strong>Pet:</strong> ${item.petName}</div><div><strong>Phòng:</strong> ${item.roomTypeName} · ${item.cageId}</div></div>
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><strong style="color:#ef4444;">${formatCurrency(item.total)}</strong><button class="btn-pos-primary" style="padding:5px 9px;font-size:11px;" onclick="handleSelectHotelCheckout(${item.hotelCheckoutId})"><i class="bi bi-plus-circle"></i> Thu tiền</button></div>
                 </div>`;
-            }).join('') : '<p style="color:var(--pos-text-muted);font-size:13px;">Không có bảng kê Hotel nào đang chờ thu.</p>';
+            }).join('') : '<p style="color:var(--pos-text-muted);font-size:13px;">Không có bảng kê chuồng nào đang chờ thu.</p>';
         } catch (err) {
             console.error('Lỗi lấy bảng kê Hotel:', err);
             readyHotelCheckouts = [];
-            list.innerHTML = '<p style="color:var(--pos-danger);font-size:13px;">Không thể tải danh sách Hotel.</p>';
+            list.innerHTML = '<p style="color:var(--pos-danger);font-size:13px;">Không thể tải danh sách chuồng.</p>';
         }
     }
 
     window.handleSelectHotelCheckout = async function (hotelCheckoutId) {
         const item = readyHotelCheckouts.find(row => row.hotelCheckoutId === hotelCheckoutId);
         if (!item) {
-            alert('Bảng kê Hotel không còn trong danh sách chờ thu. Vui lòng tải lại.');
+            alert('Bảng kê chuồng không còn trong danh sách chờ thu. Vui lòng tải lại.');
             await loadReadyHotelCheckouts();
             return;
         }
@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', function () {
         cart.push({
             type: 'Hotel',
             id: String(item.roomTypeId),
-            name: `Hotel ${item.roomTypeName} - ${item.petName}`,
+            name: `Chuồng ${item.roomTypeName} - ${item.petName}`,
             quantity: 1,
             price: item.total,
             total: item.total,
@@ -745,7 +745,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let pointsUsed = 0;
 
         usePointsCheckbox.disabled = hasHotelItem;
-        usePointsCheckbox.title = hasHotelItem ? 'Điểm thành viên chưa áp dụng cho hóa đơn có Hotel' : '';
+        usePointsCheckbox.title = hasHotelItem ? 'Điểm thành viên chưa áp dụng cho hóa đơn có dịch vụ chuồng' : '';
         if (hasHotelItem) usePointsCheckbox.checked = false;
 
         if (currentCustomer && !hasHotelItem) {

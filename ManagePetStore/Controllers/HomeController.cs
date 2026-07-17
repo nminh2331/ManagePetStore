@@ -7,6 +7,7 @@ namespace ManagePetStore.Controllers;
 
 public class HomeController : Controller
 {
+    private static readonly string[] BlockingHotelStatuses = ["Đã đặt", "Active", "Đang ở"];
     private readonly ILogger<HomeController> _logger;
     private readonly PetStoreManagementContext _context;
 
@@ -62,35 +63,70 @@ public class HomeController : Controller
         {
             model.RoomTypes = await _context.RoomTypes
                 .AsNoTracking()
-                .Where(r => r.Status && r.Cages.Any())
+                .Where(r => r.Status &&
+                            HotelRoomTypeCatalog.Codes.Contains(r.Code) &&
+                            r.Cages.Any())
                 .OrderBy(r => r.DailyPrice)
                 .Select(r => new RoomTypeOptionItem
                 {
                     Id = r.RoomTypeId,
+                    Code = r.Code,
                     Name = r.Type,
+                    Size = r.Size,
+                    Capacity = r.Capacity,
                     DailyPrice = r.DailyPrice,
+                    HasAc = r.HasAc,
+                    HasCamera = r.HasCamera,
                     HasPremiumFood = r.HasPremiumFood
                 })
                 .ToListAsync();
 
-            model.HotelFoodOptions = await _context.HotelFoodOptions
+            var reservedFoodUnits = await _context.HotelBookingFoodPlans
                 .AsNoTracking()
-                .Where(option => option.Active)
-                .OrderBy(option => option.PricePerDay)
-                .ThenBy(option => option.Name)
-                .Select(option => new HotelFoodOptionItem
+                .Where(plan => plan.ProductSku != null &&
+                               plan.InventoryQuantityDeducted == 0 &&
+                               BlockingHotelStatuses.Contains(plan.HotelBooking.Status))
+                .GroupBy(plan => plan.ProductSku!)
+                .Select(group => new
                 {
-                    Id = option.FoodOptionId,
-                    Name = option.Name,
-                    Description = option.Description ?? string.Empty,
-                    TargetSpecies = option.TargetSpecies,
-                    PricePerDay = option.PricePerDay,
-                    PortionGrams = option.DefaultPortionGrams,
-                    MealsPerDay = option.MealsPerDay,
-                    ImageUrl = option.ImageUrl,
-                    IncludedWithPremiumRoom = option.IsIncludedWithPremiumRoom
+                    Sku = group.Key,
+                    Quantity = group.Sum(plan => plan.ChargeableDays)
+                })
+                .ToDictionaryAsync(item => item.Sku, item => item.Quantity);
+
+            var hotelFoodProducts = await _context.Products
+                .AsNoTracking()
+                .Where(product => !product.IsDeleted &&
+                                  product.Stock > 0 &&
+                                  product.Unit == HotelFoodCatalog.DailyUnit &&
+                                  product.Category != null &&
+                                  !product.Category.IsDeleted &&
+                                  product.Category.Code == HotelFoodCatalog.CategoryCode)
+                .OrderBy(product => product.Price)
+                .ThenBy(product => product.Name)
+                .Select(product => new HotelFoodOptionItem
+                {
+                    Sku = product.Sku,
+                    Name = product.Name,
+                    Description = product.Description ?? string.Empty,
+                    TargetSpecies = product.AnimalType ?? "Tất cả",
+                    PricePerDay = product.Price,
+                    Unit = product.Unit,
+                    Stock = product.Stock,
+                    ImageUrl = product.ImageUrl
                 })
                 .ToListAsync();
+
+            foreach (var product in hotelFoodProducts)
+            {
+                product.AvailableUnits = Math.Max(
+                    0,
+                    product.Stock - reservedFoodUnits.GetValueOrDefault(product.Sku));
+            }
+
+            model.HotelFoodOptions = hotelFoodProducts
+                .Where(product => product.AvailableUnits > 0)
+                .ToList();
 
             if (User.Identity?.IsAuthenticated == true)
             {
@@ -105,14 +141,17 @@ public class HomeController : Controller
                     {
                         model.Pets = await _context.Pets
                             .AsNoTracking()
-                            .Where(p => p.CustomerId == customer.CustomerId && p.Status == "Active")
+                            .Where(p => p.CustomerId == customer.CustomerId &&
+                                        p.Status == "Active" &&
+                                        p.Weight > 0)
                             .OrderBy(p => p.Name)
                             .Select(p => new PetOptionItem
                             {
-                                Id = p.PetId,
-                                Name = p.Name,
-                                Breed = p.Breed ?? p.Species
-                            })
+                                    Id = p.PetId,
+                                    Name = p.Name,
+                                    Breed = p.Breed ?? p.Species,
+                                    ProfileWeightKg = p.Weight
+                                })
                             .ToListAsync();
 
                         model.HotelMembershipTier = customer.MembershipTier;
@@ -512,9 +551,9 @@ public class HomeController : Controller
             ],
             RoomTypes =
             [
-                new RoomTypeOptionItem { Id = 1, Name = "Phòng VIP Luxury (500k/n)", DailyPrice = 500000 },
-                new RoomTypeOptionItem { Id = 2, Name = "Phòng Tiêu Chuẩn (300k/n)", DailyPrice = 300000 },
-                new RoomTypeOptionItem { Id = 3, Name = "Phòng Economy (200k/n)", DailyPrice = 200000 }
+                new RoomTypeOptionItem { Id = 2, Code = HotelRoomTypeCatalog.StandardCode, Name = "Phòng Standard", Size = "1.0m x 1.0m", Capacity = 1, DailyPrice = 200000, HasAc = true },
+                new RoomTypeOptionItem { Id = 1, Code = HotelRoomTypeCatalog.VipCode, Name = "Phòng VIP", Size = "1.5m x 1.5m", Capacity = 1, DailyPrice = 500000, HasAc = true, HasCamera = true },
+                new RoomTypeOptionItem { Id = 3, Code = HotelRoomTypeCatalog.LuxuryCode, Name = "Phòng Luxury", Size = "2.0m x 1.8m", Capacity = 1, DailyPrice = 750000, HasAc = true, HasCamera = true }
             ]
         };
     }

@@ -344,7 +344,7 @@
                     <i class="fa-solid fa-clipboard-check"></i>
                     Tiếp nhận
                 </a>
-                <a href="/SpaServices/CageMap" class="service-nav-item @((servicePath.StartsWith("/SpaServices/CageMap", StringComparison.OrdinalIgnoreCase) || servicePath.StartsWith("/SpaServices/Hotel", StringComparison.OrdinalIgnoreCase)) ? "active" : "")">
+                <a href="/SpaServices/CageMap" class="service-nav-item @(!isHotelHistory && (servicePath.StartsWith("/SpaServices/CageMap", StringComparison.OrdinalIgnoreCase) || servicePath.StartsWith("/SpaServices/Hotel", StringComparison.OrdinalIgnoreCase)) ? "active" : "")">
                     <i class="fa-solid fa-map-location-dot"></i>
                     Sơ đồ Chuồng
                 </a>
@@ -365,7 +365,7 @@
             <div class="service-sidebar-footer">
                 <div class="branch-info">
                     <p class="branch-title">Cửa hàng PET</p>
-                    <p class="branch-name">Service Staff</p>
+                    <p class="branch-name">Nhân viên</p>
                 </div>
                 
                 <form id="sidebarLogoutForm" asp-area="Customer" asp-controller="Account" asp-action="Logout" method="post" class="d-none">

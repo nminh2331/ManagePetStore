@@ -8,6 +8,11 @@
     const badge = root.querySelector('[data-notification-count]');
     const toast = document.querySelector('[data-care-toast]');
     let toastTimer;
+    const forCageDisplay = value => String(value ?? '')
+        .replace(/pet hotel/gi, 'lưu trú chuồng')
+        .replace(/đặt phòng hotel/gi, 'đặt chuồng')
+        .replace(/booking hotel/gi, 'lượt đặt chuồng')
+        .replace(/hotel/gi, match => match === match.toUpperCase() ? 'CAGE' : 'chuồng');
 
     toggle.addEventListener('click', () => {
         const willOpen = menu.hidden;
@@ -36,9 +41,9 @@
         item.href = `/Customer/Notifications/Open/${data.notificationId}`;
 
         const title = document.createElement('strong');
-        title.textContent = data.title;
+        title.textContent = forCageDisplay(data.title);
         const message = document.createElement('span');
-        message.textContent = data.message;
+        message.textContent = forCageDisplay(data.message);
         const time = document.createElement('time');
         time.textContent = new Intl.DateTimeFormat('vi-VN', {
             dateStyle: 'short', timeStyle: 'short'
@@ -53,8 +58,8 @@
 
     const showToast = data => {
         if (!toast) return;
-        toast.querySelector('[data-care-toast-title]').textContent = data.title;
-        toast.querySelector('[data-care-toast-message]').textContent = data.message;
+        toast.querySelector('[data-care-toast-title]').textContent = forCageDisplay(data.title);
+        toast.querySelector('[data-care-toast-message]').textContent = forCageDisplay(data.message);
         toast.querySelector('[data-care-toast-link]').href = `/Customer/Notifications/Open/${data.notificationId}`;
         toast.hidden = false;
         window.clearTimeout(toastTimer);

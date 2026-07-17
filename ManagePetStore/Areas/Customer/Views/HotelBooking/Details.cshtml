@@ -3,12 +3,22 @@
 @{
     Layout = "/Views/Shared/_PetStoreLayout.cshtml";
     ViewData["Title"] = $"Chi tiết {Model.Booking.DisplayBookingId}";
+    ViewData["ShowHotelTimeline"] = false;
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/customer-pets.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/customer-hotel-bookings.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/hotel-booking-history.css" asp-append-version="true" />
+}
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="cp-toast success" id="cpToast">@TempData["SuccessMessage"]</div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="cp-toast error" id="cpToast">@TempData["ErrorMessage"]</div>
 }
 
 <div class="cp-dashboard">
@@ -19,10 +29,77 @@
             <div>
                 <a asp-action="Index" class="hbh-back-link"><i class="bi bi-arrow-left"></i> Lịch sử lưu trú</a>
                 <h1>Chi tiết lần lưu trú</h1>
-                <p>Toàn bộ thông tin và hoạt động được ghi theo từng booking của thú cưng.</p>
+                <p>Thông tin lưu trú, chi phí và hồ sơ sức khỏe của thú cưng.</p>
             </div>
         </div>
 
         @await Html.PartialAsync("_HotelBookingHistoryDetail", Model.Booking)
+
+        @if (Model.CanRequestCageChange)
+        {
+            <section class="hb-change-card">
+                <div class="hb-change-heading">
+                    <div>
+                        <h2><i class="bi bi-arrow-left-right"></i> Yêu cầu đổi chuồng</h2>
+                        <p>Nhân viên sẽ kiểm tra tình trạng chuồng và xác nhận chênh lệch trước khi chuyển.</p>
+                    </div>
+                </div>
+
+                @if (Model.PendingCageChangeRequest != null)
+                {
+                    var pending = Model.PendingCageChangeRequest;
+                    <div class="hb-change-pending">
+                        <strong>Đang chờ xử lý: @pending.SourceCageId → @pending.TargetCageId</strong>
+                        <span>Gửi lúc @pending.RequestedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                        <p>@pending.Reason</p>
+                        <small>
+                            Chênh lệch dự kiến:
+                            @(pending.EstimatedPriceDifference > 0
+                                ? $"+{pending.EstimatedPriceDifference:N0}đ"
+                                : pending.EstimatedPriceDifference < 0
+                                    ? $"-{Math.Abs(pending.EstimatedPriceDifference):N0}đ"
+                                    : "Không phát sinh")
+                        </small>
+                    </div>
+                }
+                else if (Model.AvailableCages.Count == 0)
+                {
+                    <div class="hb-change-empty">Hiện chưa có chuồng khác phù hợp và còn trống trong thời gian lưu trú.</div>
+                }
+                else
+                {
+                    <form asp-action="RequestCageChange" method="post" class="hb-change-form">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.Booking.HotelBookingId" />
+                        <label for="targetCageId">Chuồng muốn chuyển sang</label>
+                        <select id="targetCageId" name="targetCageId" required>
+                            <option value="">Chọn chuồng còn trống</option>
+                            @foreach (var cage in Model.AvailableCages)
+                            {
+                                var serviceProfile = ManagePetStore.Models.HotelRoomTypeCatalog.GetServiceProfile(cage.RoomTypeCode);
+                                var difference = cage.EstimatedPriceDifference > 0
+                                    ? $"phụ thu {cage.EstimatedPriceDifference:N0}đ"
+                                    : cage.EstimatedPriceDifference < 0
+                                        ? $"giảm {Math.Abs(cage.EstimatedPriceDifference):N0}đ"
+                                        : "không chênh lệch";
+                                <option value="@cage.CageId">
+                                    @cage.CageId · @cage.RoomTypeName · @serviceProfile.CareChecksPerDay lần kiểm tra/@serviceProfile.CustomerUpdatesPerDay cập nhật/ngày · @cage.DailyPrice.ToString("N0")đ/ngày · @difference
+                                </option>
+                            }
+                        </select>
+                        <label for="changeReason">Lý do đổi chuồng</label>
+                        <textarea id="changeReason" name="reason" minlength="10" maxlength="500" rows="3" required
+                                  placeholder="Ví dụ: cần camera theo dõi, muốn nâng hạng hoặc chuồng hiện tại không còn phù hợp..."></textarea>
+                        <button type="submit" class="hb-btn-primary" onclick="return confirm('Gửi yêu cầu đổi chuồng này?');">
+                            Gửi yêu cầu
+                        </button>
+                    </form>
+                }
+            </section>
+        }
     </section>
 </div>
+
+@section Scripts {
+    <script>window.setTimeout(() => document.getElementById('cpToast')?.remove(), 4500);</script>
+}

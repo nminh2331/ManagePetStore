@@ -4,6 +4,8 @@
     ViewData["Title"] = "Quản lý Sổ Y Tế Thú Cưng";
     var selectedSpecies = ViewBag.SelectedSpecies as string;
     var pets = ViewBag.Pets as List<Pet> ?? new List<Pet>();
+    int? preselectedPetId = ViewBag.PreselectedPetId as int?;
+    string? returnUrl = ViewBag.ReturnUrl as string;
 }
 
 <div class="container-fluid py-3">
@@ -225,6 +227,7 @@
             <div class="card-body p-4">
                 <form id="createRecordForm" method="post">
                     <input type="hidden" name="petId" id="formPetId" />
+                    <input type="hidden" id="medicalRecordReturnUrl" value="@returnUrl" />
                     
                     <!-- Part 1: Common Fields -->
                     <div class="section-title mb-4 pb-2 border-bottom text-primary font-weight-bold">
@@ -442,8 +445,13 @@
                         if (res.success) {
                             showNotification(res.message, 'success');
                             setTimeout(function() {
-                                goBackToPetsList();
-                                location.reload();
+                                var target = $('#medicalRecordReturnUrl').val();
+                                if (target) {
+                                    window.location.href = target;
+                                } else {
+                                    goBackToPetsList();
+                                    location.reload();
+                                }
                             }, 1000);
                         } else {
                             showNotification(res.message, 'error');
@@ -479,6 +487,20 @@
             $('#petsListSection, #petHistorySection').hide();
             $('#petCreateSection').fadeIn(200);
             window.scrollTo(0, 0);
+        }
+
+        @if (preselectedPetId.HasValue)
+        {
+            var preselectedPet = pets.First(pet => pet.PetId == preselectedPetId.Value);
+            <text>
+            $(function () {
+                showCreateScreen(
+                    @preselectedPet.PetId,
+                    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(preselectedPet.Name)),
+                    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(preselectedPet.Species)),
+                    @preselectedPet.Weight.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture));
+            });
+            </text>
         }
 
         function showHistoryScreen(petId, petName) {

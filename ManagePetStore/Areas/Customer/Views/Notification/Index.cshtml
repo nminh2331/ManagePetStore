@@ -39,7 +39,7 @@
                 {
                     <a class="cn-row @(!item.IsRead ? "is-unread" : "")" href="/Customer/Notifications/Open/@item.NotificationId">
                         <span class="cn-row-icon"><i class="bi bi-heart-pulse"></i></span>
-                        <span class="cn-row-body"><strong>@item.Title</strong><span>@item.Message</span></span>
+                        <span class="cn-row-body"><strong>@item.DisplayTitle</strong><span>@item.DisplayMessage</span></span>
                         <time>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</time>
                         <i class="bi bi-chevron-right"></i>
                     </a>

@@ -47,6 +47,10 @@ public partial class HotelBooking
 
     public virtual ICollection<PetBioTimeline> PetBioTimelines { get; set; } = new List<PetBioTimeline>();
 
+    public virtual ICollection<HotelCageChangeRequest> CageChangeRequests { get; set; } = new List<HotelCageChangeRequest>();
+
+    public virtual ICollection<HotelCageStaySegment> CageStaySegments { get; set; } = new List<HotelCageStaySegment>();
+
     public virtual Cage Cage { get; set; } = null!;
 
     public virtual Customer Customer { get; set; } = null!;

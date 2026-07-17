@@ -1,6 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Globalization;
-using System.Text.RegularExpressions;
 
 namespace ManagePetStore.Areas.Customer.Models;
 
@@ -14,84 +12,49 @@ public class HotelBookingRequest : IValidatableObject
     [Range(1, int.MaxValue, ErrorMessage = "Loại phòng đã chọn không hợp lệ.")]
     public int? RoomTypeId { get; set; }
 
-    [Required(ErrorMessage = "Vui lòng chọn ngày nhận phòng.")]
-    [DataType(DataType.Date)]
+    [Required(ErrorMessage = "Vui lòng chọn chuồng còn trống.")]
+    [StringLength(20, ErrorMessage = "Mã chuồng không được vượt quá 20 ký tự.")]
+    public string CageId { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Vui lòng chọn thời gian nhận phòng.")]
+    [DataType(DataType.DateTime)]
     public DateTime? CheckInDate { get; set; }
 
-    [Required(ErrorMessage = "Vui lòng chọn ngày trả phòng.")]
-    [DataType(DataType.Date)]
+    [Required(ErrorMessage = "Vui lòng chọn thời gian trả phòng.")]
+    [DataType(DataType.DateTime)]
     public DateTime? CheckOutDate { get; set; }
 
-    [Required, StringLength(30)]
-    public string FoodPlanType { get; set; } = "OwnerProvided";
-
-    public int? FoodOptionId { get; set; }
-
-    [StringLength(1000)]
-    public string? FeedingInstructions { get; set; }
+    [Required(ErrorMessage = "Vui lòng chọn gói thức ăn cho thời gian lưu trú.")]
+    [StringLength(50)]
+    public string FoodProductSku { get; set; } = string.Empty;
 
     [StringLength(1000)]
     public string? AllergyNotes { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (!string.IsNullOrWhiteSpace(FeedingInstructions))
-        {
-            var mealTimes = Regex.Split(
-                    FeedingInstructions.Trim(),
-                    @"\s*(?:,|;|và|and)\s*",
-                    RegexOptions.IgnoreCase)
-                .Where(value => !string.IsNullOrWhiteSpace(value))
-                .ToArray();
-            var parsedTimes = new List<TimeOnly>();
-
-            if (mealTimes.Length == 0)
-            {
-                yield return new ValidationResult(
-                    "Giờ ăn phải có dạng HH:mm, ví dụ 07:00 và 18:00.",
-                    [nameof(FeedingInstructions)]);
-            }
-
-            foreach (var value in mealTimes)
-            {
-                if (!TimeOnly.TryParseExact(
-                        value,
-                        ["H:mm", "HH:mm"],
-                        CultureInfo.InvariantCulture,
-                        DateTimeStyles.None,
-                        out var mealTime))
-                {
-                    yield return new ValidationResult(
-                        "Giờ ăn phải có dạng HH:mm, ví dụ 07:00 và 18:00.",
-                        [nameof(FeedingInstructions)]);
-                    break;
-                }
-
-                parsedTimes.Add(mealTime);
-            }
-
-            if (parsedTimes.Count == mealTimes.Length &&
-                parsedTimes.Any(time => time < new TimeOnly(7, 0) || time > new TimeOnly(20, 0)))
-            {
-                yield return new ValidationResult(
-                    "Giờ ăn chỉ được trong khoảng 07:00 đến 20:00.",
-                    [nameof(FeedingInstructions)]);
-            }
-        }
-
         if (!CheckInDate.HasValue || !CheckOutDate.HasValue)
         {
             yield break;
         }
 
-        var checkIn = CheckInDate.Value.Date;
-        var checkOut = CheckOutDate.Value.Date;
-        var latestAllowedCheckIn = DateTime.Today.AddDays(365);
+        var checkIn = CheckInDate.Value;
+        var checkOut = CheckOutDate.Value;
+        var now = DateTime.Now;
+        var latestAllowedCheckIn = now.AddDays(365);
 
-        if (checkIn < DateTime.Today)
+        if (checkIn.Minute % 15 != 0 || checkIn.Second != 0 ||
+            checkOut.Minute % 15 != 0 || checkOut.Second != 0)
         {
             yield return new ValidationResult(
-                "Ngày nhận phòng không được ở trong quá khứ.",
+                "Thời gian nhận và trả phòng phải theo từng mốc 15 phút.",
+                [nameof(CheckInDate), nameof(CheckOutDate)]);
+        }
+
+        if (checkIn < now)
+        {
+            yield return new ValidationResult(
+                "Thời gian nhận phòng không được ở trong quá khứ.",
                 [nameof(CheckInDate)]);
         }
 
@@ -105,15 +68,15 @@ public class HotelBookingRequest : IValidatableObject
         if (checkOut <= checkIn)
         {
             yield return new ValidationResult(
-                "Ngày trả phòng phải sau ngày nhận phòng.",
+                "Thời gian trả phòng phải sau thời gian nhận phòng.",
                 [nameof(CheckOutDate)]);
             yield break;
         }
 
-        if ((checkOut - checkIn).Days > 90)
+        if ((checkOut - checkIn).TotalHours > 90 * 24)
         {
             yield return new ValidationResult(
-                "Mỗi lượt đặt phòng không được vượt quá 90 đêm.",
+                "Mỗi lượt đặt phòng không được vượt quá 90 ngày.",
                 [nameof(CheckOutDate)]);
         }
     }
@@ -147,9 +110,34 @@ public class HotelBookingListItemViewModel
     public string Status { get; set; } = "";
     public string StatusKey { get; set; } = "";
     public bool CanCancel { get; set; }
+    public bool ShowCannotCancelOnline { get; set; }
 }
 
 public class HotelBookingDetailPageViewModel : CustomerSidebarViewModel
 {
     public ManagePetStore.Models.HotelBookingHistoryDetailViewModel Booking { get; set; } = new();
+    public bool CanRequestCageChange { get; set; }
+    public HotelCageChangeRequestItemViewModel? PendingCageChangeRequest { get; set; }
+    public List<HotelCageChangeOptionViewModel> AvailableCages { get; set; } = [];
+}
+
+public class HotelCageChangeOptionViewModel
+{
+    public string CageId { get; set; } = string.Empty;
+    public string RoomTypeName { get; set; } = string.Empty;
+    public string RoomTypeCode { get; set; } = string.Empty;
+    public string Size { get; set; } = string.Empty;
+    public decimal DailyPrice { get; set; }
+    public decimal EstimatedPriceDifference { get; set; }
+}
+
+public class HotelCageChangeRequestItemViewModel
+{
+    public int ChangeRequestId { get; set; }
+    public string SourceCageId { get; set; } = string.Empty;
+    public string TargetCageId { get; set; } = string.Empty;
+    public string Reason { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public decimal EstimatedPriceDifference { get; set; }
+    public DateTime RequestedAt { get; set; }
 }
