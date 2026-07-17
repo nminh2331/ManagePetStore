@@ -723,7 +723,7 @@
                 }
             }
 
-            var targetSpecies = '@ViewBag.TargetSpecies';
+            var targetSpecies = '@Html.Raw(ViewBag.TargetSpecies)';
 
             if (petSelect) {
                 // Initial check on load

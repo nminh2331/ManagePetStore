@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trang ch&#x1EE7; - PetStore</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="/css/homepage.css?v=RPk-ZkHb5j2OrvZWIeO_HvSPwih7vaokFuD8VsE-MGM" />
+    <link rel="stylesheet" href="/css/customer-notifications.css?v=2wgMQEUg4tDLhTJRnavBCgDYQ7MwQgitrEHgo2cMvMA" />
+    <style>
+        /* CSS cho phần Live Search Suggestions */
+        .ps-search { position: relative; }
+        .search-suggestions-box {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            margin-top: 8px;
+            z-index: 1050;
+            overflow: hidden;
+            border: 1px solid #eee;
+        }
+        .suggestion-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #333;
+            border-bottom: 1px solid #f5f5f5;
+            transition: background 0.2s;
+        }
+        .suggestion-item:hover { background: #f9fbf9; }
+        .suggestion-img {
+            width: 40px; height: 40px;
+            border-radius: 6px;
+            object-fit: cover;
+            margin-right: 12px;
+        }
+        .suggestion-info { flex: 1; }
+        .suggestion-title {
+            font-size: 0.9rem; font-weight: 600;
+            margin: 0 0 4px 0;
+            display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .suggestion-price { font-size: 0.85rem; color: #10b981; font-weight: 700; margin: 0; }
+        .suggestion-type {
+            font-size: 0.7rem; background: #e8f5e9; color: #2d6a4f;
+            padding: 2px 6px; border-radius: 4px; margin-left: 8px;
+        }
+        .search-view-all {
+            display: block; text-align: center; padding: 10px;
+            background: #f8faf9; color: #10b981; font-weight: 600;
+            text-decoration: none; font-size: 0.9rem;
+        }
+        .search-view-all:hover { background: #e8f5e9; color: #2d6a4f; }
+        .search-loading { padding: 15px; text-align: center; color: #777; font-size: 0.9rem; }
+
+        /* Navigation Menu */
+        .ps-header-nav { display: flex; align-items: center; gap: 4px; margin: 0 20px; }
+        .ps-nav-link {
+            color: #6c757d;
+            font-weight: 600;
+            font-size: 0.95rem;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .ps-nav-link:hover, .ps-nav-link.active {
+            color: #ea580c;
+            background: #fff3eb;
+        }
+    </style>
+    
+</head>
+<body class="petstore-body">
+    <!-- Header -->
+    <header class="ps-header">
+        <div class="container-fluid ps-header-inner">
+            <a class="ps-logo" href="/">
+                <span class="ps-logo-icon"><i class="bi bi-cart3"></i></span>
+                <span class="ps-logo-text">PetStore</span>
+            </a>
+
+            <!-- Chuyển form search về ProductController để dùng logic search mới (bỏ dấu, bắt lỗi khoảng trắng) -->
+            <form class="ps-search" id="headerSearchForm" method="get" action="/Product">
+                <i class="bi bi-search"></i>
+                <input type="text" id="headerSearchInput" name="search" placeholder="Tìm sản phẩm, dịch vụ cho thú cưng..." autocomplete="off" />
+                
+                <!-- Box Suggestions -->
+                <div id="searchSuggestionsBox" class="search-suggestions-box d-none">
+                    <div id="searchSuggestionsList"></div>
+                    <a href="#" id="viewAllSearchBtn" class="search-view-all">Xem tất cả kết quả</a>
+                </div>
+            </form>
+
+            <div class="ps-header-nav d-none d-lg-flex">
+                <a href="/" class="ps-nav-link active">Trang chủ</a>
+                <a href="/Product" class="ps-nav-link ">Sản phẩm</a>
+            </div>
+
+            <div class="ps-header-actions">
+
+
+
+               
+
+                <button class="ps-icon-btn" type="button" aria-label="Yêu thích"><i class="bi bi-heart"></i></button>
+
+                
+<a class="ps-icon-btn ps-cart-btn" aria-label="Giỏ hàng" href="/Customer/Cart">
+    <i class="bi bi-cart3"></i>
+</a>
+
+
+                    <a class="ps-icon-btn" aria-label="Tài khoản" href="/Customer/Account/Login">
+                        <i class="bi bi-person-circle"></i>
+                    </a>
+                    <button class="ps-icon-btn" type="button" aria-label="Thông báo">
+                        <i class="bi bi-bell"></i>
+                    </button>
+                    <span class="ps-greeting">Hi, Khách</span>
+                    <a class="ps-logout-btn text-decoration-none" href="/Customer/Account/Login">Đăng nhập</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        
+<!-- Hero Section -->
+<section class="ps-hero">
+    <div class="ps-hero-card">
+        <div class="ps-hero-content">
+            <span class="ps-hero-badge">PET STORE CHÀO BẠN</span>
+            <h1 class="ps-hero-title">Yêu thương <span>hơn mỗi ngày</span></h1>
+            <p class="ps-hero-desc">Cung cấp giải pháp chăm sóc thú cưng toàn diện với hơn 5000+ sản phẩm chính hãng và dịch vụ chuẩn 5 sao.</p>
+            <div class="ps-hero-buttons">
+                <a href="#best-sellers" class="ps-btn-primary">Mua Sắm Ngay</a>
+                <button type="button" class="ps-btn-outline open-hotel-modal" id="btnBookHotel">Đặt chuồng</button>
+            </div>
+        </div>
+        <div class="ps-hero-image">
+            <img src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=700&h=500&fit=crop" alt="Mèo dễ thương" />
+        </div>
+    </div>
+</section>
+
+<!-- Featured Categories -->
+<section class="ps-section" id="categories">
+    <div class="ps-section-header">
+        <h2 class="ps-section-title">Danh mục nổi bật</h2>
+        <a class="ps-section-link" href="/">Xem tất cả &gt;</a>
+    </div>
+    <div class="ps-categories-grid">
+                <a class="ps-category-card " href="/?category=food">
+                    <div class="ps-category-icon"><i class="bi bi-basket2"></i></div>
+                    <div class="ps-category-name">Th&#x1EE9;c &#x103;n</div>
+                </a>
+                <a class="ps-category-card " href="/?category=toys">
+                    <div class="ps-category-icon"><i class="bi bi-balloon"></i></div>
+                    <div class="ps-category-name">&#x110;&#x1ED3; ch&#x1A1;i</div>
+                </a>
+                <a class="ps-category-card " href="/?category=accessories">
+                    <div class="ps-category-icon"><i class="bi bi-gift"></i></div>
+                    <div class="ps-category-name">Ph&#x1EE5; ki&#x1EC7;n</div>
+                </a>
+                <a class="ps-category-card " href="/?category=cages">
+                    <div class="ps-category-icon"><i class="bi bi-house-door"></i></div>
+                    <div class="ps-category-name">Chu&#x1ED3;ng &amp; &#x110;&#x1EC7;m</div>
+                </a>
+                <a class="ps-category-card " href="/?category=hygiene">
+                    <div class="ps-category-icon"><i class="bi bi-droplet"></i></div>
+                    <div class="ps-category-name">V&#x1EC7; sinh</div>
+                </a>
+                <a class="ps-category-card " href="/?category=medicine">
+                    <div class="ps-category-icon"><i class="bi bi-capsule"></i></div>
+                    <div class="ps-category-name">Thu&#x1ED1;c &amp; Vitamin</div>
+                </a>
+                <a href="#spa-services" class="ps-category-card">
+                    <div class="ps-category-icon"><i class="bi bi-scissors"></i></div>
+                    <div class="ps-category-name">D&#x1ECB;ch v&#x1EE5; Spa</div>
+                </a>
+                <a href="/Customer/Pet/MedicalHistory" class="ps-category-card">
+                    <div class="ps-category-icon"><i class="bi bi-journal-medical"></i></div>
+                    <div class="ps-category-name">S&#x1ED5; y t&#x1EBF; th&#xFA; c&#x1B0;ng</div>
+                </a>
+    </div>
+</section>
+
+<!-- Best Selling Products & Spa Services -->
+    <!-- Best Selling Products -->
+    <section class="ps-section" id="best-sellers">
+        <div class="ps-section-header">
+            <h2 class="ps-section-title">Sản phẩm nổi bật</h2>
+            <a href="#categories" class="ps-filter-btn" aria-label="Lọc theo danh mục" style="padding: 6px 12px; border: 1px solid #ECE9E5; border-radius: 8px; color: #5D524D; display: inline-flex; align-items: center; justify-content: center;"><i class="bi bi-funnel"></i></a>
+        </div>
+            <div class="ps-search-empty" style="padding: 40px; background: #fffdf8; border-radius: 12px; border: 1px dashed #ECE9E5;">
+                <i class="bi bi-search" style="font-size: 2rem; color: #6b7280;"></i>
+                <p style="margin-top: 10px; color: #6b7280;">Không có sản phẩm nào thuộc danh mục này.</p>
+            </div>
+    </section>
+    <!-- Spa Services Section -->
+    <section class="ps-section" id="spa-services">
+        <div class="ps-section-header" style="margin-top: 50px; margin-bottom: 20px; border-top: 1px solid #ECE9E5; padding-top: 30px; flex-wrap: wrap; gap: 15px; align-items: center; display: flex; justify-content: space-between; width: 100%;">
+            <h2 class="ps-section-title" style="margin: 0;">Dịch vụ Spa nổi bật</h2>
+            
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 0.85rem; font-weight: 600; color: #5D524D;">Thú cưng:</span>
+                <form method="get" action="/#spa-services" id="spaSpeciesFilterForm" style="margin: 0; display: inline-block;">
+                    <input type="hidden" name="search" />
+                    <input type="hidden" name="category" />
+                    <input type="hidden" name="pageP" value="1" />
+                    <select name="species" onchange="document.getElementById('spaSpeciesFilterForm').submit();" 
+                            style="border: 1px solid #ECE9E5; border-radius: 8px; padding: 6px 12px; font-size: 0.85rem; font-weight: 600; color: #2D2521; outline: none; background-color: #FFFFFF; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                            <option value="T&#x1EA5;t c&#x1EA3;" selected>Tất cả</option>
+                            <option value="Ch&#xF3;">Chó</option>
+                            <option value="M&#xE8;o">Mèo</option>
+                            <option value="Chu&#x1ED9;t">Chuột</option>
+                            <option value="R&#xF9;a">Rùa</option>
+                    </select>
+                </form>
+            </div>
+        </div>
+        
+            <div class="ps-products-grid">
+                    <a class="ps-product-card" href="/Product/Details/SPA-SVC-007">
+                            <span class="ps-product-badge new">60 ph&#xFA;t</span>
+                        <div class="ps-product-image">
+                            <img src="/images/spa-bath-dry.png" alt="211" loading="lazy" />
+                        </div>
+                        <div class="ps-product-body">
+                            <div class="ps-product-rating">
+                                <i class="bi bi-star-fill"></i> 4.9 (35 đánh giá)
+                            </div>
+                            <div class="ps-product-name">211</div>
+                            <div class="ps-product-price-label">GIÁ DỊCH VỤ</div>
+                            <div class="ps-product-footer">
+                                <div class="ps-product-price">0đ</div>
+                                <span class="ps-product-stock">SẴN SÀNG</span>
+                            </div>
+                        </div>
+                    </a>
+                    <a class="ps-product-card" href="/Product/Details/SPA-SVC-005">
+                            <span class="ps-product-badge new">60 ph&#xFA;t</span>
+                        <div class="ps-product-image">
+                            <img src="/images/spa-grooming.png" alt="C&#x1EAF;t l&#xF4;ng &#x111;u&#xF4;i" loading="lazy" />
+                        </div>
+                        <div class="ps-product-body">
+                            <div class="ps-product-rating">
+                                <i class="bi bi-star-fill"></i> 4.9 (35 đánh giá)
+                            </div>
+                            <div class="ps-product-name">C&#x1EAF;t l&#xF4;ng &#x111;u&#xF4;i</div>
+                            <div class="ps-product-price-label">GIÁ DỊCH VỤ</div>
+                            <div class="ps-product-footer">
+                                <div class="ps-product-price">100,000đ</div>
+                                <span class="ps-product-stock">SẴN SÀNG</span>
+                            </div>
+                        </div>
+                    </a>
+                    <a class="ps-product-card" href="/Product/Details/SPA-SVC-011">
+                            <span class="ps-product-badge new">90 ph&#xFA;t</span>
+                        <div class="ps-product-image">
+                            <img src="/images/spa-grooming.png" alt="C&#x1EAF;t l&#xF4;ng t&#x1EA1;o ki&#x1EC3;u ngh&#x1EC7; thu&#x1EAD;t" loading="lazy" />
+                        </div>
+                        <div class="ps-product-body">
+                            <div class="ps-product-rating">
+                                <i class="bi bi-star-fill"></i> 4.9 (35 đánh giá)
+                            </div>
+                            <div class="ps-product-name">C&#x1EAF;t l&#xF4;ng t&#x1EA1;o ki&#x1EC3;u ngh&#x1EC7; thu&#x1EAD;t</div>
+                            <div class="ps-product-price-label">GIÁ DỊCH VỤ</div>
+                            <div class="ps-product-footer">
+                                <div class="ps-product-price">350,000đ</div>
+                                <span class="ps-product-stock">SẴN SÀNG</span>
+                            </div>
+                        </div>
+                    </a>
+                    <a class="ps-product-card" href="/Product/Details/SPA-SVC-014">
+                            <span class="ps-product-badge new">20 ph&#xFA;t</span>
+                        <div class="ps-product-image">
+                            <img src="/images/spa-grooming.png" alt="C&#x1EAF;t t&#x1EC9;a m&#xF3;ng &amp; V&#x1EC7; sinh tai Hamster" loading="lazy" />
+                        </div>
+                        <div class="ps-product-body">
+                            <div class="ps-product-rating">
+                                <i class="bi bi-star-fill"></i> 4.9 (35 đánh giá)
+                            </div>
+                            <div class="ps-product-name">C&#x1EAF;t t&#x1EC9;a m&#xF3;ng &amp; V&#x1EC7; sinh tai Hamster</div>
+                            <div class="ps-product-price-label">GIÁ DỊCH VỤ</div>
+                            <div class="ps-product-footer">
+                                <div class="ps-product-price">50,000đ</div>
+                                <span class="ps-product-stock">SẴN SÀNG</span>
+                            </div>
+                        </div>
+                    </a>
+            </div>
+                <nav class="mt-4 d-flex justify-content-center" aria-label="Spa Services Pagination">
+                    <ul class="pagination">
+                        <li class="page-item disabled">
+                            <a class="page-link" href="/?pageP=1&amp;pageS=0#spa-services">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+                            <li class="page-item active">
+                                <a class="page-link" href="/?pageP=1&amp;pageS=1#spa-services">1</a>
+                            </li>
+                            <li class="page-item ">
+                                <a class="page-link" href="/?pageP=1&amp;pageS=2#spa-services">2</a>
+                            </li>
+                            <li class="page-item ">
+                                <a class="page-link" href="/?pageP=1&amp;pageS=3#spa-services">3</a>
+                            </li>
+                            <li class="page-item ">
+                                <a class="page-link" href="/?pageP=1&amp;pageS=4#spa-services">4</a>
+                            </li>
+                        <li class="page-item ">
+                            <a class="page-link" href="/?pageP=1&amp;pageS=2#spa-services">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+    </section>
+
+<!-- Pet Hotel Banner -->
+<section class="ps-section">
+    <div class="ps-hotel-banner open-hotel-modal" role="button" tabindex="0">
+        <div class="ps-hotel-content">
+            <h2 class="ps-hotel-title">Phòng Nghỉ Dưỡng <span>Tiêu Chuẩn 5 Sao</span></h2>
+            <p class="ps-hotel-desc">Dịch vụ lưu trú chuồng cao cấp với camera giám sát 24/7, chế độ dinh dưỡng cá nhân hóa và khu vui chơi trong nhà cực rộng.</p>
+        </div>
+        <div class="ps-hotel-image">
+            <img src="https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=700&h=400&fit=crop" alt="Dịch vụ lưu trú chuồng" />
+            <div class="ps-hotel-status">
+                <i class="bi bi-check-circle-fill"></i>
+                TRẠNG THÁI: Đang còn phòng trống
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- News & Care Handbook - Blog CMS (2 khu vực tách biệt) -->
+<section class="ps-section" id="blog-section">
+    <div class="ps-section-header">
+        <h2 class="ps-section-title">Tin tức &amp; Cẩm nang chăm sóc</h2>
+        <a href="/Blog" class="ps-section-link">Tất cả bài viết &gt;</a>
+    </div>
+
+        <div class="row g-4">
+            <!-- ================================================================
+                 CỘT CHÍNH (col-lg-8): BÀI VIẾT MỚI NHẤT
+                 ================================================================ -->
+            <div class="col-lg-8">
+                    <!-- Bài đầu tiên: Card lớn nổi bật -->
+                    <a href="/Blog/cam-nang-cham-soc-meo-anh" class="ps-blog-featured-card d-block text-decoration-none mb-4">
+                        <div class="ps-blog-featured-inner">
+                                <img src="blog_meo_anh.jpg" alt="C&#x1EA9;m nang ch&#x103;m s&#xF3;c m&#xE8;o Anh l&#xF4;ng ng&#x1EAF;n &#x111;&#xFA;ng c&#xE1;ch" class="ps-blog-featured-img" loading="lazy" />
+                            <div class="ps-blog-featured-overlay">
+                                <div class="ps-blog-featured-content">
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                    </div>
+                                    <h3 class="ps-blog-featured-title">C&#x1EA9;m nang ch&#x103;m s&#xF3;c m&#xE8;o Anh l&#xF4;ng ng&#x1EAF;n &#x111;&#xFA;ng c&#xE1;ch</h3>
+                                        <p class="ps-blog-featured-excerpt">N&#x1ED9;i dung chi ti&#x1EBF;t...</p>
+                                    <div class="ps-blog-featured-meta">
+                                        <span><i class="bi bi-person-circle me-1"></i>Tr&#x1EA7;n Minh Ho&#xE0;ng</span>
+                                        <span><i class="bi bi-calendar3 me-1"></i>30/05/2026</span>
+                                        <span><i class="bi bi-eye me-1"></i>1 lượt xem</span>
+                                        <span class="ps-blog-read-more-link">Đọc ngay →</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                    <!-- 3 bài còn lại: Grid nhỏ gọn -->
+            </div>
+
+            <!-- ================================================================
+                 SIDEBAR (col-lg-4): ĐỌC NHIỀU NHẤT
+                 ================================================================ -->
+            <div class="col-lg-4">
+                <div class="ps-popular-box">
+                    <div class="ps-popular-header">
+                        <span class="ps-popular-icon">🔥</span>
+                        <span class="ps-popular-heading">Đọc nhiều nhất</span>
+                    </div>
+                    <div class="ps-popular-list">
+                                <a href="/Blog/cam-nang-cham-soc-meo-anh" class="ps-popular-item text-decoration-none">
+                                    <!-- Số thứ tự nổi bật -->
+                                    <div class="ps-popular-rank rank-gold">
+                                        1
+                                    </div>
+                                    <!-- Ảnh nhỏ -->
+                                    <div class="ps-popular-thumb">
+                                            <img src="blog_meo_anh.jpg" alt="C&#x1EA9;m nang ch&#x103;m s&#xF3;c m&#xE8;o Anh l&#xF4;ng ng&#x1EAF;n &#x111;&#xFA;ng c&#xE1;ch" loading="lazy" />
+                                    </div>
+                                    <!-- Nội dung -->
+                                    <div class="ps-popular-info">
+                                        <div class="ps-popular-title">C&#x1EA9;m nang ch&#x103;m s&#xF3;c m&#xE8;o Anh l&#xF4;ng ng&#x1EAF;n &#x111;&#xFA;ng c&#xE1;ch</div>
+                                        <div class="ps-popular-views">
+                                            <i class="bi bi-eye-fill me-1"></i>
+                                            <strong>1</strong> lượt xem
+                                        </div>
+                                    </div>
+                                </a>
+                    </div>
+                    <div class="ps-popular-footer">
+                        <a href="/Blog" class="ps-popular-view-all">Xem tất cả bài viết →</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+</section>
+
+
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="ps-footer">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-lg-4 col-md-6">
+                    <div class="ps-footer-brand">
+                        <span class="ps-logo-icon"><i class="bi bi-cart3"></i></span>
+                        <span class="ps-logo-text">PetStore</span>
+                    </div>
+                    <p class="ps-footer-desc">Hệ thống chăm sóc thú cưng toàn diện nhất. Spa, lưu trú chuồng, phụ kiện và thức ăn chính hãng.</p>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <h6 class="ps-footer-title">Dịch vụ</h6>
+                    <ul class="ps-footer-links">
+                        <li><a href="#">Spa &amp; Grooming</a></li>
+                        <li><a href="#" class="open-hotel-modal">Lưu trú chuồng</a></li>
+                        <li><a href="#">Phòng khám thú y</a></li>
+                        <li><a href="#">Huấn luyện</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <h6 class="ps-footer-title">Hỗ trợ</h6>
+                    <ul class="ps-footer-links">
+                        <li><a href="/Customer/Support/Warranty">Chính sách đổi trả</a></li>
+                        <li><a href="/Customer/Support/Shipping">Vận chuyển</a></li>
+                        <li><a href="/Customer/Support/Faq">Câu hỏi thường gặp</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <h6 class="ps-footer-title">Liên hệ</h6>
+                    <ul class="ps-footer-contact">
+                        <li>Hotline: <strong>0862735289</strong></li>
+                        <li>Email: <strong>hiephhhe171199@fpt.edu.vn</strong></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="ps-footer-bottom">
+                <p>&copy; 2024 PetStore AI. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    
+<div class="hotel-modal-overlay" id="hotelModalOverlay">
+    <div class="hotel-modal" role="dialog" aria-labelledby="hotelModalTitle" aria-modal="true">
+        <div class="hotel-modal-header">
+            <div class="hotel-modal-icon">
+                <i class="bi bi-house-heart"></i>
+            </div>
+            <div class="hotel-modal-titles">
+                <h2 id="hotelModalTitle">Đặt chuồng lưu trú</h2>
+                <p>ĐẶT TRƯỚC PHÒNG LƯU TRÚ CHO THÚ CƯNG</p>
+            </div>
+            <button type="button" class="hotel-modal-close" id="closeHotelModal" aria-label="Đóng">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+
+            <div class="hotel-empty-state">
+                <i class="bi bi-person-lock"></i>
+                <p>Vui lòng đăng nhập để chọn thú cưng và đặt chuồng.</p>
+                <a class="hotel-submit-btn text-decoration-none" href="/Customer/Account/Login">
+                    Đăng nhập để đặt phòng
+                </a>
+            </div>
+    </div>
+</div>
+
+    
+    <!-- Local SignalR Library & Custom Chat Bubble -->
+    <script src="/js/signalr.min.js"></script>
+    <!-- Chat Bubble Button -->
+<div id="ps-chat-bubble" class="ps-chat-bubble" onclick="toggleChatPopup()">
+    <i class="bi bi-chat-dots-fill"></i>
+    <span class="ps-chat-badge d-none" id="chatNotificationBadge"></span>
+</div>
+
+<!-- Chat Popup Container -->
+<div id="ps-chat-popup" class="ps-chat-popup d-none">
+    <!-- Header -->
+    <div class="ps-chat-header">
+        <div class="d-flex align-items-center gap-2">
+            <div class="ps-chat-header-avatar">
+                <i class="bi bi-headset"></i>
+            </div>
+            <div>
+                <div class="fw-bold fs-6">Hỗ trợ trực tuyến</div>
+                <div class="ps-chat-status" id="chatSupportStatus">
+                    <span class="status-dot online"></span> Sẵn sàng trợ giúp
+                </div>
+            </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" onclick="toggleChatPopup()" aria-label="Close"></button>
+    </div>
+
+    <!-- Body -->
+    <div class="ps-chat-body" id="chatMessagesBody">
+        <!-- Messages will be rendered here dynamically -->
+        <div class="text-center text-muted my-5" id="chatLoadingSpinner">
+            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+            <div class="mt-2 small">Đang tải lịch sử trò chuyện...</div>
+        </div>
+    </div>
+
+    <!-- Footer / Input Form -->
+    <div class="ps-chat-footer" id="chatInputArea">
+        <form id="chatForm" onsubmit="sendChatMessage(event)" class="d-flex gap-2 w-100">
+            <input type="text" id="chatMessageInput" class="form-control form-control-sm"
+                   placeholder="Nhập tin nhắn..." autocomplete="off" required />
+            <button type="submit" class="btn btn-primary btn-sm ps-chat-send-btn">
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- CSS cho Chat Bubble & Popup -->
+<style>
+    /* Chat Bubble Button */
+    .ps-chat-bubble {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 60px;
+        height: 60px;
+        background-color: #f97316;
+        color: #fff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        box-shadow: 0 4px 16px rgba(249, 115, 22, 0.4);
+        cursor: pointer;
+        z-index: 1050;
+        transition: transform 0.25s, background-color 0.25s;
+    }
+    .ps-chat-bubble:hover {
+        transform: scale(1.08);
+        background-color: #ea580c;
+    }
+    .ps-chat-badge {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        background-color: #ef4444;
+        color: #fff;
+        font-size: 10px;
+        font-weight: 700;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #fff;
+    }
+
+    /* Chat Popup Window */
+    .ps-chat-popup {
+        position: fixed;
+        bottom: 96px;
+        right: 24px;
+        width: 360px;
+        height: 480px;
+        background-color: #fff;
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        z-index: 1050;
+        border: 1px solid #f1f5f9;
+        transition: all 0.3s ease;
+    }
+    
+    .ps-chat-popup.d-none {
+        display: none !important;
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    /* Header */
+    .ps-chat-header {
+        background: linear-gradient(135deg, #f97316, #ea580c);
+        color: #fff;
+        padding: 14px 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .ps-chat-header-avatar {
+        width: 36px;
+        height: 36px;
+        background-color: rgba(255,255,255,0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+    }
+    .ps-chat-status {
+        font-size: 11px;
+        color: rgba(255,255,255,0.85);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 2px;
+    }
+    .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .status-dot.online {
+        background-color: #22c55e;
+        box-shadow: 0 0 8px #22c55e;
+    }
+    .status-dot.waiting {
+        background-color: #fbbf24;
+    }
+
+    /* Body */
+    .ps-chat-body {
+        flex: 1;
+        padding: 16px;
+        overflow-y: auto;
+        background-color: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    /* Message Item bubbles */
+    .chat-msg-item {
+        display: flex;
+        flex-direction: column;
+        max-width: 75%;
+    }
+    .chat-msg-item.self {
+        align-self: flex-end;
+    }
+    .chat-msg-item.other {
+        align-self: flex-start;
+    }
+    
+    .chat-msg-bubble {
+        padding: 10px 14px;
+        border-radius: 14px;
+        font-size: 13.5px;
+        line-height: 1.45;
+        word-break: break-word;
+    }
+    .chat-msg-item.self .chat-msg-bubble {
+        background-color: #f97316;
+        color: #fff;
+        border-bottom-right-radius: 2px;
+    }
+    .chat-msg-item.other .chat-msg-bubble {
+        background-color: #e2e8f0;
+        color: #1e293b;
+        border-bottom-left-radius: 2px;
+    }
+    .chat-msg-time {
+        font-size: 10px;
+        color: #94a3b8;
+        margin-top: 4px;
+        align-self: flex-end;
+    }
+    .chat-msg-item.other .chat-msg-time {
+        align-self: flex-start;
+    }
+
+    /* System notifications inside chat body */
+    .chat-system-notify {
+        align-self: center;
+        background-color: #f1f5f9;
+        color: #64748b;
+        font-size: 11px;
+        padding: 4px 12px;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        text-align: center;
+        max-width: 90%;
+        margin: 4px 0;
+    }
+
+    /* Footer */
+    .ps-chat-footer {
+        padding: 12px;
+        background-color: #fff;
+        border-top: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+    }
+    .ps-chat-send-btn {
+        background-color: #f97316;
+        border-color: #f97316;
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+    .ps-chat-send-btn:hover {
+        background-color: #ea580c;
+        border-color: #ea580c;
+    }
+
+    /* Scrollbar */
+    #chatMessagesBody::-webkit-scrollbar {
+        width: 6px;
+    }
+    #chatMessagesBody::-webkit-scrollbar-track {
+        background: #f1f5f9;
+    }
+    #chatMessagesBody::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+    }
+</style>
+
+<!-- Script logic cho Client (Customer) -->
+<script>
+    let chatConnection = null;
+    let currentUserInfo = null;
+    let isChatOpen = false;
+    let hasLoadedHistory = false;
+
+    function ensureSignalRLoaded(callback) {
+        if (typeof signalR !== 'undefined') {
+            callback();
+            return;
+        }
+        // Thử tải từ nguồn local trước để đảm bảo mượt mà không phụ thuộc CDN bên ngoài
+        const script = document.createElement('script');
+        script.src = "/js/signalr.min.js";
+        script.onload = () => {
+            callback();
+        };
+        script.onerror = () => {
+            console.warn("Không thể tải SignalR local, thử tải từ CDN dự phòng...");
+            const cdnScript = document.createElement('script');
+            cdnScript.src = "https://cdn.jsdelivr.net/npm/@microsoft/signalr/dist/browser/signalr.min.js";
+
+            cdnScript.onload = () => {
+                callback();
+            };
+            cdnScript.onerror = () => {
+                console.error("Không thể tải thư viện SignalR từ mọi nguồn.");
+            };
+            document.head.appendChild(cdnScript);
+        };
+        document.head.appendChild(script);
+    }
+
+
+    document.addEventListener("DOMContentLoaded", function () {
+        // Lấy thông tin user hiện tại trước
+        fetch('/api/ChatApi/me')
+            .then(res => res.json())
+            .then(data => {
+                currentUserInfo = data;
+                if (data.isAuthenticated) {
+                    ensureSignalRLoaded(() => {
+                        initSignalRChat(data.userId);
+                    });
+                }
+            })
+            .catch(err => console.error("Lỗi xác thực người dùng chat:", err));
+    });
+
+
+
+    // =========================================================================
+    // KHỞI TẠO SIGNALR CONNECTION
+    // =========================================================================
+    function initSignalRChat(userId) {
+        // Chỉ khách hàng (RoleId = 5) mới mở bong bóng chat. Manager và Admin sẽ dùng Dashboard khác
+        if (currentUserInfo.roleId === 6 || currentUserInfo.roleId === 1) {
+            // Ẩn hoàn toàn chat bubble đối với nhân viên (vì họ dùng dashboard riêng)
+            const bubble = document.getElementById("ps-chat-bubble");
+            if (bubble) bubble.classList.add("d-none");
+            return;
+        }
+
+        // Tạo kết nối
+        chatConnection = new signalR.HubConnectionBuilder()
+            .withUrl("/chatHub")
+            .withAutomaticReconnect()
+            .build();
+
+        // Lắng nghe ReceiveMessage
+        chatConnection.on("ReceiveMessage", function (msg) {
+            if (isChatOpen) {
+                renderChatMessage(msg);
+                scrollToBottom();
+            } else {
+                // Tăng số lượng tin nhắn thông báo chưa đọc ở bubble
+                const badge = document.getElementById("chatNotificationBadge");
+                badge.classList.remove("d-none");
+                let count = parseInt(badge.textContent || "0") + 1;
+                badge.textContent = count;
+            }
+        });
+
+        // Lắng nghe thay đổi trạng thái
+        chatConnection.on("SessionStatusChanged", function (statusInfo) {
+            renderSystemMessage(statusInfo.message);
+            updateStatusDot(statusInfo.status);
+            scrollToBottom();
+        });
+
+        // Start connection
+        chatConnection.start()
+            .then(() => {
+                // Gửi yêu cầu tham gia group của chính Customer này
+                chatConnection.invoke("JoinGroup", userId)
+                    .catch(err => console.error("Lỗi join SignalR Group:", err));
+            })
+            .catch(err => console.error("Lỗi khởi động SignalR Chat:", err));
+    }
+
+    // =========================================================================
+    // MỞ/ĐÓNG POPUP CHAT
+    // =========================================================================
+    function toggleChatPopup() {
+        const popup = document.getElementById("ps-chat-popup");
+        isChatOpen = !isChatOpen;
+
+        if (isChatOpen) {
+            popup.classList.remove("d-none");
+            // Clear thông báo badge đỏ ở bubble
+            const badge = document.getElementById("chatNotificationBadge");
+            badge.classList.add("d-none");
+            badge.textContent = "";
+
+            if (!currentUserInfo || !currentUserInfo.isAuthenticated) {
+                // Hiển thị yêu cầu đăng nhập
+                renderRequireLogin();
+                return;
+            }
+
+            // Load lịch sử tin nhắn lần đầu mở ra
+            if (!hasLoadedHistory) {
+                loadChatHistory(currentUserInfo.userId);
+            } else {
+                scrollToBottom();
+            }
+        } else {
+            popup.classList.add("d-none");
+        }
+    }
+
+    // =========================================================================
+    // LOAD LỊCH SỬ TIN NHẮN (API 50 TIN GẦN NHẤT)
+    // =========================================================================
+    function loadChatHistory(customerId) {
+        const body = document.getElementById("chatMessagesBody");
+
+        fetch(`/api/ChatApi/messages/${customerId}`)
+            .then(res => {
+                if (!res.ok) throw new Error("Không thể tải tin nhắn.");
+                return res.json();
+            })
+
+            .then(messages => {
+                // Xóa loading spinner
+                body.innerHTML = "";
+                hasLoadedHistory = true;
+
+                if (messages.length === 0) {
+                    renderSystemMessage("Hệ thống: Bắt đầu gửi tin nhắn để gặp hỗ trợ viên.");
+                } else {
+                    let lastSessionId = 0;
+                    messages.forEach(m => {
+                        // Thêm đường phân tách nhỏ nếu đổi phiên chat
+                        if (lastSessionId !== 0 && lastSessionId !== m.sessionId) {
+                            renderSystemMessage("--- Phiên trò chuyện trước ---");
+                        }
+                        lastSessionId = m.sessionId;
+
+                        renderChatMessage({
+                            senderId: m.senderId,
+                            messageText: m.messageText,
+                            sentAt: m.sentAt
+                        });
+                    });
+                }
+                scrollToBottom();
+            })
+            .catch(err => {
+                body.innerHTML = `<div class="text-center text-danger my-5 small">${err.message}</div>`;
+            });
+    }
+
+    // =========================================================================
+    // GỬI TIN NHẮN QUA SIGNALR HUB
+    // =========================================================================
+    function sendChatMessage(event) {
+        event.preventDefault();
+        const input = document.getElementById("chatMessageInput");
+        const text = input.value.trim();
+        if (!text || !chatConnection) return;
+
+        chatConnection.invoke("SendMessage", currentUserInfo.userId, text)
+            .then(() => {
+                input.value = "";
+            })
+            .catch(err => {
+                console.error("Gửi tin nhắn thất bại:", err);
+                renderSystemMessage("Lỗi: Không thể gửi tin nhắn.");
+            });
+    }
+
+    // =========================================================================
+    // UTILS - VẼ TIN NHẮN TRÊN UI
+    // =========================================================================
+    function renderChatMessage(msg) {
+        const body = document.getElementById("chatMessagesBody");
+        const isSelf = msg.senderId === currentUserInfo.userId;
+        const msgClass = isSelf ? "self" : "other";
+
+        const msgDiv = document.createElement("div");
+        msgDiv.className = `chat-msg-item ${msgClass}`;
+
+        const timeFormatted = new Date(msg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        msgDiv.innerHTML = `
+            <div class="chat-msg-bubble shadow-sm">${escapeHTML(msg.messageText)}</div>
+            <div class="chat-msg-time">${timeFormatted}</div>
+        `;
+
+        body.appendChild(msgDiv);
+    }
+
+    function renderSystemMessage(text) {
+        const body = document.getElementById("chatMessagesBody");
+        const div = document.createElement("div");
+        div.className = "chat-system-notify";
+        div.textContent = text;
+        body.appendChild(div);
+    }
+
+    function renderRequireLogin() {
+        const body = document.getElementById("chatMessagesBody");
+        body.innerHTML = `
+            <div class="text-center my-auto p-4">
+                <i class="bi bi-shield-lock-fill text-warning" style="font-size: 3rem;"></i>
+                <h6 class="fw-bold mt-3">Yêu cầu đăng nhập</h6>
+                <p class="text-muted small">Vui lòng đăng nhập tài khoản Khách hàng để bắt đầu chat trực tiếp với hỗ trợ viên.</p>
+                <a href="/Customer/Account/Login" class="btn btn-warning btn-sm w-100 fw-semibold mt-2">Đăng nhập ngay</a>
+            </div>
+        `;
+        // Ẩn khung input
+        document.getElementById("chatInputArea").classList.add("d-none");
+    }
+
+    function updateStatusDot(status) {
+        const dot = document.querySelector("#chatSupportStatus .status-dot");
+        if (!dot) return;
+        dot.className = "status-dot";
+        if (status === "Waiting") {
+            dot.classList.add("waiting");
+        } else if (status === "Active") {
+            dot.classList.add("online");
+        }
+    }
+
+    function scrollToBottom() {
+        const body = document.getElementById("chatMessagesBody");
+        body.scrollTop = body.scrollHeight;
+    }
+
+    function escapeHTML(str) {
+        return str.replace(/[&<>'"]/g, 
+            tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+        );
+    }
+</script>
+
+
+    <script src="/lib/jquery/dist/jquery.min.js"></script>
+    <script src="/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/homepage.js?v=ImrS_5A85UYl1iHLbRH3uTmp6EITK7XR_ppenjEkZv0"></script>
+    <script src="/js/customer-notifications.js?v=t8Y4MBBbjW9gCqBynQFX_sNlO2hZfiODFi2RXUYwYeI"></script>
+    
+    <!-- Script xử lý Live Search Suggestions -->
+    <script>
+        $(document).ready(function() {
+            let debounceTimer;
+            const $input = $('#headerSearchInput');
+            const $box = $('#searchSuggestionsBox');
+            const $list = $('#searchSuggestionsList');
+            const $viewAllBtn = $('#viewAllSearchBtn');
+
+            // Ẩn box khi click ra ngoài
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('.ps-search').length) {
+                    $box.addClass('d-none');
+                }
+            });
+
+            // Hiện lại box khi click vào ô input nếu có text
+            $input.on('focus', function() {
+                if ($input.val().trim().length >= 2) {
+                    $box.removeClass('d-none');
+                }
+            });
+
+            // Xử lý khi gõ
+            $input.on('input', function() {
+                const query = $(this).val().trim();
+                
+                clearTimeout(debounceTimer);
+                
+                if (query.length < 2) {
+                    $box.addClass('d-none');
+                    return;
+                }
+
+                $box.removeClass('d-none');
+                $list.html('<div class="search-loading"><i class="fas fa-spinner fa-spin"></i> Đang tìm kiếm...</div>');
+                $viewAllBtn.hide();
+
+                // Đợi 300ms người dùng ngừng gõ mới gọi API (Debounce)
+                debounceTimer = setTimeout(function() {
+                    $.ajax({
+                        url: '/Product/SearchSuggestions',
+                        data: { q: query },
+                        method: 'GET',
+                        success: function(data) {
+                            $list.empty();
+                            if (data && data.length > 0) {
+                                data.forEach(item => {
+                                    // Hiển thị tuỳ theo Type. Sau này thêm "Service" hay "Room" thì vẫn xài đc
+                                    let typeLabel = item.type === "Product" ? "Sản phẩm" : (item.type === "Service" ? "Dịch vụ" : item.type);
+                                    
+                                    let html = `
+                                        <a href="${item.url}" class="suggestion-item">
+                                            <img src="${item.imageUrl}" class="suggestion-img" alt="">
+                                            <div class="suggestion-info">
+                                                <h6 class="suggestion-title">${item.title}</h6>
+                                                <p class="suggestion-price">${item.priceText} <span class="suggestion-type">${typeLabel}</span></p>
+                                            </div>
+                                        </a>
+                                    `;
+                                    $list.append(html);
+                                });
+                                $viewAllBtn.show();
+                                $viewAllBtn.attr('href', '/Product/Index?search=' + encodeURIComponent(query));
+                            } else {
+                                $list.html('<div class="search-loading">Không tìm thấy kết quả phù hợp</div>');
+                                $viewAllBtn.hide();
+                            }
+                        },
+                        error: function() {
+                            $list.html('<div class="search-loading">Có lỗi xảy ra khi tìm kiếm</div>');
+                            $viewAllBtn.hide();
+                        }
+                    });
+                }, 300);
+            });
+            
+            // Fix icon submit form
+            $('.ps-search .bi-search').on('click', function() {
+                $('#headerSearchForm').submit();
+            });
+        });
+    </script>
+    
+</body>
+</html>
