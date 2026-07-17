@@ -1,8 +1,9 @@
-/**
+﻿/**
  * Project: Pet Store Management System (PSMS)
  * File: SearchController.cs
  * Author: Tran Duong
- * Description: API endpoint trả về gợi ý tìm kiếm nhanh cho Warehouse sidebar search.
+ * Last Update: July 17, 2026
+ * Description: API endpoint tráº£ vá» gá»£i Ã½ tÃ¬m kiáº¿m nhanh cho Warehouse sidebar search.
  */
 using ManagePetStore.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -24,7 +25,7 @@ public class SearchController : Controller
     }
 
     /// <summary>
-    /// Trả về gợi ý sản phẩm theo từ khóa (dùng cho AJAX autocomplete)
+    /// Tráº£ vá» gá»£i Ã½ sáº£n pháº©m theo tá»« khÃ³a (dÃ¹ng cho AJAX autocomplete)
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> ProductSuggestions(string q)
@@ -46,7 +47,7 @@ public class SearchController : Controller
     }
 
     /// <summary>
-    /// Trả về gợi ý nhà cung cấp theo từ khóa (dùng cho AJAX autocomplete)
+    /// Tráº£ vá» gá»£i Ã½ nhÃ  cung cáº¥p theo tá»« khÃ³a (dÃ¹ng cho AJAX autocomplete)
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> SupplierSuggestions(string q)

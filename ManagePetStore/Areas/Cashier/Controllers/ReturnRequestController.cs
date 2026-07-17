@@ -246,7 +246,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                             {
                                 ProductSku = item.Sku,
                                 Quantity = item.Quantity,
-                                CostPrice = 0
+                                CostPrice = item.RefundPrice
                             });
                         }
                     }
@@ -257,8 +257,8 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                             systemUserId: userId ?? 1,
                             type: "Nhập kho (Khách trả hàng)",
                             status: "Đã hoàn thành",
-                            supplier: null,
-                            totalValue: 0,
+                            supplier: $"Khách trả hàng - REQ-{request.RequestId}",
+                            totalValue: systemStockDetails.Sum(d => d.Quantity * d.CostPrice),
                             details: systemStockDetails
                         );
                     }

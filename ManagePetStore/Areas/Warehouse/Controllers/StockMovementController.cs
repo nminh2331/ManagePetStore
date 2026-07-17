@@ -1,9 +1,10 @@
-/**
+﻿/**
  * Project: Pet Store Management System (PSMS)
  * File: StockMovementController.cs
  * Author: Tran Duong
  * Date: June 11, 2026
- * Description: Controller xử lý các phiếu xuất/nhập kho.
+ * Last Update: July 17, 2026
+ * Description: Controller xá»­ lÃ½ cÃ¡c phiáº¿u xuáº¥t/nháº­p kho.
  */
 using ManagePetStore.Services.Warehouse;
 using ManagePetStore.Exceptions;
@@ -34,7 +35,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             _supplierService = supplierService;
         }
 
-        // Hiển thị danh sách các phiếu xuất/nhập kho
+        // Hiá»ƒn thá»‹ danh sÃ¡ch cÃ¡c phiáº¿u xuáº¥t/nháº­p kho
         public async Task<IActionResult> Index(DateTime? fromDate, DateTime? toDate, string tab = "all", string? search = null)
         {
             ViewBag.FromDate = fromDate?.ToString("yyyy-MM-dd");
@@ -42,34 +43,34 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             ViewBag.Tab = tab;
             ViewBag.Search = search;
 
-            // Lấy danh sách đã lọc theo ngày/tìm kiếm để hiển thị
+            // Láº¥y danh sÃ¡ch Ä‘Ã£ lá»c theo ngÃ y/tÃ¬m kiáº¿m Ä‘á»ƒ hiá»ƒn thá»‹
             var movements = await _movementService.GetAllMovements(fromDate, toDate, search);
 
-            // Lấy TOÀN BỘ danh sách (không lọc ngày) để đếm badge "Chờ duyệt" / "Chờ kiểm hàng"
-            // Tránh bug: filter ngày làm mất số đơn đang chờ xử lý
+            // Láº¥y TOÃ€N Bá»˜ danh sÃ¡ch (khÃ´ng lá»c ngÃ y) Ä‘á»ƒ Ä‘áº¿m badge "Chá» duyá»‡t" / "Chá» kiá»ƒm hÃ ng"
+            // TrÃ¡nh bug: filter ngÃ y lÃ m máº¥t sá»‘ Ä‘Æ¡n Ä‘ang chá» xá»­ lÃ½
             var allMovementsUnfiltered = await _movementService.GetAllMovements(null, null, null);
-            ViewBag.PendingManagerCount = allMovementsUnfiltered.Count(m => m.Status == "Chờ quản lý duyệt");
-            ViewBag.PendingInspectionCount = allMovementsUnfiltered.Count(m => m.Status == "Chờ kiểm hàng");
+            ViewBag.PendingManagerCount = allMovementsUnfiltered.Count(m => m.Status == "Chá» quáº£n lÃ½ duyá»‡t");
+            ViewBag.PendingInspectionCount = allMovementsUnfiltered.Count(m => m.Status == "Chá» kiá»ƒm hÃ ng");
 
             return View(movements);
         }
 
-        // Xuất file Excel
+        // Xuáº¥t file Excel
         [HttpGet]
         [Authorize(Roles = "warehouse,manager")]
         public async Task<IActionResult> ExportExcel(DateTime? fromDate, DateTime? toDate, string tab = "all", string? search = null)
         {
             var allMovements = await _movementService.GetAllMovements(fromDate, toDate, search);
             
-            // Lọc theo tab giống như View Index
+            // Lá»c theo tab giá»‘ng nhÆ° View Index
             var movementsToExport = allMovements;
             if (tab == "manager")
             {
-                movementsToExport = allMovements.Where(m => m.Status == "Chờ quản lý duyệt");
+                movementsToExport = allMovements.Where(m => m.Status == "Chá» quáº£n lÃ½ duyá»‡t");
             }
             else if (tab == "inspection")
             {
-                movementsToExport = allMovements.Where(m => m.Status == "Chờ kiểm hàng");
+                movementsToExport = allMovements.Where(m => m.Status == "Chá» kiá»ƒm hÃ ng");
             }
 
             using (var workbook = new XLWorkbook())
@@ -78,12 +79,12 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
                 var currentRow = 1;
 
                 // Headers
-                worksheet.Cell(currentRow, 1).Value = "Mã Phiếu";
-                worksheet.Cell(currentRow, 2).Value = "Ngày tạo";
-                worksheet.Cell(currentRow, 3).Value = "Loại phiếu";
-                worksheet.Cell(currentRow, 4).Value = "Nhà cung cấp";
-                worksheet.Cell(currentRow, 5).Value = "Tổng giá trị (VNĐ)";
-                worksheet.Cell(currentRow, 6).Value = "Trạng thái";
+                worksheet.Cell(currentRow, 1).Value = "MÃ£ Phiáº¿u";
+                worksheet.Cell(currentRow, 2).Value = "NgÃ y táº¡o";
+                worksheet.Cell(currentRow, 3).Value = "Loáº¡i phiáº¿u";
+                worksheet.Cell(currentRow, 4).Value = "NhÃ  cung cáº¥p";
+                worksheet.Cell(currentRow, 5).Value = "Tá»•ng giÃ¡ trá»‹ (VNÄ)";
+                worksheet.Cell(currentRow, 6).Value = "Tráº¡ng thÃ¡i";
 
                 // Format Headers
                 var headerRange = worksheet.Range(1, 1, 1, 6);
@@ -117,7 +118,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             }
         }
 
-        // Hiển thị chi tiết một phiếu xuất/nhập kho
+        // Hiá»ƒn thá»‹ chi tiáº¿t má»™t phiáº¿u xuáº¥t/nháº­p kho
         public async Task<IActionResult> Details(int id)
         {
             var movement = await _movementService.GetMovementById(id);
@@ -125,7 +126,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return View(movement);
         }
 
-        // Hiển thị form tạo phiếu nhập kho (Purchase Order)
+        // Hiá»ƒn thá»‹ form táº¡o phiáº¿u nháº­p kho (Purchase Order)
         public async Task<IActionResult> CreateImport(string? productSku)
         {
             if (!string.IsNullOrEmpty(productSku))
@@ -138,7 +139,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return View();
         }
 
-        // Xử lý tạo phiếu nhập kho
+        // Xá»­ lÃ½ táº¡o phiáº¿u nháº­p kho
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateImport(int? SupplierId, string ProductSku, int Quantity, decimal CostPrice)
@@ -168,7 +169,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             }
         }
 
-        // AJAX: lấy danh sách sản phẩm theo danh mục
+        // AJAX: láº¥y danh sÃ¡ch sáº£n pháº©m theo danh má»¥c
         [HttpGet]
         public async Task<IActionResult> GetProductsByCategory(int categoryId)
         {
@@ -179,7 +180,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return Json(filtered);
         }
 
-        // AJAX: lấy danh sách nhà cung cấp theo danh mục
+        // AJAX: láº¥y danh sÃ¡ch nhÃ  cung cáº¥p theo danh má»¥c
         [HttpGet]
         public async Task<IActionResult> GetSuppliersByCategory(int categoryId)
         {
@@ -188,7 +189,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return Json(result);
         }
 
-        // AJAX: lấy danh sách nhà cung cấp đã đăng ký sản phẩm cụ thể
+        // AJAX: láº¥y danh sÃ¡ch nhÃ  cung cáº¥p Ä‘Ã£ Ä‘Äƒng kÃ½ sáº£n pháº©m cá»¥ thá»ƒ
         [HttpGet]
         public async Task<IActionResult> GetSuppliersByProduct(string sku)
         {
@@ -200,14 +201,14 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return Json(result);
         }
 
-        // Hiển thị form tạo phiếu xuất kho nội bộ
+        // Hiá»ƒn thá»‹ form táº¡o phiáº¿u xuáº¥t kho ná»™i bá»™
         public async Task<IActionResult> CreateExport()
         {
             ViewBag.Products = await _productService.GetProductSummary("", "active");
             return View();
         }
 
-        // Xử lý tạo phiếu xuất kho nội bộ
+        // Xá»­ lÃ½ táº¡o phiáº¿u xuáº¥t kho ná»™i bá»™
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateExport(string Note, string ProductSku, int Quantity)
@@ -221,7 +222,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
                     {
                         ProductSku = ProductSku,
                         Quantity = Quantity,
-                        CostPrice = 0 // Xuất nội bộ không tính giá nhập
+                        CostPrice = 0 // Xuáº¥t ná»™i bá»™ khÃ´ng tÃ­nh giÃ¡ nháº­p
                     }
                 };
                 
@@ -236,17 +237,17 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             }
         }
 
-        // Hiển thị màn hình kiểm hàng (GET) - Dành cho Warehouse
+        // Hiá»ƒn thá»‹ mÃ n hÃ¬nh kiá»ƒm hÃ ng (GET) - DÃ nh cho Warehouse
         public async Task<IActionResult> Approve(int id)
         {
             var movement = await _movementService.GetMovementById(id);
             if (movement == null) return NotFound();
-            if (movement.Type != "Nhập hàng" || movement.Status != "Chờ kiểm hàng")
+            if (movement.Type != "Nháº­p hÃ ng" || movement.Status != "Chá» kiá»ƒm hÃ ng")
                 return RedirectToAction(nameof(Details), new { id });
             return View(movement);
         }
 
-        // Action dùng chung cho Manager duyệt đơn hoặc Warehouse duyệt Xuất kho
+        // Action dÃ¹ng chung cho Manager duyá»‡t Ä‘Æ¡n hoáº·c Warehouse duyá»‡t Xuáº¥t kho
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ApproveStatus(int id)
@@ -263,7 +264,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return RedirectToAction(nameof(Details), new { id });
         }
 
-        // Xử lý duyệt phiếu sau khi nhân viên kiểm hàng và điền HSD (POST)
+        // Xá»­ lÃ½ duyá»‡t phiáº¿u sau khi nhÃ¢n viÃªn kiá»ƒm hÃ ng vÃ  Ä‘iá»n HSD (POST)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Approve(int id, List<string> expiryDateInputs, List<int> detailIds)
@@ -289,7 +290,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return RedirectToAction(nameof(Details), new { id });
         }
 
-        // Xử lý hủy phiếu xuất/nhập kho
+        // Xá»­ lÃ½ há»§y phiáº¿u xuáº¥t/nháº­p kho
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Cancel(int id)

@@ -1,9 +1,10 @@
-/**
+﻿/**
  * Project: Pet Store Management System (PSMS)
  * File: HomeController.cs
  * Author: Tran Duong
  * Date: May 31, 2026
- * Description: Tự động chuyển hướng người dùng đến trang quản lý sản phẩm.
+ * Last Update: July 17, 2026
+ * Description: Tá»± Ä‘á»™ng chuyá»ƒn hÆ°á»›ng ngÆ°á»i dÃ¹ng Ä‘áº¿n trang quáº£n lÃ½ sáº£n pháº©m.
  */
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
