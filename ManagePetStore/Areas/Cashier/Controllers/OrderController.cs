@@ -177,6 +177,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
 
             // Search Products
             var products = await _context.Products
+                .AsNoTracking()
                 .Where(p => !p.IsDeleted && (p.Name.ToLower().Contains(query) || p.Sku.ToLower().Contains(query)))
                 .Take(20)
                 .Select(p => new
@@ -191,6 +192,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
 
             // Search Spa Services
             var spas = await _context.SpaServices
+                .AsNoTracking()
                 .Where(s => s.Active && s.Name.ToLower().Contains(query))
                 .Take(20)
                 .Select(s => new
@@ -213,6 +215,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
         public async Task<IActionResult> GetAllSpas()
         {
             var spas = await _context.SpaServices
+                .AsNoTracking()
                 .Where(s => s.Active)
                 .OrderBy(s => s.Name)
                 .Select(s => new
@@ -233,6 +236,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
         public async Task<IActionResult> GetAllProducts()
         {
             var products = await _context.Products
+                .AsNoTracking()
                 .Where(p => !p.IsDeleted && p.Stock > 0)
                 .OrderBy(p => p.Name)
                 .Select(p => new
@@ -253,6 +257,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
         public async Task<IActionResult> GetGroomers(DateTime date)
         {
             var groomers = await _context.Users
+                .AsNoTracking()
                 .Include(u => u.Role)
                 .Where(u => u.Status == "Active" && u.Role.RoleName == "service")
                 .Select(u => new
@@ -503,6 +508,22 @@ namespace ManagePetStore.Areas.Cashier.Controllers
 
             var systemStockDetails = new List<StockMovementDetail>();
 
+            // Optimize lookups to avoid N+1 database queries
+            var productSkus = dto.Items.Where(i => i.Type == "Product").Select(i => i.Id).Distinct().ToList();
+            var productsDict = await _context.Products
+                .Where(p => productSkus.Contains(p.Sku))
+                .ToDictionaryAsync(p => p.Sku);
+
+            var petIds = dto.Items.Where(i => i.Type == "Spa" && i.PetId.HasValue).Select(i => i.PetId!.Value).Distinct().ToList();
+            var petsDict = await _context.Pets
+                .Where(p => petIds.Contains(p.PetId))
+                .ToDictionaryAsync(p => p.PetId);
+
+            var bookingIds = dto.Items.Where(i => i.Type == "Spa" && i.BookingId.HasValue).Select(i => i.BookingId!.Value).Distinct().ToList();
+            var bookingsDict = await _context.SpaBookings
+                .Where(b => bookingIds.Contains(b.BookingId))
+                .ToDictionaryAsync(b => b.BookingId);
+
             // Process Items
             foreach (var item in dto.Items)
             {
@@ -519,8 +540,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                     orderItem.ProductSku = item.Id;
 
                     // Reduce Stock
-                    var product = await _context.Products.FirstOrDefaultAsync(p => p.Sku == item.Id);
-                    if (product != null)
+                    if (productsDict.TryGetValue(item.Id, out var product))
                     {
                         try 
                         {
@@ -548,8 +568,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                     // Update Pet Weight if provided
                     if (item.PetId.HasValue && item.PetWeight.HasValue)
                     {
-                        var pet = await _context.Pets.FindAsync(item.PetId.Value);
-                        if (pet != null)
+                        if (petsDict.TryGetValue(item.PetId.Value, out var pet))
                         {
                             pet.Weight = item.PetWeight.Value;
                         }
@@ -558,8 +577,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                     // Link existing SpaBooking
                     if (item.BookingId.HasValue)
                     {
-                        var booking = await _context.SpaBookings.FindAsync(item.BookingId.Value);
-                        if (booking != null)
+                        if (bookingsDict.TryGetValue(item.BookingId.Value, out var booking))
                         {
                             booking.Status = "Chờ thanh toán";
                             booking.Notes = $"[POS {order.OrderId}] | Dịch vụ: {item.Name} " + (booking.Notes ?? "");
@@ -799,6 +817,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
         public async Task<IActionResult> PrintInvoice(string orderId)
         {
             var order = await _context.Orders
+                .AsNoTracking()
                 .Include(o => o.Customer)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.ProductSkuNavigation)
@@ -815,6 +834,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
 
             // Retrieve related SpaBookings for this order
             var spaBookings = await _context.SpaBookings
+                .AsNoTracking()
                 .Include(b => b.Pet)
                 .Include(b => b.Groomer)
                 .Include(b => b.Service)
