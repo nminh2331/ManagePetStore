@@ -1,0 +1,335 @@
+@model ManagePetStore.Models.Order
+@{
+    Layout = "_ManagerLayout";
+    ViewData["Title"] = "Chi tiết hóa đơn " + Model.OrderId;
+    
+    // Format ID hiển thị
+    string displayId = Model.OrderId;
+    if (Model.OrderId.StartsWith("OD-"))
+    {
+        var parts = Model.OrderId.Split('-');
+        displayId = parts.Length >= 2 ? $"#POS-{parts[^1]}" : $"#{Model.OrderId}";
+    }
+    else if (Model.OrderId.StartsWith("ORD-"))
+    {
+        var parts = Model.OrderId.Split('-');
+        displayId = parts.Length >= 2 ? $"#OD-{parts[^1]}" : $"#{Model.OrderId}";
+    }
+
+    // Map trạng thái thân thiện
+    string statusText = Model.Status;
+    string badgeClass = "bg-secondary";
+    var statusLower = Model.Status.ToLower();
+    
+    if (statusLower == "chờ xử lý" || statusLower == "completed" || statusLower == "đã hoàn thành" || statusLower == "hoan thanh" || statusLower == "đã thanh toán")
+    {
+        statusText = "ĐÃ THANH TOÁN / THÀNH CÔNG";
+        badgeClass = "bg-success";
+    }
+    else if (statusLower == "chờ thanh toán" || statusLower == "pending")
+    {
+        statusText = "CHỜ THANH TOÁN";
+        badgeClass = "bg-warning text-dark";
+    }
+    else if (statusLower == "đã hủy" || statusLower == "cancelled" || statusLower == "canceled")
+    {
+        statusText = "ĐÃ HỦY";
+        badgeClass = "bg-danger";
+    }
+
+    var spaBookings = ViewBag.SpaBookings as List<ManagePetStore.Models.SpaBooking> ?? new List<ManagePetStore.Models.SpaBooking>();
+}
+
+<style>
+    .invoice-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding-bottom: 50px;
+        font-family: 'Outfit', sans-serif;
+    }
+
+    .invoice-card {
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--admin-border);
+        padding: 30px;
+        margin-top: 20px;
+    }
+
+    .invoice-header {
+        border-bottom: 2px dashed #e2e8f0;
+        padding-bottom: 20px;
+        margin-bottom: 25px;
+    }
+
+    .info-section {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 25px;
+        border: 1px solid #f1f5f9;
+    }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 15px;
+        border-left: 4px solid var(--admin-primary);
+        padding-left: 10px;
+    }
+
+    .table-invoice th {
+        background-color: #f1f5f9;
+        color: #475569;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+    }
+
+    .table-invoice td {
+        vertical-align: middle;
+    }
+
+    .price-summary {
+        max-width: 400px;
+        margin-left: auto;
+    }
+
+    .price-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        font-size: 0.95rem;
+        color: #475569;
+    }
+
+    .price-row-total {
+        border-top: 2px solid #e2e8f0;
+        padding-top: 12px;
+        font-weight: 700;
+        font-size: 1.25rem;
+        color: #0f172a;
+    }
+
+    .addon-card {
+        background: #fff;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+    }
+</style>
+
+<div class="invoice-container">
+    <!-- Back Button -->
+    <div class="mb-3 d-flex justify-content-between align-items-center">
+        <button onclick="window.close()" class="btn btn-outline-secondary" style="border-radius: 8px; font-weight: 600;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="me-2 d-inline-block">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg> Đóng tab này
+        </button>
+        <span class="text-muted">Xem ở chế độ: <strong>Quản lý</strong></span>
+    </div>
+
+    <div class="invoice-card">
+        <!-- Invoice Header -->
+        <div class="invoice-header d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <span class="badge @badgeClass mb-2 px-3 py-2" style="font-size: 0.85rem; border-radius: 8px;">@statusText</span>
+                <h2 class="fw-bold mb-1 text-dark">HÓA ĐƠN CHI TIẾT</h2>
+                <h5 class="text-primary fw-semibold mb-0">Mã đơn: @displayId</h5>
+                <small class="text-muted">Mã hệ thống: @Model.OrderId</small>
+            </div>
+            <div class="text-end">
+                <h4 class="fw-bold mb-1" style="color: var(--admin-primary);">PetStore AI</h4>
+                <p class="text-muted mb-0 text-sm">Hệ thống chăm sóc thú cưng toàn diện</p>
+                <p class="text-muted mb-0 text-xs">Ngày lập: @Model.Date.ToString("dd/MM/yyyy HH:mm:ss")</p>
+            </div>
+        </div>
+
+        <!-- Info Section (Customer & Payment) -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="info-section h-100">
+                    <div class="section-title">Thông tin khách hàng</div>
+                    <div class="d-flex flex-column gap-2 text-sm">
+                        <div><strong>Họ và tên:</strong> @(Model.Customer?.FullName ?? "Khách vãng lai")</div>
+                        <div><strong>Số điện thoại:</strong> @(string.IsNullOrWhiteSpace(Model.Customer?.Phone) ? "N/A" : Model.Customer.Phone)</div>
+                        <div><strong>Hạng thành viên:</strong> @(Model.Customer?.MembershipTier ?? "Chưa liên kết")</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="info-section h-100">
+                    <div class="section-title">Phương thức & Giao dịch</div>
+                    <div class="d-flex flex-column gap-2 text-sm">
+                        <div><strong>Hình thức thanh toán:</strong> @Model.PaymentMethod</div>
+                        <div><strong>Điểm tích lũy nhận được:</strong> +@Model.PointsEarned pts</div>
+                        <div><strong>Điểm đã sử dụng:</strong> -@Model.PointsRedeemed pts</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Items Table -->
+        <div class="section-title">Danh sách sản phẩm & Dịch vụ mua</div>
+        <div class="table-responsive mb-4" style="border-radius: 10px; border: 1px solid #e2e8f0;">
+            <table class="table table-invoice mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Phân loại</th>
+                        <th>Tên sản phẩm / Dịch vụ</th>
+                        <th class="text-end">Đơn giá</th>
+                        <th class="text-center">Số lượng</th>
+                        <th class="text-end">Thành tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.OrderItems)
+                    {
+                        string typeLabel = "Sản phẩm";
+                        string typeBadgeClass = "bg-primary-subtle text-primary";
+                        string itemName = "Không xác định";
+                        
+                        if (item.ProductSkuNavigation != null)
+                        {
+                            itemName = item.ProductSkuNavigation.Name;
+                        }
+                        else if (item.SpaService != null)
+                        {
+                            itemName = item.SpaService.Name;
+                            typeLabel = "Spa & Grooming";
+                            typeBadgeClass = "bg-purple-subtle text-purple";
+                        }
+                        else if (item.RoomType != null)
+                        {
+                            itemName = $"Thuê phòng: {item.RoomType.Type}";
+                            typeLabel = "Khách sạn thú cưng";
+                            typeBadgeClass = "bg-info-subtle text-info";
+                        }
+                        else if (!string.IsNullOrEmpty(item.ProductSku))
+                        {
+                            itemName = item.ProductSku;
+                        }
+
+                        <tr>
+                            <td>
+                                <span class="badge @typeBadgeClass" style="padding: 6px 10px; border-radius: 6px;">@typeLabel</span>
+                            </td>
+                            <td>
+                                <strong class="text-dark">@itemName</strong>
+                                @if (!string.IsNullOrEmpty(item.ProductSku))
+                                {
+                                    <div class="text-muted text-xs">SKU: @item.ProductSku</div>
+                                }
+                            </td>
+                            <td class="text-end">@item.Price.ToString("C0", new System.Globalization.CultureInfo("vi-VN"))</td>
+                            <td class="text-center fw-bold">x@item.Quantity</td>
+                            <td class="text-end fw-bold" style="color: var(--admin-primary);">
+                                @((item.Price * item.Quantity).ToString("C0", new System.Globalization.CultureInfo("vi-VN")))
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Prices Summary -->
+        <div class="price-summary mb-5">
+            <div class="price-row">
+                <span>Tạm tính:</span>
+                <span>@Model.Subtotal.ToString("C0", new System.Globalization.CultureInfo("vi-VN"))</span>
+            </div>
+            @if (Model.Discount > 0)
+            {
+                <div class="price-row text-danger">
+                    <span>Khấu trừ (Voucher / Điểm):</span>
+                    <span>-@Model.Discount.ToString("C0", new System.Globalization.CultureInfo("vi-VN"))</span>
+                </div>
+            }
+            <div class="price-row price-row-total">
+                <span>Tổng cộng thực thanh toán:</span>
+                <span>@Model.Total.ToString("C0", new System.Globalization.CultureInfo("vi-VN"))</span>
+            </div>
+        </div>
+
+        <!-- Spa Booking Addon Details -->
+        @if (spaBookings.Any())
+        {
+            <div class="section-title mt-4">Thông tin đặt lịch dịch vụ Spa thực tế</div>
+            @foreach (var sb in spaBookings)
+            {
+                <div class="addon-card">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div><strong>Dịch vụ Spa:</strong> <span class="text-purple fw-bold">@sb.Service?.Name</span></div>
+                            <div><strong>Thú cưng:</strong> @sb.Pet?.Name (@sb.Pet?.Species - @(sb.Pet?.Weight)kg)</div>
+                            <div><strong>Nhân viên Groomer phụ trách:</strong> @sb.Groomer?.FullName</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div><strong>Thời gian thực hiện:</strong> @sb.DateTime.ToString("HH:mm - dd/MM/yyyy")</div>
+                            <div><strong>Chi phí gốc:</strong> @sb.Price.ToString("C0", new System.Globalization.CultureInfo("vi-VN"))</div>
+                            <div><strong>Trạng thái thực hiện:</strong> <span class="badge bg-info">@sb.SpaStatus</span></div>
+                            @if (!string.IsNullOrEmpty(sb.Notes))
+                            {
+                                <div class="text-muted text-xs mt-2"><strong>Ghi chú dịch vụ:</strong> @sb.Notes</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+
+        <!-- Hotel Booking Addon Details -->
+        @if (Model.HotelCheckoutStatements.Any())
+        {
+            <div class="section-title mt-4">Thông tin lượt lưu trú Khách sạn & Chi phí phát sinh</div>
+            @foreach (var hcs in Model.HotelCheckoutStatements)
+            {
+                var booking = hcs.HotelBooking;
+                <div class="addon-card">
+                    <div class="row g-3 mb-3 pb-3 border-bottom">
+                        <div class="col-md-6">
+                            <div><strong>Lượt lưu trú:</strong> <span class="text-info fw-bold">#Stay-@hcs.HotelBookingId</span></div>
+                            <div><strong>Thú cưng:</strong> @booking?.Pet?.Name (@booking?.Pet?.Species)</div>
+                            <div><strong>Phòng / Chuồng:</strong> Số @booking?.CageId (Loại phòng: @booking?.Cage?.RoomType?.Type)</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div><strong>Ngày nhận phòng:</strong> @booking?.CheckInDate.ToString("dd/MM/yyyy HH:mm")</div>
+                            <div><strong>Ngày trả phòng:</strong> @booking?.CheckOutDate?.ToString("dd/MM/yyyy HH:mm")</div>
+                            <div><strong>Trạng thái lượt lưu trú:</strong> <span class="badge bg-info">@booking?.Status</span></div>
+                        </div>
+                    </div>
+                    
+                    <h6 class="fw-bold text-secondary mb-2" style="font-size: 0.85rem; text-transform: uppercase;">Chi tiết bảng kê thu tiền</h6>
+                    <div class="table-responsive" style="border-radius: 8px; border: 1px solid #f1f5f9;">
+                        <table class="table table-sm mb-0 text-sm">
+                            <thead>
+                                <tr class="table-light">
+                                    <th>Nội dung thanh toán phát sinh</th>
+                                    <th class="text-end" style="width: 150px;">Số tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var detailsItem in hcs.Items)
+                                {
+                                    <tr>
+                                        <td>@detailsItem.Description</td>
+                                        <td class="text-end fw-semibold">@detailsItem.Amount.ToString("C0", new System.Globalization.CultureInfo("vi-VN"))</td>
+                                    </tr>
+                                }
+                                <tr class="table-light">
+                                    <td class="fw-bold">Cộng tiền bảng kê:</td>
+                                    <td class="text-end fw-bold text-info">@hcs.TotalAmount.ToString("C0", new System.Globalization.CultureInfo("vi-VN"))</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
