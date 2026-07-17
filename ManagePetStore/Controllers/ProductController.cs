@@ -380,12 +380,13 @@ public class ProductController : Controller
                             {
                                 var hasPurchased = await _context.OrderItems
                                     .Include(oi => oi.Order)
-                                    .AnyAsync(oi => oi.ProductSku == product.Sku && oi.Order.CustomerId == customerObj.CustomerId && (oi.Order.Status == "Hoàn thành" || oi.Order.Status == "Đã giao hàng"));
+                                    .AnyAsync(oi => oi.ProductSku == product.Sku && oi.Order.CustomerId == customerObj.CustomerId && (oi.Order.Status == "Đã hoàn thành" || oi.Order.Status == "Đã giao hàng" || oi.Order.Status == "Hoàn thành"));
                                 
                                 var hasReviewed = await _context.ProductReviews
                                     .AnyAsync(r => r.ProductSku == product.Sku && r.CustomerId == customerObj.CustomerId);
                                 
                                 model.CanReview = hasPurchased && !hasReviewed;
+                                model.HasReviewed = hasReviewed;
                             }
                         }
                     }
@@ -428,7 +429,7 @@ public class ProductController : Controller
 
         var hasPurchased = await _context.OrderItems
             .Include(oi => oi.Order)
-            .AnyAsync(oi => oi.ProductSku == productSku && oi.Order.CustomerId == customer.CustomerId && (oi.Order.Status == "Hoàn thành" || oi.Order.Status == "Đã giao hàng"));
+            .AnyAsync(oi => oi.ProductSku == productSku && oi.Order.CustomerId == customer.CustomerId && (oi.Order.Status == "Đã hoàn thành" || oi.Order.Status == "Đã giao hàng" || oi.Order.Status == "Hoàn thành"));
 
         if (!hasPurchased)
         {

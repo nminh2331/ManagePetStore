@@ -1,9 +1,10 @@
-/**
+﻿/**
  * Project: Pet Store Management System (PSMS)
  * File: InventoryBatchController.cs
  * Author: Tran Duong
  * Date: June 10, 2026
- * Description: Controller xử lý lô hàng.
+ * Last Update: July 17, 2026
+ * Description: Controller xá»­ lÃ½ lÃ´ hÃ ng.
  */
 using ManagePetStore.Services.Warehouse;
 using ManagePetStore.Repositories.Warehouse;
@@ -33,7 +34,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             _movementRepo = movementRepo;
         }
 
-        // Hiển thị danh sách lô hàng của một sản phẩm
+        // Hiá»ƒn thá»‹ danh sÃ¡ch lÃ´ hÃ ng cá»§a má»™t sáº£n pháº©m
         public async Task<IActionResult> Index(string id)
         {
             if (string.IsNullOrEmpty(id)) return NotFound();
@@ -47,7 +48,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return View(batches);
         }
 
-        // Hiển thị form thêm mới lô hàng cho một sản phẩm
+        // Hiá»ƒn thá»‹ form thÃªm má»›i lÃ´ hÃ ng cho má»™t sáº£n pháº©m
         public async Task<IActionResult> Create(string productSku)
         {
             if (string.IsNullOrEmpty(productSku)) return NotFound();
@@ -59,7 +60,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return View(new InventoryBatch { ProductSku = productSku, ReceivedDate = DateTime.Now });
         }
 
-        // Xử lý thêm mới lô hàng
+        // Xá»­ lÃ½ thÃªm má»›i lÃ´ hÃ ng
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("ProductSku,Quantity,ExpiryDate")] InventoryBatch batch)
@@ -86,7 +87,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             }
         }
 
-        // Hiển thị form chỉnh sửa thông tin lô hàng
+        // Hiá»ƒn thá»‹ form chá»‰nh sá»­a thÃ´ng tin lÃ´ hÃ ng
         public async Task<IActionResult> Edit(int id)
         {
             var batch = await _batchService.GetBatchById(id);
@@ -98,7 +99,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return View(batch);
         }
 
-        // Xử lý cập nhật thông tin lô hàng
+        // Xá»­ lÃ½ cáº­p nháº­t thÃ´ng tin lÃ´ hÃ ng
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("BatchId,ProductSku,CurrentQuantity,ExpiryDate")] InventoryBatch batchUpdate)
@@ -119,7 +120,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             }
         }
 
-        // Xử lý xóa lô hàng
+        // Xá»­ lÃ½ xÃ³a lÃ´ hÃ ng
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
@@ -133,7 +134,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return RedirectToAction(nameof(Index), new { id = sku });
         }
 
-        // Xử lý đồng bộ số lượng tồn kho ban đầu (tạo lô hàng điều chỉnh)
+        // Xá»­ lÃ½ Ä‘á»“ng bá»™ sá»‘ lÆ°á»£ng tá»“n kho ban Ä‘áº§u (táº¡o lÃ´ hÃ ng Ä‘iá»u chá»‰nh)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SyncStock(string productSku)
@@ -153,27 +154,27 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
                     Quantity = diff,
                     CurrentQuantity = diff,
                     ReceivedDate = DateTime.Now,
-                    ExpiryDate = DateTime.Now.AddYears(1) // Mặc định 1 năm
+                    ExpiryDate = DateTime.Now.AddYears(1) // Máº·c Ä‘á»‹nh 1 nÄƒm
                 };
                 
-                // Trực tiếp dùng Repo hoặc gán qua Service.
-                // Vì CreateBatch trong Service có cộng thêm Stock, mà ta chỉ muốn điều chỉnh Batch nên phải lưu ý.
-                // Ở đây ta có thể tạm giảm Stock của Product đi (để CreateBatch cộng lại là vừa), 
-                // hoặc tạo batch mà bỏ qua cộng Stock. Ta sẽ trừ đi trước.
+                // Trá»±c tiáº¿p dÃ¹ng Repo hoáº·c gÃ¡n qua Service.
+                // VÃ¬ CreateBatch trong Service cÃ³ cá»™ng thÃªm Stock, mÃ  ta chá»‰ muá»‘n Ä‘iá»u chá»‰nh Batch nÃªn pháº£i lÆ°u Ã½.
+                // á»ž Ä‘Ã¢y ta cÃ³ thá»ƒ táº¡m giáº£m Stock cá»§a Product Ä‘i (Ä‘á»ƒ CreateBatch cá»™ng láº¡i lÃ  vá»«a), 
+                // hoáº·c táº¡o batch mÃ  bá» qua cá»™ng Stock. Ta sáº½ trá»« Ä‘i trÆ°á»›c.
                 product.Stock -= diff;
                 await _productService.UpdateProduct(productSku, product);
                 
                 await _batchService.CreateBatch(adjustmentBatch);
 
-                // Ghi lại lịch sử (StockMovement)
+                // Ghi láº¡i lá»‹ch sá»­ (StockMovement)
                 var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier);
                 int userId = userIdClaim != null && int.TryParse(userIdClaim.Value, out int parsedId) ? parsedId : 1;
 
                 var movement = new StockMovement
                 {
-                    Type = "Nhập hàng", 
-                    Status = "Hoàn thành", 
-                    Supplier = "Đồng bộ số lượng tồn kho (Tự động)",
+                    Type = "Nháº­p hÃ ng", 
+                    Status = "HoÃ n thÃ nh", 
+                    Supplier = "Äá»“ng bá»™ sá»‘ lÆ°á»£ng tá»“n kho (Tá»± Ä‘á»™ng)",
                     CreatedById = userId,
                     Date = DateTime.Now,
                     TotalValue = 0,
