@@ -22,8 +22,8 @@
                     @foreach (var item in Model.Items)
                     {
                         <a class="ps-notification-item @(!item.IsRead ? "is-unread" : "")" href="/Customer/Notifications/Open/@item.NotificationId">
-                            <strong>@item.Title</strong>
-                            <span>@item.Message</span>
+                            <strong>@item.DisplayTitle</strong>
+                            <span>@item.DisplayMessage</span>
                             <time>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</time>
                         </a>
                     }

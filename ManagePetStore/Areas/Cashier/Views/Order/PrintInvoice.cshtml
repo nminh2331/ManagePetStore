@@ -152,7 +152,8 @@
             {
                 var displayName = item.ProductSku != null
                     ? item.ProductSkuNavigation?.Name
-                    : item.SpaServiceId != null ? item.SpaService?.Name : $"Hotel - {item.RoomType?.Type}";
+                    : item.SpaServiceId != null ? item.SpaService?.Name : $"Chuồng - {item.RoomType?.Type}";
+                displayName = ManagePetStore.Models.CageTerminology.ForDisplay(displayName);
                 <tr>
                     <td>@displayName</td>
                     <td style="text-align: center;">@item.Quantity</td>

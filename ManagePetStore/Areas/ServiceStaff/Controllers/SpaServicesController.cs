@@ -39,6 +39,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         private readonly IHubContext<HotelCareHub> _hotelCareHub;
         private readonly IHotelCheckoutService _hotelCheckoutService;
         private readonly IInventoryBatchService _inventoryBatchService;
+        private readonly IHotelEmailService _hotelEmailService;
         private readonly ILogger<SpaServicesController> _logger;
 
         public SpaServicesController(
@@ -48,6 +49,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             IHubContext<HotelCareHub> hotelCareHub,
             IHotelCheckoutService hotelCheckoutService,
             IInventoryBatchService inventoryBatchService,
+            IHotelEmailService hotelEmailService,
             ILogger<SpaServicesController> logger)
         {
             _context = context;
@@ -56,6 +58,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             _hotelCareHub = hotelCareHub;
             _hotelCheckoutService = hotelCheckoutService;
             _inventoryBatchService = inventoryBatchService;
+            _hotelEmailService = hotelEmailService;
             _logger = logger;
         }
 
@@ -1177,6 +1180,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     CustomerPhone = booking.Customer.Phone,
                     HotelBookingId = booking.HotelBookingId,
                     CageId = booking.CageId,
+                    RoomTypeCode = booking.Cage.RoomType.Code,
                     RoomTypeName = booking.Cage.RoomType.Type,
                     CheckInAt = booking.ActualCheckInAt ?? booking.CheckInDate,
                     ExpectedCheckOutAt = booking.ScheduledCheckOutDate ?? booking.CheckOutDate,
@@ -1252,6 +1256,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             {
                 HotelBookingId = booking.HotelBookingId,
                 CageId = booking.CageId,
+                RoomTypeCode = booking.Cage.RoomType.Code,
                 RoomTypeName = booking.Cage.RoomType.Type,
                 CheckInAt = booking.ActualCheckInAt ?? booking.ScheduledCheckInDate ?? booking.CheckInDate,
                 CheckOutAt = booking.ActualCheckOutAt ?? booking.ScheduledCheckOutDate ?? booking.CheckOutDate,
@@ -1581,6 +1586,15 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 {
                     _logger.LogWarning(ex, "Daily care log was saved but realtime delivery failed for customer {CustomerId}.", booking.CustomerId);
                 }
+
+                await _hotelEmailService.SendCareLogAsync(
+                    booking.Customer.Email,
+                    booking.Customer.FullName,
+                    booking.HotelBookingId,
+                    booking.Pet.Name,
+                    notification.Title,
+                    notification.Message,
+                    occurredAt);
             }
 
             TempData["HotelCareSuccess"] = $"Đã cập nhật nhật ký chăm sóc của {booking.Pet.Name}.";
@@ -1649,12 +1663,14 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             // Danh sách RoomTypes có phân trang
             int rtPageSize = 6;
-            int totalRoomTypes = await _context.RoomTypes.CountAsync();
+            int totalRoomTypes = await _context.RoomTypes
+                .CountAsync(roomType => HotelRoomTypeCatalog.Codes.Contains(roomType.Code));
             int totalRtPages = (int)Math.Ceiling((double)totalRoomTypes / rtPageSize);
             int currentRtPage = roomTypePage < 1 ? 1 : (roomTypePage > totalRtPages ? totalRtPages : roomTypePage);
             if (currentRtPage < 1) currentRtPage = 1;
 
             var roomTypes = await _context.RoomTypes
+                .Where(roomType => HotelRoomTypeCatalog.Codes.Contains(roomType.Code))
                 .OrderBy(r => r.RoomTypeId)
                 .Skip((currentRtPage - 1) * rtPageSize)
                 .Take(rtPageSize)
@@ -1667,7 +1683,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             // Tất cả RoomTypes đang active cho dropdown
             var activeRoomTypes = await _context.RoomTypes
-                .Where(r => r.Status)
+                .Where(r => r.Status && HotelRoomTypeCatalog.Codes.Contains(r.Code))
                 .OrderBy(r => r.Type)
                 .ToListAsync();
             ViewBag.ActiveRoomTypes = activeRoomTypes;
@@ -1685,13 +1701,15 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             // Danh sách Cages có phân trang
             int cagePageSize = 8;
-            int totalCages = await _context.Cages.CountAsync();
+            int totalCages = await _context.Cages
+                .CountAsync(cage => HotelRoomTypeCatalog.Codes.Contains(cage.RoomType.Code));
             int totalCagePages = (int)Math.Ceiling((double)totalCages / cagePageSize);
             int currentCagePage = cagePage < 1 ? 1 : (cagePage > totalCagePages ? totalCagePages : cagePage);
             if (currentCagePage < 1) currentCagePage = 1;
 
             var cages = await _context.Cages
                 .Include(c => c.RoomType)
+                .Where(cage => HotelRoomTypeCatalog.Codes.Contains(cage.RoomType.Code))
                 .OrderBy(c => c.CageId)
                 .Skip((currentCagePage - 1) * cagePageSize)
                 .Take(cagePageSize)
@@ -1705,16 +1723,18 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             ViewBag.CageMapCages = await _context.Cages
                 .AsNoTracking()
                 .Include(c => c.RoomType)
+                .Where(cage => HotelRoomTypeCatalog.Codes.Contains(cage.RoomType.Code))
                 .OrderBy(c => c.CageId)
                 .ToListAsync();
 
             // Thống kê tổng quan
-            ViewBag.TotalCageCount = await _context.Cages.CountAsync();
-            ViewBag.EmptyCageCount = await _context.Cages.CountAsync(c => c.Status == "Trống");
-            ViewBag.CleaningCageCount = await _context.Cages.CountAsync(c => c.Status == "Đang dọn dẹp");
-            ViewBag.LockedCageCount = await _context.Cages.CountAsync(c => c.Status == "Khóa");
+            ViewBag.TotalCageCount = totalCages;
+            ViewBag.EmptyCageCount = await _context.Cages.CountAsync(c => c.Status == "Trống" && HotelRoomTypeCatalog.Codes.Contains(c.RoomType.Code));
+            ViewBag.CleaningCageCount = await _context.Cages.CountAsync(c => c.Status == "Đang dọn dẹp" && HotelRoomTypeCatalog.Codes.Contains(c.RoomType.Code));
+            ViewBag.LockedCageCount = await _context.Cages.CountAsync(c => c.Status == "Khóa" && HotelRoomTypeCatalog.Codes.Contains(c.RoomType.Code));
             ViewBag.MaintenanceCageCount = await _context.Cages.CountAsync(c =>
-                c.Status == "Bảo trì" || c.Status == "Đang dọn dẹp" || c.Status == "Khóa");
+                HotelRoomTypeCatalog.Codes.Contains(c.RoomType.Code) &&
+                (c.Status == "Bảo trì" || c.Status == "Đang dọn dẹp" || c.Status == "Khóa"));
 
             // Danh sách HotelBookings đang active
             var activeBookings = await _context.HotelBookings
@@ -1724,7 +1744,8 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     .ThenInclude(c => c.RoomType)
                 .Include(b => b.CheckoutStatement)
                     .ThenInclude(statement => statement!.Order)
-                .Where(b => ActiveHotelStatuses.Contains(b.Status))
+                .Where(b => ActiveHotelStatuses.Contains(b.Status) &&
+                            HotelRoomTypeCatalog.Codes.Contains(b.Cage.RoomType.Code))
                 .OrderBy(b => b.CheckInDate)
                 .ToListAsync();
             ViewBag.ActiveBookings = activeBookings;
@@ -1737,10 +1758,21 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     .ThenInclude(c => c.RoomType)
                 .Include(b => b.FoodPlan)
                 .Where(b => b.Status == "Đã đặt" &&
+                            HotelRoomTypeCatalog.Codes.Contains(b.Cage.RoomType.Code) &&
                             (!b.CheckOutDate.HasValue || b.CheckOutDate.Value >= DateTime.Today))
                 .OrderBy(b => b.CheckInDate)
                 .ToListAsync();
             ViewBag.OnlineBookings = onlineBookings;
+
+            ViewBag.PendingCageChangeRequests = await _context.HotelCageChangeRequests
+                .AsNoTracking()
+                .Include(request => request.HotelBooking).ThenInclude(booking => booking.Pet)
+                .Include(request => request.HotelBooking).ThenInclude(booking => booking.Customer)
+                .Include(request => request.SourceCage).ThenInclude(cage => cage.RoomType)
+                .Include(request => request.TargetCage).ThenInclude(cage => cage.RoomType)
+                .Where(request => request.Status == "Pending")
+                .OrderBy(request => request.RequestedAt)
+                .ToListAsync();
 
             var onlinePetIds = onlineBookings
                 .Select(b => b.PetId)
@@ -1768,7 +1800,10 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         public async Task<IActionResult> GetAvailableCages(int roomTypeId)
         {
             var cages = await _context.Cages
-                .Where(c => c.RoomTypeId == roomTypeId && c.Status == "Trống")
+                .Where(c => c.RoomTypeId == roomTypeId &&
+                            c.Status == "Trống" &&
+                            c.RoomType.Status &&
+                            HotelRoomTypeCatalog.Codes.Contains(c.RoomType.Code))
                 .Select(c => new { cageId = c.CageId, status = c.Status })
                 .ToListAsync();
             return Json(cages);
@@ -1891,7 +1926,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 .FirstOrDefaultAsync();
 
             return record == null
-                ? NotFound(new { success = false, message = "Sổ y tế này không còn khả dụng để tiếp nhận Hotel." })
+                ? NotFound(new { success = false, message = "Sổ y tế này không còn khả dụng để tiếp nhận lưu trú chuồng." })
                 : Json(new { success = true, record });
         }
 
@@ -1954,7 +1989,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 if (medicalRecord.Weight <= 0)
                 {
                     return HotelValidationError(
-                        "Sổ y tế chưa có cân nặng hợp lệ. Vui lòng cập nhật sổ trước khi tiếp nhận Hotel.");
+                        "Sổ y tế chưa có cân nặng hợp lệ. Vui lòng cập nhật sổ trước khi tiếp nhận vào chuồng.");
                 }
 
                 var pet = medicalRecord.Pet;
@@ -2231,10 +2266,30 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
                 medicalRecord.HotelBooking = hotelBooking;
 
+                _context.HotelCageStaySegments.Add(new HotelCageStaySegment
+                {
+                    HotelBooking = hotelBooking,
+                    CageId = cage.CageId,
+                    RoomTypeId = cage.RoomTypeId,
+                    DailyPriceSnapshot = dailyPrice,
+                    StartedAt = checkInDate,
+                    StartReason = "CheckIn",
+                    CreatedAt = DateTime.Now
+                });
+
                 cage.Status = "Đang dùng";
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                await _hotelEmailService.SendCheckInAsync(
+                    customer.Email,
+                    customer.FullName,
+                    hotelBooking.HotelBookingId,
+                    pet.Name,
+                    cageId,
+                    checkInDate,
+                    checkOutDate);
 
                 TempData["HotelSuccess"] = $"Đã hoàn tất tiếp nhận lưu trú cho {pet.Name} tại chuồng {cageId}!";
             }
@@ -2350,6 +2405,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
+
                 TempData["HotelSuccess"] = $"Đã lưu quyết định từ chối tiếp nhận {booking.Pet.Name} và hoàn lại tài nguyên đã giữ.";
             }
             catch (ManagePetStore.Exceptions.ServiceException ex)
@@ -2438,6 +2494,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             var booking = await _context.HotelBookings
                 .Include(b => b.Cage)
                 .Include(b => b.Pet)
+                .Include(b => b.Customer)
                 .Include(b => b.CheckoutStatement)
                     .ThenInclude(statement => statement!.Order)
                 .FirstOrDefaultAsync(b => b.HotelBookingId == bookingId);
@@ -2458,9 +2515,9 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return Json(new { success = false, message = "Booking chưa được chốt chi phí hoặc chưa được thu ngân tạo hóa đơn." });
             }
 
-            if (checkout.Order?.Status != "Chờ xử lý" && checkout.Order?.Status != "Đã thanh toán")
+            if (!HotelCheckoutWorkflow.CanFinalize(checkout.OrderId, checkout.Order?.Status))
             {
-                return Json(new { success = false, message = "Hóa đơn Hotel chưa thanh toán thành công." });
+                return Json(new { success = false, message = "Hóa đơn lưu trú chuồng chưa thanh toán thành công." });
             }
 
             booking.Status = "Đã trả";
@@ -2483,7 +2540,29 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             if (booking.Cage != null)
             {
+                var previousCageStatus = booking.Cage.Status;
                 booking.Cage.Status = "Đang dọn dẹp";
+                _context.RoomMaintenanceLogs.Add(new RoomMaintenanceLog
+                {
+                    CageId = booking.CageId,
+                    PreviousStatus = previousCageStatus,
+                    NewStatus = "Đang dọn dẹp",
+                    Reason = $"Dọn dẹp sau khi hoàn tất booking HB{booking.HotelBookingId:0000}.",
+                    Note = $"Pet {booking.Pet.Name} đã trả cho chủ nuôi.",
+                    StartedAt = booking.ActualCheckOutAt.Value,
+                    CreatedByUserId = staff.UserId,
+                    CreatedByName = staff.Name
+                });
+            }
+
+            var openStaySegment = await _context.HotelCageStaySegments
+                .Where(segment => segment.HotelBookingId == booking.HotelBookingId && segment.EndedAt == null)
+                .OrderByDescending(segment => segment.StartedAt)
+                .FirstOrDefaultAsync();
+            if (openStaySegment != null)
+            {
+                openStaySegment.EndedAt = booking.ActualCheckOutAt;
+                openStaySegment.EndReason = "CheckOut";
             }
 
             checkout.Status = "Paid";
@@ -2491,7 +2570,72 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             await _context.SaveChangesAsync();
 
+            await _hotelEmailService.SendCheckOutAsync(
+                booking.Customer.Email,
+                booking.Customer.FullName,
+                booking.HotelBookingId,
+                booking.Pet.Name,
+                booking.CageId,
+                booking.ActualCheckOutAt.Value,
+                checkout.TotalAmount);
+
             return Json(new { success = true, message = $"Đã hoàn tất trả {booking.Pet?.Name ?? "thú cưng"}; chuồng chuyển sang chờ dọn dẹp." });
+        }
+
+        [HttpPost("ResetHotelCheckout")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetHotelCheckout(int bookingId)
+        {
+            var booking = await _context.HotelBookings
+                .Include(item => item.Pet)
+                .Include(item => item.CheckoutStatement)
+                    .ThenInclude(statement => statement!.Items)
+                .Include(item => item.CheckoutStatement)
+                    .ThenInclude(statement => statement!.Order)
+                .FirstOrDefaultAsync(item => item.HotelBookingId == bookingId);
+
+            if (booking == null || !ActiveHotelStatuses.Contains(booking.Status))
+            {
+                return Json(new { success = false, message = "Không tìm thấy lượt lưu trú đang hoạt động." });
+            }
+
+            var statement = booking.CheckoutStatement;
+            if (statement == null || statement.Status == "Draft")
+            {
+                return Json(new { success = true, message = "Lượt lưu trú đã sẵn sàng chốt lại chi phí." });
+            }
+
+            if (!HotelCheckoutWorkflow.CanReset(statement))
+            {
+                return Json(new
+                {
+                    success = false,
+                    message = "Bảng kê đã gắn với hóa đơn đang xử lý. Chỉ có thể thu hồi khi chưa tạo hóa đơn hoặc hóa đơn đã hủy."
+                });
+            }
+
+            _context.HotelCheckoutItems.RemoveRange(statement.Items);
+            statement.Status = "Draft";
+            statement.OrderId = null;
+            statement.PaidAt = null;
+
+            var staff = GetCurrentStaffSnapshot();
+            _context.PetBioTimelines.Add(new PetBioTimeline
+            {
+                PetId = booking.PetId,
+                HotelBookingId = booking.HotelBookingId,
+                Date = DateTime.Now,
+                Title = "Thu hồi bảng kê",
+                Type = "HotelCheckoutReset",
+                Description = $"Nhân viên {staff.Name} đã thu hồi bảng kê để kiểm tra và gửi lại quầy thu ngân."
+            });
+
+            await _context.SaveChangesAsync();
+            return Json(new
+            {
+                success = true,
+                message = $"Đã thu hồi bảng kê của {booking.Pet?.Name ?? "thú cưng"}. Có thể thực hiện trả chuồng lại."
+            });
         }
 
         [HttpGet("HotelCheckoutPreview/{bookingId:int}")]
@@ -2501,7 +2645,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             {
                 var preview = await _hotelCheckoutService.GetPreviewAsync(bookingId);
                 return preview == null
-                    ? Json(new { success = false, message = "Không tìm thấy booking Hotel." })
+                    ? Json(new { success = false, message = "Không tìm thấy lượt đặt chuồng." })
                     : Json(new { success = true, data = preview });
             }
             catch (InvalidOperationException ex)
@@ -2692,6 +2836,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                         c.CageId != cageId &&
                         c.Status == "Trống" &&
                         c.RoomType.Status &&
+                        HotelRoomTypeCatalog.Codes.Contains(c.RoomType.Code) &&
                         !conflictingCageIds.Contains(c.CageId))
                     .OrderBy(c => c.CageId)
                     .Select(c => new
@@ -2806,7 +2951,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     return Json(new { success = false, message = $"Chuồng {targetCageId} không còn trống." });
                 }
 
-                if (!targetCage.RoomType.Status)
+                if (!targetCage.RoomType.Status || !HotelRoomTypeCatalog.IsSupported(targetCage.RoomType.Code))
                 {
                     return Json(new { success = false, message = "Loại chuồng đích đang ngừng hoạt động." });
                 }
@@ -2825,22 +2970,54 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
                 if (booking.Cage != null)
                 {
-                    booking.Cage.Status = "Trống";
+                    booking.Cage.Status = "Đang dọn dẹp";
                 }
 
                 booking.CageId = targetCage.CageId;
                 booking.Cage = targetCage;
                 targetCage.Status = "Đang dùng";
 
-                string staffName = User.FindFirst("FullName")?.Value ?? User.Identity?.Name ?? "Nhân viên dịch vụ";
+                var actor = GetCurrentStaffSnapshot();
+                DateTime movedAt = DateTime.Now;
+                var openSegment = await _context.HotelCageStaySegments
+                    .Where(segment => segment.HotelBookingId == booking.HotelBookingId && segment.EndedAt == null)
+                    .OrderByDescending(segment => segment.StartedAt)
+                    .FirstOrDefaultAsync();
+                if (openSegment != null)
+                {
+                    openSegment.EndedAt = movedAt;
+                    openSegment.EndReason = "StaffOperationalMove";
+                    await _context.SaveChangesAsync();
+                }
+                _context.HotelCageStaySegments.Add(new HotelCageStaySegment
+                {
+                    HotelBookingId = booking.HotelBookingId,
+                    CageId = targetCage.CageId,
+                    RoomTypeId = targetCage.RoomTypeId,
+                    DailyPriceSnapshot = booking.BaseDailyPrice,
+                    StartedAt = movedAt,
+                    StartReason = "StaffOperationalMove",
+                    CreatedAt = movedAt
+                });
+                _context.RoomMaintenanceLogs.Add(new RoomMaintenanceLog
+                {
+                    CageId = sourceCageId,
+                    PreviousStatus = "Đang dùng",
+                    NewStatus = "Đang dọn dẹp",
+                    Reason = $"Dọn dẹp sau khi nhân viên chuyển pet sang chuồng {targetCageId}.",
+                    Note = "Chuyển chuồng do vận hành, không tính thêm chênh lệch giá.",
+                    StartedAt = movedAt,
+                    CreatedByUserId = actor.UserId,
+                    CreatedByName = actor.Name
+                });
                 _context.PetBioTimelines.Add(new PetBioTimeline
                 {
                     PetId = booking.PetId,
                     HotelBookingId = booking.HotelBookingId,
-                    Date = DateTime.Now,
+                    Date = movedAt,
                     Title = "Chuyển chuồng lưu trú",
                     Type = "HotelCageMove",
-                    Description = $"Chuyển từ chuồng {sourceCageId} sang {targetCageId}. Nhân viên: {staffName}."
+                    Description = $"Chuyển từ chuồng {sourceCageId} sang {targetCageId} do vận hành; không phát sinh chênh lệch giá. Nhân viên: {actor.Name}."
                 });
 
                 await _context.SaveChangesAsync();
@@ -2963,7 +3140,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     return Json(new { success = true, message = $"Đã mở lại chuồng {cageId} và ghi nhận thời gian kết thúc bảo trì/khóa nếu có." });
                 }
 
-                if (openMaintenanceLog != null && !string.Equals(openMaintenanceLog.NewStatus, status, StringComparison.OrdinalIgnoreCase))
+                if (openMaintenanceLog != null)
                 {
                     openMaintenanceLog.EndedAt = now;
                     openMaintenanceLog.EndedByUserId = actor.UserId;
@@ -2977,28 +3154,17 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     openMaintenanceLog = null;
                 }
 
-                if (openMaintenanceLog == null)
+                _context.RoomMaintenanceLogs.Add(new RoomMaintenanceLog
                 {
-                    _context.RoomMaintenanceLogs.Add(new RoomMaintenanceLog
-                    {
-                        CageId = cage.CageId,
-                        PreviousStatus = cage.Status,
-                        NewStatus = status,
-                        Reason = reason!,
-                        Note = string.IsNullOrWhiteSpace(note) ? null : note,
-                        StartedAt = now,
-                        CreatedByUserId = actor.UserId,
-                        CreatedByName = actor.Name
-                    });
-                }
-                else
-                {
-                    openMaintenanceLog.Reason = reason!;
-                    if (!string.IsNullOrWhiteSpace(note))
-                    {
-                        openMaintenanceLog.Note = note;
-                    }
-                }
+                    CageId = cage.CageId,
+                    PreviousStatus = cage.Status,
+                    NewStatus = status,
+                    Reason = reason!,
+                    Note = string.IsNullOrWhiteSpace(note) ? null : note,
+                    StartedAt = now,
+                    CreatedByUserId = actor.UserId,
+                    CreatedByName = actor.Name
+                });
 
                 cage.Status = status;
                 await _context.SaveChangesAsync();
@@ -3026,7 +3192,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             if (hourlyPrice < MinimumRoomTypeHourlyPrice)
             {
-                return "Giá theo giờ không được thấp hơn 40.000đ.";
+                return "Phí quá giờ không được thấp hơn 40.000đ.";
             }
 
             if (dailyPrice > MaximumRoomTypePrice || hourlyPrice > MaximumRoomTypePrice)
@@ -3036,7 +3202,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             if (hourlyPrice > dailyPrice)
             {
-                return "Giá theo giờ không được lớn hơn giá theo ngày.";
+                return "Phí quá giờ không được lớn hơn giá theo ngày.";
             }
 
             if (dailyPrice % 1000m != 0 || hourlyPrice % 1000m != 0)
@@ -3045,6 +3211,229 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             }
 
             return null;
+        }
+
+        [HttpPost("ProcessCageChangeRequest")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ProcessCageChangeRequest(int requestId, string decision, string? note)
+        {
+            decision = decision?.Trim().ToLowerInvariant() ?? string.Empty;
+            note = note?.Trim();
+            if (requestId <= 0 || decision is not ("approve" or "reject"))
+            {
+                return Json(new { success = false, message = "Quyết định xử lý yêu cầu không hợp lệ." });
+            }
+            if (!string.IsNullOrWhiteSpace(note) && note.Length > 1000)
+            {
+                return Json(new { success = false, message = "Ghi chú xử lý không được vượt quá 1.000 ký tự." });
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            try
+            {
+                var changeRequest = await _context.HotelCageChangeRequests
+                    .Include(request => request.HotelBooking).ThenInclude(booking => booking.Pet)
+                    .Include(request => request.HotelBooking).ThenInclude(booking => booking.Customer)
+                    .Include(request => request.HotelBooking).ThenInclude(booking => booking.FoodPlan)
+                    .Include(request => request.HotelBooking).ThenInclude(booking => booking.CheckoutStatement)
+                    .Include(request => request.SourceCage).ThenInclude(cage => cage.RoomType)
+                    .Include(request => request.TargetCage).ThenInclude(cage => cage.RoomType)
+                    .FirstOrDefaultAsync(request => request.ChangeRequestId == requestId);
+                if (changeRequest == null || changeRequest.Status != "Pending")
+                {
+                    return Json(new { success = false, message = "Yêu cầu không tồn tại hoặc đã được xử lý." });
+                }
+
+                var booking = changeRequest.HotelBooking;
+                var statusKey = ResolveHotelStatusKey(booking.Status);
+                if (statusKey is not ("reserved" or "active") || booking.CheckoutStatement != null)
+                {
+                    return Json(new { success = false, message = "Booking không còn đủ điều kiện đổi chuồng." });
+                }
+
+                var actor = GetCurrentStaffSnapshot();
+                var now = DateTime.Now;
+                if (decision == "reject")
+                {
+                    changeRequest.Status = "Rejected";
+                    changeRequest.ProcessedAt = now;
+                    changeRequest.ProcessedByUserId = actor.UserId;
+                    changeRequest.ProcessedByName = actor.Name;
+                    changeRequest.DecisionNote = string.IsNullOrWhiteSpace(note) ? "Không đáp ứng điều kiện vận hành tại thời điểm xử lý." : note;
+                    _context.PetBioTimelines.Add(new PetBioTimeline
+                    {
+                        PetId = booking.PetId,
+                        HotelBookingId = booking.HotelBookingId,
+                        Date = now,
+                        Title = "Từ chối yêu cầu đổi chuồng",
+                        Type = "CageChangeRejected",
+                        Description = $"Yêu cầu đổi từ {changeRequest.SourceCageId} sang {changeRequest.TargetCageId} bị từ chối. " +
+                            $"Ghi chú: {changeRequest.DecisionNote}. Nhân viên: {actor.Name}."
+                    });
+                    AddCageChangeCustomerNotification(changeRequest, false);
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    await _hotelEmailService.SendCageChangeDecisionAsync(
+                        booking.Customer.Email, booking.Customer.FullName, booking.HotelBookingId, booking.Pet.Name,
+                        changeRequest.SourceCageId, changeRequest.TargetCageId, false, 0, changeRequest.DecisionNote);
+                    return Json(new { success = true, message = "Đã từ chối yêu cầu đổi chuồng và thông báo cho khách hàng." });
+                }
+
+                if (!string.Equals(booking.CageId, changeRequest.SourceCageId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return Json(new { success = false, message = "Booking đã được chuyển khỏi chuồng nguồn; yêu cầu này không còn hợp lệ." });
+                }
+                if (changeRequest.TargetCage.Status != "Trống" ||
+                    !changeRequest.TargetCage.RoomType.Status ||
+                    !HotelRoomTypeCatalog.IsSupported(changeRequest.TargetCage.RoomType.Code))
+                {
+                    return Json(new { success = false, message = "Chuồng đích không còn ở trạng thái sẵn sàng." });
+                }
+
+                var intervalStart = statusKey == "active" ? now : booking.CheckInDate;
+                var intervalEnd = booking.ScheduledCheckOutDate
+                    ?? booking.CheckOutDate
+                    ?? booking.CheckInDate.AddDays(Math.Max(booking.StayDays, 1));
+                bool hasConflict = await _context.HotelBookings.AnyAsync(item =>
+                    item.HotelBookingId != booking.HotelBookingId &&
+                    item.CageId == changeRequest.TargetCageId &&
+                    BlockingHotelStatuses.Contains(item.Status) &&
+                    item.CheckInDate < intervalEnd &&
+                    (!item.CheckOutDate.HasValue || item.CheckOutDate.Value > intervalStart));
+                if (hasConflict)
+                {
+                    return Json(new { success = false, message = "Chuồng đích vừa có lịch đặt trùng; chưa thể duyệt yêu cầu." });
+                }
+
+                int remainingDays = statusKey == "reserved"
+                    ? Math.Max(booking.StayDays, 1)
+                    : Math.Max(1, (int)Math.Ceiling((intervalEnd - now).TotalHours / 24d));
+                decimal oldDailyPrice = booking.BaseDailyPrice;
+                decimal newDailyPrice = changeRequest.TargetCage.RoomType.DailyPrice;
+                decimal discountRate = booking.Subtotal > 0
+                    ? Math.Clamp(booking.Discount / booking.Subtotal, 0, 1)
+                    : 0;
+                decimal oldFinalAmount = booking.FinalAmount;
+
+                if (statusKey == "reserved")
+                {
+                    booking.Subtotal = newDailyPrice * Math.Max(booking.StayDays, 1);
+                    booking.Discount = decimal.Round(booking.Subtotal * discountRate, 0, MidpointRounding.AwayFromZero);
+                    booking.FinalAmount = Math.Max(0, booking.Subtotal - booking.Discount + (booking.FoodPlan?.TotalAmount ?? 0));
+                }
+                else
+                {
+                    decimal rawDifference = (newDailyPrice - oldDailyPrice) * remainingDays;
+                    decimal discountDifference = decimal.Round(rawDifference * discountRate, 0, MidpointRounding.AwayFromZero);
+                    booking.Subtotal = Math.Max(0, booking.Subtotal + rawDifference);
+                    booking.Discount = Math.Max(0, booking.Discount + discountDifference);
+                    booking.FinalAmount = Math.Max(0, booking.FinalAmount + rawDifference - discountDifference);
+                }
+
+                decimal appliedDifference = booking.FinalAmount - oldFinalAmount;
+                string sourceCageId = booking.CageId;
+                booking.CageId = changeRequest.TargetCageId;
+                booking.BaseDailyPrice = newDailyPrice;
+
+                if (statusKey == "active")
+                {
+                    changeRequest.SourceCage.Status = "Đang dọn dẹp";
+                    changeRequest.TargetCage.Status = "Đang dùng";
+                    var openSegment = await _context.HotelCageStaySegments
+                        .Where(segment => segment.HotelBookingId == booking.HotelBookingId && segment.EndedAt == null)
+                        .OrderByDescending(segment => segment.StartedAt)
+                        .FirstOrDefaultAsync();
+                    if (openSegment != null)
+                    {
+                        openSegment.EndedAt = now;
+                        openSegment.EndReason = "CageChange";
+                        await _context.SaveChangesAsync();
+                    }
+                    _context.HotelCageStaySegments.Add(new HotelCageStaySegment
+                    {
+                        HotelBookingId = booking.HotelBookingId,
+                        CageId = changeRequest.TargetCageId,
+                        RoomTypeId = changeRequest.TargetCage.RoomTypeId,
+                        DailyPriceSnapshot = newDailyPrice,
+                        StartedAt = now,
+                        StartReason = "CageChange",
+                        CreatedAt = now
+                    });
+                    _context.RoomMaintenanceLogs.Add(new RoomMaintenanceLog
+                    {
+                        CageId = sourceCageId,
+                        PreviousStatus = "Đang dùng",
+                        NewStatus = "Đang dọn dẹp",
+                        Reason = $"Dọn dẹp sau khi chuyển pet sang chuồng {changeRequest.TargetCageId}.",
+                        Note = $"Theo yêu cầu đổi chuồng #{changeRequest.ChangeRequestId}.",
+                        StartedAt = now,
+                        CreatedByUserId = actor.UserId,
+                        CreatedByName = actor.Name
+                    });
+                }
+
+                changeRequest.Status = "Approved";
+                changeRequest.RemainingDaysSnapshot = remainingDays;
+                changeRequest.SourceDailyPriceSnapshot = oldDailyPrice;
+                changeRequest.TargetDailyPriceSnapshot = newDailyPrice;
+                changeRequest.PriceDifferenceSnapshot = appliedDifference;
+                changeRequest.ProcessedAt = now;
+                changeRequest.ProcessedByUserId = actor.UserId;
+                changeRequest.ProcessedByName = actor.Name;
+                changeRequest.DecisionNote = string.IsNullOrWhiteSpace(note) ? "Đã kiểm tra chuồng đích và lịch đặt trùng." : note;
+                changeRequest.AppliedAt = now;
+
+                _context.PetBioTimelines.Add(new PetBioTimeline
+                {
+                    PetId = booking.PetId,
+                    HotelBookingId = booking.HotelBookingId,
+                    Date = now,
+                    Title = "Duyệt đổi chuồng",
+                    Type = "HotelCageMove",
+                    Description = $"Chuyển từ chuồng {sourceCageId} sang {changeRequest.TargetCageId}; " +
+                        $"tính chênh lệch {appliedDifference:N0}đ cho {remainingDays} ngày còn lại. Nhân viên: {actor.Name}."
+                });
+                AddCageChangeCustomerNotification(changeRequest, true);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                await _hotelEmailService.SendCageChangeDecisionAsync(
+                    booking.Customer.Email, booking.Customer.FullName, booking.HotelBookingId, booking.Pet.Name,
+                    sourceCageId, changeRequest.TargetCageId, true, appliedDifference, changeRequest.DecisionNote);
+                return Json(new
+                {
+                    success = true,
+                    message = $"Đã chuyển {booking.Pet.Name} sang {changeRequest.TargetCageId}; chênh lệch {appliedDifference:N0}đ."
+                });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Cannot process Hotel cage change request {RequestId}.", requestId);
+                return Json(new { success = false, message = "Không thể xử lý yêu cầu đổi chuồng do lỗi hệ thống." });
+            }
+        }
+
+        private void AddCageChangeCustomerNotification(HotelCageChangeRequest request, bool approved)
+        {
+            var difference = request.PriceDifferenceSnapshot;
+            string priceMessage = difference > 0
+                ? $" Phụ thu {difference:N0}đ."
+                : difference < 0
+                    ? $" Giảm trừ {Math.Abs(difference):N0}đ."
+                    : " Không phát sinh chênh lệch giá.";
+            _context.CustomerNotifications.Add(new CustomerNotification
+            {
+                CustomerId = request.CustomerId,
+                HotelBookingId = request.HotelBookingId,
+                Type = approved ? "CageChangeApproved" : "CageChangeRejected",
+                Title = approved ? "Yêu cầu đổi chuồng đã được duyệt" : "Yêu cầu đổi chuồng bị từ chối",
+                Message = approved
+                    ? $"Đã chuyển từ {request.SourceCageId} sang {request.TargetCageId}.{priceMessage}"
+                    : $"Yêu cầu đổi từ {request.SourceCageId} sang {request.TargetCageId} bị từ chối. {request.DecisionNote}",
+                LinkUrl = $"/Customer/HotelBooking/Details/{request.HotelBookingId}",
+                CreatedAt = DateTime.Now
+            });
         }
 
         private static string? ValidateRoomTypeDetails(string? type, string? size, int capacity)
@@ -3069,6 +3458,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
         [HttpPost("AddRoomType")]
         [ValidateAntiForgeryToken]
+        [NonAction]
         public async Task<IActionResult> AddRoomType(
             string type, string size, int capacity,
             decimal hourlyPrice, decimal dailyPrice,
@@ -3116,6 +3506,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
         [HttpPost("EditRoomType")]
         [ValidateAntiForgeryToken]
+        [NonAction]
         public async Task<IActionResult> EditRoomType(
             int id, string type, string size, int capacity,
             decimal hourlyPrice, decimal dailyPrice,
@@ -3163,6 +3554,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         [HttpPost("DeleteRoomType")]
+        [NonAction]
         public async Task<IActionResult> DeleteRoomType(int id)
         {
             var roomType = await _context.RoomTypes.FindAsync(id);
@@ -3185,6 +3577,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         [HttpPost("ToggleRoomType")]
+        [NonAction]
         public async Task<IActionResult> ToggleRoomType(int id)
         {
             var roomType = await _context.RoomTypes.FindAsync(id);
@@ -3228,10 +3621,13 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return RedirectToAction(nameof(CageCategories));
             }
 
-            var roomType = await _context.RoomTypes.FindAsync(roomTypeId);
+            var roomType = await _context.RoomTypes.FirstOrDefaultAsync(item =>
+                item.RoomTypeId == roomTypeId &&
+                item.Status &&
+                HotelRoomTypeCatalog.Codes.Contains(item.Code));
             if (roomType == null)
             {
-                TempData["HotelError"] = "Loại chuồng không tồn tại.";
+                TempData["HotelError"] = "Chỉ được thêm chuồng vào Standard, VIP hoặc Luxury đang hoạt động.";
                 return RedirectToAction(nameof(CageCategories));
             }
 
@@ -3274,10 +3670,13 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return RedirectToAction(nameof(CageCategories));
             }
 
-            var roomType = await _context.RoomTypes.FindAsync(roomTypeId);
+            var roomType = await _context.RoomTypes.FirstOrDefaultAsync(item =>
+                item.RoomTypeId == roomTypeId &&
+                item.Status &&
+                HotelRoomTypeCatalog.Codes.Contains(item.Code));
             if (roomType == null)
             {
-                TempData["HotelError"] = "Loại chuồng không tồn tại.";
+                TempData["HotelError"] = "Chỉ được chuyển chuồng sang Standard, VIP hoặc Luxury đang hoạt động.";
                 return RedirectToAction(nameof(CageCategories));
             }
 

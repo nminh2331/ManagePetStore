@@ -4,7 +4,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Models;
 
 public class PrepareHotelCheckoutRequest : IValidatableObject
 {
-    [Range(1, int.MaxValue, ErrorMessage = "Booking Hotel không hợp lệ.")]
+    [Range(1, int.MaxValue, ErrorMessage = "Lượt đặt chuồng không hợp lệ.")]
     public int HotelBookingId { get; set; }
 
     [StringLength(250, ErrorMessage = "Mô tả chi phí không được vượt quá 250 ký tự.")]
@@ -48,6 +48,7 @@ public class HotelCheckoutPreviewViewModel
     public string? OrderId { get; set; }
     public string? OrderStatus { get; set; }
     public bool CanFinalize { get; set; }
+    public bool CanReset { get; set; }
     public List<HotelCheckoutPreviewItem> Items { get; set; } = [];
 }
 

@@ -409,16 +409,16 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             if (hotelCheckouts.Count != hotelCheckoutIds.Count ||
                 hotelCheckouts.Values.Any(statement => statement.Status != "ReadyForPayment" || statement.OrderId != null || statement.HotelBooking.CustomerId != dto.CustomerId))
             {
-                return Json(new { success = false, message = "Bảng kê Hotel không còn hợp lệ hoặc đã được thanh toán." });
+                return Json(new { success = false, message = "Bảng kê chuồng không còn hợp lệ hoặc đã được thanh toán." });
             }
             if (hotelCheckoutIds.Any() && dto.VoucherDiscount > 0)
             {
-                return Json(new { success = false, message = "Voucher POS chưa áp dụng cho hóa đơn có dịch vụ Hotel." });
+                return Json(new { success = false, message = "Voucher POS chưa áp dụng cho hóa đơn có dịch vụ lưu trú chuồng." });
             }
             foreach (var item in dto.Items.Where(item => item.Type == "Hotel"))
             {
                 if (!item.HotelCheckoutId.HasValue || !hotelCheckouts.TryGetValue(item.HotelCheckoutId.Value, out var statement))
-                    return Json(new { success = false, message = "Thiếu liên kết bảng kê Hotel." });
+                    return Json(new { success = false, message = "Thiếu liên kết bảng kê chuồng." });
                 item.Id = statement.HotelBooking.Cage.RoomTypeId.ToString();
                 item.Quantity = 1;
                 item.Price = statement.TotalAmount;
@@ -434,7 +434,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 .ToListAsync();
             if (requiredSpaIds.Except(linkedBookingIds).Any())
             {
-                return Json(new { success = false, message = "Lượt Hotel có Spa liên quan; vui lòng thu chung trong cùng hóa đơn." });
+                return Json(new { success = false, message = "Lượt lưu trú chuồng có Spa liên quan; vui lòng thu chung trong cùng hóa đơn." });
             }
             var spaLinkedToHotelIds = await _context.HotelStaySpaLinks
                 .Where(link => linkedBookingIds.Contains(link.SpaBookingId))
@@ -442,7 +442,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 .ToListAsync();
             if (spaLinkedToHotelIds.Any(link => !hotelCheckoutIds.Contains(link.CheckoutId)))
             {
-                return Json(new { success = false, message = "Spa thuộc lượt lưu trú phải được thanh toán cùng bảng kê Hotel." });
+                return Json(new { success = false, message = "Spa thuộc lượt lưu trú phải được thanh toán cùng bảng kê chuồng." });
             }
             if (linkedBookingIds.Any())
             {
@@ -747,6 +747,20 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 })
                 .ToListAsync();
 
+            var displayHotelCheckouts = hotelCheckouts.Select(statement => new
+            {
+                statement.HotelBookingId,
+                statement.PetName,
+                statement.CageId,
+                RoomType = CageTerminology.ForDisplay(statement.RoomType),
+                statement.TotalAmount,
+                Items = statement.Items.Select(item => new
+                {
+                    Description = CageTerminology.ForDisplay(item.Description),
+                    item.Amount
+                }).ToList()
+            }).ToList();
+
             string? voucherCode = null;
             if (order.CancelReason != null && order.CancelReason.StartsWith("VOUCHER:"))
             {
@@ -767,16 +781,16 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 voucherCode = voucherCode,
                 items = order.OrderItems.Select(oi => new {
                     name = oi.ProductSku != null
-                        ? oi.ProductSkuNavigation?.Name ?? oi.ProductSku
+                        ? CageTerminology.ForDisplay(oi.ProductSkuNavigation?.Name ?? oi.ProductSku)
                         : oi.SpaServiceId != null
                             ? oi.SpaService?.Name ?? "Dịch vụ Spa"
-                            : $"Hotel - {oi.RoomType?.Type ?? "Phòng lưu trú"}",
+                            : $"Chuồng - {oi.RoomType?.Type ?? "Loại chuồng lưu trú"}",
                     quantity = oi.Quantity,
                     price = oi.Price,
                     total = oi.Price * oi.Quantity
                 }).ToList(),
                 spaBookings = spaBookings,
-                hotelCheckouts = hotelCheckouts
+                hotelCheckouts = displayHotelCheckouts
             });
         }
 

@@ -6,6 +6,7 @@ public class HomepageViewModel
 {
     public List<CategoryItem> Categories { get; set; } = [];
     public List<ProductCardItem> BestSellers { get; set; } = [];
+    public List<ProductCardItem> SpaServices { get; set; } = [];
     public List<BlogCardItem> BlogArticles { get; set; } = [];
     public FeaturedBlogItem FeaturedBlog { get; set; } = new();
     public List<PetOptionItem> Pets { get; set; } = [];
@@ -20,6 +21,12 @@ public class HomepageViewModel
     // Blog CMS: dữ liệu thật từ database
     public List<BlogSummaryItem> LatestBlogs { get; set; } = [];
     public List<BlogSummaryItem> PopularBlogs { get; set; } = [];
+
+    // Phân trang
+    public int CurrentPageP { get; set; } = 1;
+    public int TotalPagesP { get; set; } = 1;
+    public int CurrentPageS { get; set; } = 1;
+    public int TotalPagesS { get; set; } = 1;
 }
 
 public class CategoryItem
@@ -72,9 +79,15 @@ public class PetOptionItem
 public class RoomTypeOptionItem
 {
     public int Id { get; set; }
+    public string Code { get; set; } = "";
     public string Name { get; set; } = "";
+    public string Size { get; set; } = "";
+    public int Capacity { get; set; }
     public decimal DailyPrice { get; set; }
+    public bool HasAc { get; set; }
+    public bool HasCamera { get; set; }
     public bool HasPremiumFood { get; set; }
+    public HotelRoomServiceProfile ServiceProfile => HotelRoomTypeCatalog.GetServiceProfile(Code);
 }
 
 public class HotelFoodOptionItem
@@ -110,6 +123,7 @@ public class ProductDetailViewModel
     public List<string> Features { get; set; } = [];
     public List<ProductReviewViewModel> Reviews { get; set; } = new();
     public bool CanReview { get; set; } = false;
+    public bool HasReviewed { get; set; } = false;
 }
 
 public class ProductReviewViewModel

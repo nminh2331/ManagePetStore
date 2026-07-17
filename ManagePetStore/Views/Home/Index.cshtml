@@ -20,7 +20,7 @@
             <p class="ps-hero-desc">Cung cấp giải pháp chăm sóc thú cưng toàn diện với hơn 5000+ sản phẩm chính hãng và dịch vụ chuẩn 5 sao.</p>
             <div class="ps-hero-buttons">
                 <a href="#best-sellers" class="ps-btn-primary">Mua Sắm Ngay</a>
-                <button type="button" class="ps-btn-outline open-hotel-modal" id="btnBookHotel">Đặt lịch Hotel</button>
+                <button type="button" class="ps-btn-outline open-hotel-modal" id="btnBookHotel">Đặt chuồng</button>
             </div>
         </div>
         <div class="ps-hero-image">
@@ -45,6 +45,13 @@
                     <div class="ps-category-name">@cat.Name</div>
                 </a>
             }
+            else if (cat.Slug == "spa")
+            {
+                <a href="#spa-services" class="ps-category-card">
+                    <div class="ps-category-icon"><i class="bi @cat.Icon"></i></div>
+                    <div class="ps-category-name">@cat.Name</div>
+                </a>
+            }
             else
             {
                 <a asp-controller="Home"
@@ -60,113 +67,218 @@
     </div>
 </section>
 
-<!-- Best Selling Products -->
-<section class="ps-section" id="best-sellers">
-    <div class="ps-section-header" style="flex-wrap: wrap; gap: 15px; align-items: center; display: flex; justify-content: space-between; width: 100%;">
-        <h2 class="ps-section-title" style="margin: 0;">Sản phẩm & Dịch vụ</h2>
-        
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 0.85rem; font-weight: 600; color: #5D524D;">Thú cưng:</span>
-            <form method="get" asp-controller="Home" asp-action="Index" id="speciesFilterForm" style="margin: 0; display: inline-block;">
-                <input type="hidden" name="search" value="@Model.SearchKeyword" />
-                <input type="hidden" name="category" value="@Model.SelectedCategorySlug" />
-                <select name="species" onchange="document.getElementById('speciesFilterForm').submit();" 
-                        style="border: 1px solid #ECE9E5; border-radius: 8px; padding: 6px 12px; font-size: 0.85rem; font-weight: 600; color: #2D2521; outline: none; background-color: #FFFFFF; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
-                    @if (ViewBag.SelectedSpecies == "Chó")
-                    {
-                        <option value="Tất cả">Tất cả</option>
-                        <option value="Chó" selected>Chó</option>
-                        <option value="Mèo">Mèo</option>
-                        <option value="Chuột">Chuột</option>
-                        <option value="Rùa">Rùa</option>
-                    }
-                    else if (ViewBag.SelectedSpecies == "Mèo")
-                    {
-                        <option value="Tất cả">Tất cả</option>
-                        <option value="Chó">Chó</option>
-                        <option value="Mèo" selected>Mèo</option>
-                        <option value="Chuột">Chuột</option>
-                        <option value="Rùa">Rùa</option>
-                    }
-                    else if (ViewBag.SelectedSpecies == "Chuột")
-                    {
-                        <option value="Tất cả">Tất cả</option>
-                        <option value="Chó">Chó</option>
-                        <option value="Mèo">Mèo</option>
-                        <option value="Chuột" selected>Chuột</option>
-                        <option value="Rùa">Rùa</option>
-                    }
-                    else if (ViewBag.SelectedSpecies == "Rùa")
-                    {
-                        <option value="Tất cả">Tất cả</option>
-                        <option value="Chó">Chó</option>
-                        <option value="Mèo">Mèo</option>
-                        <option value="Chuột">Chuột</option>
-                        <option value="Rùa" selected>Rùa</option>
-                    }
-                    else
-                    {
-                        <option value="Tất cả" selected>Tất cả</option>
-                        <option value="Chó">Chó</option>
-                        <option value="Mèo">Mèo</option>
-                        <option value="Chuột">Chuột</option>
-                        <option value="Rùa">Rùa</option>
-                    }
-                </select>
-            </form>
-            <a href="#categories" class="ps-filter-btn" aria-label="Lọc theo danh mục" style="padding: 6px 12px; border: 1px solid #ECE9E5; border-radius: 8px; color: #5D524D; display: inline-flex; align-items: center; justify-content: center;"><i class="bi bi-funnel"></i></a>
-        </div>
-    </div>
-    @if (Model.IsFiltered && Model.BestSellers.Count == 0)
-    {
+<!-- Best Selling Products & Spa Services -->
+@if (Model.IsFiltered && Model.BestSellers.Count == 0 && Model.SpaServices.Count == 0)
+{
+    <section class="ps-section">
         <div class="ps-search-empty">
             <i class="bi bi-search"></i>
-            <p>Không tìm thấy sản phẩm phù hợp.</p>
-            <a asp-controller="Home" asp-action="Index" class="ps-btn-primary">Xem tất cả sản phẩm</a>
+            <p>Không tìm thấy sản phẩm hoặc dịch vụ phù hợp.</p>
+            <a asp-controller="Home" asp-action="Index" class="ps-btn-primary">Xem tất cả</a>
         </div>
-    }
-    else
-    {
-        <div class="ps-products-grid">
-            @foreach (var product in Model.BestSellers)
+    </section>
+}
+else
+{
+    <!-- Best Selling Products -->
+    <section class="ps-section" id="best-sellers">
+        <div class="ps-section-header">
+            <h2 class="ps-section-title">Sản phẩm nổi bật</h2>
+            <a href="#categories" class="ps-filter-btn" aria-label="Lọc theo danh mục" style="padding: 6px 12px; border: 1px solid #ECE9E5; border-radius: 8px; color: #5D524D; display: inline-flex; align-items: center; justify-content: center;"><i class="bi bi-funnel"></i></a>
+        </div>
+        @if (Model.BestSellers.Count > 0)
+        {
+            <div class="ps-products-grid">
+                @foreach (var product in Model.BestSellers)
+                {
+                    <a asp-controller="Product" asp-action="Details" asp-route-id="@product.Sku" class="ps-product-card">
+                        @if (!string.IsNullOrEmpty(product.Badge))
+                        {
+                            <span class="ps-product-badge @product.BadgeType">@product.Badge</span>
+                        }
+                        <div class="ps-product-image">
+                            <img src="@product.ImageUrl" alt="@product.Name" loading="lazy" />
+                        </div>
+                        <div class="ps-product-body">
+                            <div class="ps-product-rating">
+                                <i class="bi bi-star-fill"></i> @product.Rating.ToString("0.0") (@product.ReviewCount đánh giá)
+                            </div>
+                            <div class="ps-product-name">@product.Name</div>
+                            <div class="ps-product-price-label">GIÁ ƯU ĐÃI</div>
+                            <div class="ps-product-footer">
+                                <div class="ps-product-price">@product.Price.ToString("N0")đ</div>
+                                @if (product.InStock)
+                                {
+                                    <span class="ps-product-stock">SẴN CÓ</span>
+                                }
+                            </div>
+                        </div>
+                    </a>
+                }
+            </div>
+
+            @if (Model.TotalPagesP > 1)
             {
-                <a asp-controller="Product" asp-action="Details" asp-route-id="@product.Sku" class="ps-product-card">
-                    @if (!string.IsNullOrEmpty(product.Badge))
-                    {
-                        <span class="ps-product-badge @product.BadgeType">@product.Badge</span>
-                    }
-                    <div class="ps-product-image">
-                        <img src="@product.ImageUrl" alt="@product.Name" loading="lazy" />
-                    </div>
-                    <div class="ps-product-body">
-                        <div class="ps-product-rating">
-                            <i class="bi bi-star-fill"></i> @product.Rating.ToString("0.0") (@product.ReviewCount đánh giá)
-                        </div>
-                        <div class="ps-product-name">@product.Name</div>
-                        <div class="ps-product-price-label">GIÁ ƯU ĐÃI</div>
-                        <div class="ps-product-footer">
-                            <div class="ps-product-price">@product.Price.ToString("N0")đ</div>
-                            @if (product.InStock)
-                            {
-                                <span class="ps-product-stock">SẴN CÓ</span>
-                            }
-                        </div>
-                    </div>
-                </a>
+                <nav class="mt-4 d-flex justify-content-center" aria-label="Products Pagination">
+                    <ul class="pagination">
+                        <li class="page-item @(Model.CurrentPageP == 1 ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", "Home", new { pageP = Model.CurrentPageP - 1, pageS = Model.CurrentPageS, search = Model.SearchKeyword, category = Model.SelectedCategorySlug, species = ViewBag.SelectedSpecies })#best-sellers">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+                        @for (int i = 1; i <= Model.TotalPagesP; i++)
+                        {
+                            <li class="page-item @(i == Model.CurrentPageP ? "active" : "")">
+                                <a class="page-link" href="@Url.Action("Index", "Home", new { pageP = i, pageS = Model.CurrentPageS, search = Model.SearchKeyword, category = Model.SelectedCategorySlug, species = ViewBag.SelectedSpecies })#best-sellers">@i</a>
+                            </li>
+                        }
+                        <li class="page-item @(Model.CurrentPageP == Model.TotalPagesP ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", "Home", new { pageP = Model.CurrentPageP + 1, pageS = Model.CurrentPageS, search = Model.SearchKeyword, category = Model.SelectedCategorySlug, species = ViewBag.SelectedSpecies })#best-sellers">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
             }
+        }
+        else
+        {
+            <div class="ps-search-empty" style="padding: 40px; background: #fffdf8; border-radius: 12px; border: 1px dashed #ECE9E5;">
+                <i class="bi bi-search" style="font-size: 2rem; color: #6b7280;"></i>
+                <p style="margin-top: 10px; color: #6b7280;">Không có sản phẩm nào thuộc danh mục này.</p>
+            </div>
+        }
+    </section>
+
+    <!-- Spa Services Section -->
+    <section class="ps-section" id="spa-services">
+        <div class="ps-section-header" style="margin-top: 50px; margin-bottom: 20px; border-top: 1px solid #ECE9E5; padding-top: 30px; flex-wrap: wrap; gap: 15px; align-items: center; display: flex; justify-content: space-between; width: 100%;">
+            <h2 class="ps-section-title" style="margin: 0;">Dịch vụ Spa nổi bật</h2>
+            
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 0.85rem; font-weight: 600; color: #5D524D;">Thú cưng:</span>
+                <form method="get" action="@Url.Action("Index", "Home")#spa-services" id="spaSpeciesFilterForm" style="margin: 0; display: inline-block;">
+                    <input type="hidden" name="search" value="@Model.SearchKeyword" />
+                    <input type="hidden" name="category" value="@Model.SelectedCategorySlug" />
+                    <input type="hidden" name="pageP" value="@Model.CurrentPageP" />
+                    <select name="species" onchange="document.getElementById('spaSpeciesFilterForm').submit();" 
+                            style="border: 1px solid #ECE9E5; border-radius: 8px; padding: 6px 12px; font-size: 0.85rem; font-weight: 600; color: #2D2521; outline: none; background-color: #FFFFFF; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                        @if (ViewBag.SelectedSpecies == "Chó")
+                        {
+                            <option value="Tất cả">Tất cả</option>
+                            <option value="Chó" selected>Chó</option>
+                            <option value="Mèo">Mèo</option>
+                            <option value="Chuột">Chuột</option>
+                            <option value="Rùa">Rùa</option>
+                        }
+                        else if (ViewBag.SelectedSpecies == "Mèo")
+                        {
+                            <option value="Tất cả">Tất cả</option>
+                            <option value="Chó">Chó</option>
+                            <option value="Mèo" selected>Mèo</option>
+                            <option value="Chuột">Chuột</option>
+                            <option value="Rùa">Rùa</option>
+                        }
+                        else if (ViewBag.SelectedSpecies == "Chuột")
+                        {
+                            <option value="Tất cả">Tất cả</option>
+                            <option value="Chó">Chó</option>
+                            <option value="Mèo">Mèo</option>
+                            <option value="Chuột" selected>Chuột</option>
+                            <option value="Rùa">Rùa</option>
+                        }
+                        else if (ViewBag.SelectedSpecies == "Rùa")
+                        {
+                            <option value="Tất cả">Tất cả</option>
+                            <option value="Chó">Chó</option>
+                            <option value="Mèo">Mèo</option>
+                            <option value="Chuột">Chuột</option>
+                            <option value="Rùa" selected>Rùa</option>
+                        }
+                        else
+                        {
+                            <option value="Tất cả" selected>Tất cả</option>
+                            <option value="Chó">Chó</option>
+                            <option value="Mèo">Mèo</option>
+                            <option value="Chuột">Chuột</option>
+                            <option value="Rùa">Rùa</option>
+                        }
+                    </select>
+                </form>
+            </div>
         </div>
-    }
-</section>
+        
+        @if (Model.SpaServices.Count > 0)
+        {
+            <div class="ps-products-grid">
+                @foreach (var service in Model.SpaServices)
+                {
+                    <a asp-controller="Product" asp-action="Details" asp-route-id="@service.Sku" class="ps-product-card">
+                        @if (!string.IsNullOrEmpty(service.Badge))
+                        {
+                            <span class="ps-product-badge @service.BadgeType">@service.Badge</span>
+                        }
+                        <div class="ps-product-image">
+                            <img src="@service.ImageUrl" alt="@service.Name" loading="lazy" />
+                        </div>
+                        <div class="ps-product-body">
+                            <div class="ps-product-rating">
+                                <i class="bi bi-star-fill"></i> @service.Rating.ToString("0.0") (@service.ReviewCount đánh giá)
+                            </div>
+                            <div class="ps-product-name">@service.Name</div>
+                            <div class="ps-product-price-label">GIÁ DỊCH VỤ</div>
+                            <div class="ps-product-footer">
+                                <div class="ps-product-price">@service.Price.ToString("N0")đ</div>
+                                <span class="ps-product-stock">SẴN SÀNG</span>
+                            </div>
+                        </div>
+                    </a>
+                }
+            </div>
+
+            @if (Model.TotalPagesS > 1)
+            {
+                <nav class="mt-4 d-flex justify-content-center" aria-label="Spa Services Pagination">
+                    <ul class="pagination">
+                        <li class="page-item @(Model.CurrentPageS == 1 ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", "Home", new { pageP = Model.CurrentPageP, pageS = Model.CurrentPageS - 1, search = Model.SearchKeyword, category = Model.SelectedCategorySlug, species = ViewBag.SelectedSpecies })#spa-services">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+                        @for (int i = 1; i <= Model.TotalPagesS; i++)
+                        {
+                            <li class="page-item @(i == Model.CurrentPageS ? "active" : "")">
+                                <a class="page-link" href="@Url.Action("Index", "Home", new { pageP = Model.CurrentPageP, pageS = i, search = Model.SearchKeyword, category = Model.SelectedCategorySlug, species = ViewBag.SelectedSpecies })#spa-services">@i</a>
+                            </li>
+                        }
+                        <li class="page-item @(Model.CurrentPageS == Model.TotalPagesS ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", "Home", new { pageP = Model.CurrentPageP, pageS = Model.CurrentPageS + 1, search = Model.SearchKeyword, category = Model.SelectedCategorySlug, species = ViewBag.SelectedSpecies })#spa-services">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            }
+        }
+        else
+        {
+            <div class="ps-search-empty" style="padding: 40px; background: #fffdf8; border-radius: 12px; border: 1px dashed #ECE9E5;">
+                <i class="bi bi-search" style="font-size: 2rem; color: #6b7280;"></i>
+                <p style="margin-top: 10px; color: #6b7280;">Không có dịch vụ spa nào phù hợp.</p>
+            </div>
+        }
+    </section>
+}
 
 <!-- Pet Hotel Banner -->
 <section class="ps-section">
     <div class="ps-hotel-banner open-hotel-modal" role="button" tabindex="0">
         <div class="ps-hotel-content">
             <h2 class="ps-hotel-title">Phòng Nghỉ Dưỡng <span>Tiêu Chuẩn 5 Sao</span></h2>
-            <p class="ps-hotel-desc">Dịch vụ Pet Hotel cao cấp với camera giám sát 24/7, chế độ dinh dưỡng cá nhân hóa và khu vui chơi trong nhà cực rộng.</p>
+            <p class="ps-hotel-desc">Dịch vụ lưu trú chuồng cao cấp với camera giám sát 24/7, chế độ dinh dưỡng cá nhân hóa và khu vui chơi trong nhà cực rộng.</p>
         </div>
         <div class="ps-hotel-image">
-            <img src="https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=700&h=400&fit=crop" alt="Pet Hotel" />
+            <img src="https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=700&h=400&fit=crop" alt="Dịch vụ lưu trú chuồng" />
             <div class="ps-hotel-status">
                 <i class="bi bi-check-circle-fill"></i>
                 TRẠNG THÁI: Đang còn phòng trống

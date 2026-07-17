@@ -1,9 +1,10 @@
-/**
+﻿/**
  * Project: Pet Store Management System (PSMS)
  * File: IInventoryBatchService.cs
  * Author: Tran Duong
  * Date: June 10, 2026
- * Description: Giao diện dịch vụ quản lý lô hàng.
+ * Last Update: July 17, 2026
+ * Description: Giao diá»‡n dá»‹ch vá»¥ quáº£n lÃ½ lÃ´ hÃ ng.
  */
 using ManagePetStore.Models;
 
@@ -16,12 +17,12 @@ public interface IInventoryBatchService
     Task CreateBatch(InventoryBatch batch);
     Task UpdateBatch(int batchId, int newQuantity, DateTime newExpiryDate);
     
-    // Hủy / Xóa lô hàng
+    // Há»§y / XÃ³a lÃ´ hÃ ng
     Task DeleteBatch(int batchId);
 
-    // Xuất kho FIFO
+    // Xuáº¥t kho FIFO
     Task DeductStockFIFO(string productSku, int quantityToDeduct);
 
-    // Nhập kho lại (hoàn trả) vào các lô cũ
+    // Nháº­p kho láº¡i (hoÃ n tráº£) vÃ o cÃ¡c lÃ´ cÅ©
     Task RestockToBatches(string productSku, int quantityToRestock);
 }

@@ -102,8 +102,8 @@ document.addEventListener('DOMContentLoaded', function () {
                                     </div>
                                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
                                         <strong style="color:#ef4444; font-size:14px;">${formatCurrency(b.price)}</strong>
-                                        <button class="btn-pos-primary" style="padding:4px 8px; font-size:11px; border-radius:6px;" ${b.heldForHotel ? 'disabled title="Spa thuộc lượt Hotel đang ở"' : `onclick='handleSelectCompletedSpa(${bookingJson})'`}>
-                                            <i class="bi ${b.heldForHotel ? 'bi-hourglass-split' : 'bi-plus-circle'}"></i> ${b.heldForHotel ? 'Chờ Hotel' : 'Thu tiền'}
+                                        <button class="btn-pos-primary" style="padding:4px 8px; font-size:11px; border-radius:6px;" ${b.heldForHotel ? 'disabled title="Spa thuộc lượt lưu trú chuồng đang ở"' : `onclick='handleSelectCompletedSpa(${bookingJson})'`}>
+                                            <i class="bi ${b.heldForHotel ? 'bi-hourglass-split' : 'bi-plus-circle'}"></i> ${b.heldForHotel ? 'Chờ trả chuồng' : 'Thu tiền'}
                                         </button>
                                     </div>
                                 </div>
@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         handleSelectCustomer({ customerId:item.customerId, fullName:item.customerName, phone:item.customerPhone, membershipTier:'Thành viên', loyaltyPoints:0, pets:[{ petId:item.petId, name:item.petName, weight:item.petWeight }] });
         cart = cart.filter(row => !(row.type === 'Hotel' && row.hotelCheckoutId === item.hotelCheckoutId));
-        cart.push({ type:'Hotel', id:String(item.roomTypeId), name:`Hotel ${item.roomTypeName} - ${item.petName}`, quantity:1, price:item.total, total:item.total, petId:item.petId, petName:item.petName, hotelCheckoutId:item.hotelCheckoutId });
+        cart.push({ type:'Hotel', id:String(item.roomTypeId), name:`Chuồng ${item.roomTypeName} - ${item.petName}`, quantity:1, price:item.total, total:item.total, petId:item.petId, petName:item.petName, hotelCheckoutId:item.hotelCheckoutId });
 
         (item.linkedSpaBookingIds || []).forEach(spaId => {
             const spa = completedSpaBookings.find(row => row.bookingId === spaId);
@@ -453,7 +453,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         </div>
                     `;
                 } else {
-                    return `<div class="pos-cart-item"><div class="pos-item-icon"><i class="bi bi-house-check"></i></div><div class="pos-item-details"><div class="pos-item-name">${item.name}</div><div class="pos-item-meta">Bảng kê Hotel đã chốt</div></div><div class="pos-qty-control" style="visibility:hidden;"></div><div class="pos-item-price">${formatCurrency(item.total)}</div><button class="btn-remove-item" onclick="removeItem(${idx})"><i class="bi bi-trash"></i></button></div>`;
+                    return `<div class="pos-cart-item"><div class="pos-item-icon"><i class="bi bi-house-check"></i></div><div class="pos-item-details"><div class="pos-item-name">${item.name}</div><div class="pos-item-meta">Bảng kê chuồng đã chốt</div></div><div class="pos-qty-control" style="visibility:hidden;"></div><div class="pos-item-price">${formatCurrency(item.total)}</div><button class="btn-remove-item" onclick="removeItem(${idx})"><i class="bi bi-trash"></i></button></div>`;
                 }
             }).join('');
         }
@@ -727,7 +727,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 let hotelHtml = '';
                 if (resData.hotelCheckouts && resData.hotelCheckouts.length > 0) {
-                    hotelHtml = resData.hotelCheckouts.map(hotel => `<div style="border-top:2px dashed #000;margin:15px 0;"></div><div style="border:1px dashed #000;padding:12px;text-align:left;"><div style="font-size:13px;font-weight:bold;text-align:center;margin-bottom:8px;">BẢNG KÊ HOTEL HB#${hotel.hotelBookingId}</div><div style="font-size:11px;margin-bottom:6px;">Pet: <strong>${hotel.petName}</strong> · ${hotel.roomType} · chuồng ${hotel.cageId}</div>${(hotel.items || []).map(item => `<div style="display:flex;justify-content:space-between;font-size:11px;"><span>${item.description}</span><strong>${formatCurrency(item.amount)}</strong></div>`).join('')}<div style="display:flex;justify-content:space-between;border-top:1px dashed #000;margin-top:6px;padding-top:5px;"><strong>Tổng Hotel</strong><strong>${formatCurrency(hotel.totalAmount)}</strong></div></div>`).join('');
+                    hotelHtml = resData.hotelCheckouts.map(hotel => `<div style="border-top:2px dashed #000;margin:15px 0;"></div><div style="border:1px dashed #000;padding:12px;text-align:left;"><div style="font-size:13px;font-weight:bold;text-align:center;margin-bottom:8px;">BẢNG KÊ CHUỒNG HB#${hotel.hotelBookingId}</div><div style="font-size:11px;margin-bottom:6px;">Pet: <strong>${hotel.petName}</strong> · ${hotel.roomType} · chuồng ${hotel.cageId}</div>${(hotel.items || []).map(item => `<div style="display:flex;justify-content:space-between;font-size:11px;"><span>${item.description}</span><strong>${formatCurrency(item.amount)}</strong></div>`).join('')}<div style="display:flex;justify-content:space-between;border-top:1px dashed #000;margin-top:6px;padding-top:5px;"><strong>Tổng chuồng</strong><strong>${formatCurrency(hotel.totalAmount)}</strong></div></div>`).join('');
                 }
 
                 container.innerHTML = `
@@ -913,7 +913,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (txtVoucher) {
             txtVoucher.value = '';
             txtVoucher.disabled = hasHotelItem;
-            txtVoucher.placeholder = hasHotelItem ? 'Voucher chưa áp dụng cho Hotel' : 'Nhập mã voucher (VD: PET20)';
+            txtVoucher.placeholder = hasHotelItem ? 'Voucher chưa áp dụng cho dịch vụ chuồng' : 'Nhập mã voucher (VD: PET20)';
         }
         document.getElementById('btnApplyVoucher').disabled = hasHotelItem;
         const voucherMsg = document.getElementById('voucherMessage');

@@ -29,7 +29,7 @@ public class HomeController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? search, string? category, string? species)
+    public async Task<IActionResult> Index(string? search, string? category, string? species, int pageP = 1, int pageS = 1)
     {
         var model = GetStaticHomepageData();
         model.Pets = [];
@@ -37,6 +37,10 @@ public class HomeController : Controller
         model.HotelFoodOptions = [];
         model.SearchKeyword = search?.Trim();
         model.SelectedCategorySlug = category?.Trim().ToLowerInvariant();
+        if (string.Equals(model.SelectedCategorySlug, "spa", StringComparison.OrdinalIgnoreCase))
+        {
+            model.SelectedCategorySlug = null;
+        }
         
         var selectedSpecies = species?.Trim();
         ViewBag.SelectedSpecies = selectedSpecies;
@@ -48,28 +52,67 @@ public class HomeController : Controller
         ViewBag.SearchKeyword = model.SearchKeyword;
 
         var catalog = await GetSearchableProductsAsync();
-        var filteredList = ApplyProductFilters(catalog, model.SearchKeyword, model.SelectedCategorySlug);
         
+        var productsList = catalog.Where(p => !string.Equals(p.Category, "Dịch vụ Spa", StringComparison.OrdinalIgnoreCase)).ToList();
+        var spaServicesList = catalog.Where(p => string.Equals(p.Category, "Dịch vụ Spa", StringComparison.OrdinalIgnoreCase)).ToList();
+
+        // Apply filters to products (uses search AND category)
+        productsList = ApplyProductFilters(productsList, model.SearchKeyword, model.SelectedCategorySlug);
+
+        // Apply filters to spa services (uses search ONLY, category is ignored)
+        spaServicesList = ApplyProductFilters(spaServicesList, model.SearchKeyword, null);
+
         if (!string.IsNullOrEmpty(selectedSpecies) && selectedSpecies != "Tất cả")
         {
-            filteredList = filteredList.Where(p => string.Equals(p.TargetSpecies, "Tất cả", StringComparison.OrdinalIgnoreCase) 
-                                                || string.Equals(p.TargetSpecies, selectedSpecies, StringComparison.OrdinalIgnoreCase))
-                                       .ToList();
+            spaServicesList = spaServicesList.Where(p => string.Equals(p.TargetSpecies, "Tất cả", StringComparison.OrdinalIgnoreCase) 
+                                                      || string.Equals(p.TargetSpecies, selectedSpecies, StringComparison.OrdinalIgnoreCase))
+                                             .ToList();
         }
-        
-        model.BestSellers = filteredList;
+
+        // Phân trang
+        const int PageSizeP = 4;
+        const int PageSizeS = 4;
+
+        int totalProducts = productsList.Count;
+        int totalSpaServices = spaServicesList.Count;
+
+        model.TotalPagesP = (int)Math.Ceiling((double)totalProducts / PageSizeP);
+        model.TotalPagesS = (int)Math.Ceiling((double)totalSpaServices / PageSizeS);
+
+        if (model.TotalPagesP == 0) model.TotalPagesP = 1;
+        if (model.TotalPagesS == 0) model.TotalPagesS = 1;
+
+        model.CurrentPageP = Math.Max(1, Math.Min(model.TotalPagesP, pageP));
+        model.CurrentPageS = Math.Max(1, Math.Min(model.TotalPagesS, pageS));
+
+        model.BestSellers = productsList
+            .Skip((model.CurrentPageP - 1) * PageSizeP)
+            .Take(PageSizeP)
+            .ToList();
+
+        model.SpaServices = spaServicesList
+            .Skip((model.CurrentPageS - 1) * PageSizeS)
+            .Take(PageSizeS)
+            .ToList();
                
         try
         {
             model.RoomTypes = await _context.RoomTypes
                 .AsNoTracking()
-                .Where(r => r.Status && r.Cages.Any())
+                .Where(r => r.Status &&
+                            HotelRoomTypeCatalog.Codes.Contains(r.Code) &&
+                            r.Cages.Any())
                 .OrderBy(r => r.DailyPrice)
                 .Select(r => new RoomTypeOptionItem
                 {
                     Id = r.RoomTypeId,
+                    Code = r.Code,
                     Name = r.Type,
+                    Size = r.Size,
+                    Capacity = r.Capacity,
                     DailyPrice = r.DailyPrice,
+                    HasAc = r.HasAc,
+                    HasCamera = r.HasCamera,
                     HasPremiumFood = r.HasPremiumFood
                 })
                 .ToListAsync();
@@ -216,13 +259,6 @@ public class HomeController : Controller
             _logger.LogError(ex, "Lỗi khi tải PopularBlogs từ Database.");
         }
 
-        if (model.IsFiltered)
-        {
-            return View(model);
-        }
-
-        // Use the full dynamic catalog (including active DB products and Spa Services) instead of static mockup list
-        model.BestSellers = catalog;
         return View(model);
 
     }
@@ -241,10 +277,6 @@ public class HomeController : Controller
     private async Task<List<ProductCardItem>> GetSearchableProductsAsync()
     {
         var products = GetStaticProductCatalog();   // khoi tao danh sach product 
-        foreach (var p in products)
-        {
-            p.TargetSpecies = "Tất cả";
-        }
 
         // 1. Tải các sản phẩm từ database (cách ly trong try-catch)
         try
@@ -354,7 +386,7 @@ public class HomeController : Controller
             Rating = 4.7,
             ReviewCount = 50,
             InStock = product.Stock > 0,
-            TargetSpecies = "Tất cả"
+            TargetSpecies = string.IsNullOrWhiteSpace(product.AnimalType) ? "Tất cả" : product.AnimalType.Trim()
         };
     }
 
@@ -433,7 +465,8 @@ public class HomeController : Controller
                 ReviewCount = p.ReviewCount,
                 Badge = p.Badge,
                 BadgeType = p.BadgeType,
-                InStock = p.InStock
+                InStock = p.InStock,
+                TargetSpecies = p.TargetSpecies
             })
             .ToList();
     }
@@ -453,58 +486,7 @@ public class HomeController : Controller
                 new CategoryItem { Name = "Dịch vụ Spa", Icon = "bi-scissors", Slug = "spa" },
                 new CategoryItem { Name = "Sổ y tế thú cưng", Icon = "bi-journal-medical", Slug = "medical-records" }
             ],
-            BestSellers =
-            [
-                new ProductCardItem
-                {
-                    Sku = "RC-MBC-001",
-                    Name = "Royal Canin Mother & Babycat",
-                    Category = "Thức ăn",
-                    Price = 350000,
-                    OriginalPrice = 388000,
-                    ImageUrl = "https://images.unsplash.com/photo-1589924691995-400dc9ecc119?w=400&h=400&fit=crop",
-                    Rating = 4.8,
-                    ReviewCount = 124,
-                    Badge = "-10%",
-                    BadgeType = "discount",
-                    InStock = true
-                },
-                new ProductCardItem
-                {
-                    Sku = "MN-CAT-5L",
-                    Name = "Cát vệ sinh Maneki Neko 5L",
-                    Category = "Vệ sinh",
-                    Price = 89000,
-                    ImageUrl = "https://images.unsplash.com/photo-1574158622682-e40e69881006?w=400&h=400&fit=crop",
-                    Rating = 4.6,
-                    ReviewCount = 89,
-                    InStock = true
-                },
-                new ProductCardItem
-                {
-                    Sku = "JD-SHAMPOO",
-                    Name = "Sữa tắm Joyce & Dolls 400ml",
-                    Category = "Vệ sinh",
-                    Price = 125000,
-                    ImageUrl = "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=400&h=400&fit=crop",
-                    Rating = 4.9,
-                    ReviewCount = 56,
-                    Badge = "Mới",
-                    BadgeType = "new",
-                    InStock = true
-                },
-                new ProductCardItem
-                {
-                    Sku = "BONE-TET-5",
-                    Name = "Xương gặm cho chó 5 cây",
-                    Category = "Thức ăn",
-                    Price = 45000,
-                    ImageUrl = "/images/dog-bone-chew.png",
-                    Rating = 4.5,
-                    ReviewCount = 32,
-                    InStock = true
-                }
-            ],
+            BestSellers = [],
             FeaturedBlog = new FeaturedBlogItem
             {
                 Title = "10 Bí quyết giúp thú cưng của bạn luôn khỏe mạnh và hạnh phúc",
@@ -544,9 +526,9 @@ public class HomeController : Controller
             ],
             RoomTypes =
             [
-                new RoomTypeOptionItem { Id = 1, Name = "Phòng VIP Luxury (500k/n)", DailyPrice = 500000 },
-                new RoomTypeOptionItem { Id = 2, Name = "Phòng Tiêu Chuẩn (300k/n)", DailyPrice = 300000 },
-                new RoomTypeOptionItem { Id = 3, Name = "Phòng Economy (200k/n)", DailyPrice = 200000 }
+                new RoomTypeOptionItem { Id = 2, Code = HotelRoomTypeCatalog.StandardCode, Name = "Phòng Standard", Size = "1.0m x 1.0m", Capacity = 1, DailyPrice = 200000, HasAc = true },
+                new RoomTypeOptionItem { Id = 1, Code = HotelRoomTypeCatalog.VipCode, Name = "Phòng VIP", Size = "1.5m x 1.5m", Capacity = 1, DailyPrice = 500000, HasAc = true, HasCamera = true },
+                new RoomTypeOptionItem { Id = 3, Code = HotelRoomTypeCatalog.LuxuryCode, Name = "Phòng Luxury", Size = "2.0m x 1.8m", Capacity = 1, DailyPrice = 750000, HasAc = true, HasCamera = true }
             ]
         };
     }
