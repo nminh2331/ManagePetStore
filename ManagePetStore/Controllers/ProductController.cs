@@ -286,6 +286,7 @@ public class ProductController : Controller
                     if (spaService != null)
                     {
                         model = MapFromSpaService(spaService);  // chuyển đổi dữ liệu thô từ DB thành ProductDetailViewModel để UI đọc được.
+                        ViewBag.TargetSpecies = spaService.TargetSpecies?.Trim();
                         
                         // Query extra info for Spa service booking form
                         Customer? customerObj = null;
@@ -754,6 +755,16 @@ public class ProductController : Controller
         {
             TempData["ErrorMessage"] = "Dịch vụ đã chọn không tồn tại hoặc ngừng hoạt động.";
             return RedirectToAction("Index", "Home");
+        }
+
+        // Validate species compatibility
+        if (!string.IsNullOrEmpty(service.TargetSpecies) && !string.Equals(service.TargetSpecies, "Tất cả", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!string.Equals(pet.Species, service.TargetSpecies, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["ErrorMessage"] = $"Dịch vụ '{service.Name}' chỉ dành cho loài '{service.TargetSpecies}'. Thú cưng '{pet.Name}' là loài '{pet.Species}' nên không thể đặt.";
+                return RedirectToAction("Details", new { id = sku });
+            }
         }
 
         // 3. Resolve Groomer

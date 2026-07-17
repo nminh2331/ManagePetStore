@@ -4,6 +4,7 @@ public class HomepageViewModel
 {
     public List<CategoryItem> Categories { get; set; } = [];
     public List<ProductCardItem> BestSellers { get; set; } = [];
+    public List<ProductCardItem> SpaServices { get; set; } = [];
     public List<BlogCardItem> BlogArticles { get; set; } = [];
     public FeaturedBlogItem FeaturedBlog { get; set; } = new();
     public List<PetOptionItem> Pets { get; set; } = [];
@@ -18,6 +19,12 @@ public class HomepageViewModel
     // Blog CMS: dữ liệu thật từ database
     public List<BlogSummaryItem> LatestBlogs { get; set; } = [];
     public List<BlogSummaryItem> PopularBlogs { get; set; } = [];
+
+    // Phân trang
+    public int CurrentPageP { get; set; } = 1;
+    public int TotalPagesP { get; set; } = 1;
+    public int CurrentPageS { get; set; } = 1;
+    public int TotalPagesS { get; set; } = 1;
 }
 
 public class CategoryItem

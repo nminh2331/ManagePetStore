@@ -305,4 +305,22 @@
             resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     }
+
+    // Highlight "Dịch vụ Spa" category card when clicked or when URL hash is #spa-services
+    const spaCategoryCard = document.querySelector('.ps-category-card[href="#spa-services"]');
+    if (spaCategoryCard) {
+        spaCategoryCard.addEventListener('click', function () {
+            document.querySelectorAll('.ps-category-card').forEach(function (card) {
+                card.classList.remove('active');
+            });
+            spaCategoryCard.classList.add('active');
+        });
+
+        if (window.location.hash === '#spa-services' || window.location.href.indexOf('#spa-services') !== -1) {
+            document.querySelectorAll('.ps-category-card').forEach(function (card) {
+                card.classList.remove('active');
+            });
+            spaCategoryCard.classList.add('active');
+        }
+    }
 })();
