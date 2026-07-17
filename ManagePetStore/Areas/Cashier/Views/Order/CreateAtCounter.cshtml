@@ -86,7 +86,6 @@
         <div class="pos-cart-section">
             <div class="pos-tabs">
                 <button class="pos-tab active" data-target="cart-products">Sản phẩm (<span id="countProducts">0</span>)</button>
-                <button class="pos-tab" data-target="cart-hotel">Chuồng chờ thu (<span id="countHotel">0</span>)</button>
             </div>
 
             <!-- Tab Sản Phẩm -->
@@ -101,17 +100,6 @@
                 <div id="allProductsList" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                     <!-- Sẽ load danh sách sản phẩm vào đây -->
                 </div>
-            </div>
-            <!-- Tab Hotel chờ thu -->
-            <div class="pos-tab-content" id="cart-hotel">
-                <div class="pos-empty-state" id="emptyHotel">
-                    <i class="bi bi-building-check"></i>
-                    <p>Chưa có lượt lưu trú chuồng hoặc Spa liên kết trong đơn</p>
-                </div>
-                <div class="pos-cart-list" id="listHotel"></div>
-
-                <h4 style="margin-top: 24px; margin-bottom: 16px; font-size: 16px; font-weight: 800;">Danh sách chuồng chờ thu</h4>
-                <div id="allHotelPending" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;"></div>
             </div>
         </div>
     </div>
@@ -211,20 +199,6 @@
                 <label>Số Điện Thoại <span class="text-danger">*</span></label>
                 <input type="tel" id="regPhone" class="pos-input" placeholder="Nhập số điện thoại" />
                 <span class="pos-field-error" id="errRegPhone"></span>
-            </div>
-            <hr />
-            <div class="pos-form-group">
-                <label>Tên Thú Cưng (Nếu có)</label>
-                <input type="text" id="regPetName" class="pos-input" placeholder="Nhập tên thú cưng" />
-                <span class="pos-field-error" id="errRegPetName"></span>
-            </div>
-            <div class="pos-form-group">
-                <label>Loại Thú Cưng</label>
-                <select id="regPetType" class="pos-select">
-                    <option value="Chó">Chó</option>
-                    <option value="Mèo">Mèo</option>
-                    <option value="Khác">Khác</option>
-                </select>
             </div>
         </div>
         <div class="pos-modal-footer">

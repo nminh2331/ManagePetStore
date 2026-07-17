@@ -137,7 +137,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const data = await res.json();
             const rows = data.success && data.data ? data.data : [];
             readyHotelCheckouts = rows;
-            document.getElementById('countHotel').textContent = rows.length;
+            const countHotelEl = document.getElementById('countHotel');
+            if (countHotelEl) countHotelEl.textContent = rows.length;
 
             list.innerHTML = rows.length ? rows.map(item => {
                 return `<div class="pos-spa-item" style="padding:16px;border:1px solid var(--pos-border);border-radius:8px;background:#fff;display:grid;gap:8px;align-items:stretch;height:auto;cursor:default;">
@@ -224,8 +225,8 @@ document.addEventListener('DOMContentLoaded', function () {
         renderCart();
     };
 
-    loadCompletedSpaBookingsForHotel();
-    loadReadyHotelCheckouts();
+    // loadCompletedSpaBookingsForHotel();
+    // loadReadyHotelCheckouts();
 
     // === TABS LOGIC ===
     const tabs = document.querySelectorAll('.pos-tab');
@@ -454,8 +455,10 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('btnSaveRegister').addEventListener('click', async () => {
         const name = document.getElementById('regCustomerName').value.trim();
         const phone = document.getElementById('regPhone').value.trim();
-        const petName = document.getElementById('regPetName').value.trim();
-        const petType = document.getElementById('regPetType').value;
+        const petNameEl = document.getElementById('regPetName');
+        const petName = petNameEl ? petNameEl.value.trim() : "";
+        const petTypeEl = document.getElementById('regPetType');
+        const petType = petTypeEl ? petTypeEl.value : "Chó";
 
         clearRegisterErrors();
         let hasError = false;
@@ -600,34 +603,36 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Render Hotel checkout statements and their linked completed Spa services.
-        if (hotels.length === 0 && spas.length === 0) {
-            emptyHotel.style.display = 'block';
-            listHotel.innerHTML = '';
-        } else {
-            emptyHotel.style.display = 'none';
-            const hotelRows = hotels.map(h => `
-                <div class="pos-cart-item">
-                    <div class="pos-item-icon"><i class="bi bi-building-check"></i></div>
-                    <div class="pos-item-details">
-                        <div class="pos-item-name">${h.name}</div>
-                        <div class="pos-item-meta">Bảng kê #${h.hotelCheckoutId} | Pet: ${h.petName}</div>
+        if (emptyHotel && listHotel) {
+            if (hotels.length === 0 && spas.length === 0) {
+                emptyHotel.style.display = 'block';
+                listHotel.innerHTML = '';
+            } else {
+                emptyHotel.style.display = 'none';
+                const hotelRows = hotels.map(h => `
+                    <div class="pos-cart-item">
+                        <div class="pos-item-icon"><i class="bi bi-building-check"></i></div>
+                        <div class="pos-item-details">
+                            <div class="pos-item-name">${h.name}</div>
+                            <div class="pos-item-meta">Bảng kê #${h.hotelCheckoutId} | Pet: ${h.petName}</div>
+                        </div>
+                        <div class="pos-item-price">${formatCurrency(h.total)}</div>
+                        <button class="btn-remove-item" onclick="removeItem(${h.originalIndex})"><i class="bi bi-trash"></i></button>
                     </div>
-                    <div class="pos-item-price">${formatCurrency(h.total)}</div>
-                    <button class="btn-remove-item" onclick="removeItem(${h.originalIndex})"><i class="bi bi-trash"></i></button>
-                </div>
-            `);
-            const spaRows = spas.map(s => `
-                <div class="pos-cart-item">
-                    <div class="pos-item-icon"><i class="bi bi-scissors"></i></div>
-                    <div class="pos-item-details">
-                        <div class="pos-item-name">${s.name}</div>
-                        <div class="pos-item-meta">Spa liên kết | Pet: ${s.petName || ''}</div>
+                `);
+                const spaRows = spas.map(s => `
+                    <div class="pos-cart-item">
+                        <div class="pos-item-icon"><i class="bi bi-scissors"></i></div>
+                        <div class="pos-item-details">
+                            <div class="pos-item-name">${s.name}</div>
+                            <div class="pos-item-meta">Spa liên kết | Pet: ${s.petName || ''}</div>
+                        </div>
+                        <div class="pos-item-price">${formatCurrency(s.total)}</div>
+                        <button class="btn-remove-item" onclick="removeItem(${s.originalIndex})"><i class="bi bi-trash"></i></button>
                     </div>
-                    <div class="pos-item-price">${formatCurrency(s.total)}</div>
-                    <button class="btn-remove-item" onclick="removeItem(${s.originalIndex})"><i class="bi bi-trash"></i></button>
-                </div>
-            `);
-            listHotel.innerHTML = [...hotelRows, ...spaRows].join('');
+                `);
+                listHotel.innerHTML = [...hotelRows, ...spaRows].join('');
+            }
         }
 
         // Calculate Totals
