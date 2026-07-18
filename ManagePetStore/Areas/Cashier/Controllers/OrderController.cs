@@ -31,6 +31,24 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             _inventoryBatchService = inventoryBatchService;
         }
 
+        private async Task UpdateOrderToPaidAsync(Order order)
+        {
+            order.Status = "Chờ xử lý";
+            order.OrderStatus = 2;
+            _context.Entry(order).State = EntityState.Modified;
+
+            // Sync linked SpaBookings to Đã thanh toán immediately
+            var spaBookings = await _context.SpaBookings
+                .Where(sb => sb.Notes != null && sb.Notes.Contains($"[POS {order.OrderId}]"))
+                .ToListAsync();
+            foreach (var sb in spaBookings)
+            {
+                sb.Status = "Đã thanh toán";
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
         // GET: /Cashier/Order/Create (POS Screen)
         [HttpGet]
         public async Task<IActionResult> Create(string? orderId, string? status)
@@ -40,10 +58,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 var order = await _context.Orders.Include(o => o.Customer).FirstOrDefaultAsync(o => o.OrderId == orderId);
                 if (order != null && order.Status == "Chờ thanh toán")
                 {
-                    order.Status = "Chờ xử lý";
-                    order.OrderStatus = 2;
-                    _context.Entry(order).State = EntityState.Modified;
-                    await _context.SaveChangesAsync();
+                    await UpdateOrderToPaidAsync(order);
                 }
             }
             return View();
@@ -60,10 +75,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 {
                     if (status == "PAID" || status == "success")
                     {
-                        order.Status = "Chờ xử lý";
-                        order.OrderStatus = 2;
-                        _context.Entry(order).State = EntityState.Modified;
-                        await _context.SaveChangesAsync();
+                        await UpdateOrderToPaidAsync(order);
                     }
                     else if (status == "cancel")
                     {
@@ -579,7 +591,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                     {
                         if (bookingsDict.TryGetValue(item.BookingId.Value, out var booking))
                         {
-                            booking.Status = "Chờ thanh toán";
+                            booking.Status = hasOnlinePayment ? "Chờ thanh toán" : "Đã thanh toán";
                             booking.Notes = $"[POS {order.OrderId}] | Dịch vụ: {item.Name} " + (booking.Notes ?? "");
                             _context.Entry(booking).State = EntityState.Modified;
                         }
@@ -694,10 +706,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                     var paymentInfo = await _payOS.PaymentRequests.GetAsync(orderCode);
                     if (paymentInfo != null && paymentInfo.Status.ToString().ToUpper() == "PAID")
                     {
-                        order.Status = "Chờ xử lý";
-                        order.OrderStatus = 2;
-                        _context.Entry(order).State = EntityState.Modified;
-                        await _context.SaveChangesAsync();
+                        await UpdateOrderToPaidAsync(order);
 
                         return Json(new { success = true, status = "PAID" });
                     }

@@ -172,6 +172,54 @@ app.UseAuthentication();
 // Kích hoạt kiểm tra quyền hạn (Tài khoản đó thuộc Role nào, được vào đâu?)
 app.UseAuthorization();
 
+// Chặn tài khoản nhân viên (service, cashier) truy cập các trang công khai dành cho khách hàng ngoài phân hệ chuyên môn
+app.Use(async (context, next) =>
+{
+    if (context.User.Identity?.IsAuthenticated == true)
+    {
+        var path = context.Request.Path.Value ?? "";
+
+        // Ràng buộc cho ServiceStaff
+        if (context.User.IsInRole("service"))
+        {
+            bool isAllowed = path.StartsWith("/SpaServices", StringComparison.OrdinalIgnoreCase) ||
+                             path.StartsWith("/chatHub", StringComparison.OrdinalIgnoreCase) ||
+                             path.StartsWith("/hotelCareHub", StringComparison.OrdinalIgnoreCase) ||
+                             path.StartsWith("/Customer/Account/Logout", StringComparison.OrdinalIgnoreCase) ||
+                             path.StartsWith("/views-assets", StringComparison.OrdinalIgnoreCase) ||
+                             path.StartsWith("/css", StringComparison.OrdinalIgnoreCase) ||
+                             path.StartsWith("/js", StringComparison.OrdinalIgnoreCase) ||
+                             path.StartsWith("/lib", StringComparison.OrdinalIgnoreCase);
+
+            if (!isAllowed)
+            {
+                context.Response.Redirect("/SpaServices");
+                return;
+            }
+        }
+        
+        // Ràng buộc cho Cashier
+        if (context.User.IsInRole("cashier"))
+        {
+            bool isAllowed = path.StartsWith("/Cashier", StringComparison.OrdinalIgnoreCase) ||
+                             path.StartsWith("/chatHub", StringComparison.OrdinalIgnoreCase) ||
+                             path.StartsWith("/hotelCareHub", StringComparison.OrdinalIgnoreCase) ||
+                             path.StartsWith("/Customer/Account/Logout", StringComparison.OrdinalIgnoreCase) ||
+                             path.StartsWith("/views-assets", StringComparison.OrdinalIgnoreCase) ||
+                             path.StartsWith("/css", StringComparison.OrdinalIgnoreCase) ||
+                             path.StartsWith("/js", StringComparison.OrdinalIgnoreCase) ||
+                             path.StartsWith("/lib", StringComparison.OrdinalIgnoreCase);
+
+            if (!isAllowed)
+            {
+                context.Response.Redirect("/Cashier/Order");
+                return;
+            }
+        }
+    }
+    await next();
+});
+
 // Đăng ký map hub cho SignalR
 app.MapHub<ManagePetStore.Hubs.ChatHub>("/chatHub");
 app.MapHub<ManagePetStore.Hubs.HotelCareHub>("/hotelCareHub");
