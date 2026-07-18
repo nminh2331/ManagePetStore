@@ -3,21 +3,26 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - PetStore AI</title>
+    <title>@ViewData["Title"] - PetStore</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Google Fonts Outfit Import for Premium Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         /* Custom overrides for Service Staff panel to match Mockup perfectly */
         :root {
             --primary-orange: #FF7815;
             --primary-orange-hover: #E0630D;
-            --bg-body: #F9F7F5;
+            --bg-body: #FAF8F6; /* Enhanced warm background */
             --sidebar-width: 260px;
             --text-dark: #2D2521;
             --text-muted: #9E918B;
-            --border-light: #EFECE9;
-            --card-shadow: 0 8px 30px rgba(45, 37, 33, 0.04);
+            --border-light: #ECE9E5; /* cleaner border */
+            --card-shadow: 0 10px 40px rgba(45, 37, 33, 0.03);
+            --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         body.service-body {
@@ -34,7 +39,7 @@
             min-height: 100vh;
         }
 
-        /* Sidebar layout styling */
+        /* Sidebar layout styling with glass effect */
         .service-sidebar {
             width: var(--sidebar-width);
             background-color: #FFFFFF;
@@ -47,6 +52,7 @@
             left: 0;
             top: 0;
             z-index: 100;
+            box-shadow: 4px 0 25px rgba(45, 37, 33, 0.015);
         }
 
         .service-logo {
@@ -59,6 +65,13 @@
             align-items: center;
             gap: 10px;
             padding-left: 10px;
+            transition: var(--transition-smooth);
+        }
+
+        .service-logo:hover {
+            opacity: 0.85;
+            transform: scale(1.02);
+            color: var(--primary-orange);
         }
 
         .service-logo i {
@@ -68,7 +81,7 @@
         .service-nav {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 8px;
             flex-grow: 1;
         }
 
@@ -77,24 +90,27 @@
             align-items: center;
             gap: 12px;
             padding: 12px 16px;
-            border-radius: 12px;
+            border-radius: 14px;
             color: var(--text-dark);
             text-decoration: none;
             font-weight: 500;
             font-size: 0.9rem;
-            transition: all 0.25s ease;
+            transition: var(--transition-smooth);
+            border: 1px solid transparent;
         }
 
         .service-nav-item i {
             width: 20px;
             font-size: 1.05rem;
             color: var(--text-muted);
-            transition: color 0.25s;
+            transition: var(--transition-smooth);
         }
 
         .service-nav-item:hover {
-            background-color: #FFF6F0;
+            background-color: #FFF2E6;
             color: var(--primary-orange);
+            transform: translateX(4px);
+            border-color: rgba(255, 120, 21, 0.1);
         }
 
         .service-nav-item:hover i {
@@ -106,6 +122,7 @@
             color: #FFFFFF;
             font-weight: 600;
             box-shadow: 0 6px 20px rgba(255, 120, 21, 0.25);
+            border-color: var(--primary-orange);
         }
 
         .service-nav-item.active i {
@@ -316,9 +333,9 @@
     <div class="service-wrapper">
         <!-- Sidebar -->
         <aside class="service-sidebar">
-            <a href="/" class="service-logo">
+            <a href="/SpaServices" class="service-logo">
                 <i class="fa-solid fa-paw"></i>
-                <span>PetStore AI</span>
+                <span>PetStore</span>
             </a>
             
             <nav class="service-nav">

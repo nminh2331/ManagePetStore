@@ -225,8 +225,21 @@
                                 @foreach (var booking in Model.VisibleBookings)
                                 {
                                     var hasReviewed = reviewedIds.Contains(booking.BookingId);
-                                    var isFinished = booking.SpaStatus == "4" || booking.SpaStatus.EndsWith("|4");
                                     var isCancelled = booking.SpaStatus == "Cancelled";
+                                    // Hoàn thành: SpaStatus kết thúc bằng "|4" hoặc == "4" hoặc == "Hoàn thành"
+                                    var isFinished = !isCancelled && (
+                                        booking.SpaStatus == "4" ||
+                                        booking.SpaStatus.EndsWith("|4") ||
+                                        booking.SpaStatus == "Hoàn thành"
+                                    );
+                                    // Đang chờ: chưa bắt đầu bất kỳ bước nào
+                                    var isPending = !isCancelled && !isFinished && (
+                                        booking.SpaStatus == "0" ||
+                                        booking.SpaStatus.EndsWith("|0") ||
+                                        booking.SpaStatus == "Tiếp nhận"
+                                    );
+                                    // Đang làm: đã bắt đầu nhưng chưa xong
+                                    var isInProgress = !isCancelled && !isFinished && !isPending;
 
                                     <tr class="spa-booking-row">
                                         <td class="py-3 ps-4">
@@ -259,13 +272,13 @@
                                             {
                                                 <span class="badge bg-success-subtle text-success spa-badge">Hoàn thành</span>
                                             }
-                                            else if (booking.SpaStatus == "0" || booking.SpaStatus.EndsWith("|0"))
+                                            else if (isPending)
                                             {
                                                 <span class="badge bg-secondary-subtle text-secondary spa-badge">Đang chờ</span>
                                             }
                                             else
                                             {
-                                                <span class="badge bg-warning-subtle text-warning spa-badge" style="background-color: #FFF2E6; color: #FF7815 !important;">Làm việc</span>
+                                                <span class="badge bg-warning-subtle spa-badge" style="background-color: #FFF2E6 !important; color: #FF7815 !important;">Đang làm</span>
                                             }
                                         </td>
                                         <td class="py-3 text-center">
@@ -482,6 +495,7 @@
                         $('#progressBookingDate').text('Lịch hẹn: ' + res.bookingDate);
 
                         $('.progress-step-item').removeClass('step-completed step-active');
+                        $('#progressCompletedBadge').remove();
                         
                         if (res.isCancelled) {
                             $('#progressServiceName').html(res.serviceName + ' <span class="text-danger">(ĐÃ HỦY)</span>');
@@ -492,7 +506,16 @@
                             $('#step-' + idx).addClass('step-completed');
                         });
 
-                        $('#step-' + res.activeIndex).removeClass('step-completed').addClass('step-active');
+                        if (res.isCompleted) {
+                            // Tất cả bước đã hoàn thành – không highlight bước nào là "đang làm"
+                            $('#progressBookingDate').after(
+                                '<div id="progressCompletedBadge" class="text-center mt-2">' +
+                                '<span class="badge px-3 py-2" style="background-color:#d4edda;color:#155724;border-radius:8px;font-weight:600;font-size:0.75rem;">' +
+                                '✅ Dịch vụ đã hoàn thành</span></div>'
+                            );
+                        } else if (res.activeIndex >= 0) {
+                            $('#step-' + res.activeIndex).removeClass('step-completed').addClass('step-active');
+                        }
                     }
                 });
             }

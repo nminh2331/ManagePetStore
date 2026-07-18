@@ -51,20 +51,34 @@
         align-items: center;
         gap: 6px;
         border: 1px solid #CBEFDB;
+        box-shadow: 0 4px 12px rgba(23, 138, 69, 0.05);
     }
 
     .active-groomers-badge i {
         font-size: 0.5rem;
+        animation: active-dot-pulse 2s infinite;
+    }
+
+    @@keyframes active-dot-pulse {
+        0% { transform: scale(0.9); opacity: 0.6; }
+        50% { transform: scale(1.2); opacity: 1; }
+        100% { transform: scale(0.9); opacity: 0.6; }
     }
 
     /* Grid cards */
     .spa-card {
         background-color: #FFFFFF;
         border: 1px solid #ECE9E5;
-        border-radius: 18px;
+        border-radius: 20px; /* Enhanced bo góc */
         padding: 24px;
-        box-shadow: 0 4px 20px rgba(45, 37, 33, 0.02);
+        box-shadow: var(--card-shadow);
         margin-bottom: 25px;
+        transition: var(--transition-smooth);
+    }
+
+    .spa-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 35px rgba(45, 37, 33, 0.06);
     }
 
     .spa-card-title {
@@ -149,6 +163,7 @@
         letter-spacing: 0.8px;
         padding: 12px 16px;
         border-bottom: 1px solid #ECE9E5;
+        background-color: #FAF9F7;
     }
 
     .spa-table td {
@@ -156,6 +171,7 @@
         font-size: 0.85rem;
         border-bottom: 1px solid #F6F4F1;
         vertical-align: middle;
+        transition: var(--transition-smooth);
     }
 
     .spa-table tr:last-child td {
@@ -177,9 +193,15 @@
     .guest-checkin-box {
         background-color: #FFFFFF;
         border: 1px solid #ECE9E5;
-        border-radius: 18px;
+        border-radius: 20px; /* Enhanced bo góc */
         padding: 20px;
-        box-shadow: 0 4px 20px rgba(45, 37, 33, 0.02);
+        box-shadow: var(--card-shadow);
+        transition: var(--transition-smooth);
+    }
+
+    .guest-checkin-box:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 35px rgba(45, 37, 33, 0.06);
     }
 
     .guest-checkin-header {
@@ -289,18 +311,21 @@
         background-color: #FFF2EA;
         color: #FF7815;
         border: 1px solid #FFD8C2;
-        border-radius: 8px;
-        padding: 6px 12px;
-        font-size: 0.7rem;
+        border-radius: 20px; /* Pill button */
+        padding: 6px 16px;
+        font-size: 0.72rem;
         font-weight: 700;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: var(--transition-smooth);
+        box-shadow: 0 4px 10px rgba(255, 120, 21, 0.05);
     }
 
     .guest-display-btn:hover {
         background-color: #FF7815;
         color: #FFFFFF;
         border-color: #FF7815;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 15px rgba(255, 120, 21, 0.15);
     }
 
     /* Daily Grid Schedule (Bottom) */
@@ -336,15 +361,21 @@
     .groomer-info-cell {
         background-color: #FAF9F7;
         border: 1px solid #ECE9E5;
-        border-radius: 12px;
+        border-radius: 14px;
         padding: 12px 16px;
         min-height: 70px;
+        transition: var(--transition-smooth);
+    }
+
+    .groomer-info-cell:hover {
+        background-color: #F4F2EE;
     }
 
     .groomer-name-text {
         font-weight: 700;
         font-size: 0.85rem;
         margin: 0;
+        color: #2D2521;
     }
 
     .groomer-title-text {
@@ -356,7 +387,7 @@
     }
 
     .schedule-slot-card {
-        border-radius: 12px;
+        border-radius: 14px; /* Enhanced bo góc */
         height: 70px;
         padding: 8px 12px;
         display: flex;
@@ -364,14 +395,14 @@
         justify-content: center;
         position: relative;
         cursor: pointer;
-        transition: all 0.25s;
+        transition: var(--transition-smooth);
         text-decoration: none;
         overflow: hidden;
     }
 
     .slot-vacant {
-        background-color: #E6F7ED;
-        border: 1px dashed #CBEFDB;
+        background-color: #F3FBF7; /* Cleaner mint green */
+        border: 1px dashed #D1EFE0;
         color: #178A45;
         align-items: center;
         cursor: default !important;
@@ -389,26 +420,28 @@
 
     /* Đang làm dịch vụ / Đang chờ */
     .slot-booked {
-        background-color: #FFF1E6;
-        border: 1px solid #FFE0CC;
-        color: #FF7815;
+        background-color: #FFF7F0; /* Soft amber/orange */
+        border: 1px solid #FFE4D1;
+        color: #E05A00;
     }
 
     .slot-booked:hover {
-        box-shadow: 0 4px 15px rgba(255, 120, 21, 0.1);
+        box-shadow: 0 6px 15px rgba(255, 120, 21, 0.12);
         transform: translateY(-2px);
+        border-color: #FFC299;
     }
 
-    /* ĐÃ HOÀN THÀNH - MÀU TÍM LAVENDER NỔI BẬT THEO YÊU CẦU */
+    /* ĐÃ HOÀN THÀNH - MÀU TÍM LAVENDER NỔI BẬT */
     .slot-completed {
-        background-color: #F5EEFF;
-        border: 1px solid #E8D8FF;
+        background-color: #FAF5FF; /* Premium lavender purple */
+        border: 1px solid #ECD9FF;
         color: #8B4DFF;
     }
 
     .slot-completed:hover {
-        box-shadow: 0 4px 15px rgba(139, 77, 255, 0.15);
+        box-shadow: 0 6px 15px rgba(139, 77, 255, 0.15);
         transform: translateY(-2px);
+        border-color: #D3B3FF;
     }
 
     .slot-booked-pet {
@@ -460,14 +493,14 @@
         opacity: 1;
     }
 
-    /* Right Real-time Queue panel */
+    /* Right Real-time Queue panel - Charcoal Dark Slate Theme */
     .queue-sidebar-card {
-        background-color: #312723;
-        border: none;
-        border-radius: 20px;
+        background-color: #251E1B; /* Dark charcoal slate */
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 24px; /* Enhanced bo góc */
         padding: 24px 20px;
         color: #FFFFFF;
-        box-shadow: 0 10px 30px rgba(49, 39, 35, 0.15);
+        box-shadow: 0 15px 40px rgba(45, 37, 33, 0.12);
         height: 100%;
         display: flex;
         flex-direction: column;
@@ -521,17 +554,30 @@
         max-height: 520px;
     }
 
+    /* Modern scrollbar for queue panel */
+    .queue-cards-wrapper::-webkit-scrollbar {
+        width: 4px;
+    }
+    .queue-cards-wrapper::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .queue-cards-wrapper::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.1);
+        border-radius: 10px;
+    }
+
     .queue-item-card {
-        background-color: #3C312D;
-        border: 1px solid rgba(255,255,255,0.05);
-        border-radius: 16px;
+        background-color: #2F2622; /* Card background in charcoal */
+        border: 1px solid rgba(255,255,255,0.03);
+        border-radius: 18px; /* Bo góc mượt */
         padding: 16px;
-        transition: transform 0.25s;
+        transition: var(--transition-smooth);
     }
 
     .queue-item-card:hover {
         transform: translateY(-2px);
-        background-color: #453935;
+        background-color: #382E2A;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
     }
 
     .queue-item-row1 {
@@ -598,7 +644,7 @@
         background-color: #FF7815;
         color: #FFFFFF;
         border: none;
-        border-radius: 10px;
+        border-radius: 12px; /* Pill button */
         padding: 8px;
         font-size: 0.78rem;
         font-weight: 700;
@@ -608,12 +654,13 @@
         justify-content: center;
         gap: 6px;
         box-shadow: 0 4px 12px rgba(255, 120, 21, 0.2);
-        transition: all 0.25s;
+        transition: var(--transition-smooth);
     }
 
     .queue-start-btn:hover {
         background-color: #E0630D;
-        transform: translateY(-1px);
+        transform: scale(1.02);
+        box-shadow: 0 6px 15px rgba(255, 120, 21, 0.3);
     }
 
     .queue-sidebar-footer {
@@ -2413,6 +2460,16 @@
             // =========================================================================
             // 9. REAL-TIME QUEUE POLLING EVERY 30 SECONDS
             // =========================================================================
+            function escapeHtml(str) {
+                if (!str) return '';
+                return str.toString()
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+
             var currentQueuePage = @ViewBag.QueuePage;
             setInterval(function () {
                 $.getJSON('/SpaServices/GetRealtimeQueue', { page: currentQueuePage }, function (data) {
@@ -2422,25 +2479,25 @@
                     $.each(data.queue, function (index, item) {
                         html += '<div class="queue-item-card" id="queueItem-' + item.queueId + '">';
                         html += '  <div class="queue-item-row1">';
-                        html += '    <span class="queue-number-badge"><i class="fa-solid fa-ticket"></i> ' + item.queueNumber + '</span>';
-                        html += '    <span class="queue-arrival-time">' + item.arrivalTime + '</span>';
+                        html += '    <span class="queue-number-badge"><i class="fa-solid fa-ticket"></i> ' + escapeHtml(item.queueNumber) + '</span>';
+                        html += '    <span class="queue-arrival-time">' + escapeHtml(item.arrivalTime) + '</span>';
                         html += '  </div>';
-                        html += '  <p class="queue-pet-name">' + item.petName + '</p>';
-                        html += '  <p class="queue-service-name">' + item.serviceDescription + '</p>';
+                        html += '  <p class="queue-pet-name">' + escapeHtml(item.petName) + '</p>';
+                        html += '  <p class="queue-service-name">' + escapeHtml(item.serviceDescription) + '</p>';
                         
                         if (item.note) {
-                            html += '  <div class="queue-note-text"><strong>Ghi chú:</strong> ' + item.note + '</div>';
+                            html += '  <div class="queue-note-text"><strong>Ghi chú:</strong> ' + escapeHtml(item.note) + '</div>';
                         }
                         
-                        html += '  <p class="queue-owner-text">Khách: <strong>' + item.ownerName + '</strong></p>';
+                        html += '  <p class="queue-owner-text">Khách: <strong>' + escapeHtml(item.ownerName) + '</strong></p>';
                         html += '  <div class="d-flex gap-1 mt-2">';
-                        html += '    <button class="btn btn-sm btn-start-queue flex-grow-1" data-id="' + item.queueId + '" data-number="' + item.queueNumber + '" style="background-color: #FF7815; color: #FFFFFF; border: none; font-size: 0.72rem; font-weight: 700; border-radius: 8px; padding: 6px 10px;">';
+                        html += '    <button class="btn btn-sm btn-start-queue flex-grow-1" data-id="' + item.queueId + '" data-number="' + escapeHtml(item.queueNumber) + '" style="background-color: #FF7815; color: #FFFFFF; border: none; font-size: 0.72rem; font-weight: 700; border-radius: 8px; padding: 6px 10px;">';
                         html += '      <i class="fa-solid fa-play"></i> BẮT ĐẦU';
                         html += '    </button>';
                         html += '    <button class="btn btn-sm btn-view-queue-details" data-id="' + item.queueId + '" style="background-color: #17a2b8; color: #FFFFFF; border: none; font-size: 0.72rem; font-weight: 700; border-radius: 8px; padding: 6px 10px;" title="Xem chi tiết">';
                         html += '      <i class="fa-solid fa-circle-info"></i> CHI TIẾT';
                         html += '    </button>';
-                        html += '    <button class="btn btn-sm btn-cancel-queue" data-id="' + item.queueId + '" data-number="' + item.queueNumber + '" style="background-color: #dc3545; color: #FFFFFF; border: none; font-size: 0.72rem; font-weight: 700; border-radius: 8px; padding: 6px 10px;" title="Hủy lịch hẹn">';
+                        html += '    <button class="btn btn-sm btn-cancel-queue" data-id="' + item.queueId + '" data-number="' + escapeHtml(item.queueNumber) + '" style="background-color: #dc3545; color: #FFFFFF; border: none; font-size: 0.72rem; font-weight: 700; border-radius: 8px; padding: 6px 10px;" title="Hủy lịch hẹn">';
                         html += '      <i class="fa-solid fa-trash"></i> HỦY';
                         html += '    </button>';
                         html += '  </div>';
@@ -2455,7 +2512,7 @@
                 var toastHtml = '<div class="toast align-items-center text-white bg-' + type + ' border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true" style="border-radius: 12px; margin-bottom: 10px;">' +
                                 '  <div class="d-flex">' +
                                 '    <div class="toast-body">' +
-                                '      <i class="fa-solid ' + (type === 'success' ? 'fa-circle-check' : 'fa-circle-xmark') + ' me-2"></i> ' + message +
+                                '      <i class="fa-solid ' + (type === 'success' ? 'fa-circle-check' : 'fa-circle-xmark') + ' me-2"></i> ' + escapeHtml(message) +
                                 '    </div>' +
                                 '    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>' +
                                 '  </div>' +

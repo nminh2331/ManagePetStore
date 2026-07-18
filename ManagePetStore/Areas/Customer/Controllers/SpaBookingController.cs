@@ -91,6 +91,51 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 .Take(pageSize)
                 .ToListAsync();
 
+            // Batch sync payment status with POS orders to avoid N+1 queries
+            var unpaidBookingsWithOrders = new List<(SpaBooking Booking, string OrderId)>();
+            foreach (var booking in visibleBookings)
+            {
+                if (booking.Status != "Đã thanh toán" && booking.Status != "Success" && booking.Status != "PAID")
+                {
+                    if (!string.IsNullOrEmpty(booking.Notes))
+                    {
+                        var match = System.Text.RegularExpressions.Regex.Match(booking.Notes, @"\[POS\s+(OD-\d+)\]");
+                        if (match.Success)
+                        {
+                            unpaidBookingsWithOrders.Add((booking, match.Groups[1].Value));
+                        }
+                    }
+                }
+            }
+
+            if (unpaidBookingsWithOrders.Any())
+            {
+                var orderIds = unpaidBookingsWithOrders.Select(x => x.OrderId).Distinct().ToList();
+                var ordersMap = await _context.Orders
+                    .AsNoTracking()
+                    .Where(o => orderIds.Contains(o.OrderId))
+                    .ToDictionaryAsync(o => o.OrderId, o => o.Status);
+
+                bool hasChanges = false;
+                foreach (var item in unpaidBookingsWithOrders)
+                {
+                    if (ordersMap.TryGetValue(item.OrderId, out var orderStatus))
+                    {
+                        if (orderStatus == "Đã thanh toán" || orderStatus == "Chờ xử lý" || orderStatus == "PAID")
+                        {
+                            item.Booking.Status = "Đã thanh toán";
+                            _context.Entry(item.Booking).State = EntityState.Modified;
+                            hasChanges = true;
+                        }
+                    }
+                }
+
+                if (hasChanges)
+                {
+                    await _context.SaveChangesAsync();
+                }
+            }
+
             var visibleBookingIds = visibleBookings.Select(b => b.BookingId).ToList();
             var reviewedBookingIds = await _context.SpaReviews
                 .AsNoTracking()
@@ -164,34 +209,92 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 return Json(new { success = false, message = "Không tìm thấy thông tin lịch hẹn." });
             }
 
+            // Sync payment status with POS order if unpaid
+            if (booking.Status != "Đã thanh toán" && booking.Status != "Success" && booking.Status != "PAID" && !string.IsNullOrEmpty(booking.Notes))
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(booking.Notes, @"\[POS\s+(OD-\d+)\]");
+                if (match.Success)
+                {
+                    string orderId = match.Groups[1].Value;
+                    var orderStatus = await _context.Orders
+                        .AsNoTracking()
+                        .Where(o => o.OrderId == orderId)
+                        .Select(o => o.Status)
+                        .FirstOrDefaultAsync();
+
+                    if (orderStatus == "Đã thanh toán" || orderStatus == "Chờ xử lý" || orderStatus == "PAID")
+                    {
+                        booking.Status = "Đã thanh toán";
+                        await _context.SaveChangesAsync();
+                    }
+                }
+            }
+
             var statuses = new[] { "Tiếp nhận", "Tắm & Sấy", "Cắt & Tỉa", "Massage", "Hoàn thành" };
             var completedIndexes = new List<int>();
             int activeIndex = 0;
 
             var dbStatus = booking.SpaStatus ?? "0";
+
+            if (dbStatus == "Cancelled")
+            {
+                return Json(new { success = true, isCancelled = true, isCompleted = false,
+                    serviceName = booking.Service?.Name ?? "Dịch vụ Spa",
+                    bookingDate = booking.DateTime.ToString("dd/MM/yyyy HH:mm"),
+                    activeIndex = -1, completedIndexes, notes = booking.Notes ?? "" });
+            }
+
             if (dbStatus.Contains("|"))
             {
+                // Format mới: "0,1,2|3" hoặc "0,1,2,3,4|4"
                 var parts = dbStatus.Split('|');
                 if (!string.IsNullOrEmpty(parts[0]))
                 {
-                    completedIndexes = parts[0].Split(',').Select(int.Parse).ToList();
+                    completedIndexes = parts[0].Split(',')
+                        .Where(s => int.TryParse(s.Trim(), out _))
+                        .Select(s => int.Parse(s.Trim()))
+                        .ToList();
                 }
                 int.TryParse(parts[1], out activeIndex);
             }
+            else if (int.TryParse(dbStatus, out int numericIdx))
+            {
+                // Format số thuần: "0", "1", "2"...
+                // Các bước trước đó coi là completed
+                for (int i = 0; i < numericIdx; i++) completedIndexes.Add(i);
+                activeIndex = numericIdx;
+            }
             else
             {
+                // Format text cũ: "Tiếp nhận", "Running", "Hoàn thành"
                 int idx = Array.IndexOf(statuses, dbStatus);
-                if (idx != -1) activeIndex = idx;
-                else int.TryParse(dbStatus, out activeIndex);
+                if (idx == -1 && (dbStatus == "Running" || dbStatus == "InProgress")) idx = 1;
+                if (idx == -1) idx = 0;
+                // Các bước trước đó coi là completed
+                for (int i = 0; i < idx; i++) completedIndexes.Add(i);
+                activeIndex = idx;
+            }
+
+            // Nếu activeIndex đã nằm trong completedIndexes → tất cả bước đã hoàn thành
+            bool isFullyCompleted = completedIndexes.Contains(activeIndex)
+                || booking.Status == "Hoàn thành"
+                || booking.Status == "Đã thanh toán";
+            int resolvedActiveIndex = isFullyCompleted ? -1 : activeIndex;
+
+            // Nếu hoàn thành toàn bộ, đảm bảo tất cả 5 bước đều trong completedIndexes
+            if (isFullyCompleted)
+            {
+                completedIndexes = new List<int> { 0, 1, 2, 3, 4 };
             }
 
             return Json(new
             {
                 success = true,
-                isCancelled = booking.SpaStatus == "Cancelled",
+                isCancelled = false,
+                isCompleted = isFullyCompleted,
                 serviceName = booking.Service?.Name ?? "Dịch vụ Spa",
                 bookingDate = booking.DateTime.ToString("dd/MM/yyyy HH:mm"),
-                activeIndex = activeIndex,
+                activeIndex = resolvedActiveIndex,
                 completedIndexes = completedIndexes,
                 notes = booking.Notes ?? "Không có dặn dò đặc biệt."
             });

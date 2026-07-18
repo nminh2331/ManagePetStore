@@ -1163,6 +1163,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
             {
                 "admin"     => RedirectToAction("Index", "Home", new { area = "Admin" }),
                 "service"   => Redirect("/SpaServices"), // Redirect directly to SpaServices operational dashboard
+                "cashier"   => RedirectToAction("Index", "Order", new { area = "Cashier" }), // Redirect directly to Cashier POS
                 "warehouse" => RedirectToAction("Index", "Home", new { area = "Warehouse" }),
                 "manager"   => RedirectToAction("Index", "Order", new { area = "Manager" }),
                 // customer or any other role → public home
@@ -1178,6 +1179,10 @@ namespace ManagePetStore.Areas.Customer.Controllers
             if (User.IsInRole("service"))
             {
                 return Redirect("/SpaServices"); // Redirect directly to SpaServices operational dashboard
+            }
+            if (User.IsInRole("cashier"))
+            {
+                return RedirectToAction("Index", "Order", new { area = "Cashier" }); // Redirect directly to Cashier POS
             }
             if (User.IsInRole("warehouse"))
                 return RedirectToAction("Index", "Home", new { area = "Warehouse" });
