@@ -1,15 +1,9 @@
-﻿/**
- * Project: Pet Store Management System (PSMS)
- * File: StockMovementService.cs
- * Author: Tran Duong
- * Date: June 11, 2026
- * Last Update: July 17, 2026
- * Description: Triá»ƒn khai dá»‹ch vá»¥ quáº£n lÃ½ xuáº¥t/nháº­p kho.
- */
 using ManagePetStore.Repositories.Warehouse;
 using ManagePetStore.Exceptions;
 using ManagePetStore.Models;
 using ManagePetStore.Repositories;
+using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace ManagePetStore.Services.Warehouse;
 
@@ -18,17 +12,20 @@ public class StockMovementService : IStockMovementService
     private readonly IStockMovementRepository _movementRepo;
     private readonly IProductRepository _productRepo;
     private readonly IInventoryBatchService _batchService;
+    private readonly IInventoryBatchRepository _batchRepo;
     private readonly PetStoreManagementContext _context;
 
     public StockMovementService(
         IStockMovementRepository movementRepo,
         IProductRepository productRepo,
         IInventoryBatchService batchService,
+        IInventoryBatchRepository batchRepo,
         PetStoreManagementContext context)
     {
         _movementRepo = movementRepo;
         _productRepo = productRepo;
         _batchService = batchService;
+        _batchRepo = batchRepo;
         _context = context;
     }
 
@@ -45,14 +42,14 @@ public class StockMovementService : IStockMovementService
     public async Task CreateImportOrder(int userId, int? supplierId, List<StockMovementDetail> details)
     {
         if (details == null || !details.Any())
-            throw new ServiceException("ÄÆ¡n nháº­p pháº£i cÃ³ Ã­t nháº¥t 1 sáº£n pháº©m.");
+            throw new ServiceException("Đơn nhập phải có ít nhất 1 sản phẩm.");
 
         decimal totalValue = details.Sum(d => d.Quantity * d.CostPrice);
 
         var movement = new StockMovement
         {
-            Type = "Nháº­p hÃ ng",
-            Status = "Chá» quáº£n lÃ½ duyá»‡t",
+            Type = "Nhập hàng",
+            Status = "Chờ quản lý duyệt",
             SupplierId = supplierId,
             CreatedById = userId,
             Date = DateTime.Now,
@@ -66,128 +63,180 @@ public class StockMovementService : IStockMovementService
     public async Task CreateInternalExport(int userId, string note, List<StockMovementDetail> details)
     {
         if (details == null || !details.Any())
-            throw new ServiceException("Phiáº¿u xuáº¥t pháº£i cÃ³ Ã­t nháº¥t 1 sáº£n pháº©m.");
+            throw new ServiceException("Phiếu xuất phải có ít nhất 1 sản phẩm.");
 
         foreach (var detail in details)
         {
             var product = await _productRepo.GetProductBySku(detail.ProductSku);
-            if (product == null) throw new ServiceException($"Sáº£n pháº©m {detail.ProductSku} khÃ´ng tá»“n táº¡i.");
+            if (product == null) throw new ServiceException($"Sản phẩm {detail.ProductSku} không tồn tại.");
             if (product.Stock < detail.Quantity)
-                throw new ServiceException($"Sáº£n pháº©m {product.Name} khÃ´ng Ä‘á»§ tá»“n kho (CÃ²n: {product.Stock}, YÃªu cáº§u: {detail.Quantity}).");
+                throw new ServiceException($"Sản phẩm {product.Name} không đủ tồn kho (Còn: {product.Stock}, Yêu cầu: {detail.Quantity}).");
         }
 
         var movement = new StockMovement
         {
-            Type = "Xuáº¥t ná»™i bá»™",
-            Status = "Chá» quáº£n lÃ½ duyá»‡t",
-            Supplier = note, // Táº­n dá»¥ng trÆ°á»ng Supplier Ä‘á»ƒ ghi chÃº má»¥c Ä‘Ã­ch xuáº¥t
+            Type = "Xuất nội bộ",
+            Status = "Chờ quản lý duyệt",
+            Supplier = note, // Tận dụng trường Supplier để ghi chú mục đích xuất
             CreatedById = userId,
             Date = DateTime.Now,
-            TotalValue = 0, // Xuáº¥t ná»™i bá»™ cÃ³ thá»ƒ khÃ´ng tÃ­nh tiá»n
+            TotalValue = 0, // Xuất nội bộ có thể không tính tiền
             StockMovementDetails = details
         };
 
         await _movementRepo.AddMovement(movement);
     }
 
-    public async Task ApproveMovement(int movementId, int approvedById, Dictionary<int, DateTime>? expiryDates = null)
+    public async Task ApproveMovement(int movementId, int approvedById, Dictionary<int, DateTime>? expiryDates = null, List<BatchAllocation>? allocations = null)
     {
-        // Xá»­ lÃ½ Race Condition: Sá»­ dá»¥ng Transaction vá»›i má»©c Serializable Ä‘á»ƒ lock cÃ¡c thao tÃ¡c Ä‘á»c/ghi liÃªn quan Ä‘áº¿n phiáº¿u nÃ y
-        using var transaction = await _context.Database.BeginTransactionAsync();
+        await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         try
         {
             var movement = await _movementRepo.GetMovementById(movementId);
-            if (movement == null) throw new ServiceException("KhÃ´ng tÃ¬m tháº¥y phiáº¿u.");
+            if (movement == null) throw new ServiceException("Không tìm thấy phiếu.");
             
-            string originalStatus = movement.Status;
-
-            if (movement.Status == "Chá» quáº£n lÃ½ duyá»‡t")
+            if (movement.Status == "Chờ quản lý duyệt")
             {
-                if (movement.Type == "Nháº­p hÃ ng")
+                if (movement.Type == "Nhập hàng")
                 {
-                    movement.Status = "Chá» kiá»ƒm hÃ ng";
+                    movement.Status = "Chờ kiểm hàng";
                     await _movementRepo.UpdateMovement(movement);
                     await transaction.CommitAsync();
-                    return; // Manager duyá»‡t xong thÃ¬ dá»«ng láº¡i chá» Warehouse kiá»ƒm hÃ ng
+                    return; // Manager duyệt xong thì dừng lại chờ Warehouse kiểm hàng
                 }
-                else if (movement.Type == "Xuáº¥t ná»™i bá»™")
+                else if (movement.Type == "Xuất nội bộ")
                 {
-                    movement.Status = "HoÃ n thÃ nh";
+                    movement.Status = "Hoàn thành";
                     await _movementRepo.UpdateMovement(movement);
-                    // Tiáº¿p tá»¥c xuá»‘ng dÆ°á»›i Ä‘á»ƒ trá»« kho
+                    // Tiếp tục xuống dưới để trừ kho
                 }
             }
-            else if (movement.Status == "Chá» kiá»ƒm hÃ ng" && movement.Type == "Nháº­p hÃ ng")
+            else if (movement.Status == "Chờ kiểm hàng" && (movement.Type == "Nhập hàng" || movement.Type == "Nhập kho (Hủy đơn)"))
             {
-                movement.Status = "HoÃ n thÃ nh";
+                movement.Status = "Hoàn thành";
                 await _movementRepo.UpdateMovement(movement);
-                // Tiáº¿p tá»¥c xuá»‘ng dÆ°á»›i Ä‘á»ƒ cá»™ng kho
+                // Tiếp tục xuống dưới để cộng kho
             }
             else
             {
-                throw new ServiceException($"Phiáº¿u Ä‘ang á»Ÿ tráº¡ng thÃ¡i '{movement.Status}' nÃªn khÃ´ng thá»ƒ thao tÃ¡c duyá»‡t.");
+                throw new ServiceException($"Phiếu đang ở trạng thái '{movement.Status}' nên không thể thao tác duyệt.");
             }
 
-        if (movement.Type == "Nháº­p hÃ ng")
-        {
-            // Táº¡o batch, cá»™ng tá»“n kho vÃ  cáº­p nháº­t giÃ¡ bÃ¬nh quÃ¢n gia quyá»n cho tá»«ng chi tiáº¿t
-            foreach (var detail in movement.StockMovementDetails)
+            if (movement.Type == "Nhập hàng" || movement.Type == "Nhập kho (Hủy đơn)")
             {
-                // Láº¥y sáº£n pháº©m vÃ  tá»“n kho TRÆ¯á»šC khi táº¡o batch Ä‘á»ƒ tÃ­nh giÃ¡ bÃ¬nh quÃ¢n chÃ­nh xÃ¡c
-                var product = await _productRepo.GetProductBySku(detail.ProductSku);
-                int stockBefore = product?.Stock ?? 0; // LÆ°u tá»“n kho cÅ© trÆ°á»›c khi CreateBatch thay Ä‘á»•i nÃ³
-
-                // Láº¥y HSD do nhÃ¢n viÃªn kiá»ƒm hÃ ng Ä‘Ã£ Ä‘iá»n, náº¿u khÃ´ng cÃ³ thÃ¬ máº·c Ä‘á»‹nh 1 nÄƒm
-                DateTime expiryDate = expiryDates != null && expiryDates.TryGetValue(detail.DetailId, out var d)
-                    ? d
-                    : DateTime.Now.AddYears(1);
-
-                var batch = new InventoryBatch
+                if (allocations != null && allocations.Any())
                 {
-                    ProductSku = detail.ProductSku,
-                    Quantity = detail.Quantity,
-                    CurrentQuantity = detail.Quantity,
-                    ExpiryDate = expiryDate,
-                    ReceivedDate = DateTime.Now
-                };
-                await _batchService.CreateBatch(batch); // Stock tÄƒng lÃªn sau bÆ°á»›c nÃ y
+                    // Validate allocations sum
+                    foreach (var detail in movement.StockMovementDetails)
+                    {
+                        int sumAllocated = allocations.Where(a => a.DetailId == detail.DetailId).Sum(a => a.Quantity);
+                        if (sumAllocated != detail.Quantity)
+                        {
+                            throw new ServiceException($"Số lượng phân bổ ({sumAllocated}) không khớp với SL cần nhập ({detail.Quantity}) của sản phẩm {detail.ProductSku}.");
+                        }
+                    }
 
-                // Cáº­p nháº­t giÃ¡ bÃ¬nh quÃ¢n gia quyá»n (Weighted Average Cost)
-                // CÃ´ng thá»©c: (Tá»“n cÅ© Ã— GiÃ¡ cÅ© + SL má»›i Ã— GiÃ¡ má»›i) / (Tá»“n cÅ© + SL má»›i)
-                if (product != null)
+                    foreach (var alloc in allocations)
+                    {
+                        if (alloc.Quantity <= 0) continue;
+
+                        var detail = movement.StockMovementDetails.First(d => d.DetailId == alloc.DetailId);
+                        var product = await _productRepo.GetProductBySku(detail.ProductSku);
+                        int stockBefore = product?.Stock ?? 0;
+
+                        if (alloc.BatchId > 0)
+                        {
+                            // Cộng dồn vào lô cũ thông qua BatchService (sẽ tự cộng Stock)
+                            var batches = await _batchRepo.GetBatchesByProductSku(detail.ProductSku);
+                            var batch = batches.FirstOrDefault(b => b.BatchId == alloc.BatchId);
+                            if (batch == null) throw new ServiceException("Không tìm thấy lô hàng đã chọn.");
+                            await _batchService.AdjustBatchQuantityAsync(batch.BatchId, alloc.Quantity);
+                        }
+                        else
+                        {
+                            // Tạo lô mới
+                            DateTime expiryDate = alloc.ExpiryDate ?? DateTime.Now.AddYears(1);
+                            var batch = new InventoryBatch
+                            {
+                                ProductSku = detail.ProductSku,
+                                Quantity = alloc.Quantity,
+                                CurrentQuantity = alloc.Quantity,
+                                ExpiryDate = expiryDate,
+                                ReceivedDate = DateTime.Now
+                            };
+                            await _batchService.CreateBatch(batch);
+                        }
+
+                        // Chỉ cập nhật giá vốn (CostPrice) nếu là Nhập hàng mới
+                        if (movement.Type == "Nhập hàng" && product != null)
+                        {
+                            decimal newAvgCost = stockBefore > 0
+                                ? (stockBefore * product.CostPrice + alloc.Quantity * detail.CostPrice)
+                                  / (stockBefore + alloc.Quantity)
+                                : detail.CostPrice;
+
+                            product.CostPrice = Math.Round(newAvgCost, 0);
+                            await _productRepo.UpdateProduct(product);
+                        }
+                    }
+                }
+                else
                 {
-                    decimal newAvgCost = stockBefore > 0
-                        ? (stockBefore * product.CostPrice + detail.Quantity * detail.CostPrice)
-                          / (stockBefore + detail.Quantity)
-                        : detail.CostPrice; // Náº¿u kho trá»‘ng thÃ¬ giÃ¡ má»›i = giÃ¡ lÃ´ vá»«a nháº­p
+                    // Logic cũ cho form duyệt nhập hàng cơ bản
+                    foreach (var detail in movement.StockMovementDetails)
+                    {
+                        var product = await _productRepo.GetProductBySku(detail.ProductSku);
+                        int stockBefore = product?.Stock ?? 0;
 
-                    product.CostPrice = Math.Round(newAvgCost, 0); // LÃ m trÃ²n Ä‘áº¿n Ä‘á»“ng
-                    await _productRepo.UpdateProduct(product);
+                        DateTime expiryDate = expiryDates != null && expiryDates.TryGetValue(detail.DetailId, out var d)
+                            ? d
+                            : DateTime.Now.AddYears(1);
+
+                        var batch = new InventoryBatch
+                        {
+                            ProductSku = detail.ProductSku,
+                            Quantity = detail.Quantity,
+                            CurrentQuantity = detail.Quantity,
+                            ExpiryDate = expiryDate,
+                            ReceivedDate = DateTime.Now
+                        };
+                        await _batchService.CreateBatch(batch);
+
+                        if (movement.Type == "Nhập hàng" && product != null)
+                        {
+                            decimal newAvgCost = stockBefore > 0
+                                ? (stockBefore * product.CostPrice + detail.Quantity * detail.CostPrice)
+                                  / (stockBefore + detail.Quantity)
+                                : detail.CostPrice;
+
+                            product.CostPrice = Math.Round(newAvgCost, 0);
+                            await _productRepo.UpdateProduct(product);
+                        }
+                    }
                 }
             }
-        }
-        else if (movement.Type == "Xuáº¥t ná»™i bá»™")
-        {
-            // Trá»« tá»“n kho theo FIFO
-            foreach (var detail in movement.StockMovementDetails)
+            else if (movement.Type == "Xuất nội bộ")
             {
-                await _batchService.DeductStockFIFO(detail.ProductSku, detail.Quantity);
-                // TODO: TÃ­nh nÄƒng tá»± Ä‘á»™ng táº¡o Ä‘Æ¡n nháº­p khi sáº¯p háº¿t hÃ ng sáº½ Ä‘Æ°á»£c triá»ƒn khai trong tÆ°Æ¡ng lai
+                // Trừ tồn kho theo FIFO
+                foreach (var detail in movement.StockMovementDetails)
+                {
+                    await _batchService.DeductStockFIFO(detail.ProductSku, detail.Quantity);
+                    // TODO: Tính năng tự động tạo đơn nhập khi sắp hết hàng sẽ được triển khai trong tương lai
+                }
             }
-        }
-        
-        await transaction.CommitAsync();
+            
+            await transaction.CommitAsync();
         }
         catch (ServiceException)
         {
             await transaction.RollbackAsync();
-            throw; // Giá»¯ nguyÃªn thÃ´ng bÃ¡o lá»—i logic nghiá»‡p vá»¥
+            throw; // Giữ nguyên thông báo lỗi logic nghiệp vụ
         }
         catch (Exception)
         {
             await transaction.RollbackAsync();
-            // ÄÃ³ng gÃ³i cÃ¡c lá»—i há»‡ thá»‘ng (nhÆ° Deadlock tá»« SQL Server) thÃ nh thÃ´ng bÃ¡o thÃ¢n thiá»‡n
-            throw new ServiceException("Há»‡ thá»‘ng Ä‘ang xá»­ lÃ½ phiáº¿u nÃ y hoáº·c cÃ³ lá»—i xung Ä‘á»™t. Vui lÃ²ng táº£i láº¡i trang vÃ  thá»­ láº¡i.");
+            // Đóng gói các lỗi hệ thống (như Deadlock từ SQL Server) thành thông báo thân thiện
+            throw new ServiceException("Hệ thống đang xử lý phiếu này hoặc có lỗi xung đột. Vui lòng tải lại trang và thử lại.");
         }
     }
 
@@ -210,16 +259,14 @@ public class StockMovementService : IStockMovementService
     public async Task CancelMovement(int movementId)
     {
         var movement = await _movementRepo.GetMovementById(movementId);
-        if (movement == null) throw new ServiceException("KhÃ´ng tÃ¬m tháº¥y phiáº¿u.");
-        if (movement.Status != "Chá» quáº£n lÃ½ duyá»‡t" && movement.Status != "Chá» kiá»ƒm hÃ ng") 
-            throw new ServiceException("KhÃ´ng thá»ƒ há»§y phiáº¿u Ä‘Ã£ hoÃ n thÃ nh hoáº·c Ä‘Ã£ há»§y.");
+        if (movement == null) throw new ServiceException("Không tìm thấy phiếu.");
+        if (movement.Status != "Chờ quản lý duyệt" && movement.Status != "Chờ kiểm hàng") 
+            throw new ServiceException("Không thể hủy phiếu đã hoàn thành hoặc đã hủy.");
 
-        movement.Status = "ÄÃ£ há»§y";
+        movement.Status = "Đã hủy";
         await _movementRepo.UpdateMovement(movement);
     }
 
-    // TODO: TÃ­nh nÄƒng tá»± Ä‘á»™ng táº¡o Ä‘Æ¡n nháº­p khi tá»“n kho xuá»‘ng dÆ°á»›i MinStock
-    // Sáº½ Ä‘Æ°á»£c triá»ƒn khai trong tÆ°Æ¡ng lai vá»›i cáº¥u hÃ¬nh per-product (báº­t/táº¯t, SL Ä‘áº·t, nhÃ  cung cáº¥p)
     public Task TriggerAutoReorderCheck(string productSku)
     {
         return Task.CompletedTask;

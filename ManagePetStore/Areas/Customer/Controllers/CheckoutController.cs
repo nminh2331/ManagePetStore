@@ -688,30 +688,12 @@ public class CheckoutController : Controller
         foreach (var item in order.OrderItems)
         {
             if (string.IsNullOrEmpty(item.ProductSku)) continue; // Bỏ qua SPA service
-            try
+            restoredDetails.Add(new StockMovementDetail
             {
-                await _inventoryBatchService.RestockToBatches(item.ProductSku, item.Quantity);
-                restoredDetails.Add(new StockMovementDetail
-                {
-                    ProductSku = item.ProductSku,
-                    Quantity = item.Quantity,
-                    CostPrice = item.Price
-                });
-            }
-            catch
-            {
-                // Fallback: cộng trực tiếp vào Product.Stock nếu batch service lỗi
-                await _context.Database.ExecuteSqlRawAsync(
-                    "UPDATE Products SET Stock = Stock + {1} WHERE Sku = {0}",
-                    item.ProductSku,
-                    item.Quantity);
-                restoredDetails.Add(new StockMovementDetail
-                {
-                    ProductSku = item.ProductSku,
-                    Quantity = item.Quantity,
-                    CostPrice = item.Price
-                });
-            }
+                ProductSku = item.ProductSku,
+                Quantity = item.Quantity,
+                CostPrice = item.Price
+            });
         }
 
         // Tạo phiếu nhập hoàn trả để ghi nhận lịch sử rõ ràng trong trang Lịch sử Xuất/Nhập Kho.
@@ -721,7 +703,7 @@ public class CheckoutController : Controller
             await _stockMovementService.CreateSystemMovement(
                 systemUserId: 1,
                 type: "Nhập kho (Hủy đơn)",
-                status: "Đã hoàn thành",
+                status: "Chờ kiểm hàng",
                 supplier: $"Hoàn trả đơn {order.OrderId}",
                 totalValue: restoredDetails.Sum(d => d.Quantity * d.CostPrice),
                 details: restoredDetails
@@ -780,10 +762,9 @@ public class CheckoutController : Controller
             catch (ManagePetStore.Exceptions.ServiceException)
             {
                 // Fallback to basic deduction if batch service throws (e.g., stock mismatch)
-                await _context.Database.ExecuteSqlRawAsync(
-                    "UPDATE Products SET Stock = CASE WHEN Stock >= {1} THEN Stock - {1} ELSE 0 END WHERE Sku = {0}",
-                    item.Sku,
-                    item.Quantity);
+                await _context.Products
+                    .Where(p => p.Sku == item.Sku)
+                    .ExecuteUpdateAsync(s => s.SetProperty(p => p.Stock, p => p.Stock >= item.Quantity ? p.Stock - item.Quantity : 0));
             }
         }
     }

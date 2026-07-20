@@ -23,6 +23,9 @@ public interface IInventoryBatchRepository
     /// Cập nhật lô hàng.
     Task UpdateBatch(InventoryBatch batch);
 
+    /// Điều chỉnh số lượng lô hàng an toàn (Atomic)
+    Task<int> AdjustBatchQuantityAsync(int batchId, int quantityDelta);
+
     /// Xóa lô hàng theo BatchId.
     Task DeleteBatch(int batchId);
 }

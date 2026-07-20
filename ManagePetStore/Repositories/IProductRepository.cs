@@ -34,5 +34,6 @@ public interface IProductRepository
     Task RestoreProduct(string sku);
 
     /// Returns true if a product with the given SKU exists.
+    Task AdjustStockAsync(string sku, int amount);
     Task<bool> ProductExists(string sku);
 }

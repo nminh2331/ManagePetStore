@@ -75,6 +75,7 @@ public class ProductController : Controller
         if (maxPrice.HasValue)
             query = query.Where(p => p.Price <= maxPrice.Value);
 
+        List<string>? matchedSkus = null;
         // 5. Filter: search (rất mạnh: bỏ space, chữ hoa chữ thường, không dấu)
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -102,7 +103,7 @@ public class ProductController : Controller
                 .Select(p => new { p.Sku, p.Name, p.Description, p.CategoryId })
                 .ToListAsync();
 
-            var matchedSkus = allProductsSearch
+            matchedSkus = allProductsSearch
                 .Where(p =>
                     RemoveDiacritics(p.Name.ToLowerInvariant()).Replace(" ", "").Contains(sNoDiacriticsNoSpace) ||
                     (p.Description != null && RemoveDiacritics(p.Description.ToLowerInvariant()).Replace(" ", "").Contains(sNoDiacriticsNoSpace)) ||
@@ -122,7 +123,7 @@ public class ProductController : Controller
             "in_stock"     => query.OrderByDescending(p => p.Stock).ThenBy(p => p.Name),
             "best_selling" => query.OrderByDescending(p =>
                                   p.OrderItems.Sum(oi => (int?)oi.Quantity) ?? 0),
-            _              => query.OrderByDescending(p => p.Sku) // "newest" — SKU mới hơn = to hơn
+            _              => query.OrderByDescending(p => p.InventoryBatches.Min(b => (DateTime?)b.ReceivedDate))
         };
 
         // 7. Pagination
@@ -153,8 +154,19 @@ public class ProductController : Controller
             .OrderBy(s => s.Name)
             .ToListAsync();
 
-        var categoryCounts = await _context.Products
-            .Where(p => !p.IsDeleted && p.CategoryId != null)
+        var categoryQuery = _context.Products.Where(p => !p.IsDeleted && p.Sku != "-1" && p.CategoryId != null);
+        if (!string.IsNullOrWhiteSpace(animalType))
+            categoryQuery = categoryQuery.Where(p => p.AnimalType == animalType || p.AnimalType == null || p.AnimalType == "Tất cả");
+        if (supplierId.HasValue)
+            categoryQuery = categoryQuery.Where(p => p.SupplierProducts.Any(sp => sp.SupplierId == supplierId.Value));
+        if (minPrice.HasValue)
+            categoryQuery = categoryQuery.Where(p => p.Price >= minPrice.Value);
+        if (maxPrice.HasValue)
+            categoryQuery = categoryQuery.Where(p => p.Price <= maxPrice.Value);
+        if (matchedSkus != null)
+            categoryQuery = categoryQuery.Where(p => matchedSkus.Contains(p.Sku));
+
+        var categoryCounts = await categoryQuery
             .GroupBy(p => p.CategoryId)
             .Select(g => new { CategoryId = g.Key ?? 0, Count = g.Count() })
             .ToDictionaryAsync(x => x.CategoryId, x => x.Count);
@@ -173,6 +185,13 @@ public class ProductController : Controller
         ViewBag.Page         = page;
         ViewBag.TotalPages   = totalPages;
         ViewBag.TotalItems   = totalItems;
+
+        var fifteenDaysAgo = DateTime.Now.AddDays(-15);
+        var newSkus = await _context.Products
+            .Where(p => !p.IsDeleted && p.InventoryBatches.Any() && p.InventoryBatches.Min(b => b.ReceivedDate) >= fifteenDaysAgo)
+            .Select(p => p.Sku)
+            .ToListAsync();
+        ViewBag.NewSkus = newSkus.ToHashSet();
 
         return View(products);
     }

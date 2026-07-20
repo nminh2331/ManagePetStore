@@ -1,10 +1,10 @@
-﻿/**
+/**
  * Project: Pet Store Management System (PSMS)
  * File: InventoryBatchService.cs
  * Author: Tran Duong
  * Date: June 10, 2026
- * Last Update: July 17, 2026
- * Description: Triá»ƒn khai dá»‹ch vá»¥ quáº£n lÃ½ lÃ´ hÃ ng vÃ  Ä‘á»“ng bá»™ sá»‘ lÆ°á»£ng tá»“n kho vá»›i Sáº£n pháº©m.
+ * Last Update: July 20, 2026
+ * Description: Triển khai dịch vụ quản lý lô hàng và đồng bộ tồn kho an toàn (Atomic).
  */
 using ManagePetStore.Repositories.Warehouse;
 using ManagePetStore.Exceptions;
@@ -38,48 +38,56 @@ public class InventoryBatchService : IInventoryBatchService
 
     public async Task CreateBatch(InventoryBatch batch)
     {
-        var product = await _productRepo.GetProductBySku(batch.ProductSku);
-        if (product == null)
-            throw new ServiceException($"KhÃ´ng tÃ¬m tháº¥y sáº£n pháº©m mÃ£ '{batch.ProductSku}'.");
+        if (!await _productRepo.ProductExists(batch.ProductSku))
+            throw new ServiceException($"Không tìm thấy sản phẩm mã '{batch.ProductSku}'.");
 
         batch.ReceivedDate = DateTime.Now;
         if (batch.Quantity < 0)
-            throw new ServiceException("Sá»‘ lÆ°á»£ng nháº­p khÃ´ng Ä‘Æ°á»£c Ã¢m.");
+            throw new ServiceException("Số lượng nhập không được âm.");
         
-        batch.CurrentQuantity = batch.Quantity; // Khi má»›i nháº­p, sá»‘ lÆ°á»£ng hiá»‡n táº¡i báº±ng sá»‘ lÆ°á»£ng nháº­p
+        batch.CurrentQuantity = batch.Quantity; // Khi mới nhập, số lượng hiện tại bằng số lượng nhập
 
         await _batchRepo.AddBatch(batch);
 
-        // Äá»“ng bá»™ Stock cá»§a Product
-        product.Stock += batch.CurrentQuantity;
-        await _productRepo.UpdateProduct(product);
+        // Đồng bộ Stock nguyên tử
+        await _productRepo.AdjustStockAsync(batch.ProductSku, batch.CurrentQuantity);
     }
 
     public async Task UpdateBatch(int batchId, int newQuantity, DateTime newExpiryDate)
     {
         var batch = await _batchRepo.GetBatchById(batchId);
         if (batch == null)
-            throw new ServiceException("KhÃ´ng tÃ¬m tháº¥y lÃ´ hÃ ng.");
+            throw new ServiceException("Không tìm thấy lô hàng.");
 
-        var product = await _productRepo.GetProductBySku(batch.ProductSku);
-        if (product == null)
-            throw new ServiceException("Sáº£n pháº©m cá»§a lÃ´ hÃ ng khÃ´ng tá»“n táº¡i.");
+        if (!await _productRepo.ProductExists(batch.ProductSku))
+            throw new ServiceException("Sản phẩm của lô hàng không tồn tại.");
 
         if (newQuantity < 0)
-            throw new ServiceException("Sá»‘ lÆ°á»£ng khÃ´ng Ä‘Æ°á»£c Ã¢m.");
+            throw new ServiceException("Số lượng không được âm.");
 
-        // TÃ­nh chÃªnh lá»‡ch Ä‘á»ƒ cáº­p nháº­t vÃ o Product
+        // Tính chênh lệch để cập nhật vào Product
         int diff = newQuantity - batch.CurrentQuantity;
 
         batch.CurrentQuantity = newQuantity;
         batch.ExpiryDate = newExpiryDate;
 
-        await _batchRepo.UpdateBatch(batch);
+        await _batchRepo.UpdateBatch(batch); // Cập nhật lô thủ công
 
-        // Äá»“ng bá»™ Stock cá»§a Product
-        product.Stock += diff;
-        if (product.Stock < 0) product.Stock = 0; // Äáº£m báº£o an toÃ n
-        await _productRepo.UpdateProduct(product);
+        // Đồng bộ Stock nguyên tử
+        await _productRepo.AdjustStockAsync(batch.ProductSku, diff);
+    }
+
+    public async Task AdjustBatchQuantityAsync(int batchId, int quantityDelta)
+    {
+        var batch = await _batchRepo.GetBatchById(batchId);
+        if (batch == null)
+            throw new ServiceException("Không tìm thấy lô hàng.");
+            
+        int affected = await _batchRepo.AdjustBatchQuantityAsync(batchId, quantityDelta);
+        if (affected == 0)
+            throw new ServiceException("Số lượng lô hàng không đủ hoặc đã bị thay đổi bởi người khác.");
+            
+        await _productRepo.AdjustStockAsync(batch.ProductSku, quantityDelta);
     }
 
     public async Task DeleteBatch(int batchId)
@@ -87,12 +95,9 @@ public class InventoryBatchService : IInventoryBatchService
         var batch = await _batchRepo.GetBatchById(batchId);
         if (batch != null)
         {
-            var product = await _productRepo.GetProductBySku(batch.ProductSku);
-            if (product != null)
+            if (await _productRepo.ProductExists(batch.ProductSku))
             {
-                product.Stock -= batch.CurrentQuantity;
-                if (product.Stock < 0) product.Stock = 0;
-                await _productRepo.UpdateProduct(product);
+                await _productRepo.AdjustStockAsync(batch.ProductSku, -batch.CurrentQuantity);
             }
 
             await _batchRepo.DeleteBatch(batchId);
@@ -101,69 +106,78 @@ public class InventoryBatchService : IInventoryBatchService
 
     public async Task DeductStockFIFO(string productSku, int quantityToDeduct)
     {
-        var product = await _productRepo.GetProductBySku(productSku);
-        if (product == null) throw new ServiceException("Sáº£n pháº©m khÃ´ng tá»“n táº¡i.");
+        if (!await _productRepo.ProductExists(productSku)) 
+            throw new ServiceException("Sản phẩm không tồn tại.");
 
-        if (product.Stock < quantityToDeduct)
-            throw new ServiceException($"Sá»‘ lÆ°á»£ng tá»“n kho khÃ´ng Ä‘á»§ Ä‘á»ƒ xuáº¥t ({product.Stock} < {quantityToDeduct}).");
-
-        var batches = (await _batchRepo.GetBatchesByProductSku(productSku))
-            .Where(b => b.CurrentQuantity > 0)
-            .OrderBy(b => b.ReceivedDate) // CÅ© nháº¥t xuáº¥t trÆ°á»›c
-            .ToList();
+        if (quantityToDeduct <= 0) return;
 
         int remainingToDeduct = quantityToDeduct;
+        int maxRetries = 10;
+        int retryCount = 0;
 
-        foreach (var batch in batches)
+        while (remainingToDeduct > 0 && retryCount < maxRetries)
         {
-            if (remainingToDeduct <= 0) break;
+            var batches = (await _batchRepo.GetBatchesByProductSku(productSku))
+                .Where(b => b.CurrentQuantity > 0)
+                .OrderBy(b => b.ReceivedDate) // Cũ nhất xuất trước
+                .ToList();
 
-            if (batch.CurrentQuantity <= remainingToDeduct)
+            if (!batches.Any())
             {
-                // Trá»« sáº¡ch lÃ´ nÃ y
-                remainingToDeduct -= batch.CurrentQuantity;
-                batch.CurrentQuantity = 0;
+                throw new ServiceException("Không đủ tồn kho.");
             }
-            else
+
+            foreach (var batch in batches)
             {
-                // Trá»« má»™t pháº§n lÃ´ nÃ y
-                batch.CurrentQuantity -= remainingToDeduct;
-                remainingToDeduct = 0;
+                if (remainingToDeduct <= 0) break;
+
+                int deductAmount = Math.Min(batch.CurrentQuantity, remainingToDeduct);
+
+                // Thử trừ số lượng lô hàng một cách nguyên tử
+                int affectedRows = await _batchRepo.AdjustBatchQuantityAsync(batch.BatchId, -deductAmount);
+                
+                if (affectedRows > 0)
+                {
+                    // Trừ thành công
+                    remainingToDeduct -= deductAmount;
+                }
+                else
+                {
+                    // Lô hàng đã bị thay đổi (Race Condition), break vòng lặp con để lấy lại danh sách lô hàng mới
+                    break;
+                }
             }
-            await _batchRepo.UpdateBatch(batch);
+            
+            retryCount++;
         }
 
-        // Cáº­p nháº­t tá»•ng tá»“n kho
-        product.Stock -= quantityToDeduct;
-        await _productRepo.UpdateProduct(product);
+        if (remainingToDeduct > 0)
+        {
+            throw new ServiceException($"Không đủ tồn kho để xuất. Hệ thống đang gặp nghẽn, vui lòng thử lại sau.");
+        }
+
+        // Cập nhật tổng tồn kho nguyên tử
+        await _productRepo.AdjustStockAsync(productSku, -quantityToDeduct);
     }
 
     public async Task RestockToBatches(string productSku, int quantityToRestock)
     {
-        var product = await _productRepo.GetProductBySku(productSku);
-        if (product == null) throw new ServiceException("Sáº£n pháº©m khÃ´ng tá»“n táº¡i.");
+        if (!await _productRepo.ProductExists(productSku)) 
+            throw new ServiceException("Sản phẩm không tồn tại.");
 
         if (quantityToRestock <= 0) return;
 
-        // TÃ¬m lÃ´ hÃ ng nháº­p vÃ o gáº§n nháº¥t (hoáº·c lÃ´ cÃ³ háº¡n sá»­ dá»¥ng xa nháº¥t)
+        // Tìm lô hàng nhập vào gần nhất
         var newestBatch = (await _batchRepo.GetBatchesByProductSku(productSku))
             .OrderByDescending(b => b.ReceivedDate)
             .FirstOrDefault();
 
         if (newestBatch != null)
         {
-            // Cá»™ng tráº£ láº¡i vÃ o lÃ´ má»›i nháº¥t
-            newestBatch.CurrentQuantity += quantityToRestock;
-            await _batchRepo.UpdateBatch(newestBatch);
-        }
-        else
-        {
-            // Náº¿u khÃ´ng cÃ³ báº¥t ká»³ lÃ´ nÃ o (hiáº¿m), ta cÃ³ thá»ƒ táº¡o 1 lÃ´ tá»± Ä‘á»™ng
-            // NhÆ°ng hiá»‡n táº¡i theo flow cÅ©, chá»‰ cáº§n bá» qua vÃ  cá»™ng vÃ o Product.Stock
+            await _batchRepo.AdjustBatchQuantityAsync(newestBatch.BatchId, quantityToRestock);
         }
 
-        // Cáº­p nháº­t tá»•ng tá»“n kho
-        product.Stock += quantityToRestock;
-        await _productRepo.UpdateProduct(product);
+        // Cập nhật tổng tồn kho
+        await _productRepo.AdjustStockAsync(productSku, quantityToRestock);
     }
 }

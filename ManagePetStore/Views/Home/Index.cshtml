@@ -84,7 +84,7 @@ else
     <section class="ps-section" id="best-sellers">
         <div class="ps-section-header">
             <h2 class="ps-section-title">Sản phẩm nổi bật</h2>
-            <a href="#categories" class="ps-filter-btn" aria-label="Lọc theo danh mục" style="padding: 6px 12px; border: 1px solid #ECE9E5; border-radius: 8px; color: #5D524D; display: inline-flex; align-items: center; justify-content: center;"><i class="bi bi-funnel"></i></a>
+            <a asp-controller="Product" asp-action="Index" class="ps-section-link">Xem tất cả &gt;</a>
         </div>
         @if (Model.BestSellers.Count > 0)
         {
