@@ -1,10 +1,10 @@
-﻿/**
+/**
  * Project: Pet Store Management System (PSMS)
  * File: ProductController.cs
  * Author: Tran Duong
  * Date: May 31, 2026
  * Last Update: July 17, 2026
- * Description: Xá»­ lÃ½ cÃ¡c yÃªu cáº§u HTTP cho chá»©c nÄƒng quáº£n lÃ½ sáº£n pháº©m trong kho hÃ ng (thÃªm, sá»­a, xÃ³a sáº£n pháº©m vÃ  theo dÃµi tÃ¬nh tráº¡ng tá»“n kho).
+ * Description: Xử lý các yêu cầu HTTP cho chức năng quản lý sản phẩm trong kho hàng (thêm, sửa, xóa sản phẩm và theo dõi tình trạng tồn kho).
  */
 using ManagePetStore.Exceptions;
 using ManagePetStore.Models;
@@ -43,7 +43,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             _movementRepo = movementRepo;
         }
 
-        // Hiá»ƒn thá»‹ danh sÃ¡ch sáº£n pháº©m
+        // Hiển thị danh sách sản phẩm
         public async Task<IActionResult> Index(string search, string filter = "active")
         {
             var summary = await _productService.GetProductSummary(search, filter);
@@ -60,14 +60,14 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return View(summary.Products);
         }
 
-        // Hiá»ƒn thá»‹ form thÃªm má»›i sáº£n pháº©m
+        // Hiển thị form thêm mới sản phẩm
         public async Task<IActionResult> Create()
         {
             ViewData["CategoryId"] = await _productService.GetCategorySelectList();
             return View();
         }
 
-        // Xá»­ lÃ½ thÃªm má»›i sáº£n pháº©m
+        // Xử lý thêm mới sản phẩm
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(
@@ -81,7 +81,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
                 var extension = Path.GetExtension(ImageFile.FileName).ToLowerInvariant();
                 if (!allowedExtensions.Contains(extension))
                 {
-                    ModelState.AddModelError("ImageUrl", "Chá»‰ cháº¥p nháº­n cÃ¡c Ä‘á»‹nh dáº¡ng áº£nh (.jpg, .jpeg, .png, .gif, .webp).");
+                    ModelState.AddModelError("ImageUrl", "Chỉ chấp nhận các định dạng ảnh (.jpg, .jpeg, .png, .gif, .webp).");
                 }
                 else
                 {
@@ -115,7 +115,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
                 int initialStock = product.Stock;
                 if (initialStock > 0)
                 {
-                    product.Stock = 0; // Äá»ƒ CreateBatch tá»± Ä‘á»™ng cá»™ng láº¡i
+                    product.Stock = 0; // Để CreateBatch tự động cộng lại
                 }
 
                 await _productService.CreateProduct(product);
@@ -142,9 +142,9 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
 
                     var movement = new StockMovement
                     {
-                        Type = "Nháº­p hÃ ng",
-                        Status = "HoÃ n thÃ nh",
-                        Supplier = "Khá»Ÿi táº¡o tá»“n kho ban Ä‘áº§u",
+                        Type = "Nhập hàng",
+                        Status = "Hoàn thành",
+                        Supplier = "Khởi tạo tồn kho ban đầu",
                         CreatedById = userId,
                         Date = DateTime.Now,
                         TotalValue = initialStock * costPrice,
@@ -167,17 +167,17 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             {
                 ModelState.AddModelError(string.Empty, ex.Message);
                 ViewData["CategoryId"] = await _productService.GetCategorySelectList(product.CategoryId);
-                // KhÃ´i phá»¥c láº¡i Stock náº¿u cÃ³ lá»—i
+                // Khôi phục lại Stock nếu có lỗi
                 if (product.Stock == 0 && ModelState.ErrorCount > 0)
                 {
-                    // Thá»±c cháº¥t náº¿u cÃ³ lá»—i tá»« DB thÃ¬ product.Stock Ä‘ang bá»‹ set thÃ nh 0, ta khÃ´ng thá»ƒ láº¥y láº¡i initialStock trá»« khi ta lÆ°u nÃ³.
-                    // ÄÆ¡n giáº£n nháº¥t lÃ  Ä‘á»ƒ nÃ³ 0, ngÆ°á»i dÃ¹ng nháº­p láº¡i.
+                    // Thực chất nếu có lỗi từ DB thì product.Stock đang bị set thành 0, ta không thể lấy lại initialStock trừ khi ta lưu nó.
+                    // Đơn giản nhất là để nó 0, người dùng nhập lại.
                 }
                 return View(product);
             }
         }
 
-        // Hiá»ƒn thá»‹ form chá»‰nh sá»­a sáº£n pháº©m
+        // Hiển thị form chỉnh sửa sản phẩm
         public async Task<IActionResult> Edit(string id)
         {
             if (id == null) return NotFound();
@@ -189,7 +189,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return View(product);
         }
 
-        // Xá»­ lÃ½ cáº­p nháº­t sáº£n pháº©m
+        // Xử lý cập nhật sản phẩm
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(
@@ -203,7 +203,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
                 return NotFound();
             }
 
-            // Láº¥y láº¡i Stock hiá»‡n táº¡i Ä‘á»ƒ khÃ´ng bá»‹ ghi Ä‘Ã¨ vÃ  Ä‘á»ƒ hiá»ƒn thá»‹ láº¡i náº¿u cÃ³ lá»—i validate
+            // Lấy lại Stock hiện tại để không bị ghi đè và để hiển thị lại nếu có lỗi validate
             var existingProduct = await _productService.GetProductBySku(id);
             if (existingProduct != null)
             {
@@ -216,7 +216,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
                 var extension = Path.GetExtension(ImageFile.FileName).ToLowerInvariant();
                 if (!allowedExtensions.Contains(extension))
                 {
-                    ModelState.AddModelError("ImageUrl", "Chá»‰ cháº¥p nháº­n cÃ¡c Ä‘á»‹nh dáº¡ng áº£nh (.jpg, .jpeg, .png, .gif, .webp).");
+                    ModelState.AddModelError("ImageUrl", "Chỉ chấp nhận các định dạng ảnh (.jpg, .jpeg, .png, .gif, .webp).");
                 }
                 else
                 {
@@ -268,7 +268,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             }
         }
 
-        // Xá»­ lÃ½ xÃ³a (hoáº·c áº©n) sáº£n pháº©m
+        // Xử lý xóa (hoặc ẩn) sản phẩm
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(string id)
@@ -277,7 +277,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // Xá»­ lÃ½ khÃ´i phá»¥c sáº£n pháº©m Ä‘Ã£ xÃ³a
+        // Xử lý khôi phục sản phẩm đã xóa
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Restore(string id)
