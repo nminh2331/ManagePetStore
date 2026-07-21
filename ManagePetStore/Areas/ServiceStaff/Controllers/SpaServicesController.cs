@@ -141,6 +141,9 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 .ToListAsync();
             ViewBag.Bookings = bookings;
 
+            var allActiveQueueItems = await _context.SpaQueues.AsNoTracking().ToListAsync();
+            ViewBag.AllActiveQueueItems = allActiveQueueItems;
+
             // Phân hệ 4.3: Hàng đợi Spa Real-time có PHÂN TRANG (PageSize = 4)
             int queuePageSize = 4;
             int totalQueueItems = await _context.SpaQueues.AsNoTracking().CountAsync(q => !q.QueueNumber.StartsWith("PEND-WI-"));
@@ -538,6 +541,10 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             }
             DateTime targetBookingDateTime = targetDate.Add(queueItem.ArrivalTime.TimeOfDay);
 
+            // Check if there is already a booking created online for this slot/pet/service
+            var existingBooking = await _context.SpaBookings
+                .FirstOrDefaultAsync(b => b.CustomerId == customer.CustomerId && b.PetId == pet.PetId && b.ServiceId == service.ServiceId && b.DateTime == targetBookingDateTime && b.SpaStatus != "Cancelled");
+
             // Kiểm tra trùng lịch của Groomer tại khung giờ này (áp dụng cho cả online và offline - Interval Overlap Check)
             var bookedSlotsToday = await _context.SpaBookings.AsNoTracking()
                 .Include(b => b.Service)
@@ -547,6 +554,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 .ToListAsync();
 
             bool isOverlap = bookedSlotsToday.Any(b => {
+                if (existingBooking != null && b.BookingId == existingBooking.BookingId) return false;
                 var existingStart = b.DateTime;
                 var existingEnd = b.DateTime.AddMinutes(b.Service?.DurationMinutes ?? 30);
                 var newStart = targetBookingDateTime;
@@ -558,10 +566,6 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             {
                 return Json(new { success = false, message = $"Kỹ thuật viên {groomer.FullName} đã có ca làm việc chồng lấp vào lúc {targetBookingDateTime:HH:mm}. Vui lòng chọn Kỹ thuật viên khác!" });
             }
-
-            // Check if there is already a booking created online for this slot/pet/service
-            var existingBooking = await _context.SpaBookings
-                .FirstOrDefaultAsync(b => b.CustomerId == customer.CustomerId && b.PetId == pet.PetId && b.ServiceId == service.ServiceId && b.DateTime == targetBookingDateTime && b.SpaStatus != "Cancelled");
 
             if (existingBooking != null)
             {
@@ -680,10 +684,19 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         [HttpPost("UpdateSpaStatus")]
         public async Task<IActionResult> UpdateSpaStatus(int bookingId, string status)
         {
-            var booking = await _context.SpaBookings.FindAsync(bookingId);
+            var booking = await _context.SpaBookings.Include(b => b.Pet).FirstOrDefaultAsync(b => b.BookingId == bookingId);
             if (booking == null)
             {
                 return Json(new { success = false, message = "Không tìm thấy lịch hẹn." });
+            }
+
+            if (booking.Pet != null)
+            {
+                bool isStillInQueue = await _context.SpaQueues.AnyAsync(q => q.PetName != null && q.PetName.Trim().ToLower() == booking.Pet.Name.Trim().ToLower() && q.ArrivalTime.Date == booking.DateTime.Date && q.ArrivalTime.Hour == booking.DateTime.Hour);
+                if (isStillInQueue)
+                {
+                    return Json(new { success = false, message = "Lịch hẹn này chưa được tiếp nhận từ Hàng đợi. Vui lòng nhấn nút 'BẮT ĐẦU' ở Hàng đợi Real-time trước khi cập nhật tiến độ." });
+                }
             }
 
             var statuses = SpaProgressStatuses;
@@ -932,10 +945,19 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             }
             DateTime targetDateTime = parsedDate.Date.Add(parsedTime);
 
-            var busyGroomerIds = await _context.SpaBookings
+            var activeQueueItems = await _context.SpaQueues.AsNoTracking().ToListAsync();
+
+            var busyBookings = await _context.SpaBookings
+                .AsNoTracking()
+                .Include(b => b.Pet)
                 .Where(b => b.DateTime == targetDateTime && b.SpaStatus != "Cancelled")
-                .Select(b => b.GroomerId)
                 .ToListAsync();
+
+            var busyGroomerIds = busyBookings
+                .Where(b => !activeQueueItems.Any(q => q.PetName != null && b.Pet != null && q.PetName.Trim().ToLower() == b.Pet.Name.Trim().ToLower() && q.ArrivalTime.Date == b.DateTime.Date && q.ArrivalTime.Hour == b.DateTime.Hour))
+                .Select(b => b.GroomerId)
+                .Distinct()
+                .ToList();
 
             return Json(busyGroomerIds);
         }

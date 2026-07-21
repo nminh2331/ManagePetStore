@@ -431,6 +431,21 @@
         border-color: #FFC299;
     }
 
+    /* Đang ở Hàng đợi chờ Check-in */
+    .slot-in-queue {
+        background-color: #FFFDF0;
+        border: 1px dashed #F59E0B;
+        color: #D97706;
+        position: relative;
+        cursor: pointer;
+    }
+
+    .slot-in-queue:hover {
+        box-shadow: 0 6px 15px rgba(245, 158, 11, 0.15);
+        transform: translateY(-2px);
+        border-color: #D97706;
+    }
+
     /* ĐÃ HOÀN THÀNH - MÀU TÍM LAVENDER NỔI BẬT */
     .slot-completed {
         background-color: #FAF5FF; /* Premium lavender purple */
@@ -1277,6 +1292,13 @@
                                             // Kiểm tra trạng thái hoàn thành: kết thúc bằng |4 (Hoàn thành) hoặc bằng chữ Hoàn thành
                                             bool isCompleted = booking.SpaStatus == "Hoàn thành" || (booking.SpaStatus != null && booking.SpaStatus.EndsWith("|4"));
 
+                                            var activeQueueList = ViewBag.AllActiveQueueItems as List<ManagePetStore.Models.SpaQueue> ?? new List<ManagePetStore.Models.SpaQueue>();
+                                            bool isInQueue = !isCompleted && activeQueueList.Any(q => 
+                                                q.PetName != null && booking.Pet != null &&
+                                                q.PetName.Trim().Equals(booking.Pet.Name.Trim(), StringComparison.OrdinalIgnoreCase) && 
+                                                q.ArrivalTime.Date == booking.DateTime.Date && 
+                                                q.ArrivalTime.Hour == booking.DateTime.Hour);
+
                                             if (isCompleted)
                                             {
                                                 <div class="schedule-slot-card slot-completed btn-view-progress" data-id="@booking.BookingId">
@@ -1288,11 +1310,23 @@
                                                     </button>
                                                 </div>
                                             }
+                                            else if (isInQueue)
+                                            {
+                                                <div class="schedule-slot-card slot-in-queue" data-id="@booking.BookingId" onclick="alert('Lịch hẹn của bé @booking.Pet.Name hiện đang ở Hàng đợi Real-time. Vui lòng nhấn nút BẮT ĐẦU tại danh sách Hàng đợi bên phải để phân công Groomer và bắt đầu ca!');">
+                                                    <p class="slot-booked-pet" style="color: #D97706;">@booking.Pet.Name</p>
+                                                    <p class="slot-booked-service" style="color: #B45309;">@booking.Service.Name</p>
+                                                    <span class="badge bg-warning text-dark" style="font-size: 0.55rem; padding: 2px 4px; border-radius: 4px; position: absolute; bottom: 4px; right: 6px;">Chờ check-in</span>
+                                                    <button class="slot-cancel-btn btn-cancel-booking" data-id="@booking.BookingId" title="Hủy lịch">
+                                                        <i class="fa-solid fa-circle-xmark"></i>
+                                                    </button>
+                                                </div>
+                                            }
                                             else
                                             {
                                                 <div class="schedule-slot-card slot-booked btn-view-progress" data-id="@booking.BookingId">
                                                     <p class="slot-booked-pet">@booking.Pet.Name</p>
                                                     <p class="slot-booked-service">@booking.Service.Name</p>
+                                                    <span class="badge" style="font-size: 0.55rem; padding: 2px 4px; border-radius: 4px; position: absolute; bottom: 4px; right: 6px; background-color: #FF7815; color: white;">Đang làm</span>
                                                     <button class="slot-cancel-btn btn-cancel-booking" data-id="@booking.BookingId" title="Hủy lịch">
                                                         <i class="fa-solid fa-circle-xmark"></i>
                                                     </button>

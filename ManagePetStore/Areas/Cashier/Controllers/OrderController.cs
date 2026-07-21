@@ -286,26 +286,36 @@ namespace ManagePetStore.Areas.Cashier.Controllers
         [HttpGet]
         public async Task<IActionResult> GetCompletedSpaBookings()
         {
+            var activeQueueItems = await _context.SpaQueues.AsNoTracking().ToListAsync();
+
             var bookings = await _context.SpaBookings
                 .AsNoTracking()
-                .Where(b => (b.SpaStatus == "4" || b.SpaStatus.EndsWith("|4"))
+                .Include(b => b.Pet)
+                .Include(b => b.Customer)
+                .Include(b => b.Service)
+                .Include(b => b.Groomer)
+                .Where(b => (b.SpaStatus == "4" || b.SpaStatus.EndsWith("|4") || b.SpaStatus == "Hoàn thành")
                          && (b.Status == "Chờ thanh toán" || b.Status == "pending" || b.Status == "Chưa thanh toán")
                          && (b.Notes == null || !b.Notes.Contains("OD-"))) // Chưa liên kết đơn POS
                 .OrderByDescending(b => b.DateTime)
+                .ToListAsync();
+
+            var validBookings = bookings
+                .Where(b => !activeQueueItems.Any(q => q.PetName != null && b.Pet != null && q.PetName.Trim().Equals(b.Pet.Name.Trim(), StringComparison.OrdinalIgnoreCase) && q.ArrivalTime.Date == b.DateTime.Date && q.ArrivalTime.Hour == b.DateTime.Hour))
                 .Select(b => new
                 {
                     BookingId = b.BookingId,
                     CustomerId = b.CustomerId,
-                    CustomerName = b.Customer.FullName,
-                    CustomerPhone = b.Customer.Phone,
-                    PetName = b.Pet.Name,
+                    CustomerName = b.Customer?.FullName ?? "Khách hàng",
+                    CustomerPhone = b.Customer?.Phone ?? "",
+                    PetName = b.Pet?.Name ?? "Thú cưng",
                     PetId = b.PetId,
-                    PetWeight = b.Pet.Weight,
-                    ServiceName = b.Service.Name,
+                    PetWeight = b.Pet?.Weight ?? 0,
+                    ServiceName = b.Service?.Name ?? "Dịch vụ Spa",
                     ServiceId = b.ServiceId,
                     Price = b.Price,
                     GroomerId = b.GroomerId,
-                    GroomerName = b.Groomer.FullName,
+                    GroomerName = b.Groomer?.FullName ?? "Groomer",
                     DateTime = b.DateTime.ToString("dd/MM/yyyy HH:mm"),
                     HeldForHotel = _context.HotelBookings.Any(hotel =>
                         hotel.PetId == b.PetId &&
@@ -314,9 +324,9 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                         b.DateTime >= hotel.CheckInDate &&
                         (!hotel.CheckOutDate.HasValue || b.DateTime <= hotel.CheckOutDate.Value))
                 })
-                .ToListAsync();
+                .ToList();
 
-            return Json(new { success = true, data = bookings });
+            return Json(new { success = true, data = validBookings });
         }
 
         [HttpGet]
