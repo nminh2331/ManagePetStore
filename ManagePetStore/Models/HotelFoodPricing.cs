@@ -8,6 +8,7 @@ public static class HotelFoodPricing
     public const decimal ExtraLargePetMultiplier = 1.80m;
     public const decimal PriceRoundingStep = 1000m;
 
+    // [nam] Tính đơn giá, số suất kho và tổng tiền thức ăn theo cân nặng của pet.
     public static HotelFoodPriceQuote Calculate(decimal basePricePerDay, decimal petWeightKg, int chargeableDays)
     {
         if (basePricePerDay <= 0)
@@ -41,6 +42,7 @@ public static class HotelFoodPricing
             WeightBand: ResolveWeightBand(normalizedWeight));
     }
 
+    // [nam] Chọn hệ số khẩu phần dựa trên nhóm cân nặng.
     public static decimal ResolvePortionMultiplier(decimal petWeightKg)
     {
         if (petWeightKg <= 5m) return SmallPetMultiplier;
@@ -49,6 +51,7 @@ public static class HotelFoodPricing
         return ExtraLargePetMultiplier;
     }
 
+    // [nam] Quy đổi số ngày và hệ số khẩu phần thành số đơn vị cần trừ kho.
     public static int CalculateInventoryUnits(int chargeableDays, decimal portionMultiplier)
     {
         int days = Math.Max(0, chargeableDays);
@@ -56,6 +59,7 @@ public static class HotelFoodPricing
         return (int)decimal.Ceiling(days * multiplier);
     }
 
+    // [nam] Trả về nhãn nhóm cân nặng dùng trong bảng giá và giao diện.
     public static string ResolveWeightBand(decimal petWeightKg)
     {
         if (petWeightKg <= 5m) return "Nhỏ (≤5kg)";
@@ -64,6 +68,7 @@ public static class HotelFoodPricing
         return "Rất lớn (>30kg)";
     }
 
+    // [nam] Làm tròn chi phí lên bội số giá quy định.
     private static decimal RoundUp(decimal value, decimal step)
     {
         if (value <= 0 || step <= 0) return Math.Max(0, value);

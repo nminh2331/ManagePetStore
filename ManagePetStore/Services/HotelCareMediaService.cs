@@ -13,11 +13,13 @@ public class HotelCareMediaService : IHotelCareMediaService
 
     private readonly IWebHostEnvironment _environment;
 
+    // [nam] Khởi tạo dịch vụ lưu media nhật ký chăm sóc trong web root.
     public HotelCareMediaService(IWebHostEnvironment environment)
     {
         _environment = environment;
     }
 
+    // [nam] Kiểm tra loại, dung lượng, chữ ký tệp và lưu media theo từng booking.
     public async Task<HotelCareMediaResult?> SaveAsync(int hotelBookingId, IFormFile? file)
     {
         if (file == null || file.Length == 0)
@@ -61,6 +63,7 @@ public class HotelCareMediaService : IHotelCareMediaService
         return new HotelCareMediaResult(publicUrl, isImage ? "Image" : "Video");
     }
 
+    // [nam] Xoá tệp media chỉ khi đường dẫn nằm trong thư mục hotel-care được cho phép.
     public Task DeleteAsync(string? publicUrl)
     {
         if (string.IsNullOrWhiteSpace(publicUrl) || !publicUrl.StartsWith("/uploads/hotel-care/", StringComparison.Ordinal))
@@ -79,6 +82,7 @@ public class HotelCareMediaService : IHotelCareMediaService
         return Task.CompletedTask;
     }
 
+    // [nam] Đối chiếu magic bytes để phát hiện tệp giả mạo phần mở rộng.
     private static async Task<bool> HasExpectedSignatureAsync(Stream stream, string extension)
     {
         var header = new byte[12];

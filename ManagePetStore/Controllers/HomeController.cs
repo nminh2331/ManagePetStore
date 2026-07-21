@@ -390,6 +390,7 @@ public class HomeController : Controller
         };
     }
 
+    // [nam] Quy đổi hạng thành viên thành phần trăm giảm giá hiển thị trên trang chủ.
     private static int ResolveHotelDiscountPercent(string? membershipTier)
     {
         return membershipTier?.Trim().ToLowerInvariant() switch

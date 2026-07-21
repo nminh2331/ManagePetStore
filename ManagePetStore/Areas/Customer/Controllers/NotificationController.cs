@@ -14,12 +14,14 @@ public class NotificationController : Controller
 {
     private readonly PetStoreManagementContext _context;
 
+    // [nam] Khởi tạo controller thông báo với ngữ cảnh dữ liệu của hệ thống.
     public NotificationController(PetStoreManagementContext context)
     {
         _context = context;
     }
 
     [HttpGet("")]
+    // [nam] Hiển thị các thông báo gần nhất và số lượng chưa đọc của khách hàng.
     public async Task<IActionResult> Index()
     {
         var identity = await GetIdentityAsync();
@@ -54,6 +56,7 @@ public class NotificationController : Controller
     }
 
     [HttpGet("Open/{id:long}")]
+    // [nam] Đánh dấu một thông báo là đã đọc và chuyển đến liên kết nội bộ an toàn.
     public async Task<IActionResult> Open(long id)
     {
         var customerId = await GetCustomerIdAsync();
@@ -83,6 +86,7 @@ public class NotificationController : Controller
 
     [HttpPost("MarkAllRead")]
     [ValidateAntiForgeryToken]
+    // [nam] Đánh dấu toàn bộ thông báo của khách hàng hiện tại là đã đọc.
     public async Task<IActionResult> MarkAllRead()
     {
         var customerId = await GetCustomerIdAsync();
@@ -103,6 +107,7 @@ public class NotificationController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    // [nam] Lấy CustomerId từ claim của tài khoản đang đăng nhập.
     private async Task<int?> GetCustomerIdAsync()
     {
         var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -117,6 +122,7 @@ public class NotificationController : Controller
             .FirstOrDefaultAsync();
     }
 
+    // [nam] Tải đồng thời thông tin User và Customer cho trang thông báo.
     private async Task<(User User, ManagePetStore.Models.Customer Customer)?> GetIdentityAsync()
     {
         var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

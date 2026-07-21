@@ -13,6 +13,7 @@ public class PrepareHotelCheckoutRequest : IValidatableObject
     [Range(typeof(decimal), "0", "100000000", ErrorMessage = "Chi phí phát sinh phải từ 0 đến 100.000.000đ.")]
     public decimal OtherAmount { get; set; }
 
+    // [nam] Kiểm tra mô tả và bước tiền của chi phí phát sinh khi lập bảng kê checkout.
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (OtherAmount > 0 && string.IsNullOrWhiteSpace(OtherDescription))

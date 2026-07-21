@@ -21,11 +21,13 @@ public class HotelBookingHistoryService : IHotelBookingHistoryService
 
     private readonly PetStoreManagementContext _context;
 
+    // [nam] Khởi tạo dịch vụ truy vấn lịch sử lưu trú.
     public HotelBookingHistoryService(PetStoreManagementContext context)
     {
         _context = context;
     }
 
+    // [nam] Tổng hợp booking, nhật ký, hồ sơ y tế và checkout thành màn hình lịch sử chi tiết.
     public async Task<HotelBookingHistoryDetailViewModel?> GetDetailAsync(
         int hotelBookingId,
         int? customerId = null)
@@ -205,6 +207,7 @@ public class HotelBookingHistoryService : IHotelBookingHistoryService
         };
     }
 
+    // [nam] Chuẩn hoá trạng thái lưu trú thành khoá hiển thị thống nhất.
     private static string ResolveStatusKey(string? status)
     {
         return status?.Trim().ToLowerInvariant() switch

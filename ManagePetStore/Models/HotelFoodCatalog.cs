@@ -7,6 +7,7 @@ public static class HotelFoodCatalog
     public const string DailyUnit = "Suất/ngày";
     public const string ProductSkuPrefix = "HOTEL-FOOD-";
 
+    // [nam] Kiểm tra gói thức ăn có phù hợp với loài của pet hay không.
     public static bool IsSpeciesCompatible(string? targetSpecies, string petSpecies)
     {
         return string.IsNullOrWhiteSpace(targetSpecies) ||

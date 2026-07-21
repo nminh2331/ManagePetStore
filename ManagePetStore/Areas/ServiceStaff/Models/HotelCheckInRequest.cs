@@ -42,6 +42,7 @@ public sealed class HotelCheckInRequest : IValidatableObject
 
     public int? HotelBookingId { get; set; }
 
+    // [nam] Kiểm tra nguồn tiếp nhận, kết luận sức khoẻ và dữ liệu chuồng trước check-in.
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (!string.Equals(ReceptionSource, ExistingMedicalRecordSource, StringComparison.Ordinal))
