@@ -330,6 +330,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
         }
 
         [HttpGet]
+        // [nam] Trả về các bảng kê lưu trú đã sẵn sàng để thu ngân tạo đơn thanh toán.
         public async Task<IActionResult> GetReadyHotelCheckouts()
         {
             var statements = await _context.HotelCheckoutStatements

@@ -14,6 +14,7 @@ public partial class PetStoreManagementContext
     public virtual DbSet<HotelCageChangeRequest> HotelCageChangeRequests => Set<HotelCageChangeRequest>();
     public virtual DbSet<HotelCageStaySegment> HotelCageStaySegments => Set<HotelCageStaySegment>();
 
+    // [nam] Khai báo mapping, chỉ mục và quan hệ EF Core cho toàn bộ luồng lưu trú.
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<HotelBooking>(entity =>

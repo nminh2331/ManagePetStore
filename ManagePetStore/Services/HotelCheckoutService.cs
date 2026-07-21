@@ -15,6 +15,7 @@ public class HotelCheckoutService : IHotelCheckoutService
     private readonly PetStoreManagementContext _context;
     private readonly IInventoryBatchService _inventoryBatchService;
 
+    // [nam] Khởi tạo dịch vụ checkout và thành phần đối soát tồn kho thức ăn.
     public HotelCheckoutService(
         PetStoreManagementContext context,
         IInventoryBatchService inventoryBatchService)
@@ -23,6 +24,7 @@ public class HotelCheckoutService : IHotelCheckoutService
         _inventoryBatchService = inventoryBatchService;
     }
 
+    // [nam] Tải booking và lập bảng tính checkout tạm thời mà không thay đổi dữ liệu.
     public async Task<HotelCheckoutPreviewViewModel?> GetPreviewAsync(int bookingId, DateTime? checkoutAt = null)
     {
         var booking = await LoadBookingAsync(bookingId, true);
@@ -35,6 +37,7 @@ public class HotelCheckoutService : IHotelCheckoutService
         return BuildPreview(booking, checkoutAt ?? booking.CheckoutStatement?.CheckoutAt ?? DateTime.Now);
     }
 
+    // [nam] Chốt bảng kê checkout, đối soát tồn kho và chuyển booking sang chờ thanh toán.
     public async Task<HotelCheckoutPreviewViewModel> PrepareAsync(
         PrepareHotelCheckoutRequest request,
         int? staffUserId,
@@ -145,6 +148,7 @@ public class HotelCheckoutService : IHotelCheckoutService
         return await GetPreviewAsync(booking.HotelBookingId) ?? preview;
     }
 
+    // [nam] Khấu trừ hoặc hoàn kho phần thức ăn chênh lệch theo số ngày thực tế.
     private async Task ReconcileFoodInventoryAsync(HotelBooking booking, int chargeableFoodDays)
     {
         var foodPlan = booking.FoodPlan;
@@ -178,6 +182,7 @@ public class HotelCheckoutService : IHotelCheckoutService
         foodPlan.InventoryQuantityDeducted = requiredInventoryUnits;
     }
 
+    // [nam] Tải đầy đủ dữ liệu liên quan cần cho phép tính và lưu checkout.
     private async Task<HotelBooking?> LoadBookingAsync(int bookingId, bool noTracking)
     {
         var query = _context.HotelBookings
@@ -192,6 +197,7 @@ public class HotelCheckoutService : IHotelCheckoutService
         return await (noTracking ? query.AsNoTracking() : query).FirstOrDefaultAsync();
     }
 
+    // [nam] Tổng hợp tiền chuồng, thức ăn, dịch vụ, phí trễ và khoản phát sinh.
     private static HotelCheckoutPreviewViewModel BuildPreview(
         HotelBooking booking,
         DateTime checkoutAt,
@@ -269,6 +275,7 @@ public class HotelCheckoutService : IHotelCheckoutService
         };
     }
 
+    // [nam] Tính số ngày thức ăn cần thu theo thời gian lưu trú thực tế.
     private static int ResolveFoodDays(HotelBooking booking, DateTime checkoutAt)
     {
         if (booking.FoodPlan == null || booking.FoodPlan.PricePerDaySnapshot <= 0) return 0;
@@ -277,6 +284,7 @@ public class HotelCheckoutService : IHotelCheckoutService
         return actualDays;
     }
 
+    // [nam] Tính số giờ và tiền phụ thu khi trả pet sau thời gian miễn phí.
     private static LateFeeQuote CalculateLateFee(HotelBooking booking, DateTime checkoutAt)
     {
         var scheduled = booking.ScheduledCheckOutDate ?? booking.CheckOutDate;
@@ -298,6 +306,7 @@ public class HotelCheckoutService : IHotelCheckoutService
         return new LateFeeQuote(chargeableHours, amount);
     }
 
+    // [nam] Kiểm tra giá booking và khoản chi phí phát sinh trước khi lập bảng kê.
     private static void ValidateCheckoutInputs(HotelBooking booking, PrepareHotelCheckoutRequest request)
     {
         ValidateCheckoutPricing(booking);
@@ -318,6 +327,7 @@ public class HotelCheckoutService : IHotelCheckoutService
         }
     }
 
+    // [nam] Ngăn checkout khi dữ liệu giá phòng, giảm giá hoặc dịch vụ không hợp lệ.
     private static void ValidateCheckoutPricing(HotelBooking booking)
     {
         if (booking.BaseDailyPrice <= 0 || booking.Subtotal < 0)

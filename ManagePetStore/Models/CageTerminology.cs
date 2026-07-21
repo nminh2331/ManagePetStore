@@ -4,6 +4,7 @@ namespace ManagePetStore.Models;
 
 public static partial class CageTerminology
 {
+    // [nam] Chuẩn hoá thuật ngữ Hotel cũ sang cách hiển thị theo mô hình chuồng lưu trú.
     public static string ForDisplay(string? value)
     {
         if (string.IsNullOrEmpty(value))
@@ -23,5 +24,6 @@ public static partial class CageTerminology
     }
 
     [GeneratedRegex("hotel", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    // [nam] Tạo biểu thức chính quy biên dịch sẵn để tìm thuật ngữ Hotel.
     private static partial Regex HotelWordRegex();
 }

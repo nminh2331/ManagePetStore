@@ -118,6 +118,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     loadCompletedSpaBookings();
 
+    // [nam] Tải các bảng kê lưu trú đang chờ thu tiền tại quầy POS.
     async function loadReadyHotelCheckouts() {
         try {
             const res = await fetch('/Cashier/Order/GetReadyHotelCheckouts');
@@ -139,6 +140,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     loadReadyHotelCheckouts();
 
+    // [nam] Chọn bảng kê lưu trú và thêm cùng dịch vụ Spa liên kết vào giỏ thu ngân.
     window.handleSelectHotelCheckout = function (item) {
         if (currentCustomer && cart.length > 0 && currentCustomer.customerId !== item.customerId) {
             if (!confirm(`Giỏ hiện thuộc ${currentCustomer.fullName}. Chuyển sang ${item.customerName} và xóa giỏ cũ?`)) return;

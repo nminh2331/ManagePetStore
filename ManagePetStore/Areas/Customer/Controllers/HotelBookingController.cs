@@ -23,6 +23,7 @@ public class HotelBookingController : Controller
     private readonly ILogger<HotelBookingController> _logger;
     private readonly IStockMovementService _stockMovementService;
 
+    // [nam] Khởi tạo controller và các dịch vụ phục vụ quy trình đặt chuồng.
     public HotelBookingController(
         PetStoreManagementContext context,
         IHotelBookingHistoryService historyService,
@@ -40,6 +41,7 @@ public class HotelBookingController : Controller
     }
 
     [HttpGet]
+    // [nam] Hiển thị, tìm kiếm, lọc và phân trang lịch sử đặt chuồng của khách hàng.
     public async Task<IActionResult> Index(string? searchTerm, string statusFilter = "all", int page = 1)
     {
         var layout = await BuildSidebarViewModelAsync("appointments");
@@ -118,6 +120,7 @@ public class HotelBookingController : Controller
     }
 
     [HttpGet]
+    // [nam] Tải chi tiết booking cùng trạng thái và các lựa chọn đổi chuồng khả dụng.
     public async Task<IActionResult> Details(int id)
     {
         var layout = await BuildSidebarViewModelAsync("appointments");
@@ -166,6 +169,7 @@ public class HotelBookingController : Controller
     }
 
     [HttpGet]
+    // [nam] Trả về danh sách chuồng trống theo loại phòng và khoảng thời gian đã chọn.
     public async Task<IActionResult> AvailableCages(int roomTypeId, DateTime checkInDate, DateTime checkOutDate)
     {
         if (roomTypeId <= 0 || checkOutDate <= checkInDate || checkInDate < DateTime.Now.AddMinutes(-1))
@@ -206,6 +210,7 @@ public class HotelBookingController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    // [nam] Xác thực dữ liệu, giữ tồn kho thức ăn và tạo booking online trong một giao dịch.
     public async Task<IActionResult> Book([FromForm] HotelBookingRequest request)
     {
         if (!ModelState.IsValid)
@@ -435,6 +440,7 @@ public class HotelBookingController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    // [nam] Huỷ booking còn hợp lệ và hoàn lại phần tồn kho thức ăn đã giữ.
     public async Task<IActionResult> Cancel(int id, string? searchTerm, string statusFilter = "all", int page = 1)
     {
         var customer = await GetCurrentCustomerAsync();
@@ -520,6 +526,7 @@ public class HotelBookingController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    // [nam] Tạo yêu cầu đổi chuồng sau khi kiểm tra quyền sở hữu, trùng lịch và chênh lệch giá.
     public async Task<IActionResult> RequestCageChange(int id, string targetCageId, string reason)
     {
         var customer = await GetCurrentCustomerAsync();
@@ -625,12 +632,14 @@ public class HotelBookingController : Controller
         return RedirectToAction(nameof(Details), new { id });
     }
 
+    // [nam] Lưu thông báo lỗi và điều hướng khách về trang đặt chuồng.
     private IActionResult BookingError(string message)
     {
         TempData["HotelError"] = message;
         return RedirectToAction("Index", "Home", new { area = "", hotel = "book" });
     }
 
+    // [nam] Lấy hồ sơ khách hàng tương ứng với tài khoản đang đăng nhập.
     private async Task<ManagePetStore.Models.Customer?> GetCurrentCustomerAsync()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
@@ -642,6 +651,7 @@ public class HotelBookingController : Controller
         return await _context.Customers.FirstOrDefaultAsync(c => c.UserId == userId);
     }
 
+    // [nam] Dựng dữ liệu người dùng và khách hàng cho sidebar của khu vực Customer.
     private async Task<CustomerSidebarViewModel?> BuildSidebarViewModelAsync(string activeNav)
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
@@ -668,6 +678,7 @@ public class HotelBookingController : Controller
         };
     }
 
+    // [nam] Gom thông báo validation đầu tiên để hiển thị lại cho người dùng.
     private string GetModelStateErrorMessage()
     {
         return ModelState.Values
@@ -677,6 +688,7 @@ public class HotelBookingController : Controller
             ?? "Thông tin đặt phòng không hợp lệ.";
     }
 
+    // [nam] Quy đổi hạng thành viên thành tỷ lệ giảm giá khi đặt chuồng.
     private static decimal ResolveDiscountRate(string? membershipTier)
     {
         return membershipTier?.Trim().ToLowerInvariant() switch
@@ -687,6 +699,7 @@ public class HotelBookingController : Controller
         };
     }
 
+    // [nam] Tính các chuồng có thể chuyển đến và chênh lệch chi phí ước tính.
     private async Task<List<HotelCageChangeOptionViewModel>> GetAvailableCageChangeOptionsAsync(
         HotelBookingHistoryDetailViewModel booking,
         string membershipTier)
@@ -742,6 +755,7 @@ public class HotelBookingController : Controller
         }).ToList();
     }
 
+    // [nam] Kiểm tra chuồng đích có booking khác trùng khoảng thời gian hay không.
     private async Task<bool> HasCageConflictAsync(HotelBooking booking, string targetCageId)
     {
         var intervalStart = ResolveStatusKey(booking.Status) == "active" ? DateTime.Now : booking.CheckInDate;
@@ -756,6 +770,7 @@ public class HotelBookingController : Controller
             (!item.CheckOutDate.HasValue || item.CheckOutDate.Value > intervalStart));
     }
 
+    // [nam] Tính số ngày còn lại dùng để ước tính chênh lệch giá đổi chuồng.
     private static int ResolveRemainingChargeDays(HotelBooking booking)
     {
         if (ResolveStatusKey(booking.Status) == "reserved")
@@ -769,6 +784,7 @@ public class HotelBookingController : Controller
         return Math.Max(1, (int)Math.Ceiling((expectedCheckout - DateTime.Now).TotalHours / 24d));
     }
 
+    // [nam] Chuyển entity booking thành dữ liệu hiển thị trên danh sách của khách hàng.
     private static HotelBookingListItemViewModel MapToListItem(HotelBooking booking)
     {
         var statusKey = ResolveStatusKey(booking.Status);
@@ -795,6 +811,7 @@ public class HotelBookingController : Controller
         };
     }
 
+    // [nam] Chuẩn hoá trạng thái booking thành khoá dùng cho giao diện và bộ lọc.
     private static string ResolveStatusKey(string? status)
     {
         return status?.Trim().ToLowerInvariant() switch

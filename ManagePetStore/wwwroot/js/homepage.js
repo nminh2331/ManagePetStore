@@ -38,6 +38,7 @@
         return Math.round(amount).toLocaleString('vi-VN') + 'đ';
     }
 
+    // [nam] Chuyển Date sang định dạng mà input datetime-local chấp nhận.
     function formatDateTimeInput(date) {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -47,12 +48,14 @@
         return `${year}-${month}-${day}T${hours}:${minutes}`;
     }
 
+    // [nam] Phân tích giá trị datetime-local và loại bỏ ngày không hợp lệ.
     function parseDateTimeInput(value) {
         if (!value) return null;
         const parsed = new Date(value);
         return Number.isNaN(parsed.getTime()) ? null : parsed;
     }
 
+    // [nam] Tính số ngày lưu trú cần tính phí từ thời gian nhận và trả.
     function getChargeableDays() {
         const start = parseDateTimeInput(checkIn?.value);
         const end = parseDateTimeInput(checkOut?.value);
@@ -61,6 +64,7 @@
         return Math.ceil((end - start) / dayInMilliseconds);
     }
 
+    // [nam] Làm tròn thời gian lên mốc 15 phút kế tiếp.
     function roundUpToQuarterHour(date) {
         const rounded = new Date(date);
         const currentMinutes = rounded.getMinutes();
@@ -69,6 +73,7 @@
         return rounded;
     }
 
+    // [nam] Thiết lập giới hạn và giá trị ngày mặc định cho form đặt chuồng.
     function configureHotelDates() {
         if (!checkIn || !checkOut) return;
 
@@ -96,6 +101,7 @@
         }
     }
 
+    // [nam] Cập nhật thời gian trả sớm nhất và muộn nhất theo thời gian nhận.
     function updateCheckOutLimits() {
         if (!checkIn || !checkOut || !checkIn.value) return;
 
@@ -116,6 +122,7 @@
         }
     }
 
+    // [nam] Kiểm tra thời gian nhận, trả và thời lượng lưu trú ngay trên trình duyệt.
     function validateHotelDates() {
         if (!checkIn || !checkOut) return true;
 
@@ -143,6 +150,7 @@
         return true;
     }
 
+    // [nam] Hiển thị kích thước, tiện ích và dịch vụ của hạng chuồng đã chọn.
     function updateRoomTypeSummary() {
         if (!roomSelect || !roomTypeSummary) return;
         const selected = roomSelect.options[roomSelect.selectedIndex];
@@ -158,6 +166,7 @@
         roomTypeSummary.textContent = `${selected.dataset.code} · ${selected.dataset.size} · 1 pet · ${amenities.length ? amenities.join(', ') : 'Tiện ích cơ bản'} · Dịch vụ: ${serviceSummary}`;
     }
 
+    // [nam] Tải bất đồng bộ các chuồng trống và bỏ qua phản hồi cũ khi người dùng đổi bộ lọc.
     async function loadAvailableCages() {
         if (!cageSelect) return;
         const sequence = ++cageAvailabilitySequence;
@@ -212,12 +221,14 @@
         }
     }
 
+    // [nam] Lấy cân nặng hợp lệ của pet đang được chọn.
     function getSelectedPetWeight() {
         const selectedPet = petSelect?.options[petSelect.selectedIndex];
         const weight = Number.parseFloat(selectedPet?.dataset.weight || '');
         return Number.isFinite(weight) && weight > 0 ? weight : null;
     }
 
+    // [nam] Quy đổi cân nặng pet thành hệ số khẩu phần thức ăn.
     function getWeightMultiplier(weight) {
         if (!weight) return 0;
         if (weight <= 5) return 1;
@@ -226,6 +237,7 @@
         return 1.8;
     }
 
+    // [nam] Trả về tên nhóm cân nặng để giải thích giá thức ăn.
     function getWeightBand(weight) {
         if (!weight) return '';
         if (weight <= 5) return 'nhỏ (≤5kg)';
@@ -234,6 +246,7 @@
         return 'rất lớn (>30kg)';
     }
 
+    // [nam] Tính đơn giá, số suất kho và tổng tiền gói ăn đang chọn.
     function getFoodQuote() {
         const selectedFood = foodOption?.options[foodOption.selectedIndex];
         const basePrice = Number.parseFloat(selectedFood?.dataset.price || '0') || 0;
@@ -255,6 +268,7 @@
         };
     }
 
+    // [nam] Cập nhật tổng tạm tính gồm tiền chuồng, giảm giá và thức ăn.
     function updateTotal() {
         if (!roomSelect || !totalEl) return;
 
@@ -271,6 +285,7 @@
         if (nightsEl) nightsEl.textContent = nights + ' ngày';
     }
 
+    // [nam] Cập nhật diễn giải giá gói ăn và tính lại tổng booking.
     function updateFoodPlan() {
         const selectedFood = foodOption?.options[foodOption.selectedIndex];
         const quote = getFoodQuote();
@@ -287,6 +302,7 @@
         updateTotal();
     }
 
+    // [nam] Kiểm tra cân nặng pet và số suất thức ăn còn lại trước khi gửi form.
     function validateFoodAvailability() {
         if (!foodOption) return true;
         foodOption.setCustomValidity('');

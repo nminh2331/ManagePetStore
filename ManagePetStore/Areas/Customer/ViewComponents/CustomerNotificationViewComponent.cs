@@ -10,11 +10,13 @@ public class CustomerNotificationViewComponent : ViewComponent
 {
     private readonly PetStoreManagementContext _context;
 
+    // [nam] Khởi tạo view component thông báo dùng trên thanh điều hướng khách hàng.
     public CustomerNotificationViewComponent(PetStoreManagementContext context)
     {
         _context = context;
     }
 
+    // [nam] Tải số thông báo chưa đọc và năm thông báo mới nhất cho menu.
     public async Task<IViewComponentResult> InvokeAsync()
     {
         var claim = UserClaimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;

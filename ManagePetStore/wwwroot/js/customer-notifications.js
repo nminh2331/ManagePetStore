@@ -8,6 +8,7 @@
     const badge = root.querySelector('[data-notification-count]');
     const toast = document.querySelector('[data-care-toast]');
     let toastTimer;
+    // [nam] Chuẩn hoá thuật ngữ Hotel trong nội dung thông báo thời gian thực.
     const forCageDisplay = value => String(value ?? '')
         .replace(/pet hotel/gi, 'lưu trú chuồng')
         .replace(/đặt phòng hotel/gi, 'đặt chuồng')
@@ -27,6 +28,7 @@
         }
     });
 
+    // [nam] Tăng badge thông báo chưa đọc khi có nhật ký mới.
     const increaseUnreadCount = () => {
         const current = Number.parseInt(badge.textContent, 10) || 0;
         const next = current + 1;
@@ -34,6 +36,7 @@
         badge.classList.remove('d-none');
     };
 
+    // [nam] Chèn thông báo mới lên đầu menu và giữ tối đa năm mục.
     const prependNotification = data => {
         list.querySelector('[data-notification-empty]')?.remove();
         const item = document.createElement('a');
@@ -56,6 +59,7 @@
         }
     };
 
+    // [nam] Hiển thị toast cập nhật chăm sóc và tự ẩn sau thời gian quy định.
     const showToast = data => {
         if (!toast) return;
         toast.querySelector('[data-care-toast-title]').textContent = forCageDisplay(data.title);
