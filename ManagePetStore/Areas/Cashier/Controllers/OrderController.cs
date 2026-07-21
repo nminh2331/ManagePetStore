@@ -561,8 +561,8 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                         catch (ManagePetStore.Exceptions.ServiceException)
                         {
                             // Fallback to manual deduction if batch service fails (e.g. not enough stock recorded in batches)
-                            product.Stock -= item.Quantity;
-                            if (product.Stock < 0) product.Stock = 0;
+                            await _context.Products.Where(p => p.Sku == item.Id)
+                                .ExecuteUpdateAsync(s => s.SetProperty(p => p.Stock, p => p.Stock - item.Quantity));
                         }
                         
                         systemStockDetails.Add(new StockMovementDetail

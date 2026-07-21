@@ -1,15 +1,30 @@
 @model ManagePetStore.Models.StockMovement
+@using System.Text.Json;
 
 @{
     ViewData["Title"] = "Kiểm hàng - Phiếu #" + Model.MovementId;
+    var productBatches = ViewBag.ProductBatches as Dictionary<string, List<ManagePetStore.Models.InventoryBatch>> ?? new Dictionary<string, List<ManagePetStore.Models.InventoryBatch>>();
+    
+    // Pass minimal batch data to JS
+    var productBatchesJs = productBatches.ToDictionary(
+        kvp => kvp.Key, 
+        kvp => kvp.Value.Select(b => new { 
+            batchId = b.BatchId, 
+            expiryDate = b.ExpiryDate.ToString("yyyy-MM-dd") 
+        })
+    );
+    var productBatchesJson = JsonSerializer.Serialize(productBatchesJs);
+    bool isReturn = Model.Type == "Nhập kho (Hủy đơn)";
 }
 
 <div class="mb-4">
     <a asp-action="Details" asp-route-id="@Model.MovementId" class="text-decoration-none text-muted mb-2 d-inline-block">
         <i class="fas fa-arrow-left"></i> Quay lại chi tiết phiếu
     </a>
-    <h2 class="fw-bold m-0" style="color: #333;">Kiểm hàng - Phiếu Nhập Kho #@Model.MovementId</h2>
-    <p class="text-muted small mt-1">Vui lòng điền Hạn sử dụng thực tế cho từng sản phẩm dựa trên thông tin trên bao bì hàng hóa.</p>
+    <h2 class="fw-bold m-0" style="color: #333;">Kiểm hàng - Phiếu @Model.Type #@Model.MovementId</h2>
+    <p class="text-muted small mt-1">
+        @(isReturn ? "Vui lòng chọn Lô hàng cũ hoặc nhập HSD mới cho từng sản phẩm hoàn trả." : "Vui lòng điền Hạn sử dụng thực tế cho từng sản phẩm dựa trên thông tin trên bao bì hàng hóa.")
+    </p>
 </div>
 
 @if (TempData["ErrorMessage"] != null)
@@ -27,7 +42,7 @@
                 <h5 class="fw-bold mb-3 border-bottom pb-2">Thông tin phiếu</h5>
                 <p class="mb-2"><span class="text-muted fw-bold">Mã phiếu:</span> #@Model.MovementId</p>
                 <p class="mb-2"><span class="text-muted fw-bold">Ngày tạo:</span> @Model.Date.ToString("dd/MM/yyyy HH:mm")</p>
-                <p class="mb-2"><span class="text-muted fw-bold">Nhà cung cấp:</span> @Model.Supplier</p>
+                <p class="mb-2"><span class="text-muted fw-bold">Nguồn gốc:</span> @Model.Supplier</p>
                 <p class="mb-2"><span class="text-muted fw-bold">Người tạo:</span> @Model.CreatedBy?.FullName</p>
                 <p class="mb-0 fs-5 mt-3">
                     <span class="text-muted fw-bold fs-6">Tổng giá trị:</span>
@@ -45,7 +60,7 @@
     <div class="col-md-8">
         <div class="card border-0 shadow-sm" style="border-radius:16px;">
             <div class="card-body p-0">
-                <div class="p-4 border-bottom" style="background:#f8f9fa; border-radius:16px 16px 0 0;">
+                <div class="p-4 border-bottom d-flex justify-content-between align-items-center" style="background:#f8f9fa; border-radius:16px 16px 0 0;">
                     <h5 class="fw-bold m-0">
                         <i class="fas fa-clipboard-check me-2 text-primary"></i>
                         Danh sách hàng cần kiểm tra
@@ -54,42 +69,69 @@
 
                 <form asp-action="Approve" asp-route-id="@Model.MovementId" method="post" id="approveForm">
                     @Html.AntiForgeryToken()
+                    <input type="hidden" name="allocationsJson" id="allocationsJson" />
 
                     <div class="table-responsive">
-                        <table class="table mb-0 align-middle">
+                        <table class="table mb-0 align-middle" id="itemsTable">
                             <thead class="text-muted small" style="background:#fafafa;">
                                 <tr>
-                                    <th class="px-4 py-3">Sản phẩm</th>
-                                    <th class="px-4 py-3 text-center">SL đặt</th>
-                                    <th class="px-4 py-3 text-end">Đơn giá nhập</th>
-                                    <th class="px-4 py-3 text-center" style="min-width:180px;">
-                                        Hạn sử dụng <span class="text-danger">*</span>
-                                    </th>
+                                    <th class="px-4 py-3" style="width:30%;">Sản phẩm</th>
+                                    <th class="px-4 py-3 text-center" style="width:15%;">SL</th>
+                                    @if(isReturn){
+                                        <th class="px-4 py-3" style="width:40%;">Lô hàng / HSD <span class="text-danger">*</span></th>
+                                        <th class="px-4 py-3 text-end" style="width:15%;">Thao tác</th>
+                                    } else {
+                                        <th class="px-4 py-3 text-center" style="min-width:180px;">Hạn sử dụng <span class="text-danger">*</span></th>
+                                    }
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach (var detail in Model.StockMovementDetails)
                                 {
-                                    <tr>
+                                    <tr class="item-row" data-detail-id="@detail.DetailId" data-sku="@detail.ProductSku" data-max-qty="@detail.Quantity" data-group="@detail.DetailId">
                                         <td class="px-4 py-3">
                                             <div class="fw-bold">@detail.ProductSkuNavigation.Name</div>
                                             <small class="text-muted">SKU: @detail.ProductSku</small>
-                                            <input type="hidden" name="detailIds" value="@detail.DetailId" />
+                                            @if(!isReturn) {
+                                                <input type="hidden" name="detailIds" value="@detail.DetailId" />
+                                            }
                                         </td>
                                         <td class="px-4 py-3 text-center">
-                                            <span class="badge bg-primary rounded-pill px-3 py-2 fs-6">@detail.Quantity</span>
+                                            @if(isReturn) {
+                                                <input type="number" class="form-control form-control-sm text-center split-qty" value="@detail.Quantity" min="1" max="@detail.Quantity" required />
+                                            } else {
+                                                <span class="badge bg-primary rounded-pill px-3 py-2 fs-6">@detail.Quantity</span>
+                                            }
                                         </td>
-                                        <td class="px-4 py-3 text-end fw-bold">
-                                            @string.Format("{0:N0} đ", detail.CostPrice)
-                                        </td>
-                                        <td class="px-4 py-3">
-                                            <input type="date"
-                                                   name="expiryDateInputs"
-                                                   class="form-control expiry-input"
-                                                   style="border-radius:8px;"
-                                                   required
-                                                   min="@DateTime.Now.ToString("yyyy-MM-dd")" />
-                                        </td>
+                                        
+                                        @if(isReturn) {
+                                            <td class="px-4 py-3">
+                                                <select class="form-select form-select-sm mb-2 batch-select" required>
+                                                    <option value="">-- Chọn lô hàng cũ --</option>
+                                                    @if(productBatches.TryGetValue(detail.ProductSku, out var batches))
+                                                    {
+                                                        foreach(var b in batches)
+                                                        {
+                                                            <option value="@b.BatchId">Lô #@b.BatchId (HSD: @b.ExpiryDate.ToString("dd/MM/yyyy"))</option>
+                                                        }
+                                                    }
+                                                    <option value="0">[+] Tạo lô hoàn trả mới</option>
+                                                </select>
+                                                <input type="date" class="form-control form-control-sm new-expiry-date d-none" min="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                                            </td>
+                                            <td class="px-4 py-3 text-end">
+                                                <button type="button" class="btn btn-sm btn-outline-primary btn-split" title="Tách dòng">
+                                                    <i class="fas fa-code-branch"></i> Tách
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger btn-remove d-none" title="Xóa dòng">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        } else {
+                                            <td class="px-4 py-3">
+                                                <input type="date" name="expiryDateInputs" class="form-control expiry-input" style="border-radius:8px;" required min="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                                            </td>
+                                        }
                                     </tr>
                                 }
                             </tbody>
@@ -100,9 +142,8 @@
                         <a asp-action="Details" asp-route-id="@Model.MovementId" class="btn btn-outline-secondary px-4" style="border-radius:10px;">
                             <i class="fas fa-times me-1"></i> Hủy bỏ
                         </a>
-                        <button type="submit" class="btn btn-success px-4 fw-bold shadow-sm" style="border-radius:10px;"
-                                onclick="return confirm('Xác nhận duyệt phiếu nhập kho? Tồn kho sẽ được cập nhật ngay lập tức.');">
-                            <i class="fas fa-check-circle me-1"></i> Xác nhận nhập kho
+                        <button type="submit" class="btn btn-success px-4 fw-bold shadow-sm" style="border-radius:10px;" id="btnSubmit">
+                            <i class="fas fa-check-circle me-1"></i> Xác nhận kiểm hàng
                         </button>
                     </div>
                 </form>
@@ -113,22 +154,125 @@
 
 @section Scripts {
     <script>
-        // Tô đỏ ô nhập nếu bỏ trống khi submit
-        document.getElementById('approveForm').addEventListener('submit', function (e) {
-            var inputs = document.querySelectorAll('.expiry-input');
-            var hasEmpty = false;
-            inputs.forEach(function (input) {
-                if (!input.value) {
-                    input.classList.add('is-invalid');
-                    hasEmpty = true;
-                } else {
-                    input.classList.remove('is-invalid');
+        const isReturn = @isReturn.ToString().ToLower();
+        const batchesMap = @Html.Raw(productBatchesJson);
+
+        if (isReturn) {
+            // Handle batch selection changes
+            document.getElementById('itemsTable').addEventListener('change', function(e) {
+                if (e.target.classList.contains('batch-select')) {
+                    const row = e.target.closest('tr');
+                    const dateInput = row.querySelector('.new-expiry-date');
+                    if (e.target.value === "0") {
+                        dateInput.classList.remove('d-none');
+                        dateInput.required = true;
+                    } else {
+                        dateInput.classList.add('d-none');
+                        dateInput.required = false;
+                        dateInput.value = "";
+                    }
                 }
             });
-            if (hasEmpty) {
+
+            // Handle split line
+            document.getElementById('itemsTable').addEventListener('click', function(e) {
+                if (e.target.closest('.btn-split')) {
+                    const row = e.target.closest('tr');
+                    const clone = row.cloneNode(true);
+                    
+                    // Reset values in clone
+                    clone.querySelector('.split-qty').value = 1;
+                    clone.querySelector('.batch-select').value = "";
+                    clone.querySelector('.new-expiry-date').value = "";
+                    clone.querySelector('.new-expiry-date').classList.add('d-none');
+                    clone.querySelector('.new-expiry-date').required = false;
+                    
+                    // Show remove button on clone
+                    clone.querySelector('.btn-remove').classList.remove('d-none');
+                    
+                    row.parentNode.insertBefore(clone, row.nextSibling);
+                } else if (e.target.closest('.btn-remove')) {
+                    const row = e.target.closest('tr');
+                    row.parentNode.removeChild(row);
+                }
+            });
+
+            // Handle submit
+            document.getElementById('approveForm').addEventListener('submit', function(e) {
                 e.preventDefault();
-                alert('Vui lòng điền Hạn sử dụng cho tất cả sản phẩm trước khi xác nhận.');
-            }
-        });
+                
+                // Validate quantities
+                const groups = {};
+                const rows = document.querySelectorAll('.item-row');
+                
+                rows.forEach(row => {
+                    const detailId = row.getAttribute('data-group');
+                    const maxQty = parseInt(row.getAttribute('data-max-qty'));
+                    const qty = parseInt(row.querySelector('.split-qty').value) || 0;
+                    
+                    if (!groups[detailId]) {
+                        groups[detailId] = { maxQty: maxQty, currentSum: 0 };
+                    }
+                    groups[detailId].currentSum += qty;
+                });
+
+                let hasError = false;
+                for (const detailId in groups) {
+                    if (groups[detailId].currentSum !== groups[detailId].maxQty) {
+                        alert(`Tổng số lượng tách lô của một sản phẩm không khớp với số lượng cần kiểm (${groups[detailId].currentSum} != ${groups[detailId].maxQty}). Vui lòng kiểm tra lại.`);
+                        hasError = true;
+                        break;
+                    }
+                }
+                if (hasError) return;
+
+                // Build allocations JSON
+                const allocations = [];
+                rows.forEach(row => {
+                    const detailId = parseInt(row.getAttribute('data-detail-id'));
+                    const qty = parseInt(row.querySelector('.split-qty').value);
+                    const batchSelect = row.querySelector('.batch-select');
+                    const dateInput = row.querySelector('.new-expiry-date');
+                    
+                    allocations.push({
+                        DetailId: detailId,
+                        Quantity: qty,
+                        BatchId: parseInt(batchSelect.value),
+                        ExpiryDate: batchSelect.value === "0" ? dateInput.value : null
+                    });
+                });
+
+                document.getElementById('allocationsJson').value = JSON.stringify(allocations);
+                
+                if(confirm('Xác nhận duyệt phiếu nhập kho? Tồn kho sẽ được cập nhật ngay lập tức.')) {
+                    this.submit();
+                }
+            });
+        } else {
+            // Old logic for Nhập hàng
+            document.getElementById('approveForm').addEventListener('submit', function (e) {
+                var inputs = document.querySelectorAll('.expiry-input');
+                var hasEmpty = false;
+                inputs.forEach(function (input) {
+                    if (!input.value) {
+                        input.classList.add('is-invalid');
+                        hasEmpty = true;
+                    } else {
+                        input.classList.remove('is-invalid');
+                    }
+                });
+                if (hasEmpty) {
+                    e.preventDefault();
+                    alert('Vui lòng điền Hạn sử dụng cho tất cả sản phẩm trước khi xác nhận.');
+                } else {
+                    if(!confirm('Xác nhận duyệt phiếu nhập kho? Tồn kho sẽ được cập nhật ngay lập tức.')) {
+                        e.preventDefault();
+                    }
+                }
+            });
+            
+            // Remove confirm from button inline click
+            document.querySelector('#btnSubmit').removeAttribute('onclick');
+        }
     </script>
 }

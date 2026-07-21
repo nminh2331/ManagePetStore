@@ -221,7 +221,8 @@ public class OrderController : Controller
                 var product = await _context.Products.FirstOrDefaultAsync(p => p.Sku == item.ProductSku);
                 if (product != null)
                 {
-                    await _inventoryBatchService.RestockToBatches(item.ProductSku, item.Quantity);
+                    // Yêu cầu Issue 3: Không tự động Restock vào lô mới nhất nữa
+                    // await _inventoryBatchService.RestockToBatches(item.ProductSku, item.Quantity);
                     
                     systemStockDetails.Add(new StockMovementDetail
                     {
@@ -238,7 +239,7 @@ public class OrderController : Controller
             await _stockMovementService.CreateSystemMovement(
                 systemUserId: 1, 
                 type: "Nhập kho (Hủy đơn)",
-                status: "Đã hoàn thành",
+                status: "Chờ kiểm hàng",
                 supplier: null,
                 totalValue: systemStockDetails.Sum(d => d.Quantity * d.CostPrice),
                 details: systemStockDetails

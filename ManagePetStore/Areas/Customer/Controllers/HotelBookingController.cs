@@ -21,19 +21,22 @@ public class HotelBookingController : Controller
     private readonly IInventoryBatchService _inventoryBatchService;
     private readonly IHotelEmailService _hotelEmailService;
     private readonly ILogger<HotelBookingController> _logger;
+    private readonly IStockMovementService _stockMovementService;
 
     public HotelBookingController(
         PetStoreManagementContext context,
         IHotelBookingHistoryService historyService,
         IInventoryBatchService inventoryBatchService,
         IHotelEmailService hotelEmailService,
-        ILogger<HotelBookingController> logger)
+        ILogger<HotelBookingController> logger,
+        IStockMovementService stockMovementService)
     {
         _context = context;
         _historyService = historyService;
         _inventoryBatchService = inventoryBatchService;
         _hotelEmailService = hotelEmailService;
         _logger = logger;
+        _stockMovementService = stockMovementService;
     }
 
     [HttpGet]
@@ -471,9 +474,23 @@ public class HotelBookingController : Controller
         {
             if (booking.FoodPlan?.ProductSku != null && booking.FoodPlan.InventoryQuantityDeducted > 0)
             {
-                await _inventoryBatchService.RestockToBatches(
-                    booking.FoodPlan.ProductSku,
-                    booking.FoodPlan.InventoryQuantityDeducted);
+                var systemStockDetails = new List<StockMovementDetail>
+                {
+                    new StockMovementDetail
+                    {
+                        ProductSku = booking.FoodPlan.ProductSku,
+                        Quantity = booking.FoodPlan.InventoryQuantityDeducted,
+                        CostPrice = 0
+                    }
+                };
+                await _stockMovementService.CreateSystemMovement(
+                    systemUserId: 1,
+                    type: "Nhập kho (Hủy đơn)",
+                    status: "Chờ kiểm hàng",
+                    supplier: $"Hủy lưu trú {booking.HotelBookingId}",
+                    totalValue: 0,
+                    details: systemStockDetails
+                );
                 booking.FoodPlan.InventoryQuantityDeducted = 0;
             }
 

@@ -227,12 +227,9 @@
                             .Take(4)
                             .Select(p => p.Sku)
                             .ToHashSet();
-                        // Gắn badge New cho 4 SKU mới nhất (theo SKU alphabet desc)
-                        var newSkus = Model
-                            .OrderByDescending(p => p.Sku)
-                            .Take(4)
-                            .Select(p => p.Sku)
-                            .ToHashSet();
+                        
+                        // Lấy danh sách SKU mới từ Controller (nhập hàng lần đầu trong 15 ngày qua)
+                        var newSkus = ViewBag.NewSkus as HashSet<string> ?? new HashSet<string>();
                     }
                     @foreach (var p in Model)
                     {
@@ -252,7 +249,6 @@
                                     } else if (isNew) { 
                                         <span class="badge-new">Mới</span> 
                                     }
-                                    <a href="#" class="heart-btn" title="Yêu thích"><i class="fas fa-heart"></i></a>
                                 </div>
                                 <div class="card-body">
                                     <a href="@Url.Action("Details","Product", new { id = p.Sku })"

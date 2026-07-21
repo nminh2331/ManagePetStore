@@ -44,6 +44,13 @@ public class InventoryBatchRepository : IInventoryBatchRepository
         await _context.SaveChangesAsync();
     }
 
+    public async Task<int> AdjustBatchQuantityAsync(int batchId, int quantityDelta)
+    {
+        return await _context.InventoryBatches
+            .Where(b => b.BatchId == batchId)
+            .ExecuteUpdateAsync(s => s.SetProperty(b => b.CurrentQuantity, b => b.CurrentQuantity + quantityDelta));
+    }
+
     public async Task DeleteBatch(int batchId)
     {
         var batch = await _context.InventoryBatches.FindAsync(batchId);

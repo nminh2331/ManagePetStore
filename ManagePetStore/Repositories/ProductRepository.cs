@@ -56,8 +56,17 @@ public class ProductRepository : IProductRepository
             trackedEntity.State = EntityState.Detached;
         }
         
-        _context.Products.Update(product);
+        var entry = _context.Products.Update(product);
+        entry.Property(p => p.Stock).IsModified = false; // Ngăn chặn ghi đè Stock khi Update thông thường
+        
         await _context.SaveChangesAsync();
+    }
+
+    public async Task AdjustStockAsync(string sku, int amount)
+    {
+        await _context.Products
+            .Where(p => p.Sku == sku)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.Stock, p => p.Stock + amount));
     }
 
     public async Task DeleteProduct(string sku)

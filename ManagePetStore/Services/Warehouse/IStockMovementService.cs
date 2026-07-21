@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Project: Pet Store Management System (PSMS)
  * File: IStockMovementService.cs
  * Author: Tran Duong
@@ -9,6 +9,14 @@
 using ManagePetStore.Models;
 
 namespace ManagePetStore.Services.Warehouse;
+
+public class BatchAllocation
+{
+    public int DetailId { get; set; }
+    public int Quantity { get; set; }
+    public int BatchId { get; set; }
+    public DateTime? ExpiryDate { get; set; }
+}
 
 public interface IStockMovementService
 {
@@ -21,8 +29,8 @@ public interface IStockMovementService
     // Táº¡o phiáº¿u xuáº¥t kho ná»™i bá»™
     Task CreateInternalExport(int userId, string note, List<StockMovementDetail> details);
     
-    // Duyá»‡t Ä‘Æ¡n
-    Task ApproveMovement(int movementId, int approvedById, Dictionary<int, DateTime>? expiryDates = null);
+    // Duyệt đơn
+    Task ApproveMovement(int movementId, int approvedById, Dictionary<int, DateTime>? expiryDates = null, List<BatchAllocation>? allocations = null);
 
     // Tá»± Ä‘á»™ng táº¡o phiáº¿u xuáº¥t/nháº­p khi cÃ³ thay Ä‘á»•i tá»« Ä‘Æ¡n hÃ ng (Sales, Return)
     Task CreateSystemMovement(int systemUserId, string type, string status, string? supplier, decimal totalValue, List<StockMovementDetail> details);

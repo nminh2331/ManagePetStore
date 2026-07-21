@@ -212,7 +212,7 @@
                                     }
                                 </td>
                                 <td class="px-4 py-3 text-end">
-                                    @if (item.Type == "Nhập hàng" && item.Status == "Chờ kiểm hàng")
+                                    @if ((item.Type == "Nhập hàng" || item.Type == "Nhập kho (Hủy đơn)") && item.Status == "Chờ kiểm hàng")
                                     {
                                         <a asp-action="Approve" asp-route-id="@item.MovementId" class="btn btn-sm btn-warning fw-bold" style="border-radius:8px;">
                                             <i class="fas fa-clipboard-check"></i> Kiểm hàng

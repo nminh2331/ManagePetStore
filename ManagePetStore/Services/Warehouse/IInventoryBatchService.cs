@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Project: Pet Store Management System (PSMS)
  * File: IInventoryBatchService.cs
  * Author: Tran Duong
@@ -16,6 +16,7 @@ public interface IInventoryBatchService
     Task<InventoryBatch?> GetBatchById(int batchId);
     Task CreateBatch(InventoryBatch batch);
     Task UpdateBatch(int batchId, int newQuantity, DateTime newExpiryDate);
+    Task AdjustBatchQuantityAsync(int batchId, int quantityDelta);
     
     // Há»§y / XÃ³a lÃ´ hÃ ng
     Task DeleteBatch(int batchId);

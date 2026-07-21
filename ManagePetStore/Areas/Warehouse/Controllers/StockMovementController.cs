@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Project: Pet Store Management System (PSMS)
  * File: StockMovementController.cs
  * Author: Tran Duong
@@ -26,13 +26,15 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         private readonly IProductService _productService;
         private readonly IProductCategoryService _categoryService;
         private readonly ISupplierService _supplierService;
+        private readonly IInventoryBatchService _batchService;
 
-        public StockMovementController(IStockMovementService movementService, IProductService productService, IProductCategoryService categoryService, ISupplierService supplierService)
+        public StockMovementController(IStockMovementService movementService, IProductService productService, IProductCategoryService categoryService, ISupplierService supplierService, IInventoryBatchService batchService)
         {
             _movementService = movementService;
             _productService = productService;
             _categoryService = categoryService;
             _supplierService = supplierService;
+            _batchService = batchService;
         }
 
         // Hiá»ƒn thá»‹ danh sÃ¡ch cÃ¡c phiáº¿u xuáº¥t/nháº­p kho
@@ -237,13 +239,28 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             }
         }
 
-        // Hiá»ƒn thá»‹ mÃ n hÃ¬nh kiá»ƒm hÃ ng (GET) - DÃ nh cho Warehouse
+        // Hiển thị màn hình kiểm hàng (GET) - Dành cho Warehouse
         public async Task<IActionResult> Approve(int id)
         {
             var movement = await _movementService.GetMovementById(id);
             if (movement == null) return NotFound();
-            if (movement.Type != "Nháº­p hÃ ng" || movement.Status != "Chá» kiá»ƒm hÃ ng")
+            if (movement.Status != "Chờ kiểm hàng" || (movement.Type != "Nhập hàng" && movement.Type != "Nhập kho (Hủy đơn)"))
                 return RedirectToAction(nameof(Details), new { id });
+            
+            if (movement.Type == "Nhập kho (Hủy đơn)")
+            {
+                var productBatches = new Dictionary<string, List<InventoryBatch>>();
+                foreach (var detail in movement.StockMovementDetails)
+                {
+                    if (!productBatches.ContainsKey(detail.ProductSku))
+                    {
+                        var batches = await _batchService.GetBatchesByProductSku(detail.ProductSku);
+                        productBatches[detail.ProductSku] = batches.ToList();
+                    }
+                }
+                ViewBag.ProductBatches = productBatches;
+            }
+
             return View(movement);
         }
 
@@ -264,14 +281,23 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return RedirectToAction(nameof(Details), new { id });
         }
 
-        // Xá»­ lÃ½ duyá»‡t phiáº¿u sau khi nhÃ¢n viÃªn kiá»ƒm hÃ ng vÃ  Ä‘iá»n HSD (POST)
+        // Xử lý duyệt phiếu sau khi nhân viên kiểm hàng và điền HSD (POST)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Approve(int id, List<string> expiryDateInputs, List<int> detailIds)
+        public async Task<IActionResult> Approve(int id, List<string> expiryDateInputs, List<int> detailIds, string? allocationsJson)
         {
             try
             {
                 int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "1");
+
+                List<ManagePetStore.Services.Warehouse.BatchAllocation>? allocations = null;
+                if (!string.IsNullOrWhiteSpace(allocationsJson))
+                {
+                    allocations = System.Text.Json.JsonSerializer.Deserialize<List<ManagePetStore.Services.Warehouse.BatchAllocation>>(
+                        allocationsJson, 
+                        new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                    );
+                }
 
                 var expiryDates = new Dictionary<int, DateTime>();
                 for (int i = 0; i < detailIds.Count; i++)
@@ -280,7 +306,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
                         expiryDates[detailIds[i]] = dt;
                 }
 
-                await _movementService.ApproveMovement(id, userId, expiryDates);
+                await _movementService.ApproveMovement(id, userId, expiryDates, allocations);
             }
             catch (ServiceException ex)
             {
