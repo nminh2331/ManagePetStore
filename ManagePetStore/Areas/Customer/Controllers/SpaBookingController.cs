@@ -74,7 +74,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 _ => query
             };
 
-            query = query.OrderByDescending(b => b.DateTime);
+            query = query.OrderByDescending(b => b.BookingId);
 
             var totalFilteredItems = await query.CountAsync();
             var pageSize = 5;
@@ -275,10 +275,11 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 activeIndex = idx;
             }
 
-            // Nếu activeIndex đã nằm trong completedIndexes → tất cả bước đã hoàn thành
-            bool isFullyCompleted = completedIndexes.Contains(activeIndex)
-                || booking.Status == "Hoàn thành"
-                || booking.Status == "Đã thanh toán";
+            // Chỉ coi là hoàn thành toàn bộ 5 bước kỹ thuật nếu activeIndex == 4 hoặc SpaStatus kết thúc bằng "|4" / "4"
+            bool isFullyCompleted = (activeIndex == 4 && completedIndexes.Contains(4))
+                || dbStatus == "4"
+                || dbStatus.EndsWith("|4")
+                || dbStatus == "Hoàn thành";
             int resolvedActiveIndex = isFullyCompleted ? -1 : activeIndex;
 
             // Nếu hoàn thành toàn bộ, đảm bảo tất cả 5 bước đều trong completedIndexes
@@ -324,7 +325,14 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 return Json(new { success = false, message = "Lịch hẹn này đã được hủy trước đó." });
             }
 
-            // Ràng buộc thời gian: chỉ được hủy trước tối thiểu 2 giờ
+            // Ràng buộc 1: Chưa bấm bắt đầu (chỉ được hủy khi ca còn ở trạng thái Đang chờ/Tiếp nhận)
+            bool isPending = booking.SpaStatus == "0" || (booking.SpaStatus != null && booking.SpaStatus.EndsWith("|0")) || booking.SpaStatus == "Tiếp nhận";
+            if (!isPending)
+            {
+                return Json(new { success = false, message = "Lịch hẹn đã được nhân viên tiếp nhận bắt đầu thực hiện, không thể hủy." });
+            }
+
+            // Ràng buộc 2: chỉ được hủy trước tối thiểu 2 giờ
             if (booking.DateTime <= DateTime.Now.AddHours(2))
             {
                 return Json(new { success = false, message = "Không thể hủy lịch hẹn đã cận giờ thực hiện (cần hủy trước tối thiểu 2 tiếng)." });
@@ -377,9 +385,12 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 return Json(new { success = false, message = "Không tìm thấy lịch hẹn hợp lệ." });
             }
 
-            if (booking.SpaStatus != "4" && !booking.SpaStatus.EndsWith("|4"))
+            bool isPaid = booking.Status == "Đã thanh toán" || booking.Status == "Success" || booking.Status == "PAID";
+            bool isTechnicallyDone = booking.SpaStatus == "4" || (booking.SpaStatus != null && booking.SpaStatus.EndsWith("|4"));
+
+            if (!isTechnicallyDone || !isPaid)
             {
-                return Json(new { success = false, message = "Chỉ có thể đánh giá dịch vụ sau khi ca làm việc đã hoàn thành." });
+                return Json(new { success = false, message = "Chỉ có thể đánh giá dịch vụ sau khi ca làm việc đã hoàn thành và đã thanh toán tiền." });
             }
 
             if (ratingStar < 1 || ratingStar > 5)

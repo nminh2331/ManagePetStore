@@ -1283,8 +1283,22 @@
                                 </td>
                                 @foreach (var slot in timeSlots)
                                 {
-                                    // Tìm kiếm booking của Groomer tại khung giờ này
+                                    // 1. Tìm kiếm booking của Groomer bắt đầu tại khung giờ này
                                     var booking = bookings.FirstOrDefault(b => b.GroomerId == groomer.UserId && b.DateTime.ToString("HH:00") == slot && b.SpaStatus != "Cancelled");
+
+                                    // 2. Nếu không có booking bắt đầu đúng slot này, kiểm tra ca kéo dài từ slot trước đè sang
+                                    ManagePetStore.Models.SpaBooking? overlappingBooking = null;
+                                    if (booking == null && DateTime.TryParse($"{selectedDate:yyyy-MM-dd} {slot}", out DateTime slotTime))
+                                    {
+                                        var slotEndTime = slotTime.AddHours(1);
+                                        overlappingBooking = bookings.FirstOrDefault(b => {
+                                            if (b.GroomerId != groomer.UserId || b.SpaStatus == "Cancelled") return false;
+                                            var start = b.DateTime;
+                                            var duration = b.Service?.DurationMinutes ?? 60;
+                                            var end = start.AddMinutes(duration);
+                                            return slotTime < end && start < slotEndTime;
+                                        });
+                                    }
 
                                     <td>
                                         @if (booking != null)
@@ -1332,6 +1346,13 @@
                                                     </button>
                                                 </div>
                                             }
+                                        }
+                                        else if (overlappingBooking != null)
+                                        {
+                                            <div class="schedule-slot-card slot-booked btn-view-progress" data-id="@overlappingBooking.BookingId" style="opacity: 0.85; background-color: #FFF7ED; border: 1px dashed #F97316;">
+                                                <p class="slot-booked-pet" style="color: #EA580C; font-size: 0.75rem;">(Bận ca @overlappingBooking.DateTime.ToString("HH:mm"))</p>
+                                                <p class="slot-booked-service" style="color: #C2410C; font-size: 0.7rem;">@overlappingBooking.Pet?.Name - @overlappingBooking.Service?.Name</p>
+                                            </div>
                                         }
                                         else
                                         {
@@ -2470,9 +2491,22 @@
                 // Cập nhật class Active cho nút bấm tương ứng
                 $('.btn-status-option').removeClass('active');
                 $('.btn-status-option[data-status="' + activeStep + '"]').addClass('active');
+
+                // Khóa không cho bấm lại nếu ca đã Hoàn thành
+                var isCompletedSession = activeStep === 'Hoàn thành' || completedSteps.includes('Hoàn thành');
+                if (isCompletedSession) {
+                    $('.btn-status-option').prop('disabled', true).addClass('disabled').css({ 'opacity': '0.6', 'cursor': 'not-allowed' });
+                } else {
+                    $('.btn-status-option').prop('disabled', false).removeClass('disabled').css({ 'opacity': '1', 'cursor': 'pointer' });
+                }
             }
 
             $('.btn-status-option').click(function () {
+                if ($(this).prop('disabled') || $(this).hasClass('disabled')) {
+                    showToast('Ca làm việc này đã hoàn thành. Không thể thay đổi hoặc bấm lại nữa.', 'warning');
+                    return;
+                }
+
                 var bookingId = $('#progBookingIdInput').val();
                 var status = $(this).data('status');
                 var self = this;
