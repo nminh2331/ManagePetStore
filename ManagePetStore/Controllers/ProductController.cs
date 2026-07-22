@@ -674,12 +674,35 @@ public class ProductController : Controller
             parsedDate = DateTime.Today;
         }
 
-        var bookedSlots = await _context.SpaBookings
+        var existingBookings = await _context.SpaBookings
+            .Include(b => b.Service)
             .Where(b => b.GroomerId == groomerId && b.DateTime.Date == parsedDate.Date && b.SpaStatus != "Cancelled")
-            .Select(b => b.DateTime.ToString("HH:mm"))
             .ToListAsync();
 
-        return Json(bookedSlots);
+        var defaultTimeSlots = new string[] { "08:00", "09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00" };
+        var busySlots = new List<string>();
+
+        foreach (var slotStr in defaultTimeSlots)
+        {
+            if (DateTime.TryParse($"{parsedDate:yyyy-MM-dd} {slotStr}", out DateTime slotStart))
+            {
+                var slotEnd = slotStart.AddMinutes(60);
+
+                bool isBusy = existingBookings.Any(b => {
+                    var existingStart = b.DateTime;
+                    var duration = b.Service?.DurationMinutes ?? 60;
+                    var existingEnd = existingStart.AddMinutes(duration);
+                    return slotStart < existingEnd && existingStart < slotEnd;
+                });
+
+                if (isBusy)
+                {
+                    busySlots.Add(slotStr);
+                }
+            }
+        }
+
+        return Json(busySlots);
     }
 
     [HttpPost]

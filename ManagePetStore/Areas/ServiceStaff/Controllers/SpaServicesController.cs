@@ -17,13 +17,26 @@ using CustomerEntity = ManagePetStore.Models.Customer;
 
 namespace ManagePetStore.Areas.ServiceStaff.Controllers
 {
+    /// <summary>
+    /// Controller quản lý Vận hành & Đặt ca Spa dành cho Phân hệ ServiceStaff (Nhân viên Spa), Admin và Manager.
+    /// Bao gồm: Danh mục Dịch vụ Spa, Lịch phân ca Groomer theo ngày, Hàng đợi Real-time, Tiếp nhận khách vãng lai và Cập nhật Tiến độ Spa.
+    /// </summary>
     [Area("ServiceStaff")]
     [Authorize(Roles = "service,admin,manager")]
     [Route("SpaServices")]
     public class SpaServicesController : Controller
     {
+        /// <summary>
+        /// Danh sách 5 bước tiến độ chuẩn của dịch vụ Spa
+        /// Index 0: Tiếp nhận | Index 1: Tắm & Sấy | Index 2: Cắt & Tỉa | Index 3: Massage | Index 4: Hoàn thành
+        /// </summary>
         private static readonly string[] SpaProgressStatuses = ["Tiếp nhận", "Tắm & Sấy", "Cắt & Tỉa", "Massage", "Hoàn thành"];
 
+        /// <summary>
+        /// Hàm hỗ trợ: Trích xuất số điện thoại từ chuỗi định dạng "Tên Khách Hàng (0987654321)"
+        /// </summary>
+        /// <param name="ownerName">Chuỗi tên chủ nuôi kèm số điện thoại trong ngoặc đơn</param>
+        /// <returns>Chuỗi số điện thoại 10 chữ số (hoặc rỗng nếu không tìm thấy)</returns>
         private static string ExtractPhoneFromOwnerName(string ownerName)
         {
             if (string.IsNullOrEmpty(ownerName)) return "";
@@ -69,8 +82,18 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         // =========================================================================
-        // 1. MÀN HÌNH CHÍNH (ĐƯỜNG DẪN /SpaServices)
+        // 1. MÀN HÌNH CHÍNH (ĐƯỜNG DẪN /SpaServices HOẶC /SpaServices/Index)
         // =========================================================================
+        
+        /// <summary>
+        /// Màn hình chính quản lý Vận hành & Đặt ca Spa.
+        /// Nạp dữ liệu danh mục dịch vụ (có phân trang), danh sách phân ca Groomer theo ngày, hàng đợi Real-time và khách vãng lai chờ tiếp nhận.
+        /// </summary>
+        /// <param name="date">Ngày cần xem lịch phân ca (Mặc định là ngày hôm nay)</param>
+        /// <param name="servicePage">Trang hiện tại của Danh mục dịch vụ (Kích thước: 5 item/trang)</param>
+        /// <param name="groomerPage">Trang hiện tại của Danh sách Groomer (Kích thước: 3 item/trang)</param>
+        /// <param name="queuePage">Trang hiện tại của Hàng đợi Real-time (Kích thước: 4 item/trang)</param>
+        /// <param name="walkInPage">Trang hiện tại của Khách vãng lai chờ duyệt (Kích thước: 1 item/trang)</param>
         [HttpGet("")]
         [HttpGet("Index")]
         public async Task<IActionResult> Index(DateTime? date, int servicePage = 1, int groomerPage = 1, int queuePage = 1, int walkInPage = 1)
@@ -78,7 +101,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             var selectedDate = date ?? DateTime.Today;
             ViewBag.SelectedDate = selectedDate;
 
-            // Phân hệ 4.1: Danh mục dịch vụ Spa có PHÂN TRANG (PageSize = 5)
+            // Phân hệ 4.1: Nạp danh mục dịch vụ Spa có PHÂN TRANG (PageSize = 5)
             int pageSize = 5;
             int totalServices = await _context.SpaServices.CountAsync();
             int totalPages = (int)Math.Ceiling((double)totalServices / pageSize);
@@ -95,14 +118,14 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             ViewBag.CurrentPage = currentPage;
             ViewBag.TotalPages = totalPages;
 
-            // Chỉ lấy dịch vụ đang active cho các Dropdown
+            // Chỉ lấy dịch vụ đang Hoạt động (Active) cho các Dropdown chọn lựa
             var activeServices = await _context.SpaServices.AsNoTracking()
                 .Where(s => s.Active)
                 .OrderBy(s => s.ServiceId)
                 .ToListAsync();
             ViewBag.ActiveServices = activeServices;
 
-            // Phân hệ 4.2: Phân ca Nhân viên có PHÂN TRANG (PageSize = 3)
+            // Phân hệ 4.2: Nạp danh sách Groomer và Phân ca theo ngày có PHÂN TRANG (PageSize = 3)
             int groomerPageSize = 3;
             int activeGroomersCount = await _context.Users.AsNoTracking()
                 .Include(u => u.Role)
@@ -133,6 +156,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             ViewBag.GroomerPage = currentGroomerPage;
             ViewBag.TotalGroomerPages = totalGroomerPages;
 
+            // Lấy danh sách toàn bộ Lịch hẹn Spa trong ngày được chọn
             var bookings = await _context.SpaBookings.AsNoTracking()
                 .Include(b => b.Pet)
                 .Include(b => b.Customer)
@@ -144,7 +168,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             var allActiveQueueItems = await _context.SpaQueues.AsNoTracking().ToListAsync();
             ViewBag.AllActiveQueueItems = allActiveQueueItems;
 
-            // Phân hệ 4.3: Hàng đợi Spa Real-time có PHÂN TRANG (PageSize = 4)
+            // Phân hệ 4.3: Hàng đợi Spa Real-time chính thức có PHÂN TRANG (PageSize = 4)
             int queuePageSize = 4;
             int totalQueueItems = await _context.SpaQueues.AsNoTracking().CountAsync(q => !q.QueueNumber.StartsWith("PEND-WI-"));
             int totalQueuePages = (int)Math.Ceiling((double)totalQueueItems / queuePageSize);
@@ -163,7 +187,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             ViewBag.TotalQueuePages = totalQueuePages;
             ViewBag.TotalQueueItems = totalQueueItems;
 
-            // Khách vãng lai chờ (bắt đầu bằng PEND-WI-) có PHÂN TRANG (PageSize = 1)
+            // Nạp danh sách Khách vãng lai đang chờ duyệt (Mã số bắt đầu bằng PEND-WI-) có PHÂN TRANG (PageSize = 1)
             var walkInItems = await _context.SpaQueues.AsNoTracking()
                 .Where(q => q.QueueNumber.StartsWith("PEND-WI-"))
                 .OrderBy(q => q.ArrivalTime)
@@ -194,7 +218,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 ViewBag.WalkInPet = pet;
             }
 
-            // Dữ liệu dropdowns
+            // Dữ liệu danh sách Khách hàng cho các Dropdown
             var customers = await _context.Customers.AsNoTracking()
                 .Include(c => c.Pets)
                 .OrderBy(c => c.FullName)
@@ -205,9 +229,16 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         // =========================================================================
-        // 2. PHÂN HỆ 4.1: QUẢN LÝ DANH MỤC DỊCH VỤ SPA (CRUD & TOGGLE ACTIVE)
+        // 2. QUẢN LÝ DANH MỤC DỊCH VỤ SPA (CRUD & CHUYỂN TRẠNG THÁI HOẠT ĐỘNG)
         // =========================================================================
         
+        /// <summary>
+        /// Thêm một dịch vụ Spa mới vào danh mục hệ thống.
+        /// </summary>
+        /// <param name="name">Tên dịch vụ Spa</param>
+        /// <param name="duration">Thời lượng dịch vụ (tính bằng phút)</param>
+        /// <param name="price">Đơn giá dịch vụ (VNĐ)</param>
+        /// <param name="targetSpecies">Loài áp dụng (Chó, Mèo, Tất cả...)</param>
         [HttpPost("AddService")]
         public async Task<IActionResult> AddService(string name, int duration, decimal price, string? targetSpecies)
         {
@@ -217,6 +248,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            // Kiểm tra trùng tên dịch vụ trong DB
             if (await _context.SpaServices.AnyAsync(s => s.Name.ToLower() == name.Trim().ToLower()))
             {
                 TempData["ErrorMessage"] = "Tên dịch vụ Spa này đã tồn tại.";
@@ -239,6 +271,14 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        /// <summary>
+        /// Chỉnh sửa thông tin một dịch vụ Spa đã tồn tại trong danh mục.
+        /// </summary>
+        /// <param name="id">Mã ID dịch vụ Spa cần sửa</param>
+        /// <param name="name">Tên dịch vụ mới</param>
+        /// <param name="duration">Thời lượng mới (phút)</param>
+        /// <param name="price">Đơn giá mới (VNĐ)</param>
+        /// <param name="targetSpecies">Loài áp dụng mới</param>
         [HttpPost("EditService")]
         public async Task<IActionResult> EditService(int id, string name, int duration, decimal price, string? targetSpecies)
         {
@@ -255,6 +295,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            // Kiểm tra trùng tên với các dịch vụ khác
             if (await _context.SpaServices.AnyAsync(s => s.Name.ToLower() == name.Trim().ToLower() && s.ServiceId != id))
             {
                 TempData["ErrorMessage"] = "Tên dịch vụ Spa này đã tồn tại.";
@@ -271,6 +312,10 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        /// <summary>
+        /// Xóa dịch vụ Spa (Tự động chuyển sang xóa mềm Active=false nếu dịch vụ đã phát sinh dữ liệu lịch hẹn/hóa đơn).
+        /// </summary>
+        /// <param name="id">Mã ID dịch vụ Spa cần xóa</param>
         [HttpPost("DeleteService")]
         public async Task<IActionResult> DeleteService(int id)
         {
@@ -280,26 +325,30 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return Json(new { success = false, message = "Không tìm thấy dịch vụ." });
             }
 
-            // Kiểm tra an toàn khóa ngoại
+            // Kiểm tra an toàn khóa ngoại với các bảng SpaBooking và OrderItem
             bool hasBookings = await _context.SpaBookings.AnyAsync(b => b.ServiceId == id);
             bool hasOrderItems = await _context.OrderItems.AnyAsync(o => o.SpaServiceId == id);
 
             if (hasBookings || hasOrderItems)
             {
-                // Soft delete
+                // Thực hiện Xóa mềm (Soft delete) bằng cách đổi trạng thái Active = false
                 service.Active = false;
                 await _context.SaveChangesAsync();
                 return Json(new { success = true, isSoftDeleted = true, message = "Dịch vụ đã phát sinh dữ liệu (lịch hẹn/hóa đơn). Hệ thống tự động chuyển sang trạng thái Ngưng hoạt động!" });
             }
             else
             {
-                // Hard delete
+                // Thực hiện Xóa cứng (Hard delete) loại bỏ hoàn toàn khỏi DB
                 _context.SpaServices.Remove(service);
                 await _context.SaveChangesAsync();
                 return Json(new { success = true, isSoftDeleted = false, message = "Xóa dịch vụ Spa thành công!" });
             }
         }
 
+        /// <summary>
+        /// Đổi nhanh trạng thái Bật/Tắt (Hoạt động / Ngưng hoạt động) của một dịch vụ Spa.
+        /// </summary>
+        /// <param name="id">Mã ID dịch vụ Spa</param>
         [HttpPost("ToggleActive")]
         public async Task<IActionResult> ToggleActive(int id)
         {
@@ -316,9 +365,13 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         // =========================================================================
-        // 3. TIẾP NHẬN KHÁCH VÃNG LAI & HÀNG ĐỢI REAL-TIME
+        // 3. TIẾP NHẬN KHÁCH VÃNG LAI & QUẢN LÝ HÀNG ĐỢI REAL-TIME
         // =========================================================================
         
+        /// <summary>
+        /// Tiếp nhận nhanh khách vãng lai trực tiếp tại quầy Spa.
+        /// Tự động đăng ký Khách hàng và Thú cưng nếu chưa có thông tin trong hệ thống, sau đó đưa vào danh sách chờ duyệt (mã PEND-WI-).
+        /// </summary>
         [HttpPost("QuickCheckIn")]
         public async Task<IActionResult> QuickCheckIn(
             string petName, string species, string breed, string age, decimal weight, 
@@ -356,6 +409,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             {
                 try
                 {
+                    // 1. Tìm hoặc tạo mới thông tin Khách hàng
                     var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Phone == cleanPhone);
                     if (customer == null)
                     {
@@ -376,29 +430,18 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                         await _context.SaveChangesAsync();
                     }
 
+                    // 2. Tìm hoặc tạo mới thông tin Thú cưng
                     var cleanPetName = petName.Trim();
-                    if (cleanPetName.Length > 50)
-                    {
-                        cleanPetName = cleanPetName.Substring(0, 50);
-                    }
+                    if (cleanPetName.Length > 50) cleanPetName = cleanPetName.Substring(0, 50);
 
                     var cleanSpecies = species?.Trim() ?? "Chó";
-                    if (cleanSpecies.Length > 30)
-                    {
-                        cleanSpecies = cleanSpecies.Substring(0, 30);
-                    }
+                    if (cleanSpecies.Length > 30) cleanSpecies = cleanSpecies.Substring(0, 30);
 
                     var cleanBreed = breed?.Trim() ?? "Không rõ";
-                    if (cleanBreed.Length > 50)
-                    {
-                        cleanBreed = cleanBreed.Substring(0, 50);
-                    }
+                    if (cleanBreed.Length > 50) cleanBreed = cleanBreed.Substring(0, 50);
 
                     var cleanAge = age?.Trim() ?? "Chưa rõ";
-                    if (cleanAge.Length > 30)
-                    {
-                        cleanAge = cleanAge.Substring(0, 30);
-                    }
+                    if (cleanAge.Length > 30) cleanAge = cleanAge.Substring(0, 30);
 
                     var existingPet = await _context.Pets
                         .FirstOrDefaultAsync(p => p.CustomerId == customer.CustomerId 
@@ -431,6 +474,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     }
                     await _context.SaveChangesAsync();
 
+                    // 3. Tạo mã số hàng đợi tự động (định dạng: PEND-WI-701, PEND-WI-702...)
                     var allQueueNumbers = await _context.SpaQueues
                         .Where(q => q.QueueNumber.StartsWith("WI-") || q.QueueNumber.StartsWith("PEND-WI-"))
                         .Select(q => q.QueueNumber)
@@ -460,6 +504,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                         ownerLabel = ownerLabel.Substring(0, 100);
                     }
 
+                    // 4. Lưu bản ghi vào bảng SpaQueues
                     var queueItem = new SpaQueue
                     {
                         QueueNumber = queueNumber,
@@ -487,6 +532,13 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return RedirectToAction(nameof(Index), new { date = redirectDate });
         }
 
+        /// <summary>
+        /// Bắt đầu thực hiện ca làm việc từ Hàng đợi Spa Real-time.
+        /// Gán Groomer phụ trách, kiểm tra trùng lịch va chạm khoảng thời gian (Interval Overlap Check), khởi tạo SpaBooking và kích hoạt tiến độ về "|0" (Tiếp nhận).
+        /// </summary>
+        /// <param name="queueId">Mã ID hàng đợi cần bắt đầu</param>
+        /// <param name="groomerId">Mã ID Groomer được phân công</param>
+        /// <param name="date">Ngày làm việc (định dạng yyyy-MM-dd)</param>
         [HttpPost("StartQueue")]
         public async Task<IActionResult> StartQueue(int queueId, int groomerId, string? date)
         {
@@ -533,7 +585,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return Json(new { success = false, message = "Không có dịch vụ Spa khả dụng." });
             }
 
-            // Determine target booking datetime based on date parameter and ArrivalTime's time of day
+            // Xác định thời gian hẹn kết hợp giữa ngày chọn và giờ trong Hàng đợi
             DateTime targetDate = queueItem.ArrivalTime.Date;
             if (!string.IsNullOrEmpty(date) && DateTime.TryParse(date, out var parsedDate))
             {
@@ -541,11 +593,11 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             }
             DateTime targetBookingDateTime = targetDate.Add(queueItem.ArrivalTime.TimeOfDay);
 
-            // Check if there is already a booking created online for this slot/pet/service
+            // Kiểm tra xem đã có lịch hẹn SpaBooking tạo online trước đó cho ca này chưa
             var existingBooking = await _context.SpaBookings
                 .FirstOrDefaultAsync(b => b.CustomerId == customer.CustomerId && b.PetId == pet.PetId && b.ServiceId == service.ServiceId && b.DateTime == targetBookingDateTime && b.SpaStatus != "Cancelled");
 
-            // Kiểm tra trùng lịch của Groomer tại khung giờ này (áp dụng cho cả online và offline - Interval Overlap Check)
+            // Kiểm tra trùng lịch của Groomer tại khung giờ này (Áp dụng thuật toán Interval Overlap Check)
             var bookedSlotsToday = await _context.SpaBookings.AsNoTracking()
                 .Include(b => b.Service)
                 .Where(b => b.GroomerId == groomerId 
@@ -569,22 +621,23 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             if (existingBooking != null)
             {
-                // If it already exists, associate it with the groomer starting it and activate progress
+                // Nếu đã có lịch hẹn online, gán Groomer tiếp nhận và kích hoạt tiến độ sang "|0" (Tiếp nhận)
                 existingBooking.GroomerId = groomerId;
-                existingBooking.SpaStatus = "|0"; // Ensure it starts progress
+                existingBooking.SpaStatus = "|0";
                 
                 _context.SpaQueues.Remove(queueItem);
                 await _context.SaveChangesAsync();
                 return Json(new { success = true, message = $"Bắt đầu thực hiện dịch vụ cho thú cưng {pet.Name}!" });
             }
 
+            // Tạo mới bản ghi SpaBooking nếu là khách vãng lai
             var booking = new SpaBooking
             {
                 CustomerId = customer.CustomerId,
                 PetId = pet.PetId,
                 ServiceId = service.ServiceId,
                 GroomerId = groomer.UserId,
-                DateTime = targetBookingDateTime, // Dùng đúng khung giờ kết hợp với ngày được chọn
+                DateTime = targetBookingDateTime,
                 Price = service.Price,
                 Status = "Chưa thanh toán",
                 SpaStatus = "|0", // Khởi tạo index 0 (Tiếp nhận) làm active status ban đầu
@@ -602,6 +655,10 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         // 4. TIẾN ĐỘ & CẬP NHẬT TRẠNG THÁI SPA (TIẾN ĐỘ SPA MODAL)
         // =========================================================================
         
+        /// <summary>
+        /// Lấy chi tiết lịch hẹn Spa và phân giải tiến độ 5 bước để hiển thị lên Modal Tiến độ Spa phía Nhân viên.
+        /// </summary>
+        /// <param name="bookingId">Mã ID lịch hẹn Spa</param>
         [HttpGet("GetBookingDetails")]
         public async Task<IActionResult> GetBookingDetails(int bookingId)
         {
@@ -617,12 +674,11 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return NotFound();
             }
 
-            // Định nghĩa 5 bước tiến độ chuẩn
             var statuses = SpaProgressStatuses;
             var completedSteps = new List<string>();
             var activeStep = "Tiếp nhận";
 
-            // Phân giải SpaStatus (nén index dạng: "0,1|3" -> các bước hoàn thành là [0, 1], bước đang thực hiện là 3)
+            // Phân giải SpaStatus (Dạng nén index: "0,1|2" -> hoàn thành [0, 1], bước đang làm 2)
             var dbStatus = booking.SpaStatus ?? "0";
             if (dbStatus.Contains("|"))
             {
@@ -649,7 +705,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             }
             else
             {
-                // Hỗ trợ fallback tương thích ngược dữ liệu cũ
+                // Hỗ trợ Fallback dữ liệu cũ
                 if (statuses.Contains(dbStatus))
                 {
                     activeStep = dbStatus;
@@ -681,6 +737,13 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             });
         }
 
+        /// <summary>
+        /// Cập nhật tiến độ thực hiện ca Spa.
+        /// Kiểm tra nếu ca đã Hoàn thành thì khóa không cho thay đổi. 
+        /// Nếu bấm "Hoàn thành" (bước 5), hệ thống tự động khởi tạo Hóa đơn nháp tại POS và tạo công việc StaffTask cho nhân viên.
+        /// </summary>
+        /// <param name="bookingId">Mã ID lịch hẹn Spa</param>
+        /// <param name="status">Tên bước trạng thái mới (Tiếp nhận, Tắm & Sấy, Cắt & Tỉa, Massage, Hoàn thành)</param>
         [HttpPost("UpdateSpaStatus")]
         public async Task<IActionResult> UpdateSpaStatus(int bookingId, string status)
         {
@@ -688,6 +751,12 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             if (booking == null)
             {
                 return Json(new { success = false, message = "Không tìm thấy lịch hẹn." });
+            }
+
+            // Ràng buộc bảo vệ: Ca đã Hoàn thành thì không được phép thay đổi/bấm lại nữa
+            if (booking.SpaStatus == "4" || (booking.SpaStatus != null && booking.SpaStatus.EndsWith("|4")) || booking.SpaStatus == "Hoàn thành")
+            {
+                return Json(new { success = false, message = "Ca làm việc này đã hoàn thành. Không thể thay đổi hoặc bấm lại các bước tiến độ nữa." });
             }
 
             if (booking.Pet != null)
@@ -727,7 +796,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 else int.TryParse(dbStatus, out activeIndex);
             }
 
-            // Logic tích dấu tuyến tính: tự động hoàn thành tất cả các bước lên đến newIndex (bao gồm cả newIndex)
+            // Logic tích dấu tuyến tính: tự động hoàn thành tất cả các bước lên đến newIndex
             completedIndexes.Clear();
             for (int i = 0; i <= newIndex; i++)
             {
@@ -739,14 +808,14 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             // Đóng gói lưu lại DB dưới dạng nén
             booking.SpaStatus = string.Join(",", completedIndexes) + "|" + activeIndex;
 
-            // Nếu nhân viên hoàn thành trạng thái chăm sóc thú cưng thì lưu vào bảng StaffTasks và đồng bộ hóa đơn POS
+            // Nếu nhân viên chọn "Hoàn thành" ca làm việc -> Sinh hóa đơn POS nháp và tạo StaffTask
             if (status == "Hoàn thành")
             {
                 await _context.Entry(booking).Reference(b => b.Pet).LoadAsync();
                 await _context.Entry(booking).Reference(b => b.Customer).LoadAsync();
                 await _context.Entry(booking).Reference(b => b.Service).LoadAsync();
 
-                // Đồng bộ hóa hóa đơn sang POS (Tạo Order và OrderItem nếu booking chưa thanh toán và chưa có hóa đơn tương ứng)
+                // Đồng bộ hóa đơn sang POS (Tạo Order và OrderItem trạng thái "Chờ thanh toán")
                 if (booking.Status == "Chưa thanh toán")
                 {
                     bool hasExistingOrder = await _context.OrderItems
@@ -785,6 +854,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     }
                 }
 
+                // Lưu bản ghi công việc hoàn thành vào bảng StaffTasks
                 string taskId = $"TSK-SPA-{bookingId}";
                 var existingTask = await _context.StaffTasks.FirstOrDefaultAsync(t => t.TaskId == taskId);
                 if (existingTask == null)
@@ -823,6 +893,10 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             });
         }
 
+        /// <summary>
+        /// Hủy lịch hẹn Spa từ phía Nhân viên (Chỉ hủy được khi ca chưa bắt đầu thực hiện).
+        /// </summary>
+        /// <param name="bookingId">Mã ID lịch hẹn Spa</param>
         [HttpPost("CancelBooking")]
         public async Task<IActionResult> CancelBooking(int bookingId)
         {
@@ -837,7 +911,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return Json(new { success = false, message = "Không thể hủy/xóa lịch hẹn đã bắt đầu thực hiện dịch vụ." });
             }
 
-            // Find and remove associated queue item if this was an online booking
+            // Giải phóng hàng đợi SpaQueues tương ứng
             if (booking.CustomerId > 0 && booking.PetId > 0)
             {
                 var customer = await _context.Customers.FindAsync(booking.CustomerId);
@@ -860,6 +934,10 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return Json(new { success = true, message = "Hủy lịch hẹn thành công!" });
         }
 
+        /// <summary>
+        /// API Polling: Lấy danh sách Hàng đợi Spa Real-time theo trang (Dùng để tự động làm mới hàng đợi mỗi 30 giây).
+        /// </summary>
+        /// <param name="page">Số trang hiện tại</param>
         [HttpGet("GetRealtimeQueue")]
         public async Task<IActionResult> GetRealtimeQueue(int page = 1)
         {
@@ -893,6 +971,10 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             });
         }
 
+        /// <summary>
+        /// Lấy chi tiết thông tin Khách vãng lai đang chờ tiếp nhận.
+        /// </summary>
+        /// <param name="queueId">Mã ID hàng đợi</param>
         [HttpGet("GetWalkInDetails")]
         public async Task<IActionResult> GetWalkInDetails(int queueId)
         {
@@ -911,7 +993,6 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Phone == phone);
             var pet = customer != null ? await _context.Pets.FirstOrDefaultAsync(p => p.CustomerId == customer.CustomerId && p.Name == queueItem.PetName) : null;
-
             var service = await _context.SpaServices.FirstOrDefaultAsync(s => s.Name == queueItem.ServiceDescription);
 
             return Json(new {
@@ -932,6 +1013,11 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             });
         }
 
+        /// <summary>
+        /// Lấy danh sách mã ID các Groomer đang bận ca làm tại một mốc ngày và giờ cụ thể.
+        /// </summary>
+        /// <param name="date">Ngày kiểm tra (yyyy-MM-dd)</param>
+        /// <param name="time">Mốc giờ kiểm tra (HH:mm)</param>
         [HttpGet("GetGroomersBusyStatus")]
         public async Task<IActionResult> GetGroomersBusyStatus(string date, string time)
         {
@@ -962,6 +1048,9 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return Json(busyGroomerIds);
         }
 
+        /// <summary>
+        /// Cập nhật/Sửa thông tin của khách vãng lai trong hàng đợi.
+        /// </summary>
         [HttpPost("EditWalkIn")]
         public async Task<IActionResult> EditWalkIn(
             int queueId, string petName, string species, string breed, string age, decimal weight, 
@@ -991,17 +1080,14 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             {
                 try
                 {
-                    // Parse original phone to find original customer
                     string origPhone = ExtractPhoneFromOwnerName(queueItem.OwnerName);
 
                     var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Phone == origPhone);
                     if (customer != null)
                     {
-                        // Cập nhật thông tin Customer
                         customer.FullName = customerName.Trim();
                         customer.Phone = phone.Trim();
                         
-                        // Cập nhật thông tin Pet liên quan
                         var pet = await _context.Pets.FirstOrDefaultAsync(p => p.CustomerId == customer.CustomerId && p.Name == queueItem.PetName);
                         if (pet != null)
                         {
@@ -1013,7 +1099,6 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                         }
                     }
 
-                    // Cập nhật thông tin hàng đợi
                     DateTime arrivalTime = DateTime.Now;
                     if (!string.IsNullOrEmpty(timeSlot) && TimeSpan.TryParse(timeSlot, out TimeSpan ts))
                     {
@@ -1041,6 +1126,10 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return RedirectToAction(nameof(Index), new { date = queueItem.ArrivalTime.ToString("yyyy-MM-dd") });
         }
 
+        /// <summary>
+        /// Duyệt chuyển Khách vãng lai từ danh sách chờ (PEND-WI-) sang Hàng đợi chính thức (WI-).
+        /// </summary>
+        /// <param name="queueId">Mã ID hàng đợi</param>
         [HttpPost("AcceptWalkIn")]
         public async Task<IActionResult> AcceptWalkIn(int queueId)
         {
@@ -1060,6 +1149,11 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return Json(new { success = false, message = "Pet đã ở trong hàng đợi." });
         }
 
+        /// <summary>
+        /// Hủy thông tin hàng đợi và xóa khỏi danh sách (Kèm theo lý do hủy).
+        /// </summary>
+        /// <param name="queueId">Mã ID hàng đợi</param>
+        /// <param name="reason">Lý do hủy</param>
         [HttpPost("CancelQueueItem")]
         public async Task<IActionResult> CancelQueueItem(int queueId, string reason)
         {
