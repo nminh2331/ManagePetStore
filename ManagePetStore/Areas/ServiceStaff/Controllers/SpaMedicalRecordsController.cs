@@ -355,7 +355,42 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     Description = $"Tình trạng: {healthStatus}. Cân nặng: {weight:0.##} kg. Nhân viên: {staff.Name}."
                 });
             }
+
+            var notification = new CustomerNotification
+            {
+                CustomerId = pet.CustomerId,
+                HotelBookingId = activeHotelBookingId,
+                Type = "MedicalRecord",
+                Title = $"Sổ y tế mới cho {pet.Name}",
+                Message = $"Bé {pet.Name} vừa được cập nhật sổ y tế mới. Tình trạng: {healthStatus}, Cân nặng: {weight:0.##} kg.",
+                LinkUrl = $"/Customer/Pet/MedicalHistory?petId={petId}",
+                IsRead = false,
+                CreatedAt = record.DateCreated
+            };
+            _context.CustomerNotifications.Add(notification);
             await _context.SaveChangesAsync();
+
+            try
+            {
+                await _hotelCareHub.Clients
+                    .Group(HotelCareHub.GroupName(pet.CustomerId))
+                    .SendAsync("CareLogUpdated", new
+                    {
+                        notificationId = notification.NotificationId,
+                        bookingId = activeHotelBookingId,
+                        petName = pet.Name,
+                        title = notification.Title,
+                        message = notification.Message,
+                        mediaUrl = (string?)null,
+                        mediaType = (string?)null,
+                        occurredAt = record.DateCreated,
+                        linkUrl = notification.LinkUrl
+                    });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Cannot send SignalR notification for medical record of pet {PetId}.", petId);
+            }
 
             return Json(new { success = true, message = "Tạo sổ y tế thành công!" });
         }
