@@ -88,10 +88,12 @@ else
         </div>
         @if (Model.BestSellers.Count > 0)
         {
-            <div class="ps-products-grid">
+            <div class="ps-products-grid" id="best-sellers-grid">
+                @{ int productIndex = 0; }
                 @foreach (var product in Model.BestSellers)
                 {
-                    <a asp-controller="Product" asp-action="Details" asp-route-id="@product.Sku" class="ps-product-card">
+                    bool isHidden = productIndex >= 4;
+                    <a asp-controller="Product" asp-action="Details" asp-route-id="@product.Sku" class="ps-product-card bs-item" style="@(isHidden ? "display:none;" : "")" data-index="@productIndex">
                         @if (!string.IsNullOrEmpty(product.Badge))
                         {
                             <span class="ps-product-badge @product.BadgeType">@product.Badge</span>
@@ -114,26 +116,27 @@ else
                             </div>
                         </div>
                     </a>
+                    productIndex++;
                 }
             </div>
 
             @if (Model.TotalPagesP > 1)
             {
                 <nav class="mt-4 d-flex justify-content-center" aria-label="Products Pagination">
-                    <ul class="pagination">
-                        <li class="page-item @(Model.CurrentPageP == 1 ? "disabled" : "")">
-                            <a class="page-link" href="@Url.Action("Index", "Home", new { pageP = Model.CurrentPageP - 1, pageS = Model.CurrentPageS, search = Model.SearchKeyword, category = Model.SelectedCategorySlug, species = ViewBag.SelectedSpecies })#best-sellers">
+                    <ul class="pagination" id="bs-pagination">
+                        <li class="page-item disabled" id="bs-prev">
+                            <a class="page-link" href="javascript:void(0)" onclick="goToPageP(currentBsPage - 1)">
                                 <i class="bi bi-chevron-left"></i>
                             </a>
                         </li>
                         @for (int i = 1; i <= Model.TotalPagesP; i++)
                         {
-                            <li class="page-item @(i == Model.CurrentPageP ? "active" : "")">
-                                <a class="page-link" href="@Url.Action("Index", "Home", new { pageP = i, pageS = Model.CurrentPageS, search = Model.SearchKeyword, category = Model.SelectedCategorySlug, species = ViewBag.SelectedSpecies })#best-sellers">@i</a>
+                            <li class="page-item @(i == 1 ? "active" : "")" id="bs-page-@i">
+                                <a class="page-link" href="javascript:void(0)" onclick="goToPageP(@i)">@i</a>
                             </li>
                         }
-                        <li class="page-item @(Model.CurrentPageP == Model.TotalPagesP ? "disabled" : "")">
-                            <a class="page-link" href="@Url.Action("Index", "Home", new { pageP = Model.CurrentPageP + 1, pageS = Model.CurrentPageS, search = Model.SearchKeyword, category = Model.SelectedCategorySlug, species = ViewBag.SelectedSpecies })#best-sellers">
+                        <li class="page-item @(Model.TotalPagesP == 1 ? "disabled" : "")" id="bs-next">
+                            <a class="page-link" href="javascript:void(0)" onclick="goToPageP(currentBsPage + 1)">
                                 <i class="bi bi-chevron-right"></i>
                             </a>
                         </li>
@@ -461,4 +464,34 @@ else
     }
 </section>
 
-
+@section Scripts {
+    <script>
+        let currentBsPage = 1;
+        const totalBsPages = @Model.TotalPagesP;
+        
+        function goToPageP(page) {
+            if (page < 1 || page > totalBsPages) return;
+            currentBsPage = page;
+            
+            const items = document.querySelectorAll('.bs-item');
+            items.forEach(item => {
+                const idx = parseInt(item.getAttribute('data-index'));
+                if (idx >= (page - 1) * 4 && idx < page * 4) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            
+            document.getElementById('bs-prev').className = 'page-item ' + (page === 1 ? 'disabled' : '');
+            document.getElementById('bs-next').className = 'page-item ' + (page === totalBsPages ? 'disabled' : '');
+            
+            for (let i = 1; i <= totalBsPages; i++) {
+                const li = document.getElementById('bs-page-' + i);
+                if (li) {
+                    li.className = 'page-item ' + (i === page ? 'active' : '');
+                }
+            }
+        }
+    </script>
+}

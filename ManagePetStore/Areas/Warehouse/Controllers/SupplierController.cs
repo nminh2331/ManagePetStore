@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Project: Pet Store Management System (PSMS)
  * File: SupplierController.cs
  * Author: Tran Duong
@@ -57,7 +57,7 @@ public class SupplierController : Controller
             await _supplierService.AddSupplierAsync(supplier, categoryIds);
             if (productSkus != null && productSkus.Any())
                 await _supplierService.UpdateSupplierProductsAsync(supplier.SupplierId, productSkus);
-            TempData["SuccessMessage"] = "ThÃªm nhÃ  cung cáº¥p thÃ nh cÃ´ng!";
+            TempData["SuccessMessage"] = "Thêm nhà cung cấp thành công!";
             return RedirectToAction(nameof(Index));
         }
         var categories = (await _categoryService.GetCategorySummary()).Categories;
@@ -94,7 +94,7 @@ public class SupplierController : Controller
         {
             await _supplierService.UpdateSupplierAsync(supplier, categoryIds);
             await _supplierService.UpdateSupplierProductsAsync(supplier.SupplierId, productSkus ?? new List<string>());
-            TempData["SuccessMessage"] = "Cáº­p nháº­t nhÃ  cung cáº¥p thÃ nh cÃ´ng!";
+            TempData["SuccessMessage"] = "Cập nhật nhà cung cấp thành công!";
             return RedirectToAction(nameof(Index));
         }
         var categories = (await _categoryService.GetCategorySummary()).Categories;
@@ -110,7 +110,7 @@ public class SupplierController : Controller
     public async Task<IActionResult> Deactivate(int id)
     {
         await _supplierService.DeleteSupplierAsync(id);
-        TempData["SuccessMessage"] = "ÄÃ£ Ä‘Ã¡nh dáº¥u nhÃ  cung cáº¥p ngá»«ng hoáº¡t Ä‘á»™ng.";
+        TempData["SuccessMessage"] = "Đã đánh dấu nhà cung cấp ngừng hoạt động.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -125,7 +125,7 @@ public class SupplierController : Controller
             // Since UpdateSupplierAsync expects categoryIds, we can pass existing ones
             var categoryIds = supplier.Categories.Select(c => c.CategoryId).ToList();
             await _supplierService.UpdateSupplierAsync(supplier, categoryIds);
-            TempData["SuccessMessage"] = "ÄÃ£ kÃ­ch hoáº¡t láº¡i nhÃ  cung cáº¥p.";
+            TempData["SuccessMessage"] = "Đã kích hoạt lại nhà cung cấp.";
         }
         return RedirectToAction(nameof(Index));
     }

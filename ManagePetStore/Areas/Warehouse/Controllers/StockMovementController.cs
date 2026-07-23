@@ -4,7 +4,7 @@
  * Author: Tran Duong
  * Date: June 11, 2026
  * Last Update: July 17, 2026
- * Description: Controller xá»­ lÃ½ cÃ¡c phiáº¿u xuáº¥t/nháº­p kho.
+ * Description: Controller xử lý các phiếu xuất/nhập kho.
  */
 using ManagePetStore.Services.Warehouse;
 using ManagePetStore.Exceptions;
@@ -37,7 +37,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             _batchService = batchService;
         }
 
-        // Hiá»ƒn thá»‹ danh sÃ¡ch cÃ¡c phiáº¿u xuáº¥t/nháº­p kho
+        // Hiển thị danh sách các phiếu xuất/nhập kho
         public async Task<IActionResult> Index(DateTime? fromDate, DateTime? toDate, string tab = "all", string? search = null)
         {
             ViewBag.FromDate = fromDate?.ToString("yyyy-MM-dd");
@@ -45,34 +45,34 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             ViewBag.Tab = tab;
             ViewBag.Search = search;
 
-            // Láº¥y danh sÃ¡ch Ä‘Ã£ lá»c theo ngÃ y/tÃ¬m kiáº¿m Ä‘á»ƒ hiá»ƒn thá»‹
+            // Lấy danh sách đã lọc theo ngày/tìm kiếm để hiển thị
             var movements = await _movementService.GetAllMovements(fromDate, toDate, search);
 
-            // Láº¥y TOÃ€N Bá»˜ danh sÃ¡ch (khÃ´ng lá»c ngÃ y) Ä‘á»ƒ Ä‘áº¿m badge "Chá» duyá»‡t" / "Chá» kiá»ƒm hÃ ng"
-            // TrÃ¡nh bug: filter ngÃ y lÃ m máº¥t sá»‘ Ä‘Æ¡n Ä‘ang chá» xá»­ lÃ½
+            // Lấy TOÀN BỘ danh sách (không lọc ngày) để đếm badge "Chờ duyệt" / "Chờ kiểm hàng"
+            // Tránh bug: filter ngày làm mất số đơn đang chờ xử lý
             var allMovementsUnfiltered = await _movementService.GetAllMovements(null, null, null);
-            ViewBag.PendingManagerCount = allMovementsUnfiltered.Count(m => m.Status == "Chá» quáº£n lÃ½ duyá»‡t");
-            ViewBag.PendingInspectionCount = allMovementsUnfiltered.Count(m => m.Status == "Chá» kiá»ƒm hÃ ng");
+            ViewBag.PendingManagerCount = allMovementsUnfiltered.Count(m => m.Status == "Chờ quản lý duyệt");
+            ViewBag.PendingInspectionCount = allMovementsUnfiltered.Count(m => m.Status == "Chờ kiểm hàng");
 
             return View(movements);
         }
 
-        // Xuáº¥t file Excel
+        // Xuất file Excel
         [HttpGet]
         [Authorize(Roles = "warehouse,manager")]
         public async Task<IActionResult> ExportExcel(DateTime? fromDate, DateTime? toDate, string tab = "all", string? search = null)
         {
             var allMovements = await _movementService.GetAllMovements(fromDate, toDate, search);
             
-            // Lá»c theo tab giá»‘ng nhÆ° View Index
+            // Lọc theo tab giống như View Index
             var movementsToExport = allMovements;
             if (tab == "manager")
             {
-                movementsToExport = allMovements.Where(m => m.Status == "Chá» quáº£n lÃ½ duyá»‡t");
+                movementsToExport = allMovements.Where(m => m.Status == "Chờ quản lý duyệt");
             }
             else if (tab == "inspection")
             {
-                movementsToExport = allMovements.Where(m => m.Status == "Chá» kiá»ƒm hÃ ng");
+                movementsToExport = allMovements.Where(m => m.Status == "Chờ kiểm hàng");
             }
 
             using (var workbook = new XLWorkbook())
@@ -81,12 +81,12 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
                 var currentRow = 1;
 
                 // Headers
-                worksheet.Cell(currentRow, 1).Value = "MÃ£ Phiáº¿u";
-                worksheet.Cell(currentRow, 2).Value = "NgÃ y táº¡o";
-                worksheet.Cell(currentRow, 3).Value = "Loáº¡i phiáº¿u";
-                worksheet.Cell(currentRow, 4).Value = "NhÃ  cung cáº¥p";
-                worksheet.Cell(currentRow, 5).Value = "Tá»•ng giÃ¡ trá»‹ (VNÄ)";
-                worksheet.Cell(currentRow, 6).Value = "Tráº¡ng thÃ¡i";
+                worksheet.Cell(currentRow, 1).Value = "Mã Phiếu";
+                worksheet.Cell(currentRow, 2).Value = "Ngày tạo";
+                worksheet.Cell(currentRow, 3).Value = "Loại phiếu";
+                worksheet.Cell(currentRow, 4).Value = "Nhà cung cấp";
+                worksheet.Cell(currentRow, 5).Value = "Tổng giá trị (VNĐ)";
+                worksheet.Cell(currentRow, 6).Value = "Trạng thái";
 
                 // Format Headers
                 var headerRange = worksheet.Range(1, 1, 1, 6);
@@ -120,7 +120,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             }
         }
 
-        // Hiá»ƒn thá»‹ chi tiáº¿t má»™t phiáº¿u xuáº¥t/nháº­p kho
+        // Hiển thị chi tiết một phiếu xuất/nhập kho
         public async Task<IActionResult> Details(int id)
         {
             var movement = await _movementService.GetMovementById(id);
@@ -128,7 +128,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return View(movement);
         }
 
-        // Hiá»ƒn thá»‹ form táº¡o phiáº¿u nháº­p kho (Purchase Order)
+        // Hiển thị form tạo phiếu nhập kho (Purchase Order)
         public async Task<IActionResult> CreateImport(string? productSku)
         {
             if (!string.IsNullOrEmpty(productSku))
@@ -141,7 +141,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return View();
         }
 
-        // Xá»­ lÃ½ táº¡o phiáº¿u nháº­p kho
+        // Xử lý tạo phiếu nhập kho
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateImport(int? SupplierId, string ProductSku, int Quantity, decimal CostPrice)
@@ -171,7 +171,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             }
         }
 
-        // AJAX: láº¥y danh sÃ¡ch sáº£n pháº©m theo danh má»¥c
+        // AJAX: lấy danh sách sản phẩm theo danh mục
         [HttpGet]
         public async Task<IActionResult> GetProductsByCategory(int categoryId)
         {
@@ -182,7 +182,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return Json(filtered);
         }
 
-        // AJAX: láº¥y danh sÃ¡ch nhÃ  cung cáº¥p theo danh má»¥c
+        // AJAX: lấy danh sách nhà cung cấp theo danh mục
         [HttpGet]
         public async Task<IActionResult> GetSuppliersByCategory(int categoryId)
         {
@@ -191,7 +191,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return Json(result);
         }
 
-        // AJAX: láº¥y danh sÃ¡ch nhÃ  cung cáº¥p Ä‘Ã£ Ä‘Äƒng kÃ½ sáº£n pháº©m cá»¥ thá»ƒ
+        // AJAX: lấy danh sách nhà cung cấp đã đăng ký sản phẩm cụ thể
         [HttpGet]
         public async Task<IActionResult> GetSuppliersByProduct(string sku)
         {
@@ -203,14 +203,14 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return Json(result);
         }
 
-        // Hiá»ƒn thá»‹ form táº¡o phiáº¿u xuáº¥t kho ná»™i bá»™
+        // Hiển thị form tạo phiếu xuất kho nội bộ
         public async Task<IActionResult> CreateExport()
         {
             ViewBag.Products = await _productService.GetProductSummary("", "active");
             return View();
         }
 
-        // Xá»­ lÃ½ táº¡o phiáº¿u xuáº¥t kho ná»™i bá»™
+        // Xử lý tạo phiếu xuất kho nội bộ
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateExport(string Note, string ProductSku, int Quantity)
@@ -224,7 +224,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
                     {
                         ProductSku = ProductSku,
                         Quantity = Quantity,
-                        CostPrice = 0 // Xuáº¥t ná»™i bá»™ khÃ´ng tÃ­nh giÃ¡ nháº­p
+                        CostPrice = 0 // Xuất nội bộ không tính giá nhập
                     }
                 };
                 
@@ -264,7 +264,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return View(movement);
         }
 
-        // Action dÃ¹ng chung cho Manager duyá»‡t Ä‘Æ¡n hoáº·c Warehouse duyá»‡t Xuáº¥t kho
+        // Action dùng chung cho Manager duyệt đơn hoặc Warehouse duyệt Xuất kho
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ApproveStatus(int id)
@@ -316,14 +316,14 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return RedirectToAction(nameof(Details), new { id });
         }
 
-        // Xá»­ lÃ½ há»§y phiáº¿u xuáº¥t/nháº­p kho
+        // Xử lý hủy phiếu xuất/nhập kho
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Cancel(int id)
+        public async Task<IActionResult> Cancel(int id, string? reason)
         {
             try
             {
-                await _movementService.CancelMovement(id);
+                await _movementService.CancelMovement(id, reason);
             }
             catch (ServiceException ex)
             {

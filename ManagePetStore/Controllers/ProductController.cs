@@ -306,6 +306,19 @@ public class ProductController : Controller
                     {
                         model = MapFromSpaService(spaService);  // chuyển đổi dữ liệu thô từ DB thành ProductDetailViewModel để UI đọc được.
                         ViewBag.TargetSpecies = spaService.TargetSpecies?.Trim();
+
+                        // Tính số lượng đã bán cho dịch vụ Spa
+                        var spaSoldQuantity = await _context.SpaBookings
+                            .Where(b => b.ServiceId == serviceId
+                                && (b.Status == "Hoàn thành" || b.Status == "Đã hoàn thành" || b.Status == "Completed"))
+                            .CountAsync();
+
+                        model.SoldCount = spaSoldQuantity switch
+                        {
+                            0 => "0",
+                            < 1000 => $"{spaSoldQuantity}+",
+                            _ => $"{spaSoldQuantity / 1000.0:0.#}k+"
+                        };
                         
                         // Query extra info for Spa service booking form
                         Customer? customerObj = null;
@@ -388,6 +401,22 @@ public class ProductController : Controller
                         model.Rating = 0;
                         model.ReviewCount = 0;
                     }
+
+                    // Tính số lượng đã bán từ đơn hàng thực tế
+                    var soldQuantity = await _context.OrderItems
+                        .Include(oi => oi.Order)
+                        .Where(oi => oi.ProductSku == product.Sku
+                            && (oi.Order.Status == "Đã hoàn thành"
+                                || oi.Order.Status == "Đã giao hàng"
+                                || oi.Order.Status == "Hoàn thành"))
+                        .SumAsync(oi => (int?)oi.Quantity) ?? 0;
+
+                    model.SoldCount = soldQuantity switch
+                    {
+                        0 => "0",
+                        < 1000 => $"{soldQuantity}+",
+                        _ => $"{soldQuantity / 1000.0:0.#}k+"
+                    };
 
                     // Check CanReview
                     if (User.Identity?.IsAuthenticated == true)
@@ -499,7 +528,7 @@ public class ProductController : Controller
             Savings = originalPrice - service.Price,
             Rating = 4.9,
             ReviewCount = 35,
-            SoldCount = "100+",
+            SoldCount = "",
             Description = $"Dịch vụ {service.Name} chất lượng cao giúp thú cưng sạch sẽ, khỏe mạnh và thoải mái. Liệu trình thực hiện trong {service.DurationMinutes} phút bởi các chuyên viên spa tay nghề cao.",
             Stock = 999, // Spa services always have virtual stock
             InStock = true,
@@ -537,7 +566,7 @@ public class ProductController : Controller
             Savings = originalPrice - product.Price,
             Rating = 4.8,
             ReviewCount = 124,
-            SoldCount = "1.2k+",
+            SoldCount = "",
             Description = !string.IsNullOrWhiteSpace(product.Description) 
                             ? product.Description 
                             : "Sản phẩm chất lượng cao dành cho thú cưng của bạn.",

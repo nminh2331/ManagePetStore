@@ -1,10 +1,10 @@
-﻿/**
+/**
  * Project: Pet Store Management System (PSMS)
  * File: ProductCategoryController.cs
  * Author: Tran Duong
  * Date: May 31, 2026
- * Last Update: July 17, 2026
- * Description: Xá»­ lÃ½ cÃ¡c yÃªu cáº§u HTTP cho chá»©c nÄƒng quáº£n lÃ½ danh má»¥c sáº£n pháº©m trong khu vá»±c Warehouse (thÃªm, sá»­a, xÃ³a danh má»¥c).
+ * Last Update: July 23, 2026
+ * Description: Xử lý các yêu cầu HTTP cho chức năng quản lý danh mục sản phẩm trong khu vực Warehouse (thêm, sửa, xóa danh mục).
  */
 using ManagePetStore.Exceptions;
 using ManagePetStore.Models;
@@ -25,7 +25,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             _categoryService = categoryService;
         }
 
-        // Hiá»ƒn thá»‹ danh sÃ¡ch danh má»¥c sáº£n pháº©m
+        // Hiển thị danh sách danh mục sản phẩm
         public async Task<IActionResult> Index(bool showDeleted = false)
         {
             var summary = await _categoryService.GetCategorySummary(showDeleted);
@@ -38,13 +38,13 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return View(summary.Categories);
         }
 
-        // Hiá»ƒn thá»‹ form thÃªm má»›i danh má»¥c sáº£n pháº©m
+        // Hiển thị form thêm mới danh mục sản phẩm
         public IActionResult Create()
         {
             return View();
         }
 
-        // Xá»­ lÃ½ thÃªm má»›i danh má»¥c sáº£n pháº©m
+        // Xử lý thêm mới danh mục sản phẩm
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(
@@ -64,7 +64,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             }
         }
 
-        // Hiá»ƒn thá»‹ form chá»‰nh sá»­a danh má»¥c sáº£n pháº©m
+        // Hiển thị form chỉnh sửa danh mục sản phẩm
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null) return NotFound();
@@ -75,7 +75,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return View(category);
         }
 
-        // Xá»­ lÃ½ cáº­p nháº­t danh má»¥c sáº£n pháº©m
+        // Xử lý cập nhật danh mục sản phẩm
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(
@@ -96,7 +96,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             }
         }
 
-        // Xá»­ lÃ½ xÃ³a (hoáº·c áº©n) danh má»¥c sáº£n pháº©m
+        // Xử lý xóa (hoặc ẩn) danh mục sản phẩm
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
@@ -105,7 +105,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // Xá»­ lÃ½ khÃ´i phá»¥c danh má»¥c sáº£n pháº©m Ä‘Ã£ xÃ³a
+        // Xử lý khôi phục danh mục sản phẩm đã xóa
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Restore(int id)
