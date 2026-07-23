@@ -85,18 +85,13 @@
                     <i class="fas fa-check-circle"></i> Duyệt đơn
                 </button>
             </form>
-            <form asp-action="Cancel" method="post" class="d-inline" 
-                  onsubmit="return confirm('Xác nhận hủy phiếu này?');">
-                <input type="hidden" name="id" value="@Model.MovementId" />
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-danger fw-bold">
-                    <i class="fas fa-times-circle"></i> Từ chối
-                </button>
-            </form>
+            <button type="button" class="btn btn-danger fw-bold" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                <i class="fas fa-times-circle"></i> Từ chối
+            </button>
         }
 
         @* Warehouse kiểm hàng khi đã được Manager duyệt *@
-        @if (isWarehouse && Model.Status == "Chờ kiểm hàng" && Model.Type == "Nhập hàng")
+        @if (isWarehouse && Model.Status == "Chờ kiểm hàng" && (Model.Type == "Nhập hàng" || Model.Type == "Nhập kho (Hủy đơn)" || Model.Type == "Nhập kho (Khách trả hàng)"))
         {
             <a asp-action="Approve" asp-route-id="@Model.MovementId" class="btn btn-warning fw-bold text-dark me-2">
                 <i class="fas fa-clipboard-check"></i> Kiểm & Nhận hàng
@@ -163,6 +158,13 @@
             <span class="badge @badgeClass mt-2 px-3 py-2">@(Model.Status == "Đã hoàn thành" ? "Hoàn thành" : Model.Status)</span>
         </div>
     </div>
+
+    @if (Model.Status == "Đã hủy" && Model.Supplier != null && Model.Supplier.StartsWith("Lý do từ chối:"))
+    {
+        <div class="alert alert-danger mb-4 py-2 text-center" style="border: 2px dashed red;">
+            <strong><i class="fas fa-exclamation-triangle"></i> @Model.Supplier</strong>
+        </div>
+    }
 
     <div class="row mb-4">
         <div class="col-7">
@@ -241,3 +243,33 @@
         </div>
     </div>
 </div>
+
+@if (Model.Status == "Chờ quản lý duyệt")
+{
+    <!-- Modal Từ chối -->
+    <div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="Cancel" method="post">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold text-danger" id="rejectModalLabel"><i class="fas fa-times-circle"></i> Từ chối duyệt phiếu</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="id" value="@Model.MovementId" />
+                        @Html.AntiForgeryToken()
+                        <p>Bạn đang thao tác từ chối duyệt phiếu <strong>#@Model.MovementId.ToString("D5")</strong>.</p>
+                        <div class="mb-3">
+                            <label for="cancel-reason" class="form-label fw-bold">Lý do từ chối <span class="text-danger">*</span></label>
+                            <textarea class="form-control" name="reason" id="cancel-reason" rows="3" required placeholder="Vui lòng ghi rõ lý do để nhân viên kho nắm thông tin..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                        <button type="submit" class="btn btn-danger"><i class="fas fa-check"></i> Xác nhận từ chối</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}

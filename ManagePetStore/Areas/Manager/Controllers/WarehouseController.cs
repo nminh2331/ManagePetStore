@@ -67,12 +67,12 @@ public class WarehouseController : Controller
     // Manager tu choi don (Cho quan ly duyet -> Da huy)
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Cancel(int id)
+    public async Task<IActionResult> Cancel(int id, string? reason)
     {
         try
         {
-            await _movementService.CancelMovement(id);
-            TempData["SuccessMessage"] = "Da tu choi phieu.";
+            await _movementService.CancelMovement(id, reason);
+            TempData["SuccessMessage"] = "Đã từ chối phiếu nhập kho.";
         }
         catch (Exception ex)
         {

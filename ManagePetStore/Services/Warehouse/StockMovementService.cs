@@ -122,7 +122,7 @@ public class StockMovementService : IStockMovementService
                 throw new ServiceException($"Phiếu đang ở trạng thái '{movement.Status}' nên không thể thao tác duyệt.");
             }
 
-            if (movement.Type == "Nhập hàng" || movement.Type == "Nhập kho (Hủy đơn)")
+            if (movement.Type == "Nhập hàng" || movement.Type == "Nhập kho (Hủy đơn)" || movement.Type == "Nhập kho (Khách trả hàng)")
             {
                 if (allocations != null && allocations.Any())
                 {
@@ -256,7 +256,7 @@ public class StockMovementService : IStockMovementService
         await _movementRepo.AddMovement(movement);
     }
 
-    public async Task CancelMovement(int movementId)
+    public async Task CancelMovement(int movementId, string? reason = null)
     {
         var movement = await _movementRepo.GetMovementById(movementId);
         if (movement == null) throw new ServiceException("Không tìm thấy phiếu.");
@@ -264,6 +264,10 @@ public class StockMovementService : IStockMovementService
             throw new ServiceException("Không thể hủy phiếu đã hoàn thành hoặc đã hủy.");
 
         movement.Status = "Đã hủy";
+        if (!string.IsNullOrWhiteSpace(reason))
+        {
+            movement.Supplier = "Lý do từ chối: " + reason.Trim();
+        }
         await _movementRepo.UpdateMovement(movement);
     }
 

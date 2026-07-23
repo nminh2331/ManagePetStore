@@ -34,7 +34,8 @@
             <p class="mb-0">Tổng tồn kho của sản phẩm (@productStock) đang lớn hơn tổng số lượng trong các lô hàng (@totalBatchStock).</p>
         </div>
         <form asp-action="SyncStock" asp-route-productSku="@product?.Sku" method="post"
-              onsubmit="return confirm('Hệ thống sẽ tự động tạo một lô hàng với số lượng bằng mức chênh lệch. Tiếp tục?');">
+              onsubmit="return confirm('Hệ thống sẽ cập nhật tồn kho sản phẩm về đúng tổng số lượng trong các lô hàng. Tiếp tục?');">
+            @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-warning fw-bold text-dark">
                 <i class="fas fa-sync-alt"></i> Đồng bộ tồn kho
             </button>

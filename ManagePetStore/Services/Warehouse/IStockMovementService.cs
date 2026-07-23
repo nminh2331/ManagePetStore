@@ -35,8 +35,8 @@ public interface IStockMovementService
     // Tá»± Ä‘á»™ng táº¡o phiáº¿u xuáº¥t/nháº­p khi cÃ³ thay Ä‘á»•i tá»« Ä‘Æ¡n hÃ ng (Sales, Return)
     Task CreateSystemMovement(int systemUserId, string type, string status, string? supplier, decimal totalValue, List<StockMovementDetail> details);
 
-    // Há»§y Ä‘Æ¡n
-    Task CancelMovement(int movementId);
+    // Hủy đơn
+    Task CancelMovement(int movementId, string? reason = null);
 
     // KÃ­ch hoáº¡t quÃ©t tá»± Ä‘á»™ng táº¡o Ä‘Æ¡n nháº­p
     Task TriggerAutoReorderCheck(string productSku);
