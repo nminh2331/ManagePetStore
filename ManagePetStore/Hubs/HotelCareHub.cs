@@ -11,11 +11,13 @@ public class HotelCareHub : Hub
 {
     private readonly PetStoreManagementContext _context;
 
+    // [nam] Khởi tạo SignalR hub cho các cập nhật chăm sóc thời gian thực.
     public HotelCareHub(PetStoreManagementContext context)
     {
         _context = context;
     }
 
+    // [nam] Đưa kết nối của khách vào nhóm riêng để chỉ nhận đúng thông báo.
     public override async Task OnConnectedAsync()
     {
         var userIdClaim = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -35,5 +37,6 @@ public class HotelCareHub : Hub
         await base.OnConnectedAsync();
     }
 
+    // [nam] Tạo tên nhóm SignalR ổn định theo CustomerId.
     public static string GroupName(int customerId) => $"hotel-care-customer-{customerId}";
 }

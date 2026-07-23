@@ -36,10 +36,12 @@ public static class HotelRoomTypeCatalog
         "Theo dõi sức khỏe và xử lý bất thường"
     ];
 
+    // [nam] Kiểm tra mã loại chuồng có thuộc danh mục lưu trú được hỗ trợ hay không.
     public static bool IsSupported(string? code) =>
         !string.IsNullOrWhiteSpace(code) &&
         Codes.Contains(code.Trim().ToUpperInvariant(), StringComparer.Ordinal);
 
+    // [nam] Lấy cấu hình chăm sóc tương ứng với hạng chuồng.
     public static HotelRoomServiceProfile GetServiceProfile(string? code) =>
         code?.Trim().ToUpperInvariant() switch
         {

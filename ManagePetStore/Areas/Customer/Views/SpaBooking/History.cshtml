@@ -222,20 +222,23 @@
                                 {
                                     var hasReviewed = reviewedIds.Contains(booking.BookingId);
                                     var isCancelled = booking.SpaStatus == "Cancelled";
-                                    // Hoàn thành: SpaStatus kết thúc bằng "|4" hoặc == "4" hoặc == "Hoàn thành"
-                                    var isFinished = !isCancelled && (
+                                    var isPaid = booking.Status == "Đã thanh toán" || booking.Status == "Success" || booking.Status == "PAID";
+                                    var isTechnicallyDone = !isCancelled && (
                                         booking.SpaStatus == "4" ||
-                                        booking.SpaStatus.EndsWith("|4") ||
+                                        (booking.SpaStatus != null && booking.SpaStatus.EndsWith("|4")) ||
                                         booking.SpaStatus == "Hoàn thành"
                                     );
+                                    // Hoàn thành toàn bộ: Đã xong kỹ thuật VÀ Đã thanh toán
+                                    var isFinished = isTechnicallyDone && isPaid;
+
                                     // Đang chờ: chưa bắt đầu bất kỳ bước nào
-                                    var isPending = !isCancelled && !isFinished && (
+                                    var isPending = !isCancelled && !isTechnicallyDone && (
                                         booking.SpaStatus == "0" ||
-                                        booking.SpaStatus.EndsWith("|0") ||
+                                        (booking.SpaStatus != null && booking.SpaStatus.EndsWith("|0")) ||
                                         booking.SpaStatus == "Tiếp nhận"
                                     );
-                                    // Đang làm: đã bắt đầu nhưng chưa xong
-                                    var isInProgress = !isCancelled && !isFinished && !isPending;
+                                    // Đang làm: đã bắt đầu nhưng chưa xong kỹ thuật
+                                    var isInProgress = !isCancelled && !isTechnicallyDone && !isPending;
 
                                     <tr class="spa-booking-row">
                                         <td class="py-3 ps-4">
@@ -268,6 +271,10 @@
                                             {
                                                 <span class="badge bg-success-subtle text-success spa-badge">Hoàn thành</span>
                                             }
+                                            else if (isTechnicallyDone && !isPaid)
+                                            {
+                                                <span class="badge bg-info-subtle text-info spa-badge" style="background-color: #E6F4FE !important; color: #0284C7 !important;">Đã xong (Chờ thu)</span>
+                                            }
                                             else if (isPending)
                                             {
                                                 <span class="badge bg-secondary-subtle text-secondary spa-badge">Đang chờ</span>
@@ -278,7 +285,7 @@
                                             }
                                         </td>
                                         <td class="py-3 text-center">
-                                            @if (booking.Status == "Đã thanh toán" || booking.Status == "Success")
+                                            @if (isPaid)
                                             {
                                                 <span class="badge bg-success-subtle text-success spa-badge">Đã thu</span>
                                             }
@@ -311,7 +318,7 @@
                                                     <span class="text-success" style="font-size: 0.78rem; font-weight: 600;"><i class="bi bi-check2"></i> Đã đánh giá</span>
                                                 }
 
-                                                @if (!isFinished && !isCancelled && booking.DateTime > DateTime.Now.AddHours(2))
+                                                @if (isPending && !isCancelled && booking.DateTime > DateTime.Now.AddHours(2))
                                                 {
                                                     <button class="btn btn-sm btn-outline-danger btn-cancel-booking" 
                                                             data-id="@booking.BookingId"

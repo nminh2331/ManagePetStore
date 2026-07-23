@@ -7,12 +7,14 @@ public class HotelEmailService : IHotelEmailService
     private readonly IEmailService _emailService;
     private readonly ILogger<HotelEmailService> _logger;
 
+    // [nam] Khởi tạo dịch vụ gửi email cho các sự kiện lưu trú.
     public HotelEmailService(IEmailService emailService, ILogger<HotelEmailService> logger)
     {
         _emailService = emailService;
         _logger = logger;
     }
 
+    // [nam] Gửi email xác nhận khi khách hàng đặt chuồng thành công.
     public Task SendBookingCreatedAsync(string? email, string customerName, int bookingId, string petName,
         string cageId, string roomTypeName, DateTime checkIn, DateTime checkOut, decimal totalAmount) =>
         TrySendAsync(email, $"Đặt chuồng HB{bookingId:0000} thành công", $"""
@@ -25,6 +27,7 @@ public class HotelEmailService : IHotelEmailService
             <p>Mã booking: <strong>HB{bookingId:0000}</strong>.</p>
             """, bookingId, "booking");
 
+    // [nam] Gửi email thông báo pet đã được tiếp nhận vào chuồng.
     public Task SendCheckInAsync(string? email, string customerName, int bookingId, string petName,
         string cageId, DateTime checkIn, DateTime? expectedCheckOut) =>
         TrySendAsync(email, $"Đã tiếp nhận {petName} vào chuồng", $"""
@@ -35,6 +38,7 @@ public class HotelEmailService : IHotelEmailService
             <p>Mã booking: <strong>HB{bookingId:0000}</strong>.</p>
             """, bookingId, "check-in");
 
+    // [nam] Gửi email xác nhận hoàn tất trả pet và tổng chi phí.
     public Task SendCheckOutAsync(string? email, string customerName, int bookingId, string petName,
         string cageId, DateTime checkOut, decimal totalAmount) =>
         TrySendAsync(email, $"Đã hoàn tất lưu trú HB{bookingId:0000}", $"""
@@ -44,6 +48,7 @@ public class HotelEmailService : IHotelEmailService
             <p>Tổng tiền đã chốt: <strong>{totalAmount:N0}đ</strong>.</p>
             """, bookingId, "check-out");
 
+    // [nam] Gửi email cập nhật nhật ký chăm sóc mới cho chủ pet.
     public Task SendCareLogAsync(string? email, string customerName, int bookingId, string petName,
         string title, string message, DateTime occurredAt) =>
         TrySendAsync(email, $"Nhật ký chăm sóc của {petName}", $"""
@@ -54,6 +59,7 @@ public class HotelEmailService : IHotelEmailService
             <p>Mã booking: <strong>HB{bookingId:0000}</strong>.</p>
             """, bookingId, "care log");
 
+    // [nam] Gửi kết quả duyệt hoặc từ chối yêu cầu đổi chuồng.
     public Task SendCageChangeDecisionAsync(string? email, string customerName, int bookingId, string petName,
         string sourceCageId, string targetCageId, bool approved, decimal priceDifference, string? note)
     {
@@ -74,6 +80,7 @@ public class HotelEmailService : IHotelEmailService
             """, bookingId, "cage change");
     }
 
+    // [nam] Gửi email theo cơ chế best-effort và ghi log nếu nhà cung cấp email gặp lỗi.
     private async Task TrySendAsync(string? email, string subject, string body, int bookingId, string eventName)
     {
         if (string.IsNullOrWhiteSpace(email))
@@ -94,5 +101,6 @@ public class HotelEmailService : IHotelEmailService
         }
     }
 
+    // [nam] Mã hoá dữ liệu động trước khi chèn vào nội dung HTML của email.
     private static string E(string? value) => WebUtility.HtmlEncode(value ?? string.Empty);
 }

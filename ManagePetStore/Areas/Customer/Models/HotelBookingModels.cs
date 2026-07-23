@@ -31,6 +31,7 @@ public class HotelBookingRequest : IValidatableObject
     [StringLength(1000)]
     public string? AllergyNotes { get; set; }
 
+    // [nam] Kiểm tra mốc 15 phút, thời gian đặt và thời lượng lưu trú tối đa.
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (!CheckInDate.HasValue || !CheckOutDate.HasValue)
