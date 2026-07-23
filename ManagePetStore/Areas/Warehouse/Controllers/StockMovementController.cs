@@ -3,7 +3,7 @@
  * File: StockMovementController.cs
  * Author: Tran Duong
  * Date: June 11, 2026
- * Last Update: July 17, 2026
+ * Last Update: July 23, 2026
  * Description: Controller xử lý các phiếu xuất/nhập kho.
  */
 using ManagePetStore.Services.Warehouse;

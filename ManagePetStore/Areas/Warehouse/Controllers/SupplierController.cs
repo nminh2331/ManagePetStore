@@ -3,8 +3,8 @@
  * File: SupplierController.cs
  * Author: Tran Duong
  * Date: June 17, 2026
- * Last Update: July 17, 2026
- * Description: Controller xá»­ lÃ½ nghiá»‡p vá»¥ quáº£n lÃ½ nhÃ  cung cáº¥p.
+ * Last Update: July 23, 2026
+ * Description: Controller xử lý nghiệp vụ quản lý nhà cung cấp.
  */
 using ManagePetStore.Models;
 using ManagePetStore.Services;
@@ -32,12 +32,14 @@ public class SupplierController : Controller
         _productService  = productService;
     }
 
+    // Hiển thị danh sách nhà cung cấp
     public async Task<IActionResult> Index()
     {
         var suppliers = await _supplierService.GetAllSuppliersAsync();
         return View(suppliers);
     }
 
+    // Hiển thị form thêm mới nhà cung cấp
     public async Task<IActionResult> Create()
     {
         var categories = (await _categoryService.GetCategorySummary()).Categories;
@@ -48,6 +50,7 @@ public class SupplierController : Controller
         return View();
     }
 
+    // Xử lý lưu thông tin nhà cung cấp mới vào cơ sở dữ liệu
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(Supplier supplier, List<int> categoryIds, List<string>? productSkus)
@@ -68,6 +71,7 @@ public class SupplierController : Controller
         return View(supplier);
     }
 
+    // Hiển thị form chỉnh sửa thông tin nhà cung cấp
     public async Task<IActionResult> Edit(int id)
     {
         var supplier = await _supplierService.GetSupplierByIdAsync(id);
@@ -84,6 +88,7 @@ public class SupplierController : Controller
         return View(supplier);
     }
 
+    // Xử lý cập nhật thông tin nhà cung cấp
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(int id, Supplier supplier, List<int> categoryIds, List<string>? productSkus)
@@ -105,6 +110,7 @@ public class SupplierController : Controller
         return View(supplier);
     }
 
+    // Vô hiệu hóa (Ngừng hoạt động) nhà cung cấp
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Deactivate(int id)
@@ -114,6 +120,7 @@ public class SupplierController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    // Kích hoạt lại nhà cung cấp
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Activate(int id)
@@ -130,6 +137,7 @@ public class SupplierController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    // API lấy danh sách nhà cung cấp theo ID danh mục (Dùng cho Ajax)
     [HttpGet]
     public async Task<IActionResult> GetSuppliersByCategory(int categoryId)
     {
