@@ -306,6 +306,33 @@ public class ProductController : Controller
                     {
                         model = MapFromSpaService(spaService);  // chuyển đổi dữ liệu thô từ DB thành ProductDetailViewModel để UI đọc được.
                         ViewBag.TargetSpecies = spaService.TargetSpecies?.Trim();
+
+                        var spaReviews = await _context.SpaReviews
+                            .Include(r => r.Booking)
+                            .ThenInclude(b => b.Customer)
+                            .Where(r => r.ServiceId == serviceId)
+                            .OrderByDescending(r => r.CreatedAt)
+                            .ToListAsync();
+
+                        if (spaReviews.Any())
+                        {
+                            model.Reviews = spaReviews.Select(r => new ProductReviewViewModel
+                            {
+                                CustomerName = r.Booking?.Customer?.FullName ?? "Khách hàng Spa",
+                                Rating = r.RatingStar,
+                                Comment = r.Comment,
+                                ImageUrl = r.ImageUrl,
+                                CreatedAt = r.CreatedAt
+                            }).ToList();
+                            model.ReviewCount = spaReviews.Count;
+                            model.Rating = Math.Round(spaReviews.Average(r => r.RatingStar), 1);
+                        }
+                        else
+                        {
+                            model.Rating = 0.0;
+                            model.ReviewCount = 0;
+                            model.Reviews = new List<ProductReviewViewModel>();
+                        }
                         
                         // Query extra info for Spa service booking form
                         Customer? customerObj = null;
@@ -385,7 +412,7 @@ public class ProductController : Controller
                     }
                     else
                     {
-                        model.Rating = 0;
+                        model.Rating = 0.0;
                         model.ReviewCount = 0;
                     }
 
@@ -482,10 +509,46 @@ public class ProductController : Controller
         return RedirectToAction("Details", new { id = productSku });
     }
 
+    /// <summary>
+    /// Chuyển đổi thực thể SpaService thành ViewModel hiển thị chi tiết (ProductDetailViewModel).
+    /// Ưu tiên nạp danh sách ảnh thật đính kèm và phần mô tả chi tiết quy trình do Service Staff thiết lập.
+    /// An toàn tránh lỗi chia cho 0 khi giá dịch vụ bằng 0đ (Combo 0đ/Khuyến mãi).
+    /// </summary>
+    /// <param name="service">Thực thể dịch vụ Spa từ Database</param>
+    /// <returns>ViewModel đầy đủ thông tin cho màn hình chi tiết</returns>
     private static ProductDetailViewModel MapFromSpaService(SpaService service)
     {
-        var originalPrice = Math.Round(service.Price * 1.11m, 0);
-        var discount = (int)Math.Round((1 - service.Price / originalPrice) * 100);
+        // 1. Tính toán giá gốc và phần trăm giảm giá (Kiểm tra điều kiện > 0 để tránh lỗi DivideByZeroException)
+        var originalPrice = service.Price > 0 ? Math.Round(service.Price * 1.11m, 0) : 0m;
+        var discount = (service.Price > 0 && originalPrice > 0) ? (int)Math.Round((1 - service.Price / originalPrice) * 100) : 0;
+
+        List<string> images = new List<string>();
+        if (!string.IsNullOrEmpty(service.ImageUrls))
+        {
+            try
+            {
+                var parsedImages = System.Text.Json.JsonSerializer.Deserialize<List<string>>(service.ImageUrls);
+                if (parsedImages != null && parsedImages.Count > 0)
+                {
+                    images = parsedImages;
+                }
+            }
+            catch { }
+        }
+
+        if (images.Count == 0)
+        {
+            images = new List<string>
+            {
+                "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=600&h=600&fit=crop",
+                "https://images.unsplash.com/photo-1558788353-f76d92427f16?w=600&h=600&fit=crop",
+                "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=600&fit=crop"
+            };
+        }
+
+        var description = !string.IsNullOrWhiteSpace(service.Description) 
+            ? service.Description.Trim() 
+            : $"Dịch vụ {service.Name} chất lượng cao giúp thú cưng sạch sẽ, khỏe mạnh và thoải mái. Liệu trình thực hiện trong {service.DurationMinutes} phút bởi các chuyên viên spa tay nghề cao.";
 
         return new ProductDetailViewModel
         {
@@ -500,15 +563,10 @@ public class ProductController : Controller
             Rating = 4.9,
             ReviewCount = 35,
             SoldCount = "100+",
-            Description = $"Dịch vụ {service.Name} chất lượng cao giúp thú cưng sạch sẽ, khỏe mạnh và thoải mái. Liệu trình thực hiện trong {service.DurationMinutes} phút bởi các chuyên viên spa tay nghề cao.",
+            Description = description,
             Stock = 999, // Spa services always have virtual stock
             InStock = true,
-            Images =
-            [
-                "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=600&h=600&fit=crop",
-                "https://images.unsplash.com/photo-1558788353-f76d92427f16?w=600&h=600&fit=crop",
-                "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600&h=600&fit=crop"
-            ],
+            Images = images,
             Features =
             [
                 $"Thời gian thực hiện: {service.DurationMinutes} phút",

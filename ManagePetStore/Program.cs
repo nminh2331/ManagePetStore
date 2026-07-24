@@ -185,6 +185,7 @@ app.Use(async (context, next) =>
             bool isAllowed = path.StartsWith("/SpaServices", StringComparison.OrdinalIgnoreCase) ||
                              path.StartsWith("/chatHub", StringComparison.OrdinalIgnoreCase) ||
                              path.StartsWith("/hotelCareHub", StringComparison.OrdinalIgnoreCase) ||
+                             path.StartsWith("/reviewHub", StringComparison.OrdinalIgnoreCase) ||
                              path.StartsWith("/Customer/Account/Logout", StringComparison.OrdinalIgnoreCase) ||
                              path.StartsWith("/views-assets", StringComparison.OrdinalIgnoreCase) ||
                              path.StartsWith("/css", StringComparison.OrdinalIgnoreCase) ||
@@ -204,6 +205,7 @@ app.Use(async (context, next) =>
             bool isAllowed = path.StartsWith("/Cashier", StringComparison.OrdinalIgnoreCase) ||
                              path.StartsWith("/chatHub", StringComparison.OrdinalIgnoreCase) ||
                              path.StartsWith("/hotelCareHub", StringComparison.OrdinalIgnoreCase) ||
+                             path.StartsWith("/reviewHub", StringComparison.OrdinalIgnoreCase) ||
                              path.StartsWith("/Customer/Account/Logout", StringComparison.OrdinalIgnoreCase) ||
                              path.StartsWith("/views-assets", StringComparison.OrdinalIgnoreCase) ||
                              path.StartsWith("/css", StringComparison.OrdinalIgnoreCase) ||
@@ -223,6 +225,7 @@ app.Use(async (context, next) =>
 // Đăng ký map hub cho SignalR
 app.MapHub<ManagePetStore.Hubs.ChatHub>("/chatHub");
 app.MapHub<ManagePetStore.Hubs.HotelCareHub>("/hotelCareHub");
+app.MapHub<ManagePetStore.Hubs.ReviewHub>("/reviewHub");
 
 
 // =========================================================================
@@ -243,6 +246,35 @@ app.MapControllerRoute(
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<PetStoreManagementContext>();
+    try
+    {
+        await context.Database.ExecuteSqlRawAsync(@"
+            IF EXISTS (SELECT * FROM sys.tables WHERE name = 'SpaReviews')
+            BEGIN
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('SpaReviews') AND name = 'ImageUrl')
+                BEGIN
+                    ALTER TABLE SpaReviews ADD ImageUrl NVARCHAR(500) NULL;
+                END
+            END
+
+            IF EXISTS (SELECT * FROM sys.tables WHERE name = 'SpaServices')
+            BEGIN
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('SpaServices') AND name = 'Description')
+                BEGIN
+                    ALTER TABLE SpaServices ADD Description NVARCHAR(MAX) NULL;
+                END
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('SpaServices') AND name = 'ImageUrls')
+                BEGIN
+                    ALTER TABLE SpaServices ADD ImageUrls NVARCHAR(MAX) NULL;
+                END
+            END
+        ");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[DB Auto-Migration Warning] Schema check: {ex.Message}");
+    }
+
     try
     {
         await ManagePetStore.Services.Customer.CustomerRewardHelper.RecalculateAllCustomersPointsAndTiersAsync(context);

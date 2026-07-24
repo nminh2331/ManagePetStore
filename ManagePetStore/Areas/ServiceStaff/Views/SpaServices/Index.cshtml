@@ -1197,6 +1197,8 @@
                                                         data-duration="@service.DurationMinutes"
                                                         data-price="@service.Price"
                                                         data-species="@(service.TargetSpecies ?? "Tất cả")"
+                                                        data-description="@(service.Description ?? "")"
+                                                        data-imageurls="@(service.ImageUrls ?? "")"
                                                         style="border-radius: 8px; padding: 4px 8px; font-size: 0.72rem; border-color: #ECE9E5; color: #5D524D;"
                                                         title="Sửa">
                                                     <i class="fa-solid fa-pen"></i>
@@ -1848,8 +1850,11 @@
 <!-- ======================================================= -->
 <!-- MODAL D: THÊM DỊCH VỤ SPA MỚI (MOCKUP 3) -->
 <!-- ======================================================= -->
+<!-- ======================================================= -->
+<!-- MODAL D: THÊM DỊCH VỤ SPA MỚI -->
+<!-- ======================================================= -->
 <div class="modal fade" id="addServiceModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content custom-modal-dialog">
             <div class="custom-modal-header">
                 <span class="custom-modal-title">
@@ -1861,34 +1866,51 @@
                 </button>
             </div>
             <div class="custom-modal-body">
-                <form asp-area="" asp-controller="SpaServices" asp-action="AddService" method="post">
+                <form asp-area="" asp-controller="SpaServices" asp-action="AddService" method="post" enctype="multipart/form-data">
                     <div class="form-group-custom">
-                        <label>Tên dịch vụ Spa</label>
+                        <label>Tên dịch vụ Spa <span class="text-danger">*</span></label>
                         <input type="text" name="name" class="form-control-custom" placeholder="e.g. Combo Cắt tỉa + Nhuộm lông tai" required>
                     </div>
 
-                    <div class="form-group-custom">
-                        <label>Thời lượng dự kiến (phút)</label>
-                        <input type="number" name="duration" class="form-control-custom" value="60" min="10" required>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group-custom">
+                                <label>Thời lượng (phút) <span class="text-danger">*</span></label>
+                                <input type="number" name="duration" class="form-control-custom" value="60" min="10" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group-custom">
+                                <label>Đơn giá gốc (VNĐ) <span class="text-danger">*</span></label>
+                                <input type="number" name="price" class="form-control-custom" value="0" min="0" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group-custom">
+                                <label>Phân loại động vật</label>
+                                <select name="targetSpecies" class="form-control-custom">
+                                    <option value="Tất cả">Tất cả</option>
+                                    <option value="Chó">Chó</option>
+                                    <option value="Mèo">Mèo</option>
+                                    <option value="Chuột">Chuột</option>
+                                    <option value="Rùa">Rùa</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-group-custom">
-                        <label>Đơn giá gốc</label>
-                        <input type="number" name="price" class="form-control-custom" value="0" min="0" required>
+                        <label>Mô tả chi tiết dịch vụ Spa (Hiển thị trang chi tiết Homepage)</label>
+                        <textarea name="description" class="form-control-custom" rows="3" placeholder="Nhập quy trình chăm sóc, tác dụng, lưu ý dịch vụ Spa..."></textarea>
                     </div>
 
                     <div class="form-group-custom">
-                        <label>Phân loại động vật</label>
-                        <select name="targetSpecies" class="form-control-custom">
-                            <option value="Tất cả">Tất cả</option>
-                            <option value="Chó">Chó</option>
-                            <option value="Mèo">Mèo</option>
-                            <option value="Chuột">Chuột</option>
-                            <option value="Rùa">Rùa</option>
-                        </select>
+                        <label>Ảnh quảng bá dịch vụ (Có thể chọn nhiều ảnh, định dạng PNG/JPG/JPEG, &le; 100MB/file)</label>
+                        <input type="file" name="serviceImages" id="addServiceImages" class="form-control-custom service-image-input" multiple accept=".png,.jpg,.jpeg,image/png,image/jpeg">
+                        <div id="addImagesPreviewContainer" class="image-preview-wrapper d-flex flex-wrap gap-2 mt-2"></div>
                     </div>
 
-                    <div class="modal-btn-row">
+                    <div class="modal-btn-row mt-3">
                         <button type="button" class="btn-custom-cancel" data-bs-dismiss="modal">Hủy bỏ</button>
                         <button type="submit" class="btn-custom-submit">Thêm dịch vụ</button>
                     </div>
@@ -1899,10 +1921,10 @@
 </div>
 
 <!-- ======================================================= -->
-<!-- MODAL F: SỬA DỊCH VỤ SPA (TẠO MỚI CHO CRUD) -->
+<!-- MODAL F: SỬA DỊCH VỤ SPA -->
 <!-- ======================================================= -->
 <div class="modal fade" id="editServiceModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content custom-modal-dialog">
             <div class="custom-modal-header">
                 <span class="custom-modal-title">
@@ -1914,35 +1936,61 @@
                 </button>
             </div>
             <div class="custom-modal-body">
-                <form asp-area="" asp-controller="SpaServices" asp-action="EditService" method="post">
+                <form asp-area="" asp-controller="SpaServices" asp-action="EditService" method="post" enctype="multipart/form-data">
                     <input type="hidden" name="id" id="editServiceId">
+                    <input type="hidden" name="keepExistingImages" id="editServiceKeepExistingImages">
+
                     <div class="form-group-custom">
-                        <label>Tên dịch vụ Spa</label>
+                        <label>Tên dịch vụ Spa <span class="text-danger">*</span></label>
                         <input type="text" name="name" id="editServiceName" class="form-control-custom" placeholder="e.g. Tắm sấy chuyên sâu" required>
                     </div>
 
-                    <div class="form-group-custom">
-                        <label>Thời lượng dự kiến (phút)</label>
-                        <input type="number" name="duration" id="editServiceDuration" class="form-control-custom" min="10" required>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group-custom">
+                                <label>Thời lượng dự kiến (phút) <span class="text-danger">*</span></label>
+                                <input type="number" name="duration" id="editServiceDuration" class="form-control-custom" min="10" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group-custom">
+                                <label>Đơn giá gốc (VNĐ) <span class="text-danger">*</span></label>
+                                <input type="number" name="price" id="editServicePrice" class="form-control-custom" min="0" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group-custom">
+                                <label>Phân loại động vật</label>
+                                <select name="targetSpecies" id="editServiceSpecies" class="form-control-custom">
+                                    <option value="Tất cả">Tất cả</option>
+                                    <option value="Chó">Chó</option>
+                                    <option value="Mèo">Mèo</option>
+                                    <option value="Chuột">Chuột</option>
+                                    <option value="Rùa">Rùa</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-group-custom">
-                        <label>Đơn giá gốc</label>
-                        <input type="number" name="price" id="editServicePrice" class="form-control-custom" min="0" required>
+                        <label>Mô tả chi tiết dịch vụ Spa (Hiển thị trang chi tiết Homepage)</label>
+                        <textarea name="description" id="editServiceDescription" class="form-control-custom" rows="3" placeholder="Nhập quy trình chăm sóc, tác dụng, lưu ý dịch vụ Spa..."></textarea>
                     </div>
 
                     <div class="form-group-custom">
-                        <label>Phân loại động vật</label>
-                        <select name="targetSpecies" id="editServiceSpecies" class="form-control-custom">
-                            <option value="Tất cả">Tất cả</option>
-                            <option value="Chó">Chó</option>
-                            <option value="Mèo">Mèo</option>
-                            <option value="Chuột">Chuột</option>
-                            <option value="Rùa">Rùa</option>
-                        </select>
+                        <label>Ảnh hiện tại của dịch vụ</label>
+                        <div id="editExistingImagesContainer" class="d-flex flex-wrap gap-2 mb-2 p-2 border rounded bg-light" style="min-height: 50px;">
+                            <span class="text-muted small fst-italic">Chưa có ảnh nào.</span>
+                        </div>
                     </div>
 
-                    <div class="modal-btn-row">
+                    <div class="form-group-custom">
+                        <label>Tải thêm ảnh mới (Tối đa 100MB/file, PNG/JPG/JPEG, chọn nhiều ảnh)</label>
+                        <input type="file" name="serviceImages" id="editServiceImages" class="form-control-custom service-image-input" multiple accept=".png,.jpg,.jpeg,image/png,image/jpeg">
+                        <div id="editImagesPreviewContainer" class="image-preview-wrapper d-flex flex-wrap gap-2 mt-2"></div>
+                    </div>
+
+                    <div class="modal-btn-row mt-3">
                         <button type="button" class="btn-custom-cancel" data-bs-dismiss="modal">Hủy bỏ</button>
                         <button type="submit" class="btn-custom-submit">Cập nhật</button>
                     </div>
@@ -2108,6 +2156,7 @@
 </div>
 
 @section Scripts {
+    <partial name="_SpaServiceValidator" />
     <script>
         $(document).ready(function () {
 
@@ -2148,20 +2197,109 @@
             });
 
             // =========================================================================
-            // 5. INTERACTION: EDIT & DELETE SERVICE (AJAX / MODAL)
+            // 5. CÁC HÀM XỬ LÝ SỰ KIỆN: SỬA, XÓA & VALIDATE ẢNH DỊCH VỤ SPA
             // =========================================================================
+            
+            // Xử lý kiểm tra Validation bằng SpaServiceValidator (Tách riêng trong /js/spa-service-validator.js)
+            $('.service-image-input').on('change', function () {
+                var files = this.files;
+                var previewContainer = $(this).siblings('.image-preview-wrapper');
+                previewContainer.empty();
+
+                // Gọi hàm Validate từ file JS riêng biệt
+                var valResult = SpaServiceValidator.validateImageFiles(files);
+                if (!valResult.isValid) {
+                    alert(valResult.errorMessage);
+                    this.value = '';
+                    previewContainer.empty();
+                    return;
+                }
+
+                // Hiển thị khung xem trước ảnh (Live Thumbnail Preview) khi đúp tệp hợp lệ
+                for (var i = 0; i < files.length; i++) {
+                        this.value = '';
+                        previewContainer.empty();
+                        return;
+                    }
+
+                    // Validation 2: Dung lượng tệp
+                    if (file.size > maxSizeBytes) {
+                        alert('Tệp "' + file.name + '" có dung lượng quá lớn (Vượt quá giới hạn 100MB).');
+                        this.value = '';
+                        previewContainer.empty();
+                        return;
+                    }
+
+                    // Hiển thị khung xem trước ảnh (Live Thumbnail Preview)
+                    (function (f) {
+                        var reader = new FileReader();
+                        reader.onload = function (e) {
+                            var thumb = $('<div class="position-relative" style="width: 75px; height: 75px;">' +
+                                '<img src="' + e.target.result + '" style="width: 75px; height: 75px; object-fit: cover; border-radius: 8px; border: 1.5px solid #FF7815;" />' +
+                                '</div>');
+                            previewContainer.append(thumb);
+                        };
+                        reader.readAsDataURL(f);
+                    })(file);
+                }
+            });
+
+            // Mảng chứa các đường dẫn ảnh hiện có khi mở Modal Chỉnh sửa
+            var editExistingImageArray = [];
+
+            // Hàm hỗ trợ vẽ lại danh sách ảnh hiện có trong Modal Chỉnh sửa
+            function renderEditExistingImages() {
+                var container = $('#editExistingImagesContainer');
+                container.empty();
+                if (!Array.isArray(editExistingImageArray) || editExistingImageArray.length === 0) {
+                    container.html('<span class="text-muted small fst-italic">Chưa có ảnh nào.</span>');
+                    $('#editServiceKeepExistingImages').val(JSON.stringify([]));
+                    return;
+                }
+
+                $('#editServiceKeepExistingImages').val(JSON.stringify(editExistingImageArray));
+                editExistingImageArray.forEach(function (url, index) {
+                    var card = $('<div class="position-relative" style="width: 75px; height: 75px;">' +
+                        '<img src="' + url + '" style="width: 75px; height: 75px; object-fit: cover; border-radius: 8px; border: 1px solid #ccc;" />' +
+                        '<button type="button" class="btn btn-sm btn-danger btn-remove-existing-img" data-index="' + index + '" style="position: absolute; top: -5px; right: -5px; width: 20px; height: 20px; padding: 0; border-radius: 50%; font-size: 11px; line-height: 1;">&times;</button>' +
+                        '</div>');
+                    container.append(card);
+                });
+            }
+
+            $(document).on('click', '.btn-remove-existing-img', function () {
+                var index = $(this).data('index');
+                editExistingImageArray.splice(index, 1);
+                renderEditExistingImages();
+            });
+
             $('.btn-edit-service-trigger').click(function () {
                 var id = $(this).data('id');
                 var name = $(this).data('name');
                 var duration = $(this).data('duration');
                 var price = $(this).data('price');
                 var species = $(this).data('species') || 'Tất cả';
+                var description = $(this).data('description') || '';
+                var rawImageUrls = $(this).data('imageurls') || '';
 
                 $('#editServiceId').val(id);
                 $('#editServiceName').val(name);
                 $('#editServiceDuration').val(duration);
                 $('#editServicePrice').val(price);
                 $('#editServiceSpecies').val(species);
+                $('#editServiceDescription').val(description);
+                $('#editServiceImages').val('');
+                $('#editImagesPreviewContainer').empty();
+
+                editExistingImageArray = [];
+                if (rawImageUrls) {
+                    try {
+                        editExistingImageArray = typeof rawImageUrls === 'string' ? JSON.parse(rawImageUrls) : rawImageUrls;
+                    } catch (e) {
+                        editExistingImageArray = [];
+                    }
+                }
+                renderEditExistingImages();
 
                 $('#editServiceModal').modal('show');
             });
@@ -2539,9 +2677,11 @@
             }
 
             var currentQueuePage = @ViewBag.QueuePage;
-            setInterval(function () {
+            function refreshRealtimeQueue() {
+                var currentQueuePage = @ViewBag.QueuePage;
                 $.getJSON('/SpaServices/GetRealtimeQueue', { page: currentQueuePage }, function (data) {
-                    $('#queueCount').text(data.totalItems + ' Chờ');
+                    if (!data || !data.queue) return;
+                    $('#queueCount').text((data.totalItems || 0) + ' Chờ');
                     
                     var html = '';
                     $.each(data.queue, function (index, item) {
@@ -2574,7 +2714,37 @@
                     
                     $('#queueList').html(html);
                 });
-            }, 30000);
+            }
+
+            setInterval(refreshRealtimeQueue, 30000);
+
+            // ==========================================
+            // SIGNALR REAL-TIME SPA CANCELLATION HANDLER
+            // ==========================================
+            if (typeof signalR !== 'undefined') {
+                var indexConnection = new signalR.HubConnectionBuilder()
+                    .withUrl("/reviewHub")
+                    .withAutomaticReconnect()
+                    .build();
+
+                indexConnection.start().catch(function(err) {
+                    console.error("Index SignalR error:", err);
+                });
+
+                indexConnection.on("ReceiveSpaCancellationNotification", function (data) {
+                    // Tự động mờ dần và xóa thẻ hàng đợi bị hủy khỏi màn hình
+                    if (data && data.petName) {
+                        $('.queue-item-card').each(function () {
+                            if ($(this).text().indexOf(data.petName) !== -1) {
+                                $(this).fadeOut(400, function () { $(this).remove(); });
+                            }
+                        });
+                    }
+
+                    // Tự động nạp lại danh sách hàng đợi tức thì mà không cần reload cả trang
+                    setTimeout(refreshRealtimeQueue, 600);
+                });
+            }
 
             function showToast(message, type) {
                 var toastHtml = '<div class="toast align-items-center text-white bg-' + type + ' border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true" style="border-radius: 12px; margin-bottom: 10px;">' +

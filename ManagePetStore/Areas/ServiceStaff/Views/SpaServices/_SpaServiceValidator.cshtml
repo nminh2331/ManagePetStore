@@ -1,0 +1,114 @@
+@*
+    Partial View Helper chứa toàn bộ Script Validation Frontend cho Phân hệ Dịch Vụ Spa (Nhật Minh).
+    Được đặt trực tiếp trong thư mục Views/SpaServices của ServiceStaff Area để cực kỳ dễ tìm và quản lý.
+*@
+
+<script>
+    window.SpaServiceValidator = {
+        allowedExtensions: ['png', 'jpg', 'jpeg'],
+        maxSizeBytes: 100 * 1024 * 1024, // Giới hạn tối đa 100MB cho tệp ảnh đính kèm
+
+        /**
+         * UC-33 & UC-23: Validate danh sách tệp hình ảnh tải lên (Đuôi png/jpg/jpeg, dung lượng <= 100MB).
+         */
+        validateImageFiles: function (files) {
+            if (!files || files.length === 0) {
+                return { isValid: true, errorMessage: null };
+            }
+
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                var ext = file.name.split('.').pop().toLowerCase();
+
+                // 1. Kiểm tra định dạng đuôi file
+                if (!this.allowedExtensions.includes(ext)) {
+                    return {
+                        isValid: false,
+                        errorMessage: 'Tệp "' + file.name + '" không đúng định dạng. Chỉ hỗ trợ các định dạng ảnh PNG, JPG, JPEG.'
+                    };
+                }
+
+                // 2. Kiểm tra giới hạn dung lượng file <= 100MB
+                if (file.size > this.maxSizeBytes) {
+                    return {
+                        isValid: false,
+                        errorMessage: 'Tệp "' + file.name + '" có dung lượng quá lớn (Vượt quá giới hạn 100MB).'
+                    };
+                }
+            }
+
+            return { isValid: true, errorMessage: null };
+        },
+
+        /**
+         * UC-33: Validate form Thêm/Sửa Dịch vụ Spa (Tên, Thời lượng, Đơn giá).
+         */
+        validateServiceForm: function (name, duration, price) {
+            if (!name || name.trim() === '') {
+                return { isValid: false, errorMessage: 'Vui lòng nhập tên dịch vụ Spa.' };
+            }
+            if (isNaN(duration) || parseInt(duration) < 10) {
+                return { isValid: false, errorMessage: 'Thời lượng dịch vụ phải tối thiểu 10 phút.' };
+            }
+            if (isNaN(price) || parseFloat(price) < 0) {
+                return { isValid: false, errorMessage: 'Đơn giá dịch vụ phải lớn hơn hoặc bằng 0đ.' };
+            }
+            return { isValid: true, errorMessage: null };
+        },
+
+        /**
+         * UC-41: Validate form Tiếp nhận Khách vãng lai tại quầy (Walk-in Pet).
+         */
+        validateWalkInForm: function (petName, customerName, phone, weight, serviceId) {
+            if (!petName || petName.trim() === '') {
+                return { isValid: false, errorMessage: 'Vui lòng nhập tên thú cưng.' };
+            }
+            if (!customerName || customerName.trim() === '') {
+                return { isValid: false, errorMessage: 'Vui lòng nhập tên khách hàng.' };
+            }
+            
+            var cleanPhone = (phone || '').trim();
+            var phoneRegex = /^[0-9]{10}$/;
+            if (!phoneRegex.test(cleanPhone)) {
+                return { isValid: false, errorMessage: 'Số điện thoại không hợp lệ. Số điện thoại phải gồm đúng 10 chữ số.' };
+            }
+
+            var numWeight = parseFloat(weight);
+            if (isNaN(numWeight) || numWeight <= 0 || numWeight > 200) {
+                return { isValid: false, errorMessage: 'Cân nặng thú cưng phải lớn hơn 0 và không vượt quá 200 kg.' };
+            }
+
+            if (!serviceId || parseInt(serviceId) <= 0) {
+                return { isValid: false, errorMessage: 'Vui lòng chọn dịch vụ Spa.' };
+            }
+
+            return { isValid: true, errorMessage: null };
+        },
+
+        /**
+         * UC-43 & UC-47: Validate form Hủy lịch hẹn Spa (Bắt buộc lý do).
+         */
+        validateCancellationForm: function (reason) {
+            if (!reason || reason.trim() === '') {
+                return { isValid: false, errorMessage: 'Vui lòng nhập lý do hủy lịch hẹn.' };
+            }
+            return { isValid: true, errorMessage: null };
+        },
+
+        /**
+         * UC-23: Validate form Đánh giá Dịch vụ Spa (Số sao 1-5 và ảnh đính kèm).
+         */
+        validateReviewForm: function (ratingStar, reviewFileInput) {
+            var numStar = parseInt(ratingStar);
+            if (isNaN(numStar) || numStar < 1 || numStar > 5) {
+                return { isValid: false, errorMessage: 'Vui lòng chọn số sao đánh giá từ 1 đến 5 sao.' };
+            }
+
+            if (reviewFileInput && reviewFileInput.files && reviewFileInput.files.length > 0) {
+                return this.validateImageFiles(reviewFileInput.files);
+            }
+
+            return { isValid: true, errorMessage: null };
+        }
+    };
+</script>

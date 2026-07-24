@@ -404,11 +404,30 @@
                     <input type="text" class="search-box-input" placeholder="Tìm kiếm nhanh..." />
                 </div>
 
-                <div class="user-panel">
-                    <button class="bell-icon-btn">
+                <div class="user-panel" style="position: relative;">
+                    <button class="bell-icon-btn" id="staffBellBtn" type="button" title="Xem thông báo">
                         <i class="fa-regular fa-bell"></i>
-                        <span class="bell-dot-indicator"></span>
+                        <span class="bell-dot-indicator" id="staffBellDot" style="display: none; background-color: #EC5959;"></span>
+                        <span id="staffBellBadge" class="badge rounded-pill bg-danger" style="display: none; position: absolute; top: -2px; right: -2px; font-size: 0.65rem; padding: 2px 6px;">0</span>
                     </button>
+
+                    <!-- Staff Notification Dropdown Menu -->
+                    <div id="staffNotiDropdown" style="display: none; position: absolute; top: 50px; right: 0; width: 360px; background: #FFFFFF; border-radius: 14px; border: 1px solid #ECE9E5; box-shadow: 0 10px 30px rgba(0,0,0,0.12); z-index: 9999; overflow: hidden;">
+                        <div style="padding: 14px 18px; background: #FAFAFA; border-bottom: 1px solid #ECE9E5; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 800; font-size: 0.9rem; color: #2D2521;">
+                                <i class="fa-solid fa-bell text-warning me-1"></i> Thông báo từ khách hàng
+                            </span>
+                            <span id="staffNotiUnreadBadge" style="font-size: 0.75rem; background: #FFF2E8; color: #FF7815; font-weight: 700; padding: 3px 8px; border-radius: 8px;">0 chưa đọc</span>
+                        </div>
+                        <div id="staffNotiList" style="max-height: 340px; overflow-y: auto; padding: 6px 0;">
+                            <!-- Dynamic Items -->
+                        </div>
+                        <div style="padding: 10px; text-align: center; background: #FAFAFA; border-top: 1px solid #ECE9E5;">
+                            <button id="btnClearStaffNoti" type="button" style="border: none; background: none; color: #FF7815; font-size: 0.8rem; font-weight: 700; cursor: pointer;">
+                                <i class="fa-solid fa-check-double me-1"></i> Đánh dấu tất cả đã đọc
+                            </button>
+                        </div>
+                    </div>
                     
                     <a asp-area="Customer" asp-controller="Account" asp-action="Profile" class="user-profile-link">
                         <div class="user-greet-details">
@@ -431,6 +450,173 @@
     
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/signalr.min.js"></script>
+
+    <script>
+        (function () {
+            const STORAGE_KEY = 'staff_spa_notifications_v1';
+
+            function getNotifications() {
+                try {
+                    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+                } catch(e) {
+                    return [];
+                }
+            }
+
+            function saveNotifications(list) {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+                } catch(e) {}
+            }
+
+            function renderNotifications() {
+                const list = getNotifications();
+                const unreadCount = list.filter(n => !n.read).length;
+
+                const bellDot = document.getElementById('staffBellDot');
+                const bellBadge = document.getElementById('staffBellBadge');
+                const unreadBadge = document.getElementById('staffNotiUnreadBadge');
+                const notiList = document.getElementById('staffNotiList');
+
+                if (unreadCount > 0) {
+                    if (bellDot) bellDot.style.display = 'block';
+                    if (bellBadge) {
+                        bellBadge.style.display = 'inline-block';
+                        bellBadge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+                    }
+                    if (unreadBadge) unreadBadge.textContent = unreadCount + ' chưa đọc';
+                } else {
+                    if (bellDot) bellDot.style.display = 'none';
+                    if (bellBadge) bellBadge.style.display = 'none';
+                    if (unreadBadge) unreadBadge.textContent = '0 chưa đọc';
+                }
+
+                if (!notiList) return;
+
+                if (list.length === 0) {
+                    notiList.innerHTML = '<div style="padding: 30px 20px; text-align: center; color: #a0aec0; font-size: 0.85rem;">' +
+                        '<i class="fa-regular fa-bell-slash" style="font-size: 1.8rem; margin-bottom: 8px; display: block; color: #cbd5e0;"></i>' +
+                        'Chưa có thông báo nào</div>';
+                    return;
+                }
+
+                let html = '';
+                list.forEach(function (n) {
+                    const bgStyle = n.read ? '#ffffff' : '#FFF9F5';
+                    const borderStyle = n.read ? '1px solid #F0F0F0' : '1.5px solid #FFD8BF';
+                    
+                    html += '<div class="staff-noti-item" style="padding: 12px 16px; border-bottom: ' + borderStyle + '; background: ' + bgStyle + '; cursor: pointer; transition: background 0.2s;">' +
+                        '<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">' +
+                            '<span style="font-weight: 800; font-size: 0.84rem; color: #C53030; display: flex; align-items: center; gap: 6px;">' +
+                                '<i class="fa-solid fa-circle-exclamation"></i> Hủy Lịch Spa' +
+                            '</span>' +
+                            '<span style="font-size: 0.72rem; color: #a0aec0;">' + (n.createdAt || '') + '</span>' +
+                        '</div>' +
+                        '<div style="font-size: 0.83rem; color: #2D2521; line-height: 1.4;">' +
+                            '<strong>' + (n.customerName || 'Khách') + '</strong> vừa hủy ca Spa <strong>' + (n.serviceName || '') + '</strong> cho bé <strong>' + (n.petName || '') + '</strong>' +
+                        '</div>' +
+                        '<div style="font-size: 0.78rem; color: #E53E3E; margin-top: 4px; background: #FFF0F0; padding: 4px 8px; border-radius: 6px;">' +
+                            '💬 Lý do: ' + (n.reason || 'Không có') +
+                        '</div>' +
+                    '</div>';
+                });
+
+                notiList.innerHTML = html;
+            }
+
+            // Bell button toggle
+            const bellBtn = document.getElementById('staffBellBtn');
+            const dropdown = document.getElementById('staffNotiDropdown');
+
+            if (bellBtn && dropdown) {
+                bellBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const isVisible = dropdown.style.display === 'block';
+                    dropdown.style.display = isVisible ? 'none' : 'block';
+                    if (!isVisible) {
+                        renderNotifications();
+                    }
+                });
+
+                document.addEventListener('click', function (e) {
+                    if (!dropdown.contains(e.target) && !bellBtn.contains(e.target)) {
+                        dropdown.style.display = 'none';
+                    }
+                });
+            }
+
+            // Clear all read
+            const btnClear = document.getElementById('btnClearStaffNoti');
+            if (btnClear) {
+                btnClear.addEventListener('click', function () {
+                    const list = getNotifications();
+                    list.forEach(n => n.read = true);
+                    saveNotifications(list);
+                    renderNotifications();
+                });
+            }
+
+            // Render initially on page load
+            renderNotifications();
+
+            // SignalR Connection
+            if (typeof signalR === 'undefined') return;
+
+            var connection = new signalR.HubConnectionBuilder()
+                .withUrl("/reviewHub")
+                .withAutomaticReconnect()
+                .build();
+
+            connection.start().then(function () {
+                console.log("Staff SignalR Connected successfully!");
+                connection.invoke("JoinStaffGroup").catch(function(err) {
+                    console.error("Error joining StaffGroup:", err);
+                });
+            }).catch(function (err) {
+                console.error("Staff SignalR Connection Error:", err);
+            });
+
+            function playAlertBeep() {
+                try {
+                    var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    var osc = audioCtx.createOscillator();
+                    var gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.45);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.45);
+                } catch (e) {}
+            }
+
+            connection.on("ReceiveSpaCancellationNotification", function (data) {
+                playAlertBeep();
+
+                // Store in local notification list
+                const list = getNotifications();
+                const timeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                list.unshift({
+                    id: Date.now(),
+                    customerName: data.customerName,
+                    serviceName: data.serviceName,
+                    petName: data.petName,
+                    bookingDate: data.bookingDate,
+                    reason: data.reason,
+                    createdAt: timeStr,
+                    read: false
+                });
+
+                if (list.length > 20) list.pop();
+                saveNotifications(list);
+                renderNotifications();
+            });
+        })();
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

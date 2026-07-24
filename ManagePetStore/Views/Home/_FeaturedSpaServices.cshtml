@@ -1,0 +1,101 @@
+@model ManagePetStore.Controllers.HomepageViewModel
+
+<div class="ps-section-header" style="margin-top: 50px; margin-bottom: 20px; border-top: 1px solid #ECE9E5; padding-top: 30px; flex-wrap: wrap; gap: 15px; align-items: center; display: flex; justify-content: space-between; width: 100%;">
+    <h2 class="ps-section-title" style="margin: 0;">Dịch vụ Spa nổi bật</h2>
+    
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 0.85rem; font-weight: 600; color: #5D524D;">Thú cưng:</span>
+        <form id="spaSpeciesFilterForm" style="margin: 0; display: inline-block;">
+            <input type="hidden" name="search" value="@Model.SearchKeyword" />
+            <input type="hidden" name="category" value="@Model.SelectedCategorySlug" />
+            <input type="hidden" name="pageP" value="@Model.CurrentPageP" />
+            <input type="hidden" name="pageS" id="spaCurrentPageS" value="@Model.CurrentPageS" />
+            <select name="species" id="spaSpeciesSelect"
+                    style="border: 1px solid #ECE9E5; border-radius: 8px; padding: 6px 12px; font-size: 0.85rem; font-weight: 600; color: #2D2521; outline: none; background-color: #FFFFFF; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                @{
+                    var selectedSpecies = ViewBag.SelectedSpecies as string ?? "Tất cả";
+                    var speciesOptions = new[] { "Tất cả", "Chó", "Mèo", "Chuột", "Rùa" };
+                }
+                @foreach (var opt in speciesOptions)
+                {
+                    if (selectedSpecies == opt)
+                    {
+                        <option value="@opt" selected="selected">@opt</option>
+                    }
+                    else
+                    {
+                        <option value="@opt">@opt</option>
+                    }
+                }
+            </select>
+        </form>
+    </div>
+</div>
+
+@if (Model.SpaServices.Count > 0)
+{
+    <div class="ps-products-grid">
+        @foreach (var service in Model.SpaServices)
+        {
+            <a asp-controller="Product" asp-action="Details" asp-route-id="@service.Sku" class="ps-product-card">
+                @if (!string.IsNullOrEmpty(service.Badge))
+                {
+                    <span class="ps-product-badge @service.BadgeType">@service.Badge</span>
+                }
+                <div class="ps-product-image">
+                    <img src="@service.ImageUrl" alt="@service.Name" loading="lazy" />
+                </div>
+                <div class="ps-product-body">
+                    <div class="ps-product-rating">
+                        <i class="bi bi-star-fill"></i>
+                        @if (service.ReviewCount > 0)
+                        {
+                            @:@service.Rating.ToString("0.0") (@service.ReviewCount đánh giá)
+                        }
+                        else
+                        {
+                            @:Chưa có đánh giá
+                        }
+                    </div>
+                    <div class="ps-product-name">@service.Name</div>
+                    <div class="ps-product-price-label">GIÁ DỊCH VỤ</div>
+                    <div class="ps-product-footer">
+                        <div class="ps-product-price">@service.Price.ToString("N0")đ</div>
+                        <span class="ps-product-stock">SẴN SÀNG</span>
+                    </div>
+                </div>
+            </a>
+        }
+    </div>
+
+    @if (Model.TotalPagesS > 1)
+    {
+        <nav class="mt-4 d-flex justify-content-center" aria-label="Spa Services Pagination">
+            <ul class="pagination">
+                <li class="page-item @(Model.CurrentPageS == 1 ? "disabled" : "")">
+                    <a class="page-link spa-ajax-page-link" href="javascript:void(0)" data-page="@(Model.CurrentPageS - 1)">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                @for (int i = 1; i <= Model.TotalPagesS; i++)
+                {
+                    <li class="page-item @(i == Model.CurrentPageS ? "active" : "")">
+                        <a class="page-link spa-ajax-page-link" href="javascript:void(0)" data-page="@i">@i</a>
+                    </li>
+                }
+                <li class="page-item @(Model.CurrentPageS == Model.TotalPagesS ? "disabled" : "")">
+                    <a class="page-link spa-ajax-page-link" href="javascript:void(0)" data-page="@(Model.CurrentPageS + 1)">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    }
+}
+else
+{
+    <div class="ps-search-empty" style="padding: 40px; background: #fffdf8; border-radius: 12px; border: 1px dashed #ECE9E5;">
+        <i class="bi bi-search" style="font-size: 2rem; color: #6b7280;"></i>
+        <p style="margin-top: 10px; color: #6b7280;">Không có dịch vụ spa nào phù hợp.</p>
+    </div>
+}

@@ -463,6 +463,21 @@
                         <textarea name="comment" class="form-control" rows="3" placeholder="Nhập cảm nhận của bạn về thái độ phục vụ hoặc kết quả dịch vụ..." style="border-radius: 12px; border-color: #ECE9E5; outline: none; font-size: 0.88rem;"></textarea>
                     </div>
 
+                    <div class="mb-4">
+                        <label class="form-label text-muted" style="font-size: 0.85rem; font-weight: 600;">
+                            Ảnh thực tế dịch vụ (Tùy chọn, &lt; 20MB, định dạng PNG, JPG, JPEG)
+                        </label>
+                        <input type="file" id="reviewImage" name="reviewImage" accept=".png,.jpg,.jpeg,image/png,image/jpeg" class="form-control" style="border-radius: 12px; border-color: #ECE9E5; font-size: 0.85rem;" />
+                        
+                        <!-- Image Preview Container -->
+                        <div id="imagePreviewContainer" class="mt-3 text-center" style="display: none;">
+                            <div style="position: relative; display: inline-block;">
+                                <img id="reviewImagePreview" src="" alt="Xem trước ảnh" style="max-width: 100%; max-height: 180px; border-radius: 12px; border: 1.5px solid #ECE9E5; object-fit: cover; box-shadow: 0 4px 12px rgba(0,0,0,0.08);" />
+                                <button type="button" id="btnRemoveImagePreview" title="Xóa ảnh đã chọn" style="position: absolute; top: -8px; right: -8px; background: #EC5959; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 0.8rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.2);">&times;</button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-outline-secondary w-50" data-bs-dismiss="modal" style="border-radius: 12px; font-weight: 600;">Hủy bỏ</button>
                         <button type="submit" class="btn btn-warning w-50" style="border-radius: 12px; font-weight: 700; color: white; background-color: #FF7815; border: none;">Gửi đánh giá</button>
@@ -479,6 +494,7 @@
 </form>
 
 @section Scripts {
+    <partial name="~/Areas/ServiceStaff/Views/SpaServices/_SpaServiceValidator.cshtml" />
     <script>
         $(document).ready(function () {
 
@@ -594,25 +610,96 @@
                 $('#ratingStarValue').val(val);
             });
 
+            // Xem trước ảnh khi chọn file
+            $('#reviewImage').change(function () {
+                if (this.files && this.files[0]) {
+                    var file = this.files[0];
+                    var fileName = file.name.toLowerCase();
+                    var validExts = ['.png', '.jpg', '.jpeg'];
+                    var isValidExt = validExts.some(function (ext) { return fileName.endsWith(ext); });
+
+                    if (!isValidExt) {
+                        alert('Chỉ chấp nhận file ảnh đính kèm có định dạng PNG, JPG hoặc JPEG.');
+                        $(this).val('');
+                        $('#imagePreviewContainer').hide();
+                        return;
+                    }
+
+                    if (file.size >= 20 * 1024 * 1024) {
+                        alert('Dung lượng ảnh đính kèm phải nhỏ hơn 20MB.');
+                        $(this).val('');
+                        $('#imagePreviewContainer').hide();
+                        return;
+                    }
+
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        $('#reviewImagePreview').attr('src', e.target.result);
+                        $('#imagePreviewContainer').fadeIn(200);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    $('#imagePreviewContainer').hide();
+                }
+            });
+
+            $('#btnRemoveImagePreview').click(function () {
+                $('#reviewImage').val('');
+                $('#reviewImagePreview').attr('src', '');
+                $('#imagePreviewContainer').hide();
+            });
+
             $('.btn-rate-service').click(function () {
                 var id = $(this).data('id');
                 $('#reviewBookingId').val(id);
                 $('#ratingStarValue').val(5);
+                $('#reviewImage').val('');
+                $('#reviewImagePreview').attr('src', '');
+                $('#imagePreviewContainer').hide();
                 $('.star-item').addClass('active');
                 $('#reviewModal').modal('show');
             });
 
             $('#reviewForm').submit(function (e) {
                 e.preventDefault();
+
+                var fileInput = document.getElementById('reviewImage');
+                if (fileInput && fileInput.files && fileInput.files.length > 0) {
+                    var file = fileInput.files[0];
+                    var fileName = file.name.toLowerCase();
+                    var validExts = ['.png', '.jpg', '.jpeg'];
+                    var isValidExt = validExts.some(function (ext) { return fileName.endsWith(ext); });
+
+                    if (!isValidExt) {
+                        alert('Chỉ chấp nhận file ảnh đính kèm có định dạng PNG, JPG hoặc JPEG.');
+                        return;
+                    }
+
+                    if (file.size >= 20 * 1024 * 1024) {
+                        alert('Dung lượng ảnh đính kèm phải nhỏ hơn 20MB.');
+                        return;
+                    }
+                }
+
+                var formData = new FormData(this);
                 
-                var data = $(this).serialize();
-                $.post('/Customer/SpaBooking/SubmitReview', data, function (res) {
-                    if (res.success) {
-                        alert(res.message);
-                        $('#reviewModal').modal('hide');
-                        window.location.reload();
-                    } else {
-                        alert('Lỗi: ' + res.message);
+                $.ajax({
+                    url: '/Customer/SpaBooking/SubmitReview',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (res) {
+                        if (res.success) {
+                            alert(res.message);
+                            $('#reviewModal').modal('hide');
+                            window.location.reload();
+                        } else {
+                            alert('Lỗi: ' + res.message);
+                        }
+                    },
+                    error: function () {
+                        alert('Có lỗi xảy ra trong quá trình gửi đánh giá.');
                     }
                 });
             });
