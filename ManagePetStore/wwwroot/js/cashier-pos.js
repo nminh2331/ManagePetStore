@@ -9,7 +9,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const codeParam = urlParams.get('code');
     const cancelParam = urlParams.get('cancel');
 
-    if (orderIdParam && (statusParam === 'success' || statusParam === 'PAID' || codeParam === '00')) {
+    if (cancelParam === 'true' || statusParam === 'CANCELLED' || statusParam === 'cancel') {
+        alert("Khách hàng đã hủy giao dịch chuyển khoản.");
+        window.history.replaceState(null, null, window.location.pathname);
+    } else if (orderIdParam && (statusParam === 'success' || statusParam === 'PAID' || codeParam === '00')) {
         showSuccessInvoiceModal(orderIdParam);
         
         // Clear giỏ hàng trong localStorage để bắt đầu đơn mới
@@ -17,9 +20,6 @@ document.addEventListener('DOMContentLoaded', function () {
         localStorage.removeItem('pos_current_customer');
         
         // Dọn URL
-        window.history.replaceState(null, null, window.location.pathname);
-    } else if (cancelParam === 'true' || statusParam === 'CANCELLED' || statusParam === 'cancel') {
-        alert("Khách hàng đã hủy giao dịch chuyển khoản.");
         window.history.replaceState(null, null, window.location.pathname);
     }
 
