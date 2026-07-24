@@ -214,11 +214,6 @@
                 </div>
 
                 <div class="admin-user-info">
-                    <button class="btn btn-link text-muted position-relative">
-                        <i class="fas fa-bell"></i>
-                        <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"></span>
-                    </button>
-                    
                     <a asp-area="Customer" asp-controller="Account" asp-action="Profile" class="d-flex align-items-center gap-3 text-decoration-none text-dark">
                         <div class="text-end">
                             <p class="mb-0 fw-bold">@User.FindFirst("FullName")?.Value</p>

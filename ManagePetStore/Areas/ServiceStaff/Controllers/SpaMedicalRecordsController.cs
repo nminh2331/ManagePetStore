@@ -340,6 +340,10 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             };
 
             pet.Weight = weight;
+            if (!string.IsNullOrWhiteSpace(healthStatus))
+            {
+                pet.Pathology = healthStatus.Trim();
+            }
             
             _context.MedicalRecords.Add(record);
             if (activeHotelBookingId.HasValue)
