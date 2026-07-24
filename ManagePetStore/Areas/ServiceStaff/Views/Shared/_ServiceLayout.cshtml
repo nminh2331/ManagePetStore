@@ -405,11 +405,6 @@
                 </div>
 
                 <div class="user-panel">
-                    <button class="bell-icon-btn">
-                        <i class="fa-regular fa-bell"></i>
-                        <span class="bell-dot-indicator"></span>
-                    </button>
-                    
                     <a asp-area="Customer" asp-controller="Account" asp-action="Profile" class="user-profile-link">
                         <div class="user-greet-details">
                             <p class="user-fullname-text">@User.FindFirst("FullName")?.Value</p>
