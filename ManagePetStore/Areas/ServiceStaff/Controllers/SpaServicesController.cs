@@ -13,6 +13,7 @@ using ManagePetStore.Models;
 using ManagePetStore.Areas.ServiceStaff.Models;
 using ManagePetStore.Services;
 using ManagePetStore.Services.Warehouse;
+using ManagePetStore.Areas.ServiceStaff.Helpers;
 using CustomerEntity = ManagePetStore.Models.Customer;
 
 namespace ManagePetStore.Areas.ServiceStaff.Controllers
@@ -109,7 +110,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             if (currentPage < 1) currentPage = 1;
 
             var services = await _context.SpaServices.AsNoTracking()
-                .OrderBy(s => s.ServiceId)
+                .OrderByDescending(s => s.ServiceId)
                 .Skip((currentPage - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -121,7 +122,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             // Chỉ lấy dịch vụ đang Hoạt động (Active) cho các Dropdown chọn lựa
             var activeServices = await _context.SpaServices.AsNoTracking()
                 .Where(s => s.Active)
-                .OrderBy(s => s.ServiceId)
+                .OrderByDescending(s => s.ServiceId)
                 .ToListAsync();
             ViewBag.ActiveServices = activeServices;
 
@@ -233,79 +234,202 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         // =========================================================================
         
         /// <summary>
-        /// Thêm một dịch vụ Spa mới vào danh mục hệ thống.
+        /// Xử lý Thêm Dịch Vụ Spa Mới vào Hệ Thống (Phân Hệ Service Staff - UC-33).
+        /// Sử dụng SpaServiceValidationHelper để tách riêng phần Validate thông tin cơ bản và tệp ảnh đính kèm.
         /// </summary>
-        /// <param name="name">Tên dịch vụ Spa</param>
-        /// <param name="duration">Thời lượng dịch vụ (tính bằng phút)</param>
-        /// <param name="price">Đơn giá dịch vụ (VNĐ)</param>
-        /// <param name="targetSpecies">Loài áp dụng (Chó, Mèo, Tất cả...)</param>
+        /// <param name="name">Tên dịch vụ Spa mới</param>
+        /// <param name="duration">Thời lượng thực hiện dự kiến (phút)</param>
+        /// <param name="price">Đơn giá niêm yết (VNĐ)</param>
+        /// <param name="targetSpecies">Loài thú cưng áp dụng (Chó, Mèo, Tất cả...)</param>
+        /// <param name="description">Mô tả chi tiết quy trình & lợi ích dịch vụ Spa</param>
+        /// <param name="serviceImages">Danh sách các tệp hình ảnh minh họa được tải lên</param>
+        /// <returns>Chuyển hướng về màn hình quản lý danh mục Spa kèm thông báo kết quả</returns>
         [HttpPost("AddService")]
-        public async Task<IActionResult> AddService(string name, int duration, decimal price, string? targetSpecies)
+        public async Task<IActionResult> AddService(
+            string name,
+            int duration,
+            decimal price,
+            string? targetSpecies,
+            string? description,
+            List<IFormFile>? serviceImages)
         {
-            if (string.IsNullOrWhiteSpace(name) || duration <= 0 || price < 0)
+            // 1. Kiểm tra tính hợp lệ cơ bản của dữ liệu qua Helper
+            var (isBasicValid, basicErrorMsg) = SpaServiceValidationHelper.ValidateBasicInfo(name, duration, price);
+            if (!isBasicValid)
             {
-                TempData["ErrorMessage"] = "Thông tin dịch vụ không hợp lệ.";
+                TempData["ErrorMessage"] = basicErrorMsg;
                 return RedirectToAction(nameof(Index));
             }
 
-            // Kiểm tra trùng tên dịch vụ trong DB
-            if (await _context.SpaServices.AnyAsync(s => s.Name.ToLower() == name.Trim().ToLower()))
+            // 2. Kiểm tra tính hợp lệ của tệp ảnh tải lên qua Helper
+            var (isImagesValid, imagesErrorMsg) = SpaServiceValidationHelper.ValidateImageFiles(serviceImages);
+            if (!isImagesValid)
             {
-                TempData["ErrorMessage"] = "Tên dịch vụ Spa này đã tồn tại.";
+                TempData["ErrorMessage"] = imagesErrorMsg;
                 return RedirectToAction(nameof(Index));
             }
 
+            var trimmedName = name.Trim();
+
+            // 3. Kiểm tra trùng tên dịch vụ trong cơ sở dữ liệu (không phân biệt hoa/thường)
+            if (await _context.SpaServices.AnyAsync(s => s.Name.ToLower() == trimmedName.ToLower()))
+            {
+                TempData["ErrorMessage"] = "Tên dịch vụ Spa này đã tồn tại trong hệ thống.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // 4. Lưu trữ các tệp ảnh hợp lệ vào ổ đĩa server
+            List<string> savedImageUrls = new List<string>();
+            if (serviceImages != null && serviceImages.Count > 0)
+            {
+                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "spaservices");
+                if (!Directory.Exists(uploadsFolder))
+                {
+                    Directory.CreateDirectory(uploadsFolder);
+                }
+
+                foreach (var file in serviceImages)
+                {
+                    if (file.Length == 0) continue;
+
+                    var ext = Path.GetExtension(file.FileName);
+                    var uniqueFileName = $"spa_svc_{Guid.NewGuid().ToString("N")[..8]}{ext.ToLowerInvariant()}";
+                    var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+
+                    savedImageUrls.Add($"/uploads/spaservices/{uniqueFileName}");
+                }
+            }
+
+            // 5. Khởi tạo đối tượng SpaService và lưu vào Database
             var service = new SpaService
             {
-                Name = name.Trim(),
+                Name = trimmedName,
                 DurationMinutes = duration,
                 Price = price,
                 Active = true,
-                TargetSpecies = string.IsNullOrEmpty(targetSpecies) ? "Tất cả" : targetSpecies.Trim()
+                TargetSpecies = string.IsNullOrEmpty(targetSpecies) ? "Tất cả" : targetSpecies.Trim(),
+                Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
+                ImageUrls = savedImageUrls.Count > 0 ? System.Text.Json.JsonSerializer.Serialize(savedImageUrls) : null
             };
 
             _context.SpaServices.Add(service);
             await _context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = "Thêm dịch vụ Spa mới thành công!";
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { servicePage = 1 });
         }
 
         /// <summary>
-        /// Chỉnh sửa thông tin một dịch vụ Spa đã tồn tại trong danh mục.
+        /// Xử lý Chỉnh Sửa Thông Tin Dịch Vụ Spa Đã Tồn Tại trong Danh Mục (UC-33).
+        /// Sử dụng SpaServiceValidationHelper để tách riêng phần Validate thông tin cơ bản và tệp ảnh đính kèm.
         /// </summary>
-        /// <param name="id">Mã ID dịch vụ Spa cần sửa</param>
-        /// <param name="name">Tên dịch vụ mới</param>
-        /// <param name="duration">Thời lượng mới (phút)</param>
+        /// <param name="id">Mã ID duy nhất của dịch vụ Spa cần chỉnh sửa</param>
+        /// <param name="name">Tên dịch vụ Spa cập nhật</param>
+        /// <param name="duration">Thời lượng thực hiện mới (phút)</param>
         /// <param name="price">Đơn giá mới (VNĐ)</param>
-        /// <param name="targetSpecies">Loài áp dụng mới</param>
+        /// <param name="targetSpecies">Loài thú cưng áp dụng</param>
+        /// <param name="description">Mô tả chi tiết dịch vụ cập nhật</param>
+        /// <param name="serviceImages">Danh sách tệp ảnh tải lên thêm mới</param>
+        /// <param name="keepExistingImages">Chuỗi JSON danh sách URL ảnh cũ giữ lại (nếu có)</param>
+        /// <returns>Chuyển hướng về màn hình quản lý danh mục Spa kèm thông báo kết quả</returns>
         [HttpPost("EditService")]
-        public async Task<IActionResult> EditService(int id, string name, int duration, decimal price, string? targetSpecies)
+        public async Task<IActionResult> EditService(
+            int id,
+            string name,
+            int duration,
+            decimal price,
+            string? targetSpecies,
+            string? description,
+            List<IFormFile>? serviceImages,
+            string? keepExistingImages)
         {
             var service = await _context.SpaServices.FindAsync(id);
             if (service == null)
             {
-                TempData["ErrorMessage"] = "Không tìm thấy dịch vụ.";
+                TempData["ErrorMessage"] = "Không tìm thấy thông tin dịch vụ Spa cần chỉnh sửa.";
                 return RedirectToAction(nameof(Index));
             }
 
-            if (string.IsNullOrWhiteSpace(name) || duration <= 0 || price < 0)
+            // 1. Kiểm tra tính hợp lệ cơ bản của dữ liệu qua Helper
+            var (isBasicValid, basicErrorMsg) = SpaServiceValidationHelper.ValidateBasicInfo(name, duration, price);
+            if (!isBasicValid)
             {
-                TempData["ErrorMessage"] = "Thông tin không hợp lệ.";
+                TempData["ErrorMessage"] = basicErrorMsg;
                 return RedirectToAction(nameof(Index));
             }
 
-            // Kiểm tra trùng tên với các dịch vụ khác
-            if (await _context.SpaServices.AnyAsync(s => s.Name.ToLower() == name.Trim().ToLower() && s.ServiceId != id))
+            // 2. Kiểm tra tính hợp lệ của tệp ảnh tải lên qua Helper
+            var (isImagesValid, imagesErrorMsg) = SpaServiceValidationHelper.ValidateImageFiles(serviceImages);
+            if (!isImagesValid)
             {
-                TempData["ErrorMessage"] = "Tên dịch vụ Spa này đã tồn tại.";
+                TempData["ErrorMessage"] = imagesErrorMsg;
                 return RedirectToAction(nameof(Index));
             }
 
-            service.Name = name.Trim();
+            var trimmedName = name.Trim();
+
+            // 3. Kiểm tra trùng tên với các dịch vụ Spa khác trong cơ sở dữ liệu
+            if (await _context.SpaServices.AnyAsync(s => s.Name.ToLower() == trimmedName.ToLower() && s.ServiceId != id))
+            {
+                TempData["ErrorMessage"] = "Tên dịch vụ Spa này đã trùng với một dịch vụ khác.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Phân tích danh sách ảnh hiện có cần giữ lại
+            List<string> imageList = new List<string>();
+            if (!string.IsNullOrEmpty(keepExistingImages))
+            {
+                try
+                {
+                    imageList = System.Text.Json.JsonSerializer.Deserialize<List<string>>(keepExistingImages) ?? new List<string>();
+                }
+                catch { }
+            }
+            else if (!string.IsNullOrEmpty(service.ImageUrls))
+            {
+                try
+                {
+                    imageList = System.Text.Json.JsonSerializer.Deserialize<List<string>>(service.ImageUrls) ?? new List<string>();
+                }
+                catch { }
+            }
+
+            // Tải lên các tệp ảnh đính kèm mới nếu có
+            if (serviceImages != null && serviceImages.Count > 0)
+            {
+                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "spaservices");
+                if (!Directory.Exists(uploadsFolder))
+                {
+                    Directory.CreateDirectory(uploadsFolder);
+                }
+
+                foreach (var file in serviceImages)
+                {
+                    if (file.Length == 0) continue;
+
+                    var ext = Path.GetExtension(file.FileName);
+                    var uniqueFileName = $"spa_svc_{Guid.NewGuid().ToString("N")[..8]}{ext.ToLowerInvariant()}";
+                    var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+
+                    imageList.Add($"/uploads/spaservices/{uniqueFileName}");
+                }
+            }
+
+            // Cập nhật các thông tin thuộc tính của SpaService
+            service.Name = trimmedName;
             service.DurationMinutes = duration;
             service.Price = price;
             service.TargetSpecies = string.IsNullOrEmpty(targetSpecies) ? "Tất cả" : targetSpecies.Trim();
+            service.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+            service.ImageUrls = imageList.Count > 0 ? System.Text.Json.JsonSerializer.Serialize(imageList) : null;
 
             await _context.SaveChangesAsync();
             TempData["SuccessMessage"] = "Cập nhật dịch vụ Spa thành công!";
@@ -379,24 +503,14 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         {
             string redirectDate = DateTime.Today.ToString("yyyy-MM-dd");
 
-            if (string.IsNullOrWhiteSpace(petName) || string.IsNullOrWhiteSpace(customerName) || string.IsNullOrWhiteSpace(phone) || serviceId <= 0)
+            var (isWalkInValid, walkInErrorMsg) = SpaServiceValidationHelper.ValidateWalkInInfo(petName, customerName, phone, serviceId, weight);
+            if (!isWalkInValid)
             {
-                TempData["ErrorMessage"] = "Vui lòng nhập đầy đủ thông tin bắt buộc.";
+                TempData["ErrorMessage"] = walkInErrorMsg;
                 return RedirectToAction(nameof(Index));
             }
 
             var cleanPhone = phone.Trim();
-            if (cleanPhone.Length != 10 || !cleanPhone.All(char.IsDigit))
-            {
-                TempData["ErrorMessage"] = "Số điện thoại không hợp lệ. Số điện thoại phải gồm đúng 10 chữ số và không chứa ký tự chữ.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            if (weight <= 0 || weight > 200m)
-            {
-                TempData["ErrorMessage"] = "Cân nặng thú cưng phải lớn hơn 0 và không vượt quá 200 kg.";
-                return RedirectToAction(nameof(Index));
-            }
 
             var service = await _context.SpaServices.FindAsync(serviceId);
             if (service == null || !service.Active)

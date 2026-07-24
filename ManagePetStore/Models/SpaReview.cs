@@ -20,6 +20,8 @@ public partial class SpaReview
 
     public string? Comment { get; set; }
 
+    public string? ImageUrl { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public virtual SpaBooking Booking { get; set; } = null!;

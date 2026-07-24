@@ -9,6 +9,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PayOS;
 
+using Microsoft.AspNetCore.SignalR;
+using ManagePetStore.Hubs;
+using ManagePetStore.Areas.ServiceStaff.Helpers;
+
 namespace ManagePetStore.Areas.Customer.Controllers
 {
     [Area("Customer")]
@@ -18,11 +22,13 @@ namespace ManagePetStore.Areas.Customer.Controllers
     {
         private readonly PetStoreManagementContext _context;
         private readonly PayOSClient _payOS;
+        private readonly IHubContext<ReviewHub> _reviewHubContext;
 
-        public SpaBookingController(PetStoreManagementContext context, PayOSClient payOS)
+        public SpaBookingController(PetStoreManagementContext context, PayOSClient payOS, IHubContext<ReviewHub> reviewHubContext)
         {
             _context = context;
             _payOS = payOS;
+            _reviewHubContext = reviewHubContext;
         }
 
         private async Task<ManagePetStore.Models.Customer?> GetCurrentCustomerAsync()
@@ -313,6 +319,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
 
             var booking = await _context.SpaBookings
                 .Include(b => b.Pet)
+                .Include(b => b.Service)
                 .FirstOrDefaultAsync(b => b.BookingId == bookingId && b.CustomerId == customer.CustomerId);
 
             if (booking == null)
@@ -320,22 +327,10 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 return Json(new { success = false, message = "Không tìm thấy lịch hẹn." });
             }
 
-            if (booking.SpaStatus == "Cancelled")
+            var (isCancelValid, cancelErrorMsg) = SpaServiceValidationHelper.ValidateSpaCancellation(booking.DateTime, booking.SpaStatus ?? "0", reason);
+            if (!isCancelValid)
             {
-                return Json(new { success = false, message = "Lịch hẹn này đã được hủy trước đó." });
-            }
-
-            // Ràng buộc 1: Chưa bấm bắt đầu (chỉ được hủy khi ca còn ở trạng thái Đang chờ/Tiếp nhận)
-            bool isPending = booking.SpaStatus == "0" || (booking.SpaStatus != null && booking.SpaStatus.EndsWith("|0")) || booking.SpaStatus == "Tiếp nhận";
-            if (!isPending)
-            {
-                return Json(new { success = false, message = "Lịch hẹn đã được nhân viên tiếp nhận bắt đầu thực hiện, không thể hủy." });
-            }
-
-            // Ràng buộc 2: chỉ được hủy trước tối thiểu 2 giờ
-            if (booking.DateTime <= DateTime.Now.AddHours(2))
-            {
-                return Json(new { success = false, message = "Không thể hủy lịch hẹn đã cận giờ thực hiện (cần hủy trước tối thiểu 2 tiếng)." });
+                return Json(new { success = false, message = cancelErrorMsg });
             }
 
             using (var transaction = await _context.Database.BeginTransactionAsync())
@@ -357,6 +352,27 @@ namespace ManagePetStore.Areas.Customer.Controllers
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
+                    // Gửi thông báo SignalR thời gian thực cho phía Staff
+                    try
+                    {
+                        var notificationData = new
+                        {
+                            bookingId = booking.BookingId,
+                            customerName = customer.FullName,
+                            petName = booking.Pet?.Name ?? "Thú cưng",
+                            serviceName = booking.Service?.Name ?? "Dịch vụ Spa",
+                            bookingDate = booking.DateTime.ToString("HH:mm dd/MM/yyyy"),
+                            reason = reason?.Trim()
+                        };
+
+                        await _reviewHubContext.Clients.All.SendAsync("ReceiveSpaCancellationNotification", notificationData);
+                        await _reviewHubContext.Clients.Group("StaffGroup").SendAsync("ReceiveSpaCancellationNotification", notificationData);
+                    }
+                    catch
+                    {
+                        // SignalR failure should not break cancellation response
+                    }
+
                     return Json(new { success = true, message = "Đã hủy lịch hẹn thành công!" });
                 }
                 catch (Exception ex)
@@ -369,7 +385,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
 
         [HttpPost("SubmitReview")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SubmitReview(int bookingId, int ratingStar, string? comment)
+        public async Task<IActionResult> SubmitReview(int bookingId, int ratingStar, string? comment, IFormFile? reviewImage)
         {
             var customer = await GetCurrentCustomerAsync();
             if (customer == null)
@@ -393,9 +409,10 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 return Json(new { success = false, message = "Chỉ có thể đánh giá dịch vụ sau khi ca làm việc đã hoàn thành và đã thanh toán tiền." });
             }
 
-            if (ratingStar < 1 || ratingStar > 5)
+            var (isReviewValid, reviewErrorMsg) = SpaServiceValidationHelper.ValidateSpaReview(ratingStar, reviewImage);
+            if (!isReviewValid)
             {
-                return Json(new { success = false, message = "Số sao đánh giá phải từ 1 đến 5." });
+                return Json(new { success = false, message = reviewErrorMsg });
             }
 
             // Kiểm tra xem đã đánh giá chưa
@@ -403,6 +420,38 @@ namespace ManagePetStore.Areas.Customer.Controllers
             if (existingReview != null)
             {
                 return Json(new { success = false, message = "Bạn đã đánh giá lịch hẹn này rồi." });
+            }
+
+            // Xử lý upload ảnh đánh giá (nếu có)
+            string? imageUrl = null;
+            if (reviewImage != null && reviewImage.Length > 0)
+            {
+                var ext = System.IO.Path.GetExtension(reviewImage.FileName).ToLowerInvariant();
+                var allowedExtensions = new[] { ".png", ".jpg", ".jpeg" };
+                if (!allowedExtensions.Contains(ext))
+                {
+                    return Json(new { success = false, message = "Chỉ chấp nhận file ảnh đính kèm có định dạng PNG, JPG hoặc JPEG." });
+                }
+
+                if (reviewImage.Length >= 20 * 1024 * 1024)
+                {
+                    return Json(new { success = false, message = "Dung lượng ảnh đính kèm phải nhỏ hơn 20MB." });
+                }
+
+                var uploadsFolder = System.IO.Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "reviews");
+                if (!System.IO.Directory.Exists(uploadsFolder))
+                {
+                    System.IO.Directory.CreateDirectory(uploadsFolder);
+                }
+
+                var uniqueFileName = $"{Guid.NewGuid()}{ext}";
+                var filePath = System.IO.Path.Combine(uploadsFolder, uniqueFileName);
+                using (var fileStream = new System.IO.FileStream(filePath, System.IO.FileMode.Create))
+                {
+                    await reviewImage.CopyToAsync(fileStream);
+                }
+
+                imageUrl = $"/uploads/reviews/{uniqueFileName}";
             }
 
             using (var transaction = await _context.Database.BeginTransactionAsync())
@@ -416,6 +465,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
                         GroomerId = booking.GroomerId,
                         RatingStar = ratingStar,
                         Comment = comment?.Trim(),
+                        ImageUrl = imageUrl,
                         CreatedAt = DateTime.Now
                     };
                     _context.SpaReviews.Add(review);
@@ -441,6 +491,23 @@ namespace ManagePetStore.Areas.Customer.Controllers
 
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
+
+                    try
+                    {
+                        var sku = $"SPA-SVC-{booking.ServiceId:D3}";
+                        await _reviewHubContext.Clients.Group(sku).SendAsync("ReceiveNewReview", new
+                        {
+                            customerName = customer.FullName,
+                            rating = ratingStar,
+                            comment = comment?.Trim(),
+                            imageUrl = imageUrl,
+                            createdAt = DateTime.Now.ToString("dd/MM/yyyy")
+                        });
+                    }
+                    catch
+                    {
+                        // SignalR broadcast failure should not break submission
+                    }
 
                     return Json(new { success = true, message = "Cảm ơn bạn đã gửi phản hồi đánh giá dịch vụ!" });
                 }

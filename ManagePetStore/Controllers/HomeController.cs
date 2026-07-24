@@ -29,6 +29,48 @@ public class HomeController : Controller
     }
 
     [HttpGet]
+    public async Task<IActionResult> GetFeaturedSpaServices(string? search, string? category, string? species, int pageP = 1, int pageS = 1)
+    {
+        var model = GetStaticHomepageData();
+        model.SearchKeyword = search?.Trim();
+        model.SelectedCategorySlug = category?.Trim().ToLowerInvariant();
+        if (string.Equals(model.SelectedCategorySlug, "spa", StringComparison.OrdinalIgnoreCase))
+        {
+            model.SelectedCategorySlug = null;
+        }
+
+        var selectedSpecies = species?.Trim();
+        ViewBag.SelectedSpecies = selectedSpecies;
+
+        var catalog = await GetSearchableProductsAsync();
+        var spaServicesList = catalog.Where(p => string.Equals(p.Category, "Dịch vụ Spa", StringComparison.OrdinalIgnoreCase)).ToList();
+
+        spaServicesList = ApplyProductFilters(spaServicesList, model.SearchKeyword, null);
+
+        if (!string.IsNullOrEmpty(selectedSpecies) && selectedSpecies != "Tất cả")
+        {
+            spaServicesList = spaServicesList.Where(p => string.Equals(p.TargetSpecies, "Tất cả", StringComparison.OrdinalIgnoreCase)
+                                                      || string.Equals(p.TargetSpecies, selectedSpecies, StringComparison.OrdinalIgnoreCase))
+                                             .ToList();
+        }
+
+        const int PageSizeS = 4;
+        int totalSpaServices = spaServicesList.Count;
+        model.TotalPagesS = (int)Math.Ceiling((double)totalSpaServices / PageSizeS);
+        if (model.TotalPagesS == 0) model.TotalPagesS = 1;
+
+        model.CurrentPageS = Math.Max(1, Math.Min(model.TotalPagesS, pageS));
+        model.CurrentPageP = pageP;
+
+        model.SpaServices = spaServicesList
+            .Skip((model.CurrentPageS - 1) * PageSizeS)
+            .Take(PageSizeS)
+            .ToList();
+
+        return PartialView("_FeaturedSpaServices", model);
+    }
+
+    [HttpGet]
     public async Task<IActionResult> Index(string? search, string? category, string? species, int pageP = 1, int pageS = 1)
     {
         var model = GetStaticHomepageData();
@@ -303,6 +345,16 @@ public class HomeController : Controller
                 .OrderBy(s => s.ServiceId)  //Sắp xếp tăng dần theo ID dịch vụ và đẩy ra thành List.
                 .ToListAsync();
 
+            var spaReviewsData = await _context.SpaReviews
+                .GroupBy(r => r.ServiceId)
+                .Select(g => new
+                {
+                    ServiceId = g.Key,
+                    Count = g.Count(),
+                    Avg = Math.Round(g.Average(r => r.RatingStar), 1)
+                })
+                .ToDictionaryAsync(x => x.ServiceId);
+
             var seenSpaNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var s in dbSpaServices)
@@ -319,15 +371,17 @@ public class HomeController : Controller
                     continue;
                 }
 
+                var hasReview = spaReviewsData.TryGetValue(s.ServiceId, out var stats);
+
                 products.Add(new ProductCardItem
                 {
                     Sku = sku,
                     Name = s.Name,
                     Category = "Dịch vụ Spa",
                     Price = s.Price,
-                    ImageUrl = ResolveSpaServiceImageUrl(s.Name),
-                    Rating = 4.9,
-                    ReviewCount = 35,
+                    ImageUrl = ResolveSpaServiceImageUrl(s.Name, s.ImageUrls),
+                    Rating = hasReview ? stats.Avg : 0.0,
+                    ReviewCount = hasReview ? stats.Count : 0,
                     Badge = $"{s.DurationMinutes} phút",
                     BadgeType = "new",
                     InStock = true,
@@ -395,8 +449,31 @@ public class HomeController : Controller
         };
     }
 
-    private static string ResolveSpaServiceImageUrl(string serviceName)
+    /// <summary>
+    /// Xử lý lấy đường dẫn ảnh đại diện cho Dịch vụ Spa hiển thị trên Trang Chủ.
+    /// Ưu tiên lấy ảnh thật vừa được Nhân viên Service Staff đăng/tải lên trong mảng JSON ImageUrls.
+    /// Nếu chưa có ảnh thật, tự động fallback về các ảnh mẫu tùy theo từ khóa tên dịch vụ (Tắm/Cắt/Răng/Combo).
+    /// </summary>
+    /// <param name="serviceName">Tên dịch vụ Spa</param>
+    /// <param name="dbImageUrls">Chuỗi JSON lưu danh sách đường dẫn ảnh đính kèm trong Database</param>
+    /// <returns>Đường dẫn URL ảnh hiển thị</returns>
+    private static string ResolveSpaServiceImageUrl(string serviceName, string? dbImageUrls = null)
     {
+        // 1. Kiểm tra nếu có dữ liệu ảnh thật trong Database thì lấy ngay ảnh đầu tiên
+        if (!string.IsNullOrEmpty(dbImageUrls))
+        {
+            try
+            {
+                var urls = System.Text.Json.JsonSerializer.Deserialize<List<string>>(dbImageUrls);
+                if (urls != null && urls.Count > 0 && !string.IsNullOrEmpty(urls[0]))
+                {
+                    return urls[0];
+                }
+            }
+            catch { }
+        }
+
+        // 2. Fallback: Lấy ảnh mặc định phù hợp với từ khóa tên dịch vụ Spa
         var name = serviceName.ToLowerInvariant();
 
         if (name.Contains("tắm") || name.Contains("tam") || name.Contains("sấy") || name.Contains("say") || name.Contains("chải"))

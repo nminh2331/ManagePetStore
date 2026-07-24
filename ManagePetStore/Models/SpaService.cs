@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace ManagePetStore.Models;
@@ -17,7 +17,10 @@ public partial class SpaService
 
     public string? TargetSpecies { get; set; }
 
-    public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+    public string? Description { get; set; }
 
+    public string? ImageUrls { get; set; }
+
+    public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
     public virtual ICollection<SpaBooking> SpaBookings { get; set; } = new List<SpaBooking>();
 }

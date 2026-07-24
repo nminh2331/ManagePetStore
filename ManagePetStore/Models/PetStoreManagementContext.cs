@@ -640,6 +640,8 @@ public partial class PetStoreManagementContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(150);
             entity.Property(e => e.Price).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.TargetSpecies).HasMaxLength(50);
+            entity.Property(e => e.Description).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.ImageUrls).HasColumnType("nvarchar(max)");
         });
 
         modelBuilder.Entity<StaffProfile>(entity =>
