@@ -56,22 +56,32 @@
             <div class="cp-pet-list">
                 @foreach (var pet in Model.Pets)
                 {
+                    bool hasMedicalRecord = pet.MedicalRecords != null && pet.MedicalRecords.Any();
                     <article class="cp-pet-card">
                         <img class="cp-pet-image"
                              src="@(string.IsNullOrEmpty(pet.ImageUrl) ? "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=200&h=200&fit=crop" : pet.ImageUrl)"
                              alt="@pet.Name" />
 
                         <div class="cp-pet-actions">
-                            <button type="button" class="cp-pet-action-btn" data-edit-pet="@pet.PetId" title="Chỉnh sửa">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                            <form asp-action="Delete" method="post" class="cp-delete-form">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="petId" value="@pet.PetId" />
-                                <button type="submit" class="cp-pet-action-btn delete" data-confirm-delete="@pet.Name" title="Xóa">
-                                    <i class="bi bi-trash"></i>
+                            @if (!hasMedicalRecord)
+                            {
+                                <button type="button" class="cp-pet-action-btn" data-edit-pet="@pet.PetId" title="Chỉnh sửa">
+                                    <i class="bi bi-pencil"></i>
                                 </button>
-                            </form>
+                                <form asp-action="Delete" method="post" class="cp-delete-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="petId" value="@pet.PetId" />
+                                    <button type="submit" class="cp-pet-action-btn delete" data-confirm-delete="@pet.Name" title="Xóa">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span  title="Thú cưng đã được tạo sổ y tế tại cửa hàng. Thông tin hồ sơ được bảo lưu theo sổ y tế.">
+                                    <i class="bi bi-plus-square-fill" style="color: #ef4444; font-size: 1.5rem;"></i> 
+                                </span>
+                            }
                         </div>
 
                         <div class="cp-pet-card-body">

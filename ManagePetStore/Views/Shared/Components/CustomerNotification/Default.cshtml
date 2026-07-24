@@ -3,6 +3,7 @@
 @if (Model.IsCustomer)
 {
     <div class="ps-notification" data-notification-root>
+        @Html.AntiForgeryToken()
         <button class="ps-icon-btn" type="button" aria-label="Thông báo" aria-expanded="false" data-notification-toggle>
             <i class="bi bi-bell"></i>
             <span class="ps-badge ps-badge-red @(Model.UnreadCount == 0 ? "d-none" : "")" data-notification-count>@(Model.UnreadCount > 99 ? "99+" : Model.UnreadCount)</span>
@@ -10,7 +11,10 @@
         <div class="ps-notification-menu" data-notification-menu hidden>
             <div class="ps-notification-head">
                 <strong>Thông báo chăm sóc</strong>
-                <a href="/Customer/Notifications">Xem tất cả</a>
+                <div class="ps-notification-head-actions">
+                    <button type="button" class="ps-notification-clear-all @(Model.Items.Count == 0 ? "d-none" : "")" data-notification-clear-all title="Xóa tất cả thông báo">Xóa tất cả</button>
+                    <a href="/Customer/Notifications">Xem tất cả</a>
+                </div>
             </div>
             <div class="ps-notification-list" data-notification-list>
                 @if (Model.Items.Count == 0)
@@ -21,11 +25,14 @@
                 {
                     @foreach (var item in Model.Items)
                     {
-                        <a class="ps-notification-item @(!item.IsRead ? "is-unread" : "")" href="/Customer/Notifications/Open/@item.NotificationId">
-                            <strong>@item.DisplayTitle</strong>
-                            <span>@item.DisplayMessage</span>
-                            <time>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</time>
-                        </a>
+                        <div class="ps-notification-item-wrapper" data-notification-id="@item.NotificationId">
+                            <a class="ps-notification-item @(!item.IsRead ? "is-unread" : "")" href="/Customer/Notifications/Open/@item.NotificationId">
+                                <strong>@item.DisplayTitle</strong>
+                                <span>@item.DisplayMessage</span>
+                                <time>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</time>
+                            </a>
+                            <button type="button" class="ps-notification-delete-btn" data-notification-delete="@item.NotificationId" title="Xóa thông báo">&times;</button>
+                        </div>
                     }
                 }
             </div>

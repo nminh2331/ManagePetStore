@@ -55,13 +55,7 @@
                     <span asp-validation-for="CostPrice" class="text-danger small"></span>
                 </div>
                 
-                <div class="col-md-3 mb-3">
-                    <label asp-for="Stock" class="form-label fw-bold">Số lượng tồn <span class="text-danger">*</span></label>
-                    <input asp-for="Stock" type="number" class="form-control" style="border-radius: 8px;" value="0" />
-                    <span asp-validation-for="Stock" class="text-danger small"></span>
-                </div>
-                
-                <div class="col-md-3 mb-3">
+                <div class="col-md-6 mb-3">
                     <label asp-for="MinStock" class="form-label fw-bold">Tồn kho tối thiểu <span class="text-danger">*</span></label>
                     <input asp-for="MinStock" type="number" class="form-control" style="border-radius: 8px;" value="5" />
                     <span asp-validation-for="MinStock" class="text-danger small"></span>
@@ -71,12 +65,6 @@
                     <label asp-for="ShelfLocation" class="form-label fw-bold">Vị trí kệ</label>
                     <input asp-for="ShelfLocation" class="form-control" style="border-radius: 8px;" placeholder="VD: A1-2" />
                     <span asp-validation-for="ShelfLocation" class="text-danger small"></span>
-                </div>
-                
-                <div class="col-md-6 mb-3">
-                    <label asp-for="ExpiryDate" class="form-label fw-bold">Ngày hết hạn</label>
-                    <input asp-for="ExpiryDate" type="date" class="form-control" style="border-radius: 8px;" />
-                    <span asp-validation-for="ExpiryDate" class="text-danger small"></span>
                 </div>
 
                 <!-- Thêm trường Loại thú cưng và Mô tả sản phẩm (bở sung để hiển thị đúng trên trang khách hàng) -->

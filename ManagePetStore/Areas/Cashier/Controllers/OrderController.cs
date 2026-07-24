@@ -53,7 +53,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
         [HttpGet]
         public async Task<IActionResult> Create(string? orderId, string? status)
         {
-            if (!string.IsNullOrEmpty(orderId) && (status == "PAID" || status == "success"))
+            if (!string.IsNullOrEmpty(orderId) && (status == "PAID" || status == "success" || (status != null && (status.Contains("PAID") || status.Contains("success")))))
             {
                 var order = await _context.Orders.Include(o => o.Customer).FirstOrDefaultAsync(o => o.OrderId == orderId);
                 if (order != null && order.Status == "Chờ thanh toán")
@@ -73,11 +73,11 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 var order = await _context.Orders.Include(o => o.Customer).FirstOrDefaultAsync(o => o.OrderId == orderId);
                 if (order != null && order.Status == "Chờ thanh toán")
                 {
-                    if (status == "PAID" || status == "success")
+                    if (status == "PAID" || status == "success" || (status != null && (status.Contains("PAID") || status.Contains("success"))))
                     {
                         await UpdateOrderToPaidAsync(order);
                     }
-                    else if (status == "cancel")
+                    else if (status == "cancel" || (status != null && (status.Contains("cancel") || status.Contains("CANCELLED"))))
                     {
                         order.Status = "Đã hủy";
                         order.OrderStatus = 0; // Canceled

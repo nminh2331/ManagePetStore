@@ -45,6 +45,13 @@ public class PetController : Controller
                 return RedirectToAction(nameof(Index));
             }
 
+            var hasMedicalRecord = await _context.MedicalRecords.AnyAsync(mr => mr.PetId == editId.Value);
+            if (hasMedicalRecord)
+            {
+                TempData["ErrorMessage"] = "Thú cưng đã được tạo sổ y tế tại cửa hàng, bạn không thể chỉnh sửa thông tin hồ sơ nữa.";
+                return RedirectToAction(nameof(Index));
+            }
+
             page.EditPet = MapPetToForm(pet);  // Nếu đúng pet của mình, chuyển data từ DB sang dạng Form.
             page.OpenEditModal = true;
         }
@@ -129,6 +136,13 @@ public class PetController : Controller
             return RedirectToAction(nameof(Index));
         }
 
+        var hasMedicalRecord = await _context.MedicalRecords.AnyAsync(mr => mr.PetId == petId);
+        if (hasMedicalRecord)
+        {
+            TempData["ErrorMessage"] = "Thú cưng đã được tạo sổ y tế tại cửa hàng, bạn không thể chỉnh sửa thông tin hồ sơ nữa.";
+            return RedirectToAction(nameof(Index));
+        }
+
         var fieldErrors = CollectPetFormErrors(name, species, breed, dateOfBirth, weight, avatarFile);
         if (fieldErrors.Count > 0)
         {
@@ -176,6 +190,13 @@ public class PetController : Controller
             return RedirectToAction(nameof(Index));
         }
 
+        var hasMedicalRecord = await _context.MedicalRecords.AnyAsync(mr => mr.PetId == petId);
+        if (hasMedicalRecord)
+        {
+            TempData["ErrorMessage"] = "Thú cưng đã được tạo sổ y tế tại cửa hàng, bạn không thể xóa hồ sơ thú cưng này.";
+            return RedirectToAction(nameof(Index));
+        }
+
         var petName = pet.Name;
         DeletePetImageIfLocal(pet.ImageUrl);
         _context.Pets.Remove(pet);
@@ -207,6 +228,7 @@ public class PetController : Controller
         }
 
         var pets = await _context.Pets  // lay danh sách thú cưng của khách đó 
+            .Include(p => p.MedicalRecords)
             .Where(p => p.CustomerId == user.Customer.CustomerId)
             .OrderByDescending(p => p.PetId)  // ắp xếp giảm dần theo PetId (thú cưng mới thêm sẽ hiện lên đầu).
             .ToListAsync();

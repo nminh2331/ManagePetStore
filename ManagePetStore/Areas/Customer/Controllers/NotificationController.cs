@@ -107,6 +107,68 @@ public class NotificationController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost("Delete/{id:long}")]
+    [ValidateAntiForgeryToken]
+    // [nam] Xóa một thông báo theo ID và tính lại số lượng chưa đọc.
+    public async Task<IActionResult> Delete(long id)
+    {
+        var customerId = await GetCustomerIdAsync();
+        if (!customerId.HasValue)
+        {
+            return Forbid();
+        }
+
+        var notification = await _context.CustomerNotifications
+            .FirstOrDefaultAsync(item => item.NotificationId == id && item.CustomerId == customerId.Value);
+
+        if (notification != null)
+        {
+            _context.CustomerNotifications.Remove(notification);
+            await _context.SaveChangesAsync();
+        }
+
+        var unreadCount = await _context.CustomerNotifications
+            .CountAsync(item => item.CustomerId == customerId.Value && !item.IsRead);
+        var totalCount = await _context.CustomerNotifications
+            .CountAsync(item => item.CustomerId == customerId.Value);
+
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" || Request.Headers["Accept"].ToString().Contains("application/json"))
+        {
+            return Json(new { success = true, unreadCount, totalCount });
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("DeleteAll")]
+    [ValidateAntiForgeryToken]
+    // [nam] Xóa toàn bộ thông báo của khách hàng hiện tại.
+    public async Task<IActionResult> DeleteAll()
+    {
+        var customerId = await GetCustomerIdAsync();
+        if (!customerId.HasValue)
+        {
+            return Forbid();
+        }
+
+        var notifications = await _context.CustomerNotifications
+            .Where(item => item.CustomerId == customerId.Value)
+            .ToListAsync();
+
+        if (notifications.Count > 0)
+        {
+            _context.CustomerNotifications.RemoveRange(notifications);
+            await _context.SaveChangesAsync();
+        }
+
+        if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" || Request.Headers["Accept"].ToString().Contains("application/json"))
+        {
+            return Json(new { success = true, unreadCount = 0, totalCount = 0 });
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
     // [nam] Lấy CustomerId từ claim của tài khoản đang đăng nhập.
     private async Task<int?> GetCustomerIdAsync()
     {

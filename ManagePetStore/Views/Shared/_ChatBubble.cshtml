@@ -1,3 +1,14 @@
+@{
+    var area = ViewContext.RouteData.Values["area"]?.ToString();
+    var isStaffArea = !string.IsNullOrEmpty(area) && !area.Equals("Customer", StringComparison.OrdinalIgnoreCase);
+    var isStaffUser = User.Identity != null && User.Identity.IsAuthenticated && !User.IsInRole("customer");
+
+    if (isStaffArea || isStaffUser)
+    {
+        return;
+    }
+}
+
 <!-- Chat Bubble Button -->
 <div id="ps-chat-bubble" class="ps-chat-bubble" onclick="toggleChatPopup()">
     <i class="bi bi-chat-dots-fill"></i>

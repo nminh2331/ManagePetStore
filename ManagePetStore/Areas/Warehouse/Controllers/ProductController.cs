@@ -3,7 +3,7 @@
  * File: ProductController.cs
  * Author: Tran Duong
  * Date: May 31, 2026
- * Last Update: July 17, 2026
+ * Last Update: July 23, 2026
  * Description: Xử lý các yêu cầu HTTP cho chức năng quản lý sản phẩm trong kho hàng (thêm, sửa, xóa sản phẩm và theo dõi tình trạng tồn kho).
  */
 using ManagePetStore.Exceptions;
@@ -112,54 +112,7 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
 
             try
             {
-                int initialStock = product.Stock;
-                if (initialStock > 0)
-                {
-                    product.Stock = 0; // Để CreateBatch tự động cộng lại
-                }
-
                 await _productService.CreateProduct(product);
-
-                if (initialStock > 0)
-                {
-                    int userId = 1;
-                    try {
-                        var userClaim = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier);
-                        if (userClaim != null && int.TryParse(userClaim.Value, out int uid)) userId = uid;
-                    } catch { }
-
-                    decimal costPrice = product.CostPrice;
-
-                    var batch = new InventoryBatch
-                    {
-                        ProductSku = product.Sku,
-                        Quantity = initialStock,
-                        CurrentQuantity = initialStock,
-                        ReceivedDate = DateTime.Now,
-                        ExpiryDate = product.ExpiryDate ?? DateTime.Now.AddYears(1)
-                    };
-                    await _batchService.CreateBatch(batch);
-
-                    var movement = new StockMovement
-                    {
-                        Type = "Nhập hàng",
-                        Status = "Hoàn thành",
-                        Supplier = "Khởi tạo tồn kho ban đầu",
-                        CreatedById = userId,
-                        Date = DateTime.Now,
-                        TotalValue = initialStock * costPrice,
-                        StockMovementDetails = new List<StockMovementDetail>
-                        {
-                            new StockMovementDetail
-                            {
-                                ProductSku = product.Sku,
-                                Quantity = initialStock,
-                                CostPrice = costPrice
-                            }
-                        }
-                    };
-                    await _movementRepo.AddMovement(movement);
-                }
 
                 return RedirectToAction(nameof(Index));
             }
@@ -167,12 +120,6 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             {
                 ModelState.AddModelError(string.Empty, ex.Message);
                 ViewData["CategoryId"] = await _productService.GetCategorySelectList(product.CategoryId);
-                // Khôi phục lại Stock nếu có lỗi
-                if (product.Stock == 0 && ModelState.ErrorCount > 0)
-                {
-                    // Thực chất nếu có lỗi từ DB thì product.Stock đang bị set thành 0, ta không thể lấy lại initialStock trừ khi ta lưu nó.
-                    // Đơn giản nhất là để nó 0, người dùng nhập lại.
-                }
                 return View(product);
             }
         }

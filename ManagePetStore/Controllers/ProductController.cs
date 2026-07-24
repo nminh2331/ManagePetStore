@@ -416,6 +416,22 @@ public class ProductController : Controller
                         model.ReviewCount = 0;
                     }
 
+                    // Tính số lượng đã bán từ đơn hàng thực tế
+                    var soldQuantity = await _context.OrderItems
+                        .Include(oi => oi.Order)
+                        .Where(oi => oi.ProductSku == product.Sku
+                            && (oi.Order.Status == "Đã hoàn thành"
+                                || oi.Order.Status == "Đã giao hàng"
+                                || oi.Order.Status == "Hoàn thành"))
+                        .SumAsync(oi => (int?)oi.Quantity) ?? 0;
+
+                    model.SoldCount = soldQuantity switch
+                    {
+                        0 => "0",
+                        < 1000 => $"{soldQuantity}+",
+                        _ => $"{soldQuantity / 1000.0:0.#}k+"
+                    };
+
                     // Check CanReview
                     if (User.Identity?.IsAuthenticated == true)
                     {
@@ -595,7 +611,7 @@ public class ProductController : Controller
             Savings = originalPrice - product.Price,
             Rating = 4.8,
             ReviewCount = 124,
-            SoldCount = "1.2k+",
+            SoldCount = "",
             Description = !string.IsNullOrWhiteSpace(product.Description) 
                             ? product.Description 
                             : "Sản phẩm chất lượng cao dành cho thú cưng của bạn.",

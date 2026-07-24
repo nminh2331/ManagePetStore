@@ -240,7 +240,8 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                         var product = await _context.Products.FirstOrDefaultAsync(p => p.Sku == item.Sku);
                         if (product != null)
                         {
-                            await _inventoryBatchService.RestockToBatches(item.Sku, item.Quantity);
+                            // Yêu cầu Issue 3: Không tự động Restock vào lô mới nhất nữa
+                            // await _inventoryBatchService.RestockToBatches(item.Sku, item.Quantity);
                             
                             systemStockDetails.Add(new StockMovementDetail
                             {
@@ -256,7 +257,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                         await _stockMovementService.CreateSystemMovement(
                             systemUserId: userId ?? 1,
                             type: "Nhập kho (Khách trả hàng)",
-                            status: "Đã hoàn thành",
+                            status: "Chờ kiểm hàng",
                             supplier: $"Khách trả hàng - REQ-{request.RequestId}",
                             totalValue: systemStockDetails.Sum(d => d.Quantity * d.CostPrice),
                             details: systemStockDetails
