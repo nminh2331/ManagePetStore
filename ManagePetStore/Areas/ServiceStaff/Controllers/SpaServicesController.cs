@@ -523,26 +523,23 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             {
                 try
                 {
-                    // 1. Tìm hoặc tạo mới thông tin Khách hàng
-                    var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Phone == cleanPhone);
-                    if (customer == null)
+                    // 1. Tạo mới thông tin Khách hàng vãng lai độc lập (UserId = null)
+                    var cleanCustomerName = customerName.Trim();
+                    if (cleanCustomerName.Length > 100)
                     {
-                        var cleanCustomerName = customerName.Trim();
-                        if (cleanCustomerName.Length > 100)
-                        {
-                            cleanCustomerName = cleanCustomerName.Substring(0, 100);
-                        }
-
-                        customer = new ManagePetStore.Models.Customer
-                        {
-                            FullName = cleanCustomerName,
-                            Phone = cleanPhone,
-                            CreatedAt = DateTime.Now,
-                            MembershipTier = "Bronze"
-                        };
-                        _context.Customers.Add(customer);
-                        await _context.SaveChangesAsync();
+                        cleanCustomerName = cleanCustomerName.Substring(0, 100);
                     }
+
+                    var customer = new ManagePetStore.Models.Customer
+                    {
+                        FullName = cleanCustomerName,
+                        Phone = cleanPhone,
+                        CreatedAt = DateTime.Now,
+                        MembershipTier = "Bronze",
+                        UserId = null // Đảm bảo luôn là hồ sơ Khách vãng lai độc lập tại quầy
+                    };
+                    _context.Customers.Add(customer);
+                    await _context.SaveChangesAsync();
 
                     // 2. Tìm hoặc tạo mới thông tin Thú cưng
                     var cleanPetName = petName.Trim();

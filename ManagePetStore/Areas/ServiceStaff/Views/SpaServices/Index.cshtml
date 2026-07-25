@@ -1198,14 +1198,14 @@
                                                         data-price="@service.Price"
                                                         data-species="@(service.TargetSpecies ?? "Tất cả")"
                                                         data-description="@(service.Description ?? "")"
-                                                        data-imageurls="@(service.ImageUrls ?? "")"
+                                                        data-imageurls="@(service.ImageUrls?.Replace("\"", "&quot;") ?? "")"
                                                         style="border-radius: 8px; padding: 4px 8px; font-size: 0.72rem; border-color: #ECE9E5; color: #5D524D;"
                                                         title="Sửa">
                                                     <i class="fa-solid fa-pen"></i>
                                                 </button>
                                                 <button class="btn btn-sm btn-outline-danger btn-delete-service-trigger" 
                                                         data-id="@service.ServiceId"
-                                                        data-name="@service.Name"
+                                                        data-name="@(service.Name?.Replace("\"", "&quot;") ?? "")"
                                                         style="border-radius: 8px; padding: 4px 8px; font-size: 0.72rem;"
                                                         title="Xóa">
                                                     <i class="fa-solid fa-trash"></i>
@@ -2200,13 +2200,15 @@
             // 5. CÁC HÀM XỬ LÝ SỰ KIỆN: SỬA, XÓA & VALIDATE ẢNH DỊCH VỤ SPA
             // =========================================================================
             
-            // Xử lý kiểm tra Validation bằng SpaServiceValidator (Tách riêng trong /js/spa-service-validator.js)
-            $('.service-image-input').on('change', function () {
+            // Xử lý kiểm tra Validation bằng SpaServiceValidator và xem trước ảnh (Live Thumbnail Preview)
+            $(document).on('change', '.service-image-input', function () {
                 var files = this.files;
                 var previewContainer = $(this).siblings('.image-preview-wrapper');
                 previewContainer.empty();
 
-                // Gọi hàm Validate từ file JS riêng biệt
+                if (!files || files.length === 0) return;
+
+                // Gọi hàm Validate từ Partial View _SpaServiceValidator.cshtml
                 var valResult = SpaServiceValidator.validateImageFiles(files);
                 if (!valResult.isValid) {
                     alert(valResult.errorMessage);
@@ -2215,22 +2217,8 @@
                     return;
                 }
 
-                // Hiển thị khung xem trước ảnh (Live Thumbnail Preview) khi đúp tệp hợp lệ
+                // Hiển thị khung xem trước ảnh (Live Thumbnail Preview) cho từng tệp hợp lệ
                 for (var i = 0; i < files.length; i++) {
-                        this.value = '';
-                        previewContainer.empty();
-                        return;
-                    }
-
-                    // Validation 2: Dung lượng tệp
-                    if (file.size > maxSizeBytes) {
-                        alert('Tệp "' + file.name + '" có dung lượng quá lớn (Vượt quá giới hạn 100MB).');
-                        this.value = '';
-                        previewContainer.empty();
-                        return;
-                    }
-
-                    // Hiển thị khung xem trước ảnh (Live Thumbnail Preview)
                     (function (f) {
                         var reader = new FileReader();
                         reader.onload = function (e) {
@@ -2240,7 +2228,7 @@
                             previewContainer.append(thumb);
                         };
                         reader.readAsDataURL(f);
-                    })(file);
+                    })(files[i]);
                 }
             });
 
@@ -2273,14 +2261,14 @@
                 renderEditExistingImages();
             });
 
-            $('.btn-edit-service-trigger').click(function () {
-                var id = $(this).data('id');
-                var name = $(this).data('name');
-                var duration = $(this).data('duration');
-                var price = $(this).data('price');
-                var species = $(this).data('species') || 'Tất cả';
-                var description = $(this).data('description') || '';
-                var rawImageUrls = $(this).data('imageurls') || '';
+            $(document).on('click', '.btn-edit-service-trigger', function () {
+                var id = $(this).attr('data-id');
+                var name = $(this).attr('data-name');
+                var duration = $(this).attr('data-duration');
+                var price = $(this).attr('data-price');
+                var species = $(this).attr('data-species') || 'Tất cả';
+                var description = $(this).attr('data-description') || '';
+                var rawImageUrls = $(this).attr('data-imageurls') || '';
 
                 $('#editServiceId').val(id);
                 $('#editServiceName').val(name);
@@ -2294,7 +2282,8 @@
                 editExistingImageArray = [];
                 if (rawImageUrls) {
                     try {
-                        editExistingImageArray = typeof rawImageUrls === 'string' ? JSON.parse(rawImageUrls) : rawImageUrls;
+                        var decodedJson = rawImageUrls.replace(/&quot;/g, '"');
+                        editExistingImageArray = typeof decodedJson === 'string' ? JSON.parse(decodedJson) : decodedJson;
                     } catch (e) {
                         editExistingImageArray = [];
                     }
@@ -2304,9 +2293,9 @@
                 $('#editServiceModal').modal('show');
             });
 
-            $('.btn-delete-service-trigger').click(function () {
-                var id = $(this).data('id');
-                var name = $(this).data('name');
+            $(document).on('click', '.btn-delete-service-trigger', function () {
+                var id = $(this).attr('data-id');
+                var name = $(this).attr('data-name');
 
                 if (confirm('Bạn có chắc chắn muốn xóa dịch vụ "' + name + '" không?')) {
                     $.post('/SpaServices/DeleteService', { id: id }, function (response) {
@@ -2318,6 +2307,8 @@
                         } else {
                             showToast('Lỗi: ' + response.message, 'danger');
                         }
+                    }).fail(function (xhr) {
+                        alert('Lỗi máy chủ khi xóa dịch vụ. Mã lỗi: ' + xhr.status);
                     });
                 }
             });

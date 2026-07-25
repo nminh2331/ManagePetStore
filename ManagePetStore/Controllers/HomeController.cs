@@ -127,8 +127,15 @@ public class HomeController : Controller
         model.CurrentPageP = Math.Max(1, Math.Min(model.TotalPagesP, pageP));
         model.CurrentPageS = Math.Max(1, Math.Min(model.TotalPagesS, pageS));
 
-        model.BestSellers = productsList.ToList();
-        model.SpaServices = spaServicesList.ToList();
+        model.BestSellers = productsList
+            .Skip((model.CurrentPageP - 1) * PageSizeP)
+            .Take(PageSizeP)
+            .ToList();
+
+        model.SpaServices = spaServicesList
+            .Skip((model.CurrentPageS - 1) * PageSizeS)
+            .Take(PageSizeS)
+            .ToList();
                
         try
         {
