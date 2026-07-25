@@ -107,8 +107,17 @@ public class HotelCheckoutService : IHotelCheckoutService
 
         if (booking.FoodPlan != null)
         {
+            var extraFoodAmount = booking.FoodDiaryLogs
+                .Where(log => log.IsExtraCharge && log.ExtraChargeAmount > 0)
+                .Sum(log => log.ExtraChargeAmount);
             booking.FoodPlan.ChargeableDays = chargeableFoodDays;
-            booking.FoodPlan.TotalAmount = preview.FoodAmount - booking.FoodDiaryLogs.Where(log => log.IsExtraCharge).Sum(log => log.ExtraChargeAmount);
+            booking.FoodPlan.TotalAmount = preview.FoodAmount - extraFoodAmount;
+        }
+        if (!HasScheduledCheckout(booking))
+        {
+            var roomQuote = CalculateRoomCharge(booking, checkoutAt);
+            booking.StayDays = roomQuote.ChargeableDays;
+            booking.Subtotal = roomQuote.Amount;
         }
         booking.FinalAmount = preview.TotalAmount;
         _context.PetBioTimelines.Add(new PetBioTimeline
@@ -214,12 +223,21 @@ public class HotelCheckoutService : IHotelCheckoutService
         var savedOtherItem = booking.CheckoutStatement?.Items.FirstOrDefault(item => item.ChargeType == "Other");
         var otherAmount = requestedOtherAmount ?? savedOtherItem?.Amount ?? 0;
         var description = string.IsNullOrWhiteSpace(otherDescription) ? savedOtherItem?.Description : otherDescription.Trim();
-        var roomAmount = booking.Subtotal;
+        var roomQuote = CalculateRoomCharge(booking, checkoutAt);
+        var roomAmount = roomQuote.Amount;
         var total = Math.Max(0, roomAmount - booking.Discount + planFoodAmount + extraFoodAmount + addonAmount + lateFee + otherAmount);
 
         var items = new List<HotelCheckoutPreviewItem>
         {
-            new() { ChargeType = "Room", Description = $"Phòng {booking.Cage.RoomType.Type} · chuồng {booking.CageId}", Quantity = booking.StayDays, Unit = "ngày", UnitPrice = booking.BaseDailyPrice, Amount = roomAmount }
+            new()
+            {
+                ChargeType = "Room",
+                Description = $"Phòng {booking.Cage.RoomType.Type} · chuồng {booking.CageId}",
+                Quantity = roomQuote.ChargeableDays,
+                Unit = "ngày",
+                UnitPrice = roomQuote.UnitPrice,
+                Amount = roomAmount
+            }
         };
         if (planFoodAmount > 0)
         {
@@ -280,8 +298,30 @@ public class HotelCheckoutService : IHotelCheckoutService
     {
         if (booking.FoodPlan == null || booking.FoodPlan.PricePerDaySnapshot <= 0) return 0;
         var start = booking.ActualCheckInAt ?? booking.CheckInDate;
-        var actualDays = Math.Max(1, (int)Math.Ceiling(Math.Max(0, (checkoutAt - start).TotalHours) / 24d));
-        return actualDays;
+        return HotelPricingPolicy.CalculateStayDays(start, checkoutAt);
+    }
+
+    private static bool HasScheduledCheckout(HotelBooking booking) =>
+        booking.ScheduledCheckOutDate.HasValue || booking.CheckOutDate.HasValue;
+
+    private static RoomChargeQuote CalculateRoomCharge(HotelBooking booking, DateTime checkoutAt)
+    {
+        if (HasScheduledCheckout(booking))
+        {
+            int bookedDays = Math.Max(booking.StayDays, 1);
+            decimal savedAmount = Math.Max(0, booking.Subtotal);
+            decimal effectiveUnitPrice = bookedDays > 0
+                ? decimal.Round(savedAmount / bookedDays, 2, MidpointRounding.AwayFromZero)
+                : booking.BaseDailyPrice;
+            return new RoomChargeQuote(bookedDays, effectiveUnitPrice, savedAmount);
+        }
+
+        var start = booking.ActualCheckInAt ?? booking.CheckInDate;
+        int actualDays = HotelPricingPolicy.CalculateStayDays(start, checkoutAt);
+        return new RoomChargeQuote(
+            actualDays,
+            booking.BaseDailyPrice,
+            booking.BaseDailyPrice * actualDays);
     }
 
     // [nam] Tính số giờ và tiền phụ thu khi trả pet sau thời gian miễn phí.
@@ -294,6 +334,11 @@ public class HotelCheckoutService : IHotelCheckoutService
         if (!scheduled.HasValue || checkoutAt <= scheduled.Value.Add(LateCheckoutGracePeriod))
         {
             return LateFeeQuote.None;
+        }
+
+        if (booking.Cage.RoomType.HourlyPrice <= 0)
+        {
+            throw new InvalidOperationException("Giá theo giờ của loại chuồng không hợp lệ nên chưa thể tính phí trả muộn.");
         }
 
         var chargeableHours = (int)Math.Ceiling(
@@ -330,14 +375,11 @@ public class HotelCheckoutService : IHotelCheckoutService
     // [nam] Ngăn checkout khi dữ liệu giá phòng, giảm giá hoặc dịch vụ không hợp lệ.
     private static void ValidateCheckoutPricing(HotelBooking booking)
     {
-        if (booking.BaseDailyPrice <= 0 || booking.Subtotal < 0)
+        if (booking.BaseDailyPrice <= 0 ||
+            booking.Subtotal < 0 ||
+            (HasScheduledCheckout(booking) && booking.Subtotal == 0))
         {
             throw new InvalidOperationException("Giá phòng của booking không hợp lệ. Vui lòng kiểm tra lại trước khi checkout.");
-        }
-
-        if (booking.Cage.RoomType.HourlyPrice <= 0)
-        {
-            throw new InvalidOperationException("Giá theo giờ của loại chuồng không hợp lệ nên chưa thể tính phí trễ.");
         }
 
         if (booking.Discount < 0 || booking.Discount > booking.Subtotal)
@@ -355,4 +397,6 @@ public class HotelCheckoutService : IHotelCheckoutService
     {
         public static LateFeeQuote None => new(0, 0);
     }
+
+    private readonly record struct RoomChargeQuote(int ChargeableDays, decimal UnitPrice, decimal Amount);
 }
