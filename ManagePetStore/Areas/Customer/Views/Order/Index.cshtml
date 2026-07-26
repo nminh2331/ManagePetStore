@@ -155,7 +155,6 @@
                                     <th>THỜI GIAN</th>
                                     <th>TỔNG TIỀN</th>
                                     <th>TRẠNG THÁI</th>
-                                    <th>ĐÁNH GIÁ</th>
                                     <th>THAO TÁC</th>
                                 </tr>
                             </thead>
@@ -180,28 +179,6 @@
                                             @if ((order.StatusKey == "cancelled" || order.StatusKey == "rejected") && !string.IsNullOrWhiteSpace(order.CancelReason))
                                             {
                                                 <div class="co-cancel-reason">Lý do: @order.CancelReason</div>
-                                            }
-                                        </td>
-                                        <td>
-                                            @if (order.CanReview)
-                                            {
-                                                <button type="button"
-                                                        class="co-btn-review js-open-review"
-                                                        data-order-id="@order.OrderId"
-                                                        data-display-id="@order.DisplayOrderId"
-                                                        onclick="event.stopPropagation();">
-                                                    Gửi đánh giá
-                                                </button>
-                                            }
-                                            else if (order.HasReviewed)
-                                            {
-                                                <span class="co-reviewed-badge">Đã đánh giá</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="co-review-placeholder @(order.CanConfirmReceived ? "co-review-note" : "")">
-                                                    @(order.CanConfirmReceived ? "Xác nhận đã nhận hàng để mở đánh giá" : "Chưa khả dụng")
-                                                </span>
                                             }
                                         </td>
                                         <td>
@@ -294,7 +271,6 @@
     </section>
 </div>
 
-@await Html.PartialAsync("_ReviewModal", Model)
 @await Html.PartialAsync("_CancelOrderModal", Model)
 
 @section Scripts {

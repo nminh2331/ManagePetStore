@@ -322,7 +322,7 @@
                         <input type="hidden" name="sku" value="@Model.Sku" />
                         <input type="hidden" name="quantity" id="pdQtyInput" value="1" />
                         <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
-                        <button type="submit" class="ps-pd-add-cart" style="width: 100%;" @(Model.InStock ? null : "disabled")>
+                        <button type="submit" class="ps-pd-add-cart" style="width: 100%;">
                             <i class="bi bi-cart3"></i> Thêm vào giỏ
                         </button>
                     </form>
@@ -740,6 +740,34 @@
                         }
                     });
                 }
+            }
+
+            // Validation cho Thêm vào giỏ và Mua ngay khi hết hàng
+            var isProductInStock = @(Model.InStock && Model.Stock > 0 ? "true" : "false");
+            var pdAddCartForm = document.querySelector('.ps-pd-add-cart-form');
+            var pdBuyNowBtn = document.querySelector('.ps-pd-buy-now');
+
+            if (pdAddCartForm) {
+                pdAddCartForm.addEventListener('submit', function (e) {
+                    if (!isProductInStock) {
+                        e.preventDefault();
+                        alert('sản phẩm đã hết hàng , vui lòng chọn sản phẩm khác');
+                        return false;
+                    }
+                });
+            }
+
+            if (pdBuyNowBtn) {
+                pdBuyNowBtn.addEventListener('click', function (e) {
+                    if (!isProductInStock) {
+                        e.preventDefault();
+                        alert('sản phẩm đã hết hàng , vui lòng chọn sản phẩm khác');
+                        return false;
+                    }
+                    if (pdAddCartForm) {
+                        pdAddCartForm.submit();
+                    }
+                });
             }
 
             // 3. Spa service booking form interactive logic
