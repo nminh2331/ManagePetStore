@@ -33,6 +33,8 @@ document.addEventListener('DOMContentLoaded', function () {
         localStorage.removeItem('pos_cart');
         localStorage.removeItem('pos_current_customer');
         
+        loadAllProducts(); // Cập nhật lại tồn kho sau khi thanh toán PayOS thành công
+        
         // Dọn URL
         window.history.replaceState(null, null, window.location.pathname);
     }
@@ -970,6 +972,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     clearCurrentCartAndCustomer();
                     loadCompletedSpaBookingsForHotel();
                     loadReadyHotelCheckouts();
+                    loadAllProducts(); // Cập nhật lại tồn kho
                 }
             } else {
                 alert(data.message || "Lỗi tạo đơn hàng.");

@@ -30,7 +30,7 @@
                         <span asp-validation-for="Name" class="text-danger small"></span>
                     </div>
                     <div class="col-md-6">
-                        <label asp-for="Phone" class="form-label fw-bold">Số điện thoại</label>
+                        <label asp-for="Phone" class="form-label fw-bold">Số điện thoại <span class="text-danger">*</span></label>
                         <input asp-for="Phone" class="form-control" />
                         <span asp-validation-for="Phone" class="text-danger small"></span>
                     </div>
@@ -38,20 +38,20 @@
 
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label asp-for="Email" class="form-label fw-bold">Email</label>
+                        <label asp-for="Email" class="form-label fw-bold">Email <span class="text-danger">*</span></label>
                         <input asp-for="Email" type="email" class="form-control" />
                         <span asp-validation-for="Email" class="text-danger small"></span>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-bold">Danh mục cung cấp</label>
-                        <select name="categoryIds" class="form-select" multiple asp-items="ViewBag.Categories" style="height: 100px;">
+                        <select id="categorySelect" name="categoryIds" class="form-select" multiple asp-items="ViewBag.Categories" style="height: 100px;">
                         </select>
                         <div class="form-text text-muted">Giữ phím Ctrl (hoặc Cmd) để chọn nhiều danh mục.</div>
                     </div>
                 </div>
 
                 <div class="mb-4">
-                    <label asp-for="Address" class="form-label fw-bold">Địa chỉ</label>
+                    <label asp-for="Address" class="form-label fw-bold">Địa chỉ <span class="text-danger">*</span></label>
                     <textarea asp-for="Address" class="form-control" rows="2"></textarea>
                     <span asp-validation-for="Address" class="text-danger small"></span>
                 </div>
@@ -73,12 +73,12 @@
                     </label>
                     <div class="border rounded-3 p-3" style="max-height:220px;overflow-y:auto;background:#f9fafb;">
                         <input type="text" id="prodSearch" class="form-control form-control-sm mb-2"
-                               placeholder="🔍 Tìm nhanh sản phẩm..." oninput="filterProducts(this.value)" />
+                               placeholder="🔍 Tìm nhanh sản phẩm..." />
                         <div id="prodList">
                         @foreach (var p in ViewBag.AllProducts as IEnumerable<ManagePetStore.Models.Product> ?? Enumerable.Empty<ManagePetStore.Models.Product>())
                         {
                             var isChecked = selectedSkus.Contains(p.Sku);
-                            <div class="form-check prod-item" data-name="@p.Name.ToLower()">
+                            <div class="form-check prod-item" data-name="@p.Name.ToLower()" data-category="@p.CategoryId">
                                 <input class="form-check-input" type="checkbox"
                                        name="productSkus" value="@p.Sku"
                                        id="prod_@p.Sku" @(isChecked ? "checked" : "") />
@@ -108,11 +108,33 @@
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
-        function filterProducts(query) {
-            const q = query.toLowerCase();
-            document.querySelectorAll('.prod-item').forEach(el => {
-                el.style.display = el.dataset.name.includes(q) ? '' : 'none';
-            });
-        }
+        document.addEventListener('DOMContentLoaded', function() {
+            const categorySelect = document.getElementById('categorySelect');
+            const prodItems = document.querySelectorAll('.prod-item');
+            const prodSearch = document.getElementById('prodSearch');
+
+            function filterProducts() {
+                const selectedCategories = Array.from(categorySelect.selectedOptions).map(opt => opt.value);
+                const q = prodSearch.value.toLowerCase();
+
+                prodItems.forEach(el => {
+                    const itemCategory = el.dataset.category;
+                    const matchesCategory = selectedCategories.length > 0 && selectedCategories.includes(itemCategory);
+                    const matchesSearch = el.dataset.name.includes(q);
+                    
+                    if (!matchesCategory) {
+                        const checkbox = el.querySelector('input[type="checkbox"]');
+                        if (checkbox) checkbox.checked = false;
+                    }
+                    
+                    el.style.display = (matchesCategory && matchesSearch) ? '' : 'none';
+                });
+            }
+
+            categorySelect.addEventListener('change', filterProducts);
+            prodSearch.addEventListener('input', filterProducts);
+            
+            filterProducts(); // Khởi tạo lúc load
+        });
     </script>
 }
