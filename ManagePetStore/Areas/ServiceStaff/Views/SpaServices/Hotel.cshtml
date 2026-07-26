@@ -1527,7 +1527,7 @@
                                 <span style="font-size:0.72rem; color:#9E918B; font-weight:500;"> · @b.Pet?.Species</span>
                             </p>
                             <p class="booking-pet-meta">
-                                Chủ: @b.Customer?.FullName · Nhận: @b.CheckInDate.ToString("dd/MM/yyyy")
+                                Chủ: @b.Customer?.FullName · Nhận: @b.CheckInDate.ToString("dd/MM/yyyy HH:mm")
                             </p>
                             <span class="booking-health-tag" style="background:#EFF6FF; color:#2563EB;">
                                 ĐÃ ĐẶT ONLINE
@@ -1623,7 +1623,7 @@
                                 <span style="font-size:0.72rem; color:#9E918B; font-weight:500;"> · @b.Pet?.Species</span>
                             </p>
                             <p class="booking-pet-meta">
-                                Chủ: @b.Customer?.FullName &nbsp;·&nbsp; Nhận: @b.CheckInDate.ToString("dd/MM/yyyy")
+                                Chủ: @b.Customer?.FullName &nbsp;·&nbsp; Nhận: @b.CheckInDate.ToString("dd/MM/yyyy HH:mm")
                             </p>
                             @if (hasPathology)
                             {
@@ -2930,6 +2930,8 @@ function clearOnlineReceptionContext() {
     checkInInput.value = nowValue;
     checkOutInput.value = '';
     checkOutInput.min = nowValue;
+    window.DateTime24?.refresh(checkInInput);
+    window.DateTime24?.refresh(checkOutInput);
 
     setReceptionModeHint('Chọn “Dùng sổ y tế có sẵn” để bắt đầu.');
 }
@@ -2980,6 +2982,8 @@ function startOnlineReception(button) {
     const nowValue = formatDateTimeLocal(new Date());
     document.getElementById('ci-checkIn').value = nowValue;
     document.getElementById('ci-checkOut').value = data.checkOut || '';
+    window.DateTime24?.refresh(document.getElementById('ci-checkIn'));
+    window.DateTime24?.refresh(document.getElementById('ci-checkOut'));
 
     if (data.roomTypeId) {
         document.getElementById('ci-roomType').value = data.roomTypeId;

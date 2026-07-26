@@ -1,0 +1,46 @@
+.datetime24-shell {
+    position: relative;
+    display: block;
+    width: 100%;
+}
+
+.datetime24-shell .datetime24-native {
+    width: 100%;
+    color: transparent !important;
+    caret-color: transparent;
+}
+
+.datetime24-shell .datetime24-native::-webkit-datetime-edit {
+    opacity: 0;
+}
+
+.datetime24-shell .datetime24-native::-webkit-calendar-picker-indicator {
+    position: relative;
+    z-index: 3;
+    opacity: 1;
+    cursor: pointer;
+}
+
+.datetime24-display {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    right: 46px;
+    left: 14px;
+    overflow: hidden;
+    color: inherit;
+    font: inherit;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.datetime24-display.is-placeholder {
+    color: #9e918b;
+}
+
+.datetime24-native:disabled + .datetime24-display {
+    opacity: .65;
+}
