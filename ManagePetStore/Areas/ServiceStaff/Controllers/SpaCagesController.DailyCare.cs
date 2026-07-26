@@ -19,6 +19,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 {
     public partial class SpaCagesController
     {
+        // [nam] Hiển thị danh sách pet để Staff truy cập nhật ký chăm sóc riêng của từng pet.
         [HttpGet("PetDaily")]
         public async Task<IActionResult> PetDaily(string? searchTerm)
         {
@@ -76,6 +77,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 });
         }
 
+        // [nam] Hiển thị nhật ký hiện tại và lịch sử lưu trú của một pet xác định bằng PetId.
         [HttpGet("PetDaily/{petId:int}")]
         public async Task<IActionResult> PetDailyDetails(int petId, string tab = "current")
         {
@@ -171,6 +173,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
 
+        // [nam] Ghi nhật ký chăm sóc, media và chi phí phát sinh cho pet đang lưu trú.
         [HttpPost("HotelCareLog")]
         [ValidateAntiForgeryToken]
         [RequestSizeLimit(55 * 1024 * 1024)]
@@ -348,6 +351,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return RedirectAfterCareLog(request, booking);
         }
 
+        // [nam] Chuyển Staff về đúng màn hình sau khi cập nhật nhật ký chăm sóc.
         private IActionResult RedirectAfterCareLog(HotelCareLogRequest request, HotelBooking booking)
         {
             return request.ReturnToPetDaily
@@ -355,6 +359,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 : RedirectToAction(nameof(HotelHistoryDetails), new { id = booking.HotelBookingId });
         }
 
+        // [nam] Tạo nội dung thông báo chăm sóc gửi tới chủ pet.
         private static string BuildCareNotificationMessage(string status, string? note)
         {
             var message = string.IsNullOrWhiteSpace(note) ? status : $"{status}. {note}";

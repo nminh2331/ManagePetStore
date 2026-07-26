@@ -301,9 +301,11 @@ public class HotelCheckoutService : IHotelCheckoutService
         return HotelPricingPolicy.CalculateStayDays(start, checkoutAt);
     }
 
+    // [nam] Xác định booking có lưu mốc trả chuồng dự kiến hay không.
     private static bool HasScheduledCheckout(HotelBooking booking) =>
         booking.ScheduledCheckOutDate.HasValue || booking.CheckOutDate.HasValue;
 
+    // [nam] Tính tiền chuồng thực tế theo thời điểm checkout và chính sách giá lưu trú.
     private static RoomChargeQuote CalculateRoomCharge(HotelBooking booking, DateTime checkoutAt)
     {
         if (HasScheduledCheckout(booking))

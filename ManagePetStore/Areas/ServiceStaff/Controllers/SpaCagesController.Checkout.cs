@@ -19,6 +19,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 {
     public partial class SpaCagesController
     {
+        // [nam] Hoàn tất trả pet sau khi bảng kê Hotel đã được thanh toán hợp lệ.
         [HttpPost("CheckOut")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CheckOut(int bookingId)
@@ -114,6 +115,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return Json(new { success = true, message = $"Đã hoàn tất trả {booking.Pet?.Name ?? "thú cưng"}; chuồng chuyển sang chờ dọn dẹp." });
         }
 
+        // [nam] Mở lại bảng kê Hotel khi đơn thanh toán liên kết đã bị hủy.
         [HttpPost("ResetHotelCheckout")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ResetHotelCheckout(int bookingId)
@@ -170,6 +172,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             });
         }
 
+        // [nam] Trả về bảng tính chi phí Hotel tạm thời để Staff kiểm tra trước khi chốt.
         [HttpGet("HotelCheckoutPreview/{bookingId:int}")]
         public async Task<IActionResult> HotelCheckoutPreview(int bookingId)
         {
@@ -186,6 +189,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             }
         }
 
+        // [nam] Chốt chi phí lưu trú và gửi bảng kê sang quầy thu ngân.
         [HttpPost("PrepareHotelCheckout")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> PrepareHotelCheckout(PrepareHotelCheckoutRequest request)
@@ -207,6 +211,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             }
         }
 
+        // [nam] Hủy booking Hotel online chưa được tiếp nhận và hoàn tài nguyên đã giữ.
         [HttpPost("CancelOnlineHotelBooking")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CancelOnlineHotelBooking(int bookingId)

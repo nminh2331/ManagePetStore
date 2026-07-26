@@ -19,6 +19,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 {
     public partial class SpaCagesController
     {
+        // [nam] Lấy thông tin pet, booking và trạng thái vận hành để hiển thị trên sơ đồ chuồng.
         [HttpGet("GetCageMapDetail")]
         public async Task<IActionResult> GetCageMapDetail(string cageId)
         {

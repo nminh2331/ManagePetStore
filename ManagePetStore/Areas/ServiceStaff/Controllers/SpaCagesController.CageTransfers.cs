@@ -19,6 +19,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 {
     public partial class SpaCagesController
     {
+        // [nam] Chuyển pet đang lưu trú sang chuồng trống khác và lưu lịch sử chuyển chuồng.
         [HttpPost("MovePetCage")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> MovePetCage(int bookingId, string targetCageId)
@@ -69,12 +70,11 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     return Json(new { success = false, message = "Loại chuồng đích đang ngừng hoạt động." });
                 }
 
-                bool targetHasConflict = await _context.HotelBookings.AnyAsync(b =>
-                    b.CageId == targetCageId &&
-                    b.HotelBookingId != booking.HotelBookingId &&
-                    BlockingHotelStatuses.Contains(b.Status) &&
-                    (!booking.CheckOutDate.HasValue || b.CheckInDate < booking.CheckOutDate.Value) &&
-                    (!b.CheckOutDate.HasValue || b.CheckOutDate.Value > booking.CheckInDate));
+                bool targetHasConflict = await _hotelAvailabilityService.HasCageConflictAsync(
+                    targetCageId,
+                    booking.CheckInDate,
+                    booking.CheckOutDate,
+                    booking.HotelBookingId);
 
                 if (targetHasConflict)
                 {
@@ -151,6 +151,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
 
+        // [nam] Duyệt hoặc từ chối yêu cầu đổi chuồng do khách hàng gửi.
         [HttpPost("ProcessCageChangeRequest")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ProcessCageChangeRequest(int requestId, string decision, string? note)
@@ -232,12 +233,11 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 var intervalEnd = booking.ScheduledCheckOutDate
                     ?? booking.CheckOutDate
                     ?? booking.CheckInDate.AddDays(Math.Max(booking.StayDays, 1));
-                bool hasConflict = await _context.HotelBookings.AnyAsync(item =>
-                    item.HotelBookingId != booking.HotelBookingId &&
-                    item.CageId == changeRequest.TargetCageId &&
-                    BlockingHotelStatuses.Contains(item.Status) &&
-                    item.CheckInDate < intervalEnd &&
-                    (!item.CheckOutDate.HasValue || item.CheckOutDate.Value > intervalStart));
+                bool hasConflict = await _hotelAvailabilityService.HasCageConflictAsync(
+                    changeRequest.TargetCageId,
+                    intervalStart,
+                    intervalEnd,
+                    booking.HotelBookingId);
                 if (hasConflict)
                 {
                     return Json(new { success = false, message = "Chuồng đích vừa có lịch đặt trùng; chưa thể duyệt yêu cầu." });
@@ -352,6 +352,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             }
         }
 
+        // [nam] Tạo thông báo cho khách hàng về kết quả xử lý yêu cầu đổi chuồng.
         private void AddCageChangeCustomerNotification(HotelCageChangeRequest request, bool approved)
         {
             var difference = request.PriceDifferenceSnapshot;

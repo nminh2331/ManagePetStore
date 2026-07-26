@@ -1,9 +1,8 @@
-using System.Data;
 using System.Security.Claims;
 using ManagePetStore.Areas.Customer.Models;
 using ManagePetStore.Models;
 using ManagePetStore.Services;
-using ManagePetStore.Services.Warehouse;
+using ManagePetStore.Services.Hotel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,26 +17,23 @@ public partial class HotelBookingController : Controller
 
     private readonly PetStoreManagementContext _context;
     private readonly IHotelBookingHistoryService _historyService;
-    private readonly IInventoryBatchService _inventoryBatchService;
-    private readonly IHotelEmailService _hotelEmailService;
+    private readonly IHotelAvailabilityService _availabilityService;
+    private readonly IHotelBookingService _bookingService;
     private readonly ILogger<HotelBookingController> _logger;
-    private readonly IStockMovementService _stockMovementService;
 
     // [nam] Khởi tạo controller và các dịch vụ phục vụ quy trình đặt chuồng.
     public HotelBookingController(
         PetStoreManagementContext context,
         IHotelBookingHistoryService historyService,
-        IInventoryBatchService inventoryBatchService,
-        IHotelEmailService hotelEmailService,
-        ILogger<HotelBookingController> logger,
-        IStockMovementService stockMovementService)
+        IHotelAvailabilityService availabilityService,
+        IHotelBookingService bookingService,
+        ILogger<HotelBookingController> logger)
     {
         _context = context;
         _historyService = historyService;
-        _inventoryBatchService = inventoryBatchService;
-        _hotelEmailService = hotelEmailService;
+        _availabilityService = availabilityService;
+        _bookingService = bookingService;
         _logger = logger;
-        _stockMovementService = stockMovementService;
     }
 
     // [nam] Lấy hồ sơ khách hàng tương ứng với tài khoản đang đăng nhập.

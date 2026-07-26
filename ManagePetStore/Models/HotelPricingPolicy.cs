@@ -2,6 +2,7 @@ namespace ManagePetStore.Models;
 
 public static class HotelPricingPolicy
 {
+    // [nam] Tính số ngày lưu trú có thu phí và luôn tối thiểu một ngày.
     public static int CalculateStayDays(DateTime checkInAt, DateTime checkOutAt)
     {
         return Math.Max(
@@ -9,6 +10,7 @@ public static class HotelPricingPolicy
             (int)Math.Ceiling(Math.Max(0, (checkOutAt - checkInAt).TotalHours) / 24d));
     }
 
+    // [nam] Quy đổi hạng thành viên thành tỷ lệ giảm giá tiền chuồng.
     public static decimal ResolveMembershipDiscountRate(string? membershipTier)
     {
         return membershipTier?.Trim().ToLowerInvariant() switch
@@ -19,6 +21,7 @@ public static class HotelPricingPolicy
         };
     }
 
+    // [nam] Tính số tiền giảm giá thành viên trên tổng tiền chuồng.
     public static decimal CalculateMembershipDiscount(decimal roomSubtotal, string? membershipTier)
     {
         return decimal.Round(

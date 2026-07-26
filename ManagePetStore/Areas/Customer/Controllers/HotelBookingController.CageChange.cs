@@ -184,12 +184,11 @@ public partial class HotelBookingController
         var intervalEnd = booking.ScheduledCheckOutDate
             ?? booking.CheckOutDate
             ?? booking.CheckInDate.AddDays(Math.Max(booking.StayDays, 1));
-        return await _context.HotelBookings.AnyAsync(item =>
-            item.HotelBookingId != booking.HotelBookingId &&
-            item.CageId == targetCageId &&
-            BlockingStatuses.Contains(item.Status) &&
-            item.CheckInDate < intervalEnd &&
-            (!item.CheckOutDate.HasValue || item.CheckOutDate.Value > intervalStart));
+        return await _availabilityService.HasCageConflictAsync(
+            targetCageId,
+            intervalStart,
+            intervalEnd,
+            booking.HotelBookingId);
     }
 
     // [nam] Tính số ngày còn lại dùng để ước tính chênh lệch giá đổi chuồng.

@@ -19,6 +19,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 {
     public partial class SpaCagesController
     {
+        // [nam] Tìm kiếm, lọc và phân trang lịch sử booking Hotel dành cho Staff.
         [HttpGet("HotelHistory")]
         public async Task<IActionResult> HotelHistory(
             string? searchTerm,
@@ -134,6 +135,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return View("~/Areas/ServiceStaff/Views/SpaServices/HotelHistory.cshtml", model);
         }
 
+        // [nam] Hiển thị toàn bộ hoạt động và thay đổi của một lần lưu trú cho Staff.
         [HttpGet("HotelHistory/{id:int}")]
         public async Task<IActionResult> HotelHistoryDetails(int id)
         {

@@ -12,6 +12,7 @@ using ManagePetStore.Hubs;
 using ManagePetStore.Models;
 using ManagePetStore.Areas.ServiceStaff.Models;
 using ManagePetStore.Services;
+using ManagePetStore.Services.Hotel;
 using ManagePetStore.Services.Warehouse;
 using CustomerEntity = ManagePetStore.Models.Customer;
 
@@ -38,16 +39,21 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         private readonly IHotelCareMediaService _hotelCareMediaService;
         private readonly IHubContext<HotelCareHub> _hotelCareHub;
         private readonly IHotelCheckoutService _hotelCheckoutService;
+        private readonly IHotelAvailabilityService _hotelAvailabilityService;
+        private readonly IHotelReceptionService _hotelReceptionService;
         private readonly IInventoryBatchService _inventoryBatchService;
         private readonly IHotelEmailService _hotelEmailService;
         private readonly ILogger<SpaCagesController> _logger;
 
+        // [nam] Khởi tạo controller vận hành chuồng và các dịch vụ Hotel liên quan.
         public SpaCagesController(
             PetStoreManagementContext context,
             IHotelBookingHistoryService historyService,
             IHotelCareMediaService hotelCareMediaService,
             IHubContext<HotelCareHub> hotelCareHub,
             IHotelCheckoutService hotelCheckoutService,
+            IHotelAvailabilityService hotelAvailabilityService,
+            IHotelReceptionService hotelReceptionService,
             IInventoryBatchService inventoryBatchService,
             IHotelEmailService hotelEmailService,
             ILogger<SpaCagesController> logger)
@@ -57,11 +63,14 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             _hotelCareMediaService = hotelCareMediaService;
             _hotelCareHub = hotelCareHub;
             _hotelCheckoutService = hotelCheckoutService;
+            _hotelAvailabilityService = hotelAvailabilityService;
+            _hotelReceptionService = hotelReceptionService;
             _inventoryBatchService = inventoryBatchService;
             _hotelEmailService = hotelEmailService;
             _logger = logger;
         }
 
+        // [nam] Lấy định danh và tên nhân viên đang thao tác để ghi lịch sử nghiệp vụ Hotel.
         private (int? UserId, string Name) GetCurrentStaffSnapshot()
         {
             int? userId = null;
@@ -78,6 +87,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return (userId, staffName);
         }
 
+        // [nam] Chuẩn hóa trạng thái booking Hotel thành khóa dùng cho giao diện Staff.
         private static string ResolveHotelStatusKey(string? status)
         {
             return status?.Trim().ToLowerInvariant() switch

@@ -19,6 +19,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 {
     public partial class SpaCagesController
     {
+        // [nam] Cập nhật trạng thái vận hành của chuồng và ghi lại lý do thay đổi.
         [HttpPost("UpdateCageOperationalStatus")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdateCageOperationalStatus(string cageId, string status, string? reason, string? note)

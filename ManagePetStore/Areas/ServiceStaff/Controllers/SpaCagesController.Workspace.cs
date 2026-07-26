@@ -19,37 +19,42 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 {
     public partial class SpaCagesController
     {
+        // [nam] Điều hướng lối vào Hotel của Staff tới màn hình tiếp nhận lưu trú.
         [HttpGet("Hotel")]
         public IActionResult Hotel()
         {
             return RedirectToAction(nameof(CageMap));
         }
 
+        // [nam] Dựng workspace tiếp nhận pet, booking chờ và danh sách chuồng.
         [HttpGet("Reception")]
         public Task<IActionResult> Reception(int roomTypePage = 1, int cagePage = 1)
         {
             return HotelWorkspace("checkin", roomTypePage, cagePage);
         }
 
-        // Retain the former URL so bookmarks and existing links continue to work.
+        // [nam] Giữ URL tiếp nhận cũ để bookmark và liên kết hiện có không bị hỏng.
         [HttpGet("PetCheckIn")]
         public Task<IActionResult> PetCheckIn(int roomTypePage = 1, int cagePage = 1)
         {
             return Reception(roomTypePage, cagePage);
         }
 
+        // [nam] Dựng workspace sơ đồ chuồng và tình trạng pet đang lưu trú.
         [HttpGet("CageMap")]
         public Task<IActionResult> CageMap(int roomTypePage = 1, int cagePage = 1)
         {
             return HotelWorkspace("map", roomTypePage, cagePage);
         }
 
+        // [nam] Dựng workspace quản lý danh mục loại chuồng và chuồng.
         [HttpGet("CageCategories")]
         public Task<IActionResult> CageCategories(int roomTypePage = 1, int cagePage = 1)
         {
             return HotelWorkspace("categories", roomTypePage, cagePage);
         }
 
+        // [nam] Tổng hợp dữ liệu dùng chung cho các chế độ vận hành Hotel/Cage của Staff.
         private async Task<IActionResult> HotelWorkspace(string pageMode, int roomTypePage = 1, int cagePage = 1)
         {
             ViewBag.HotelPageMode = pageMode;

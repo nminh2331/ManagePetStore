@@ -19,6 +19,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 {
     public partial class SpaCagesController
     {
+        // [nam] Kiểm tra giới hạn giá ngày và giá giờ của loại chuồng.
         private static string? ValidateRoomTypePricing(decimal dailyPrice, decimal hourlyPrice)
         {
             if (dailyPrice < MinimumRoomTypeDailyPrice)
@@ -50,6 +51,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
 
+        // [nam] Kiểm tra tên, kích thước và sức chứa của loại chuồng.
         private static string? ValidateRoomTypeDetails(string? type, string? size, int capacity)
         {
             if (string.IsNullOrWhiteSpace(type) || type.Trim().Length > 100)
@@ -70,6 +72,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return null;
         }
 
+        // [nam] Thêm loại chuồng mới sau khi kiểm tra thông tin và mức giá.
         [HttpPost("AddRoomType")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddRoomType(
@@ -117,6 +120,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return RedirectToAction(nameof(CageCategories));
         }
 
+        // [nam] Cập nhật cấu hình và giá của một loại chuồng hiện có.
         [HttpPost("EditRoomType")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> EditRoomType(
@@ -165,6 +169,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return RedirectToAction(nameof(CageCategories));
         }
 
+        // [nam] Xóa loại chuồng khi chưa có chuồng hoặc booking liên quan.
         [HttpPost("DeleteRoomType")]
         public async Task<IActionResult> DeleteRoomType(int id)
         {
@@ -187,6 +192,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return Json(new { success = true, isSoftDeleted = false, message = "Xóa loại chuồng thành công!" });
         }
 
+        // [nam] Bật hoặc tắt khả năng sử dụng loại chuồng trong hệ thống.
         [HttpPost("ToggleRoomType")]
         public async Task<IActionResult> ToggleRoomType(int id)
         {
@@ -199,6 +205,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return Json(new { success = true, status = roomType.Status });
         }
 
+        // [nam] Thêm chuồng mới vào một loại chuồng hợp lệ.
         [HttpPost("AddCage")]
         public async Task<IActionResult> AddCage(
             string cageId, int roomTypeId, string feedSchedule, int portion)
@@ -253,6 +260,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return RedirectToAction(nameof(CageCategories));
         }
 
+        // [nam] Cập nhật loại, trạng thái và thông tin của chuồng.
         [HttpPost("EditCage")]
         public async Task<IActionResult> EditCage(
             string cageId, int roomTypeId, string feedSchedule, int portion)
@@ -295,6 +303,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return RedirectToAction(nameof(CageCategories));
         }
 
+        // [nam] Xóa chuồng khi không có dữ liệu lưu trú đang tham chiếu.
         [HttpPost("DeleteCage")]
         public async Task<IActionResult> DeleteCage(string cageId)
         {
