@@ -255,6 +255,13 @@ document.addEventListener('DOMContentLoaded', function () {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
     }
 
+    // [nam] Voucher không áp dụng cho Spa chờ thu hoặc bảng kê chuồng chờ thu.
+    function hasPendingServiceItems() {
+        return cart.some(item =>
+            item.type === 'Hotel' ||
+            (item.type === 'Spa' && Boolean(item.bookingId)));
+    }
+
     // === DEBOUNCE FUNCTION ===
     function debounce(func, wait) {
         let timeout;
@@ -571,7 +578,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const subtotal = cart.reduce((acc, curr) => acc + curr.total, 0);
         let discount = 0;
 
-        if (appliedVoucher) {
+        if (appliedVoucher && !hasPendingServiceItems()) {
             discount = appliedVoucher.discount;
         }
 
@@ -634,7 +641,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const paymentMethod = document.getElementById('posPaymentMethod').value;
         const subtotal = cart.reduce((acc, curr) => acc + curr.total, 0);
         let discount = 0;
-        if (appliedVoucher) {
+        if (appliedVoucher && !hasPendingServiceItems()) {
             discount = appliedVoucher.discount;
         }
         const finalTotal = Math.max(0, subtotal - discount);
@@ -860,6 +867,12 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('btnApplyVoucher').addEventListener('click', async () => {
         const code = document.getElementById('txtVoucherCode').value.trim();
         const msg = document.getElementById('voucherMessage');
+
+        if (hasPendingServiceItems()) {
+            appliedVoucher = null;
+            recalculatePayment();
+            return;
+        }
         
         if (!code) {
             msg.textContent = "Vui lòng nhập mã giảm giá.";
@@ -911,13 +924,17 @@ document.addEventListener('DOMContentLoaded', function () {
         // Reset voucher input and state when opening
         appliedVoucher = null;
         const txtVoucher = document.getElementById('txtVoucherCode');
-        const hasHotelItem = cart.some(item => item.type === 'Hotel');
+        const hasPendingServiceItem = hasPendingServiceItems();
+        const voucherSection = document.getElementById('voucherSection');
+        if (voucherSection) {
+            voucherSection.style.display = hasPendingServiceItem ? 'none' : 'block';
+        }
         if (txtVoucher) {
             txtVoucher.value = '';
-            txtVoucher.disabled = hasHotelItem;
-            txtVoucher.placeholder = hasHotelItem ? 'Voucher chưa áp dụng cho dịch vụ chuồng' : 'Nhập mã voucher (VD: PET20)';
+            txtVoucher.disabled = hasPendingServiceItem;
+            txtVoucher.placeholder = 'Nhập mã voucher (VD: PET20)';
         }
-        document.getElementById('btnApplyVoucher').disabled = hasHotelItem;
+        document.getElementById('btnApplyVoucher').disabled = hasPendingServiceItem;
         const voucherMsg = document.getElementById('voucherMessage');
         if (voucherMsg) {
             voucherMsg.style.display = 'none';
@@ -938,8 +955,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const subtotal = cart.reduce((acc, curr) => acc + curr.total, 0);
         const paymentMethod = document.getElementById('posPaymentMethod').value;
-        const voucherCode = appliedVoucher ? appliedVoucher.code : null;
-        const voucherDiscount = appliedVoucher ? appliedVoucher.discount : 0;
+        const canUseVoucher = !hasPendingServiceItems();
+        const voucherCode = canUseVoucher && appliedVoucher ? appliedVoucher.code : null;
+        const voucherDiscount = canUseVoucher && appliedVoucher ? appliedVoucher.discount : 0;
 
         const finalTotal = Math.max(0, subtotal - voucherDiscount);
         const cashRaw = document.getElementById('txtCashReceived').value.replace(/[^0-9]/g, '');

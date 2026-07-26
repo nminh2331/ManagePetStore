@@ -563,6 +563,19 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 return Json(new { success = false, message = "Số tiền giảm giá không hợp lệ." });
             }
 
+            bool hasPendingServiceItem = dto.Items.Any(item =>
+                item.Type == "Hotel" ||
+                (item.Type == "Spa" && item.BookingId.HasValue));
+            if (hasPendingServiceItem &&
+                (dto.VoucherDiscount > 0 || !string.IsNullOrWhiteSpace(dto.VoucherCode)))
+            {
+                return Json(new
+                {
+                    success = false,
+                    message = "Voucher không áp dụng cho Spa chờ thu hoặc dịch vụ lưu trú chuồng chờ thu."
+                });
+            }
+
             await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
             var hotelItems = dto.Items
@@ -588,9 +601,9 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             {
                 return Json(new { success = false, message = "Bảng kê chuồng không còn hợp lệ hoặc đã được thanh toán." });
             }
-            if (hotelCheckoutIds.Any() && (dto.VoucherDiscount > 0 || dto.PointsUsed > 0))
+            if (hotelCheckoutIds.Any() && dto.PointsUsed > 0)
             {
-                return Json(new { success = false, message = "Voucher và điểm thành viên chưa áp dụng cho hóa đơn có dịch vụ lưu trú chuồng." });
+                return Json(new { success = false, message = "Điểm thành viên chưa áp dụng cho hóa đơn có dịch vụ lưu trú chuồng." });
             }
             foreach (var item in hotelItems)
             {

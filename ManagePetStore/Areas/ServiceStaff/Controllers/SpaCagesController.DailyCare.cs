@@ -189,6 +189,15 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 ModelState.AddModelError(nameof(request.ActivityType), "Loại hoạt động không hợp lệ.");
             }
 
+            bool isFeeding = string.Equals(request.ActivityType, "Feeding", StringComparison.OrdinalIgnoreCase);
+            if (!isFeeding)
+            {
+                request.FoodType = null;
+                request.ServedGrams = null;
+                request.IsExtraCharge = false;
+                request.ExtraChargeAmount = 0;
+            }
+
             if (request.IsExtraCharge && request.ExtraChargeAmount <= 0)
             {
                 ModelState.AddModelError(nameof(request.ExtraChargeAmount), "Phụ phí bữa ăn phải lớn hơn 0.");
@@ -261,10 +270,12 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 ActivityType = request.ActivityType,
                 Title = safeTitle,
                 Status = safeStatus,
-                FoodType = string.IsNullOrWhiteSpace(request.FoodType)
-                    ? booking.FoodPlan?.FoodNameSnapshot ?? "Không áp dụng"
-                    : request.FoodType.Trim(),
-                Amount = request.ServedGrams.HasValue
+                FoodType = isFeeding
+                    ? string.IsNullOrWhiteSpace(request.FoodType)
+                        ? booking.FoodPlan?.FoodNameSnapshot ?? "Không áp dụng"
+                        : request.FoodType.Trim()
+                    : "Không áp dụng",
+                Amount = isFeeding && request.ServedGrams.HasValue
                     ? $"{request.ServedGrams:0.##} g"
                     : "Không áp dụng",
                 PhotoUrl = media?.MediaType == "Image" ? media.PublicUrl : null,
@@ -276,12 +287,12 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 StaffName = staffName,
                 IsVisibleToCustomer = request.IsVisibleToCustomer,
                 CreatedByUserId = staffUserId,
-                FoodPlanId = request.ActivityType == "Feeding" ? booking.FoodPlan?.FoodPlanId : null,
+                FoodPlanId = isFeeding ? booking.FoodPlan?.FoodPlanId : null,
                 MealType = null,
-                ServedGrams = request.ServedGrams,
+                ServedGrams = isFeeding ? request.ServedGrams : null,
                 ConsumedPercent = null,
-                IsExtraCharge = request.IsExtraCharge,
-                ExtraChargeAmount = request.IsExtraCharge ? request.ExtraChargeAmount : 0
+                IsExtraCharge = isFeeding && request.IsExtraCharge,
+                ExtraChargeAmount = isFeeding && request.IsExtraCharge ? request.ExtraChargeAmount : 0
             };
 
             _context.FoodDiaryLogs.Add(careLog);
