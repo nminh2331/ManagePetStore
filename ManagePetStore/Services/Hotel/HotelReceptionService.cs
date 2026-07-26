@@ -47,6 +47,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
         string cageId = request.CageId.Trim().ToUpperInvariant();
         string healthNote = request.HealthNote?.Trim() ?? string.Empty;
         DateTime checkInDate = request.CheckInDate!.Value;
+        DateTime actualCheckInAt = DateTime.Now;
         DateTime? checkOutDate = request.CheckOutDate;
 
         await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -258,7 +259,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                 onlineReservation.ScheduledCheckInDate ??= onlineReservation.CheckInDate;
                 onlineReservation.ScheduledCheckOutDate ??= onlineReservation.CheckOutDate;
                 onlineReservation.CheckInDate = checkInDate;
-                onlineReservation.ActualCheckInAt = checkInDate;
+                onlineReservation.ActualCheckInAt = actualCheckInAt;
                 onlineReservation.FinalAmount = Math.Max(0, subtotal - onlineReservation.Discount + foodTotal);
                 onlineReservation.Status = "Đang ở";
                 hotelBooking = onlineReservation;
@@ -277,7 +278,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                     CheckOutDate = checkOutDate,
                     ScheduledCheckInDate = checkInDate,
                     ScheduledCheckOutDate = checkOutDate,
-                    ActualCheckInAt = checkInDate,
+                    ActualCheckInAt = actualCheckInAt,
                     StayDays = estimatedStayDays,
                     BaseDailyPrice = dailyPrice,
                     Subtotal = subtotal,
@@ -425,7 +426,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                 CageId = cage.CageId,
                 RoomTypeId = cage.RoomTypeId,
                 DailyPriceSnapshot = dailyPrice,
-                StartedAt = checkInDate,
+                StartedAt = actualCheckInAt,
                 StartReason = "CheckIn",
                 CreatedAt = DateTime.Now
             });

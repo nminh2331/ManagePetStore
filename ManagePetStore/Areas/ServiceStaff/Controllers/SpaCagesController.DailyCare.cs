@@ -58,7 +58,10 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     CageId = booking.CageId,
                     RoomTypeCode = booking.Cage.RoomType.Code,
                     RoomTypeName = booking.Cage.RoomType.Type,
-                    CheckInAt = booking.ActualCheckInAt ?? booking.CheckInDate,
+                    CheckInAt = booking.ActualCheckInAt ??
+                        (booking.CheckInAssessment != null
+                            ? booking.CheckInAssessment.AssessedAt
+                            : booking.CheckInDate <= DateTime.Now ? booking.CheckInDate : DateTime.Now),
                     ExpectedCheckOutAt = booking.ScheduledCheckOutDate ?? booking.CheckOutDate,
                     CareLogCount = booking.FoodDiaryLogs.Count,
                     LastCareAt = booking.FoodDiaryLogs
@@ -95,6 +98,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 .Include(booking => booking.Cage)
                     .ThenInclude(cage => cage.RoomType)
                 .Include(booking => booking.FoodPlan)
+                .Include(booking => booking.CheckInAssessment)
                 .Where(booking => booking.PetId == petId)
                 .OrderByDescending(booking => booking.HotelBookingId)
                 .ToListAsync();
@@ -135,7 +139,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 CageId = booking.CageId,
                 RoomTypeCode = booking.Cage.RoomType.Code,
                 RoomTypeName = booking.Cage.RoomType.Type,
-                CheckInAt = booking.ActualCheckInAt ?? booking.ScheduledCheckInDate ?? booking.CheckInDate,
+                CheckInAt = ResolveCareStayStart(booking),
                 CheckOutAt = booking.ActualCheckOutAt ?? booking.ScheduledCheckOutDate ?? booking.CheckOutDate,
                 Status = booking.Status,
                 StatusKey = ResolveHotelStatusKey(booking.Status),
@@ -207,6 +211,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 .Include(item => item.Pet)
                 .Include(item => item.Customer)
                 .Include(item => item.FoodPlan)
+                .Include(item => item.CheckInAssessment)
                 .FirstOrDefaultAsync(item => item.HotelBookingId == request.HotelBookingId);
 
             if (booking == null)
@@ -221,10 +226,22 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             }
 
             var occurredAt = request.OccurredAt ?? DateTime.Now;
-            var earliestAllowed = (booking.ActualCheckInAt ?? booking.CheckInDate).AddHours(-1);
-            if (occurredAt > DateTime.Now.AddMinutes(5) || occurredAt < earliestAllowed)
+            var effectiveCheckInAt = ResolveCareStayStart(booking);
+            if (!booking.ActualCheckInAt.HasValue)
             {
-                ModelState.AddModelError(nameof(request.OccurredAt), "Thời gian nhật ký phải thuộc lượt lưu trú và không được ở tương lai.");
+                booking.ActualCheckInAt = effectiveCheckInAt;
+            }
+
+            var earliestAllowed = effectiveCheckInAt.AddHours(-1);
+            if (occurredAt > DateTime.Now.AddMinutes(5))
+            {
+                ModelState.AddModelError(nameof(request.OccurredAt), "Thời gian nhật ký không được ở tương lai.");
+            }
+            else if (occurredAt < earliestAllowed)
+            {
+                ModelState.AddModelError(
+                    nameof(request.OccurredAt),
+                    $"Thời gian nhật ký phải từ {earliestAllowed:dd/MM/yyyy HH:mm} trở đi.");
             }
 
             if (!ModelState.IsValid)
@@ -360,6 +377,25 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             TempData["HotelCareSuccess"] = $"Đã cập nhật nhật ký chăm sóc của {booking.Pet.Name}.";
             return RedirectAfterCareLog(request, booking);
+        }
+
+        // [nam] Xác định thời điểm pet thực sự bắt đầu lưu trú, kể cả booking cũ thiếu ActualCheckInAt.
+        private static DateTime ResolveCareStayStart(HotelBooking booking)
+        {
+            if (booking.ActualCheckInAt.HasValue)
+            {
+                return booking.ActualCheckInAt.Value;
+            }
+
+            if (booking.CheckInAssessment != null)
+            {
+                return booking.CheckInAssessment.AssessedAt;
+            }
+
+            var scheduledCheckIn = booking.ScheduledCheckInDate ?? booking.CheckInDate;
+            return ActiveHotelStatuses.Contains(booking.Status) && scheduledCheckIn > DateTime.Now
+                ? DateTime.Now
+                : scheduledCheckIn;
         }
 
         // [nam] Chuyển Staff về đúng màn hình sau khi cập nhật nhật ký chăm sóc.
