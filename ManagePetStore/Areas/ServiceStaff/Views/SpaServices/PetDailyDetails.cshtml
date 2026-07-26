@@ -4,6 +4,7 @@
     Layout = "~/Areas/ServiceStaff/Views/Shared/_ServiceLayout.cshtml";
     ViewData["Title"] = $"Nhật ký {Model.PetName}";
     var displayedLogs = Model.SelectedTab == "all" ? Model.AllLogs : Model.CurrentLogs;
+    var careLogNow = DateTime.Now;
     string FormatStayDate(DateTime value) => value.ToString("dd/MM/yyyy HH:mm");
 
     string ActivityLabel(string activityType) => activityType switch
@@ -112,7 +113,38 @@
                     <option value="CameraSnapshot">Ảnh từ camera</option>
                 </select></label>
                 <label><span>Tiêu đề</span><input name="Title" maxlength="150" required placeholder="Ví dụ: Bữa trưa và kiểm tra sức khỏe" /></label>
-                <label><span>Thời gian thực hiện</span><input type="datetime-local" name="OccurredAt" value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" required /></label>
+                <label>
+                    <span>Thời gian thực hiện (24h)</span>
+                    <span class="pdc-datetime-control"
+                          data-care-datetime
+                          data-care-start="@Model.CurrentStay.CheckInAt.ToString("yyyy-MM-ddTHH:mm:ss")">
+                        <input type="date"
+                               id="careOccurredDate"
+                               lang="vi-VN"
+                               value="@careLogNow.ToString("yyyy-MM-dd")"
+                               min="@Model.CurrentStay.CheckInAt.ToString("yyyy-MM-dd")"
+                               aria-label="Ngày thực hiện"
+                               required />
+                        <select id="careOccurredHour" aria-label="Giờ thực hiện">
+                            @for (var hour = 0; hour < 24; hour++)
+                            {
+                                <option value="@hour.ToString("00")" selected="@(hour == careLogNow.Hour)">@hour.ToString("00")</option>
+                            }
+                        </select>
+                        <b aria-hidden="true">:</b>
+                        <select id="careOccurredMinute" aria-label="Phút thực hiện">
+                            @for (var minute = 0; minute < 60; minute++)
+                            {
+                                <option value="@minute.ToString("00")" selected="@(minute == careLogNow.Minute)">@minute.ToString("00")</option>
+                            }
+                        </select>
+                    </span>
+                    <input type="hidden"
+                           name="OccurredAt"
+                           id="careOccurredAt"
+                           value="@careLogNow.ToString("yyyy-MM-ddTHH:mm")" />
+                    <small id="careOccurredAtError" class="pdc-field-error" role="alert" hidden></small>
+                </label>
                 <label><span>Tình trạng</span><input name="Status" maxlength="30" required placeholder="Ví dụ: Ăn tốt, tinh thần vui vẻ" /></label>
                 <label data-feeding-field hidden><span>Thức ăn</span><input name="FoodType" maxlength="100" placeholder="Tên thức ăn đã phục vụ" /></label>
                 <label data-feeding-field hidden><span>Khối lượng phục vụ (g)</span><input type="number" name="ServedGrams" min="0" max="10000" step="0.1" /></label>
@@ -269,12 +301,57 @@
 </div>
 
 <script>
-    // [nam] Chỉ hiện thông tin thức ăn cho hoạt động ăn uống và phụ phí cho bữa ngoài gói.
+    // [nam] Đồng bộ bộ chọn 24h và chặn thời gian ngoài lượt lưu trú ngay trên giao diện.
     document.addEventListener('DOMContentLoaded', () => {
+        const careForm = document.querySelector('.hbh-care-form');
+        // Pet đã checkout chỉ có màn hình xem lịch sử, không khởi tạo logic của form ghi nhật ký.
+        if (!careForm) {
+            return;
+        }
+
+        const dateTimeControl = document.querySelector('[data-care-datetime]');
+        const occurredDate = document.getElementById('careOccurredDate');
+        const occurredHour = document.getElementById('careOccurredHour');
+        const occurredMinute = document.getElementById('careOccurredMinute');
+        const occurredAt = document.getElementById('careOccurredAt');
+        const occurredAtError = document.getElementById('careOccurredAtError');
         const activityType = document.getElementById('careActivityType');
         const feedingFields = document.querySelectorAll('[data-feeding-field]');
         const extraCharge = document.getElementById('careIsExtraCharge');
         const extraChargeField = document.getElementById('careExtraChargeField');
+
+        function syncOccurredAt(showError = false) {
+            const value = `${occurredDate.value}T${occurredHour.value}:${occurredMinute.value}`;
+            occurredAt.value = value;
+
+            const selectedAt = new Date(value);
+            const stayStartedAt = new Date(dateTimeControl.dataset.careStart);
+            stayStartedAt.setSeconds(0, 0);
+            const now = new Date();
+            let message = '';
+
+            if (!occurredDate.value || Number.isNaN(selectedAt.getTime())) {
+                message = 'Vui lòng chọn ngày và giờ thực hiện.';
+            } else if (selectedAt < stayStartedAt) {
+                message = `Chỉ được ghi từ lúc tiếp nhận ${stayStartedAt.toLocaleString('vi-VN', { hour12: false })}.`;
+            } else if (selectedAt > now) {
+                message = 'Thời gian nhật ký không được ở tương lai.';
+            }
+
+            occurredAtError.textContent = message;
+            occurredAtError.hidden = !message || !showError;
+            return !message;
+        }
+
+        [occurredDate, occurredHour, occurredMinute].forEach(control => {
+            control.addEventListener('change', () => syncOccurredAt(true));
+        });
+
+        careForm.addEventListener('submit', event => {
+            if (!syncOccurredAt(true)) {
+                event.preventDefault();
+            }
+        });
 
         function updateExtraChargeField() {
             extraChargeField.hidden = activityType.value !== 'Feeding' || !extraCharge.checked;
@@ -298,6 +375,7 @@
 
         activityType.addEventListener('change', updateFeedingFields);
         extraCharge.addEventListener('change', updateExtraChargeField);
+        syncOccurredAt();
         updateFeedingFields();
     });
 </script>

@@ -575,6 +575,15 @@
 
 .hbh-care-form textarea { resize: vertical; }
 .hbh-care-form small { color: #8b817b; font-size: 11px; }
+.pdc-datetime-control {
+    display: grid;
+    grid-template-columns: minmax(135px, 1fr) 70px 8px 70px;
+    align-items: center;
+    gap: 6px;
+}
+.hbh-care-form label > .pdc-datetime-control { font-size: 13px; }
+.pdc-datetime-control b { color: #625954; text-align: center; }
+.hbh-care-form .pdc-field-error { color: #b42318; font-weight: 600; }
 .hbh-care-form-wide { grid-column: 1 / -1; }
 .hbh-care-toggle { flex-direction: row !important; align-items: center; }
 .hbh-care-toggle input { width: 18px; height: 18px; accent-color: #f97316; }
@@ -771,6 +780,7 @@
 
     .hbh-care-form { grid-template-columns: 1fr; padding: 14px; }
     .hbh-care-form-wide { grid-column: auto; }
+    .pdc-datetime-control { grid-template-columns: minmax(125px, 1fr) 64px 8px 64px; }
 
     .pdc-pet-facts {
         grid-template-columns: 1fr;
