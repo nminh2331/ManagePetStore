@@ -43,15 +43,18 @@ public class HotelCheckoutService : IHotelCheckoutService
         int? staffUserId,
         string staffName)
     {
+        // [nam][BR] Chốt bảng kê và đối soát kho trong cùng transaction để số tiền luôn khớp tài nguyên thực tế.
         await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         var booking = await LoadBookingAsync(request.HotelBookingId, false)
             ?? throw new InvalidOperationException("Không tìm thấy lượt đặt chuồng.");
 
+        // [nam][Validate] Chỉ lượt đang lưu trú được gửi sang thu ngân; booking đặt trước chưa phát sinh checkout.
         if (booking.Status != "Active" && booking.Status != "Đang ở")
         {
             throw new InvalidOperationException("Chỉ có thể chốt chi phí cho pet đang lưu trú.");
         }
 
+        // [nam][BR] Idempotent: bấm chốt lặp hoặc tab cũ không được tạo bảng kê/đơn thanh toán thứ hai.
         bool checkoutAlreadyPrepared = booking.CheckoutStatement != null &&
             (string.Equals(booking.CheckoutStatement.Status, "ReadyForPayment", StringComparison.OrdinalIgnoreCase) ||
              booking.CheckoutStatement.OrderId != null);
@@ -63,9 +66,11 @@ public class HotelCheckoutService : IHotelCheckoutService
                 booking.CheckoutStatement!.CheckoutAt);
         }
 
+        // [nam][Validate] Kiểm tra lại giá snapshot và khoản phát sinh ở service, không chỉ dựa vào ModelState/UI.
         ValidateCheckoutInputs(booking, request);
 
         var checkoutAt = DateTime.Now;
+        // [nam][Flow] Chốt số ngày thực tế trước, đối soát kho, sau đó mới dựng các dòng tiền của bảng kê.
         var chargeableFoodDays = ResolveFoodDays(booking, checkoutAt);
         await ReconcileFoodInventoryAsync(booking, chargeableFoodDays);
         var preview = BuildPreview(booking, checkoutAt, request.OtherDescription, request.OtherAmount);
@@ -74,6 +79,7 @@ public class HotelCheckoutService : IHotelCheckoutService
             HotelBookingId = booking.HotelBookingId
         };
 
+        // [nam][Flow] Bảng kê cũ ở Draft được thay toàn bộ item để không cộng dồn khoản phí khi Staff chốt lại.
         if (booking.CheckoutStatement == null)
         {
             _context.HotelCheckoutStatements.Add(statement);
@@ -105,6 +111,7 @@ public class HotelCheckoutService : IHotelCheckoutService
             Amount = item.Amount
         }).ToList();
 
+        // [nam][BR] TotalAmount của gói chỉ chứa tiền theo ngày; bữa ngoài gói là item riêng để tránh tính hai lần.
         if (booking.FoodPlan != null)
         {
             var extraFoodAmount = booking.FoodDiaryLogs
@@ -113,6 +120,7 @@ public class HotelCheckoutService : IHotelCheckoutService
             booking.FoodPlan.ChargeableDays = chargeableFoodDays;
             booking.FoodPlan.TotalAmount = preview.FoodAmount - extraFoodAmount;
         }
+        // [nam][BR] Lượt gửi trực tiếp không có lịch trả cố định được tính tiền phòng theo thời gian ở thực tế.
         if (!HasScheduledCheckout(booking))
         {
             var roomQuote = CalculateRoomCharge(booking, checkoutAt);
@@ -130,6 +138,7 @@ public class HotelCheckoutService : IHotelCheckoutService
             Description = $"{staffName} đã lập bảng kê tạm tính {preview.TotalAmount:N0}đ và gửi sang quầy thu ngân. Pet vẫn đang lưu trú cho đến khi hoàn tất trả pet."
         });
 
+        // [nam][BR] Chỉ ghép Spa đã hoàn thành, chưa thanh toán, cùng pet/customer và phát sinh trong lượt lưu trú.
         var completedSpaIds = await _context.SpaBookings
             .Where(spa => spa.PetId == booking.PetId &&
                           spa.CustomerId == booking.CustomerId &&
@@ -166,6 +175,7 @@ public class HotelCheckoutService : IHotelCheckoutService
             return;
         }
 
+        // [nam][BR] Chỉ trừ/hoàn phần chênh lệch giữa suất cần theo ngày thực tế và suất đã giữ trước đó.
         int requiredInventoryUnits = HotelFoodPricing.CalculateInventoryUnits(
             chargeableFoodDays,
             foodPlan.PortionMultiplierSnapshot);
@@ -213,6 +223,7 @@ public class HotelCheckoutService : IHotelCheckoutService
         string? otherDescription = null,
         decimal? requestedOtherAmount = null)
     {
+        // [nam][Flow] Tổng tiền gồm phòng - giảm giá + gói ăn + bữa ngoài gói + addon + trả muộn + phí khác.
         var foodDays = ResolveFoodDays(booking, checkoutAt);
         var planFoodAmount = (booking.FoodPlan?.PricePerDaySnapshot ?? 0) * foodDays;
         var extraFoodLogs = booking.FoodDiaryLogs.Where(log => log.IsExtraCharge && log.ExtraChargeAmount > 0).ToList();
@@ -225,6 +236,7 @@ public class HotelCheckoutService : IHotelCheckoutService
         var description = string.IsNullOrWhiteSpace(otherDescription) ? savedOtherItem?.Description : otherDescription.Trim();
         var roomQuote = CalculateRoomCharge(booking, checkoutAt);
         var roomAmount = roomQuote.Amount;
+        // [nam][BR] Hóa đơn không được âm kể cả dữ liệu giảm giá cũ lớn hơn các khoản còn lại.
         var total = Math.Max(0, roomAmount - booking.Discount + planFoodAmount + extraFoodAmount + addonAmount + lateFee + otherAmount);
 
         var items = new List<HotelCheckoutPreviewItem>
@@ -296,6 +308,7 @@ public class HotelCheckoutService : IHotelCheckoutService
     // [nam] Tính số ngày thức ăn cần thu theo thời gian lưu trú thực tế.
     private static int ResolveFoodDays(HotelBooking booking, DateTime checkoutAt)
     {
+        // [nam][BR] Gói không có giá không phát sinh tiền; ngày ăn bắt đầu từ check-in thực tế nếu đã ghi nhận.
         if (booking.FoodPlan == null || booking.FoodPlan.PricePerDaySnapshot <= 0) return 0;
         var start = booking.ActualCheckInAt ?? booking.CheckInDate;
         return HotelPricingPolicy.CalculateStayDays(start, checkoutAt);
@@ -308,6 +321,7 @@ public class HotelCheckoutService : IHotelCheckoutService
     // [nam] Tính tiền chuồng thực tế theo thời điểm checkout và chính sách giá lưu trú.
     private static RoomChargeQuote CalculateRoomCharge(HotelBooking booking, DateTime checkoutAt)
     {
+        // [nam][BR] Booking có lịch dự kiến giữ nguyên số ngày và giá đã chốt lúc đặt; phí trễ được tính riêng.
         if (HasScheduledCheckout(booking))
         {
             int bookedDays = Math.Max(booking.StayDays, 1);
@@ -318,6 +332,7 @@ public class HotelCheckoutService : IHotelCheckoutService
             return new RoomChargeQuote(bookedDays, effectiveUnitPrice, savedAmount);
         }
 
+        // [nam][BR] Lượt gửi trực tiếp tính ceil theo mỗi 24 giờ thực tế, tối thiểu một ngày theo pricing policy.
         var start = booking.ActualCheckInAt ?? booking.CheckInDate;
         int actualDays = HotelPricingPolicy.CalculateStayDays(start, checkoutAt);
         return new RoomChargeQuote(
@@ -329,10 +344,12 @@ public class HotelCheckoutService : IHotelCheckoutService
     // [nam] Tính số giờ và tiền phụ thu khi trả pet sau thời gian miễn phí.
     private static LateFeeQuote CalculateLateFee(HotelBooking booking, DateTime checkoutAt)
     {
+        // [nam][BR] Dữ liệu cũ chỉ có ngày trả (00:00) được quy ước trả lúc 12:00.
         var scheduled = booking.ScheduledCheckOutDate ?? booking.CheckOutDate;
         if (scheduled.HasValue && scheduled.Value.TimeOfDay == TimeSpan.Zero)
             scheduled = scheduled.Value.Date.Add(DefaultScheduledCheckoutTime);
 
+        // [nam][BR] Miễn phí 30 phút đầu; không có lịch trả thì đã tính theo ngày thực tế nên không cộng phí trễ.
         if (!scheduled.HasValue || checkoutAt <= scheduled.Value.Add(LateCheckoutGracePeriod))
         {
             return LateFeeQuote.None;
@@ -343,6 +360,7 @@ public class HotelCheckoutService : IHotelCheckoutService
             throw new InvalidOperationException("Giá theo giờ của loại chuồng không hợp lệ nên chưa thể tính phí trả muộn.");
         }
 
+        // [nam][BR] Mỗi 24 giờ trễ tính một ngày; phần giờ lẻ bị chặn tối đa bằng giá một ngày.
         var chargeableHours = (int)Math.Ceiling(
             (checkoutAt - scheduled.Value.Add(LateCheckoutGracePeriod)).TotalHours);
         var fullDays = chargeableHours / HoursPerLateDay;
@@ -358,6 +376,7 @@ public class HotelCheckoutService : IHotelCheckoutService
     {
         ValidateCheckoutPricing(booking);
 
+        // [nam][Validate] Phí nhập tay giới hạn 100 triệu, bắt buộc mô tả và dùng bước 1.000đ để dễ đối soát.
         if (request.OtherAmount < 0 || request.OtherAmount > 100000000m)
         {
             throw new InvalidOperationException("Chi phí phát sinh phải từ 0 đến 100.000.000đ.");
@@ -377,6 +396,7 @@ public class HotelCheckoutService : IHotelCheckoutService
     // [nam] Ngăn checkout khi dữ liệu giá phòng, giảm giá hoặc dịch vụ không hợp lệ.
     private static void ValidateCheckoutPricing(HotelBooking booking)
     {
+        // [nam][Validate] Không cho chốt nếu snapshot giá phòng thiếu, âm hoặc booking có lịch nhưng subtotal bằng 0.
         if (booking.BaseDailyPrice <= 0 ||
             booking.Subtotal < 0 ||
             (HasScheduledCheckout(booking) && booking.Subtotal == 0))
@@ -384,6 +404,7 @@ public class HotelCheckoutService : IHotelCheckoutService
             throw new InvalidOperationException("Giá phòng của booking không hợp lệ. Vui lòng kiểm tra lại trước khi checkout.");
         }
 
+        // [nam][Validate] Giảm giá không được âm hoặc vượt tiền phòng; mọi dịch vụ thành phần cũng không được âm.
         if (booking.Discount < 0 || booking.Discount > booking.Subtotal)
         {
             throw new InvalidOperationException("Số tiền giảm giá của booking không hợp lệ.");

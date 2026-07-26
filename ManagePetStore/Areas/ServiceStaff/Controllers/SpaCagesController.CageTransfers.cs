@@ -24,15 +24,18 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> MovePetCage(int bookingId, string targetCageId)
         {
+            // [nam][Validate] Chuẩn hóa CageId để so sánh không phụ thuộc chữ hoa/thường và chặn request thiếu khóa.
             if (bookingId <= 0 || string.IsNullOrWhiteSpace(targetCageId))
             {
                 return Json(new { success = false, message = "Thông tin chuyển chuồng không hợp lệ." });
             }
 
             targetCageId = targetCageId.Trim().ToUpperInvariant();
+            // [nam][BR] Việc đổi hai trạng thái chuồng và booking phải nguyên tử để không có hai pet cùng chiếm chuồng đích.
             await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
+                // [nam][Validate] Chỉ Staff được chuyển pet của booking đang thực sự lưu trú.
                 var booking = await _context.HotelBookings
                     .Include(b => b.Cage)
                     .Include(b => b.Pet)
@@ -51,6 +54,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     return Json(new { success = false, message = "Thú cưng đang ở chuồng này." });
                 }
 
+                // [nam][BR] Chuồng đích phải trống, thuộc loại đang hoạt động và không có lịch booking giao nhau.
                 var targetCage = await _context.Cages
                     .Include(c => c.RoomType)
                     .FirstOrDefaultAsync(c => c.CageId == targetCageId);
@@ -81,6 +85,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     return Json(new { success = false, message = $"Chuồng {targetCageId} đã có lịch đặt trùng thời gian lưu trú." });
                 }
 
+                // [nam][BR] Chuyển do vận hành không đổi giá booking; chuồng nguồn chuyển sang chờ dọn dẹp.
                 if (booking.Cage != null)
                 {
                     booking.Cage.Status = "Đang dọn dẹp";
@@ -92,6 +97,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
                 var actor = GetCurrentStaffSnapshot();
                 DateTime movedAt = DateTime.Now;
+                // [nam][Flow] Đóng phân đoạn chuồng cũ rồi mở phân đoạn mới để lịch sử cho biết pet ở đâu theo thời gian.
                 var openSegment = await _context.HotelCageStaySegments
                     .Where(segment => segment.HotelBookingId == booking.HotelBookingId && segment.EndedAt == null)
                     .OrderByDescending(segment => segment.StartedAt)
@@ -156,6 +162,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ProcessCageChangeRequest(int requestId, string decision, string? note)
         {
+            // [nam][Validate] Quyết định chỉ nhận approve/reject và ghi chú bị giới hạn để bảo vệ dữ liệu lịch sử.
             decision = decision?.Trim().ToLowerInvariant() ?? string.Empty;
             note = note?.Trim();
             if (requestId <= 0 || decision is not ("approve" or "reject"))
@@ -167,6 +174,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return Json(new { success = false, message = "Ghi chú xử lý không được vượt quá 1.000 ký tự." });
             }
 
+            // [nam][BR] Khóa yêu cầu trong transaction để hai Staff không thể duyệt cùng một yêu cầu hai lần.
             await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
@@ -178,6 +186,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     .Include(request => request.SourceCage).ThenInclude(cage => cage.RoomType)
                     .Include(request => request.TargetCage).ThenInclude(cage => cage.RoomType)
                     .FirstOrDefaultAsync(request => request.ChangeRequestId == requestId);
+                // [nam][Validate] Chỉ Pending được xử lý; booking đã checkout hoặc kết thúc không còn quyền đổi chuồng.
                 if (changeRequest == null || changeRequest.Status != "Pending")
                 {
                     return Json(new { success = false, message = "Yêu cầu không tồn tại hoặc đã được xử lý." });
@@ -192,6 +201,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
                 var actor = GetCurrentStaffSnapshot();
                 var now = DateTime.Now;
+                // [nam][Flow] Nhánh từ chối chỉ ghi quyết định, timeline và thông báo; không đổi chuồng hay giá.
                 if (decision == "reject")
                 {
                     changeRequest.Status = "Rejected";
@@ -218,6 +228,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     return Json(new { success = true, message = "Đã từ chối yêu cầu đổi chuồng và thông báo cho khách hàng." });
                 }
 
+                // [nam][Validate] Kiểm tra lại chuồng nguồn/đích tại thời điểm duyệt vì dữ liệu có thể đổi sau lúc Customer gửi.
                 if (!string.Equals(booking.CageId, changeRequest.SourceCageId, StringComparison.OrdinalIgnoreCase))
                 {
                     return Json(new { success = false, message = "Booking đã được chuyển khỏi chuồng nguồn; yêu cầu này không còn hợp lệ." });
@@ -229,6 +240,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     return Json(new { success = false, message = "Chuồng đích không còn ở trạng thái sẵn sàng." });
                 }
 
+                // [nam][BR] Booking đang ở chỉ kiểm tra từ hiện tại; booking đã đặt kiểm tra toàn bộ khoảng dự kiến.
                 var intervalStart = statusKey == "active" ? now : booking.CheckInDate;
                 var intervalEnd = booking.ScheduledCheckOutDate
                     ?? booking.CheckOutDate
@@ -243,6 +255,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     return Json(new { success = false, message = "Chuồng đích vừa có lịch đặt trùng; chưa thể duyệt yêu cầu." });
                 }
 
+                // [nam][BR] Chênh lệch giá tính toàn kỳ với booking chưa nhận, nhưng chỉ tính số ngày còn lại nếu pet đang ở.
                 int remainingDays = statusKey == "reserved"
                     ? Math.Max(booking.StayDays, 1)
                     : Math.Max(1, (int)Math.Ceiling((intervalEnd - now).TotalHours / 24d));
@@ -253,6 +266,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     : 0;
                 decimal oldFinalAmount = booking.FinalAmount;
 
+                // [nam][BR] Giữ nguyên tỷ lệ giảm giá ban đầu khi tính lại giá chuồng mới.
                 if (statusKey == "reserved")
                 {
                     booking.Subtotal = newDailyPrice * Math.Max(booking.StayDays, 1);
@@ -273,6 +287,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 booking.CageId = changeRequest.TargetCageId;
                 booking.BaseDailyPrice = newDailyPrice;
 
+                // [nam][Flow] Chỉ booking đang ở mới đổi trạng thái vật lý và phân đoạn chuồng ngay lập tức.
                 if (statusKey == "active")
                 {
                     changeRequest.SourceCage.Status = "Đang dọn dẹp";
@@ -310,6 +325,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     });
                 }
 
+                // [nam][Flow] Lưu snapshot giá và số ngày dùng để kết quả duyệt không đổi theo bảng giá tương lai.
                 changeRequest.Status = "Approved";
                 changeRequest.RemainingDaysSnapshot = remainingDays;
                 changeRequest.SourceDailyPriceSnapshot = oldDailyPrice;
@@ -335,6 +351,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
+                // [nam][Flow] Email chỉ gửi sau commit; dữ liệu web/timeline là nguồn sự thật nếu gửi email thất bại.
                 await _hotelEmailService.SendCageChangeDecisionAsync(
                     booking.Customer.Email, booking.Customer.FullName, booking.HotelBookingId, booking.Pet.Name,
                     sourceCageId, changeRequest.TargetCageId, true, appliedDifference, changeRequest.DecisionNote);

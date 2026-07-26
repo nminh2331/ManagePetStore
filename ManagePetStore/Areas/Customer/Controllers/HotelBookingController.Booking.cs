@@ -12,6 +12,7 @@ public partial class HotelBookingController
         DateTime checkInDate,
         DateTime checkOutDate)
     {
+        // [nam][Validate] Chặn request sửa tay trước khi truy vấn; sai số một phút tránh từ chối do độ trễ mạng.
         if (roomTypeId <= 0 || checkOutDate <= checkInDate || checkInDate < DateTime.Now.AddMinutes(-1))
         {
             return BadRequest(new
@@ -42,11 +43,13 @@ public partial class HotelBookingController
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Book([FromForm] HotelBookingRequest request)
     {
+        // [nam][Validate] DataAnnotations và IValidatableObject là lớp kiểm tra server bắt buộc, không tin dữ liệu JS.
         if (!ModelState.IsValid)
         {
             return BookingError(GetModelStateErrorMessage());
         }
 
+        // [nam][Validate] CustomerId luôn lấy từ phiên đăng nhập, không nhận từ form để tránh giả mạo chủ booking.
         var customer = await GetCurrentCustomerAsync();
         if (customer == null)
         {

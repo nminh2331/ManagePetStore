@@ -158,6 +158,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // [nam] Nạp booking lưu trú và các Spa liên kết vào giỏ thanh toán tại quầy.
     window.handleSelectHotelCheckout = async function (hotelCheckoutId) {
+        // [nam][Validate] Bảng kê phải còn trong danh sách ReadyForPayment tại thời điểm Cashier chọn.
         const item = readyHotelCheckouts.find(row => row.hotelCheckoutId === hotelCheckoutId);
         if (!item) {
             alert('Bảng kê chuồng không còn trong danh sách chờ thu. Vui lòng tải lại.');
@@ -165,6 +166,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        // [nam][BR] Một giỏ chỉ thu cho một Customer; đổi khách phải xóa giỏ cũ để không ghép sai hóa đơn.
         if (currentCustomer && cart.length > 0 && currentCustomer.customerId !== item.customerId) {
             if (!confirm(`Giỏ hiện thuộc ${currentCustomer.fullName}. Chuyển sang ${item.customerName} và xóa giỏ cũ?`)) return;
             clearCurrentCartAndCustomer();
@@ -176,6 +178,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const linkedSpaBookings = (item.linkedSpaBookingIds || [])
             .map(spaId => completedSpaBookings.find(row => row.bookingId === spaId))
             .filter(Boolean);
+        // [nam][Validate] Không cho thu nếu thiếu bất kỳ Spa liên kết nào để tránh tạo hóa đơn thiếu khoản dịch vụ.
         if (linkedSpaBookings.length !== (item.linkedSpaBookingIds || []).length) {
             alert('Chưa tải đủ dịch vụ Spa liên kết. Vui lòng thử lại để tránh thiếu khoản thu.');
             return;
@@ -747,6 +750,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // === CALCULATE PAYMENT REAL-TIME ===
     function recalculatePayment() {
         const subtotal = cart.reduce((acc, curr) => acc + curr.total, 0);
+        // [nam][BR] Không dùng thêm điểm thành viên khi giỏ có Hotel vì giảm giá đã được snapshot lúc đặt.
         const hasHotelItem = cart.some(item => item.type === 'Hotel');
         const usePointsCheckbox = document.getElementById('chkUsePoints');
         let discount = 0;

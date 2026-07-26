@@ -16,6 +16,7 @@ public class PrepareHotelCheckoutRequest : IValidatableObject
     // [nam] Kiểm tra mô tả và bước tiền của chi phí phát sinh khi lập bảng kê checkout.
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
+        // [nam][BR] Khoản phí khác chỉ hợp lệ khi có diễn giải để Cashier và Customer đối soát được nguồn tiền.
         if (OtherAmount > 0 && string.IsNullOrWhiteSpace(OtherDescription))
         {
             yield return new ValidationResult(
@@ -23,6 +24,7 @@ public class PrepareHotelCheckoutRequest : IValidatableObject
                 [nameof(OtherDescription)]);
         }
 
+        // [nam][BR] Tiền nhập tay dùng bước 1.000đ, đồng nhất với validation ở giao diện và service.
         if (OtherAmount % 1000m != 0)
         {
             yield return new ValidationResult(

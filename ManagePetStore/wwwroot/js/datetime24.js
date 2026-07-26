@@ -5,6 +5,7 @@
     let activeShell = null;
 
     function parseValue(value) {
+        // [nam][Flow] Đọc giá trị chuẩn yyyy-MM-ddTHH:mm của input gốc mà ASP.NET model binding cần.
         const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(value || '');
         return match
             ? { date: `${match[1]}-${match[2]}-${match[3]}`, hour: match[4], minute: match[5] }
@@ -12,6 +13,7 @@
     }
 
     function formatValue(value) {
+        // [nam][Flow] Chỉ lớp hiển thị đổi sang dd/MM/yyyy HH:mm; không đổi giá trị gửi về server.
         const parts = parseValue(value);
         if (!parts) return '';
         const [year, month, day] = parts.date.split('-');
@@ -28,6 +30,7 @@
     }
 
     function refresh(input) {
+        // [nam][Validate] Đồng bộ trạng thái valid của input gốc sang ô 24h mà người dùng nhìn thấy.
         if (!input) return;
         const shell = input.closest('.datetime24-shell');
         const trigger = shell?.querySelector('.datetime24-trigger');
@@ -46,6 +49,39 @@
         if (activeShell === target) activeShell = null;
     }
 
+    function findPickerBoundary(shell) {
+        // [nam][Flow] Tìm modal/khung cuộn gần nhất để popup không bị overflow cắt mất nội dung.
+        let element = shell.parentElement;
+
+        while (element && element !== document.body) {
+            const style = window.getComputedStyle(element);
+            const overflowValues = `${style.overflow} ${style.overflowX} ${style.overflowY}`;
+            if (/(auto|scroll|hidden|clip)/.test(overflowValues)) return element.getBoundingClientRect();
+            element = element.parentElement;
+        }
+
+        return { left: 0, right: window.innerWidth, width: window.innerWidth };
+    }
+
+    function positionPicker(shell, picker) {
+        // [nam][Flow] Ô bên trái mở sang phải, ô bên phải mở sang trái và luôn giữ popup trong vùng chứa.
+        const shellRect = shell.getBoundingClientRect();
+        const boundary = findPickerBoundary(shell);
+        const boundaryInset = 12;
+        const availableWidth = Math.max(240, Math.min(boundary.width - (boundaryInset * 2), window.innerWidth - 32));
+        const pickerWidth = Math.min(330, availableWidth);
+        const leftBoundary = Math.max(16, boundary.left + boundaryInset);
+        const rightBoundary = Math.min(window.innerWidth - 16, boundary.right - boundaryInset);
+        const leftAlignedRight = shellRect.left + pickerWidth;
+        const rightAlignedLeft = shellRect.right - pickerWidth;
+        const canAlignLeft = shellRect.left >= leftBoundary && leftAlignedRight <= rightBoundary;
+        const canAlignRight = rightAlignedLeft >= leftBoundary && shellRect.right <= rightBoundary;
+
+        picker.style.width = `${pickerWidth}px`;
+        picker.classList.toggle('datetime24-align-left', canAlignLeft || !canAlignRight);
+        picker.classList.toggle('datetime24-align-right', !canAlignLeft && canAlignRight);
+    }
+
     function open(input) {
         const shell = input.closest('.datetime24-shell');
         const picker = shell?.querySelector('.datetime24-picker');
@@ -59,6 +95,7 @@
         const current = parseValue(input.value) || parseValue(input.min);
         const now = new Date();
 
+        // [nam][Validate] Sao chép min/max từ input gốc để bộ chọn 24h tuân thủ cùng ràng buộc ngày.
         dateInput.value = current?.date || [
             now.getFullYear(),
             String(now.getMonth() + 1).padStart(2, '0'),
@@ -70,6 +107,7 @@
         minuteSelect.value = current?.minute || String(now.getMinutes()).padStart(2, '0');
         picker.querySelector('.datetime24-error').textContent = '';
         picker.hidden = false;
+        positionPicker(shell, picker);
         activeShell = shell;
         dateInput.focus();
     }
@@ -82,6 +120,7 @@
         const minute = picker.querySelector('.datetime24-minute').value;
         const error = picker.querySelector('.datetime24-error');
 
+        // [nam][Validate] Chặn thiếu ngày và giá trị ngoài min/max trước khi ghi lại input gốc.
         if (!date) {
             error.textContent = 'Vui lòng chọn ngày.';
             return;
@@ -97,6 +136,7 @@
             return;
         }
 
+        // [nam][Flow] Phát lại input/change để validation và phép tính giá hiện có tiếp tục chạy bình thường.
         input.value = value;
         input.setCustomValidity('');
         refresh(input);
@@ -140,6 +180,7 @@
     function enhance(input) {
         if (!input || input.dataset.datetime24Enhanced === 'true') return;
 
+        // [nam][Flow] Giữ input datetime-local gốc cho required/min/max và model binding; chỉ ẩn khỏi UI.
         const originalParent = input.parentElement;
         const shell = document.createElement('span');
         shell.className = 'datetime24-shell';
@@ -192,6 +233,12 @@
     });
     document.addEventListener('keydown', event => {
         if (event.key === 'Escape') close(activeShell);
+    });
+    window.addEventListener('resize', () => {
+        // [nam][Flow] Tính lại hướng mở khi viewport đổi để popup không tràn khỏi modal trên màn nhỏ.
+        if (!activeShell) return;
+        const picker = activeShell.querySelector('.datetime24-picker');
+        if (picker && !picker.hidden) positionPicker(activeShell, picker);
     });
 
     window.DateTime24 = { enhance, enhanceAll, refresh, formatValue, open, close };
