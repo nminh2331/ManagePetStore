@@ -1,3 +1,4 @@
+// HÀ HOÀNG HIỆP CODE - LUỒNG TRẢ HÀNG & HOÀN TIỀN: USE CASE PROCESS REFUND (QUẢN LÝ VÀ XỬ LÝ TRẢ HÀNG PHÍA THU NGÂN)
 using System.Security.Claims;
 using ManagePetStore.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -33,6 +34,13 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             return int.TryParse(userIdClaim.Value, out var id) ? id : null;
         }
 
+        /// <summary>
+        /// LUỒNG PROCESS REFUND: Trang danh sách quản lý Yêu cầu trả hàng
+        /// - Hiển thị 3 danh sách phân trang:
+        ///   + Submitted: Yêu cầu mới gửi, chờ duyệt Online.
+        ///   + WaitingForReturn: Đã duyệt Online, chờ khách mang hàng đến quầy trong 7 ngày.
+        ///   + Processed: Các yêu cầu đã hoàn tất trả tiền hoặc đã từ chối.
+        /// </summary>
         [HttpGet]
         public async Task<IActionResult> Index(string activeTab = "submitted", string searchStr = "", int pageS = 1, int pageW = 1, int pageP = 1)
         {
@@ -74,6 +82,12 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             return View();
         }
 
+        /// <summary>
+        /// LUỒNG PROCESS REFUND (BƯỚC 1: DUYỆT ONLINE): Phê duyệt yêu cầu trả hàng qua ảnh/video minh chứng
+        /// - Thu ngân kiểm tra hình ảnh/video sản phẩm lỗi do khách gửi.
+        /// - Nếu đủ điều kiện -> Bấm "Duyệt online" (ApproveOnline).
+        /// - KẾT QUẢ: Chuyển trạng thái sang "WaitingForReturn" (Chờ khách mang sản phẩm đến quầy trong vòng 7 ngày), đồng thời phát thông báo realtime (SignalR/CustomerNotification) cho Khách hàng.
+        /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ApproveOnline(int id)
@@ -97,7 +111,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             request.ProcessedBy = userId;
             request.ProcessedAt = DateTime.Now;
 
-            // Generate notification for Customer
+            // Tạo thông báo gửi cho Khách hàng
             var notif = new CustomerNotification
             {
                 CustomerId = request.CustomerId,
@@ -112,7 +126,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
 
             await _context.SaveChangesAsync();
 
-            // Push notification to client via SignalR
+            // Phát thông báo Realtime qua SignalR
             await _hubContext.Clients.All.SendAsync("CareLogUpdated", new {
                 notificationId = notif.NotificationId,
                 title = notif.Title,
@@ -124,6 +138,11 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        /// <summary>
+        /// LUỒNG PROCESS REFUND (BƯỚC 1: TỪ CHỐI ONLINE): Từ chối duyệt online
+        /// - VALIDATION: Bắt buộc Thu ngân nhập lý do từ chối rõ ràng.
+        /// - KẾT QUẢ: Chuyển trạng thái đơn trả thành "OnlineRejected" và ghi nhận lý do từ chối.
+        /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RejectOnline(int id, string rejectReason)
@@ -169,6 +188,17 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        /// <summary>
+        /// LUỒNG PROCESS REFUND (BƯỚC 2: HOÀN TIỀN TẠI QUẦY): Xác nhận nhận hàng và hoàn tiền vào Ví điện tử
+        /// - Khách hàng mang sản phẩm đến quầy, Thu ngân mở tab "Chờ trả tại quầy" (WaitingForReturn).
+        /// - Thu ngân nhận sản phẩm thực tế từ khách và xác minh/đối chiếu trực tiếp với hình ảnh/video lỗi trước đó.
+        /// - Nếu đồng ý hoàn tiền -> Bấm "Xác nhận nhận hàng & hoàn tiền" (ConfirmPhysicalReturn).
+        /// - KẾT QUẢ NGHIỆP VỤ:
+        ///   1. Chuyển trạng thái Yêu cầu trả hàng thành "Success".
+        ///   2. HOÀN TIỀN VÀO VÍ ĐIỆN TỬ: Số tiền refund (request.RefundAmount) được TỰ ĐỘNG CHUYỂN THẲNG vào số dư Ví điện tử (Wallet.Balance) của khách hàng.
+        ///   3. Ghi nhận giao dịch lịch sử ví (WalletTransaction: Type = "Refund").
+        ///   4. HOÀN TỒN KHO: Sản phẩm trả được làm thủ tục nhập lại kho hàng.
+        /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ConfirmPhysicalReturn(int id)
@@ -195,13 +225,13 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             {
                 try
                 {
-                    // 1. Update request status
+                    // 1. Cập nhật trạng thái yêu cầu trả hàng thành Thành công (Success)
                     request.Status = "Success";
                     request.ProcessedBy = userId;
                     request.ProcessedAt = DateTime.Now;
                     _context.Entry(request).State = EntityState.Modified;
 
-                    // 2. Add refund amount to Customer's Wallet
+                    // 2. CHUYỂN TIỀN HOÀN VÀO VÍ ĐIỆN TỬ (E-WALLET) CỦA KHÁCH HÀNG
                     var wallet = await _context.Wallets.FirstOrDefaultAsync(w => w.CustomerId == request.CustomerId);
                     if (wallet == null)
                     {
@@ -214,14 +244,15 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                             UpdatedAt = DateTime.Now
                         };
                         _context.Wallets.Add(wallet);
-                        await _context.SaveChangesAsync(); // save to get WalletId
+                        await _context.SaveChangesAsync();
                     }
 
+                    // Cộng số tiền hoàn vào Ví điện tử của khách hàng
                     wallet.Balance += request.RefundAmount;
                     wallet.UpdatedAt = DateTime.Now;
                     _context.Entry(wallet).State = EntityState.Modified;
 
-                    // 3. Create wallet transaction
+                    // 3. Tạo biến động giao dịch Ví (WalletTransaction)
                     var walletTransaction = new WalletTransaction
                     {
                         WalletId = wallet.WalletId,
@@ -233,16 +264,13 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                     };
                     _context.WalletTransactions.Add(walletTransaction);
 
-                    // 4. Restock items returned
+                    // 4. Nhập kho lại sản phẩm đã nhận từ khách hàng
                     var systemStockDetails = new List<StockMovementDetail>();
                     foreach (var item in request.ReturnRequestItems)
                     {
                         var product = await _context.Products.FirstOrDefaultAsync(p => p.Sku == item.Sku);
                         if (product != null)
                         {
-                            // Yêu cầu Issue 3: Không tự động Restock vào lô mới nhất nữa
-                            // await _inventoryBatchService.RestockToBatches(item.Sku, item.Quantity);
-                            
                             systemStockDetails.Add(new StockMovementDetail
                             {
                                 ProductSku = item.Sku,
@@ -279,6 +307,12 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        /// <summary>
+        /// LUỒNG PROCESS REFUND (BƯỚC 2: TỪ CHỐI TẠI QUẦY): Từ chối nhận sản phẩm thực tế khi khách mang đến
+        /// - Sau khi đối chiếu sản phẩm thực tế với ảnh/video minh chứng, nếu sản phẩm không đáp ứng điều kiện trả.
+        /// - VALIDATION: Bắt buộc Thu ngân nhập Lý do từ chối nhận hàng tại quầy.
+        /// - KẾT QUẢ: Chuyển trạng thái sang "PhysicalRejected", nhập lý do từ chối và thông báo trực tiếp cho khách hàng.
+        /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RejectPhysicalReturn(int id, string rejectReason)

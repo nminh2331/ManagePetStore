@@ -64,14 +64,16 @@ public class OrderController : Controller
     }
 
 
-    //Action Approve
-
-
-        [HttpPost]
+    /// <summary>
+    /// LUỒNG MANAGE ORDERS & UPDATE ORDER STATUS: PHÊ DUYỆT ĐƠN HÀNG (Manager)
+    /// - RÀNG BUỘC: Manager chỉ được phê duyệt khi đơn ở trạng thái "Chờ xử lý" (IsPending).
+    /// - KẾT QUẢ: Chuyển trạng thái đơn sang "Đã duyệt" (Approved) để tiếp tục luồng đóng gói và giao hàng.
+    /// </summary>
+    [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(string orderId, string? searchTerm, string statusFilter = "all", int page = 1)
     {
-        var order = await _context.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);  //Tìm đơn theo OrderId.
+        var order = await _context.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
         if (order == null)
         {
             TempData["ErrorMessage"] = "Không tìm thấy đơn hàng.";
@@ -90,13 +92,17 @@ public class OrderController : Controller
         return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
     }
 
+    /// <summary>
+    /// LUỒNG MANAGE ORDERS & UPDATE ORDER STATUS: TỪ CHỐI / HỦY ĐƠN HÀNG (Manager)
+    /// - VALIDATION: Bắt buộc nhập lý do từ chối.
+    /// - RÀNG BUỘC: Chỉ từ chối được đơn hàng ở trạng thái "Chờ xử lý" (IsPending).
+    /// - KẾT QUẢ: Chuyển trạng thái sang "Đã từ chối" (Rejected), lưu lý do và tên Manager thực hiện.
+    /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Cancel(string orderId, string cancelReason, string? searchTerm, string statusFilter = "all", int page = 1)
     {
-        if (string.IsNullOrWhiteSpace(cancelReason))  //Kiểm tra lý do từ chối
-
-
+        if (string.IsNullOrWhiteSpace(cancelReason))
         {
             TempData["ErrorMessage"] = "Vui lòng nhập lý do từ chối đơn hàng.";
             return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
@@ -115,7 +121,7 @@ public class OrderController : Controller
             return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
         }
 
-        var managerName = User.FindFirst("FullName")?.Value  //Lấy tên manager đang thao tác
+        var managerName = User.FindFirst("FullName")?.Value
             ?? User.FindFirst(ClaimTypes.Name)?.Value
             ?? "Quản lý";
 
@@ -130,6 +136,12 @@ public class OrderController : Controller
         return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
     }
 
+    /// <summary>
+    /// LUỒNG MANAGE ORDERS & UPDATE ORDER STATUS: BẤM "GIAO HÀNG" (Shipped) BỞI MANAGER
+    /// - RÀNG BUỘC: Đơn hàng phải đang ở trạng thái "Đã duyệt" (Approved) mới được bấm Giao hàng.
+    /// - KẾT QUẢ: Đơn hàng chuyển sang trạng thái "Đang giao" (Delivering).
+    /// - HIỆU ỨNG TƯƠNG TÁC: Khi đơn ở trạng thái Đang giao, phía Khách hàng (Customer) khi xem Chi tiết đơn hàng sẽ xuất hiện Nút "ĐÃ NHẬN HÀNG" (Confirm Received) để khách bấm hoàn tất đơn.
+    /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Ship(string orderId, string? searchTerm, string statusFilter = "all", int page = 1)

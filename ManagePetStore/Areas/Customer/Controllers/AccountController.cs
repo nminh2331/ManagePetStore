@@ -513,7 +513,10 @@ namespace ManagePetStore.Areas.Customer.Controllers
         }
 
         // =========================================================================
-        // 3. QUÊN MẬT KHẨU (FORGOT PASSWORD)
+        // 3. LUỒNG RESET PASSWORD: QUÊN VÀ ĐẶT LẠI MẬT KHẨU KHÁCH HÀNG
+        // - BƯỚC 1: Khách nhập Email -> Kiểm tra Email tồn tại và tài khoản ở trạng thái Active -> Gửi mã OTP qua Email.
+        // - BƯỚC 2: Khách nhập mã OTP -> Kiểm tra mã OTP đúng và chưa hết hạn (trong 15 phút).
+        // - BƯỚC 3: Khách nhập mật khẩu mới -> Validate độ mạnh mật khẩu -> Cập nhật mật khẩu mã hóa BCrypt vào Database.
         // =========================================================================
         [HttpGet]
         public IActionResult ForgotPassword()
@@ -526,6 +529,11 @@ namespace ManagePetStore.Areas.Customer.Controllers
             return View(new ForgotPasswordViewModel());
         }
 
+        /// <summary>
+        /// LUỒNG RESET PASSWORD: Bước 1 - Gửi mã OTP khôi phục mật khẩu đến Email
+        /// - VALIDATION 1: Kiểm tra Email không được trống & đúng định dạng.
+        /// - VALIDATION 2: Kiểm tra Email có tồn tại trong hệ thống và tài khoản không bị khóa (Status == Active).
+        /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ForgotPassword(string email)
