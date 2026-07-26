@@ -5,9 +5,7 @@
     var scheduledCheckOut = Model.ScheduledCheckOutDate ?? Model.CheckOutDate ?? scheduledCheckIn.AddDays(Math.Max(Model.StayDays, 1));
     var showTimeline = ViewData["ShowHotelTimeline"] as bool? ?? true;
     var roomServiceProfile = ManagePetStore.Models.HotelRoomTypeCatalog.GetServiceProfile(Model.RoomTypeCode);
-    string FormatScheduledDateTime(DateTime value) => value.TimeOfDay == TimeSpan.Zero
-        ? value.ToString("dd/MM/yyyy")
-        : value.ToString("dd/MM/yyyy HH:mm");
+    string FormatScheduledDateTime(DateTime value) => value.ToString("dd/MM/yyyy HH:mm");
 }
 
 <div class="hbh-summary-band">
