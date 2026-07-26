@@ -1,8 +1,10 @@
 using System.Data;
 using ManagePetStore.Areas.ServiceStaff.Models;
 using ManagePetStore.Exceptions;
+using ManagePetStore.Hubs;
 using ManagePetStore.Models;
 using ManagePetStore.Services.Warehouse;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace ManagePetStore.Services.Hotel;
@@ -15,6 +17,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
     private readonly IHotelAvailabilityService _availabilityService;
     private readonly IInventoryBatchService _inventoryBatchService;
     private readonly IHotelEmailService _hotelEmailService;
+    private readonly IHubContext<HotelCareHub> _hotelCareHub;
     private readonly ILogger<HotelReceptionService> _logger;
 
     // [nam] Khởi tạo service tiếp nhận pet cùng các thành phần kiểm tra chuồng, kho và email.
@@ -23,12 +26,14 @@ public sealed class HotelReceptionService : IHotelReceptionService
         IHotelAvailabilityService availabilityService,
         IInventoryBatchService inventoryBatchService,
         IHotelEmailService hotelEmailService,
+        IHubContext<HotelCareHub> hotelCareHub,
         ILogger<HotelReceptionService> logger)
     {
         _context = context;
         _availabilityService = availabilityService;
         _inventoryBatchService = inventoryBatchService;
         _hotelEmailService = hotelEmailService;
+        _hotelCareHub = hotelCareHub;
         _logger = logger;
     }
 
@@ -42,6 +47,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
         string cageId = request.CageId.Trim().ToUpperInvariant();
         string healthNote = request.HealthNote?.Trim() ?? string.Empty;
         DateTime checkInDate = request.CheckInDate!.Value;
+        DateTime actualCheckInAt = DateTime.Now;
         DateTime? checkOutDate = request.CheckOutDate;
 
         await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -117,10 +123,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                         "Lịch đặt online không khớp với chủ nuôi hoặc thú cưng đã chọn.");
                 }
 
-                if (onlineReservation.CheckInDate.Date > DateTime.Today)
-                {
-                    return HotelCommandResult.Fail("Chưa đến ngày nhận của lịch đặt online này.");
-                }
+                // [nam] Tạm thời cho phép Staff tiếp nhận booking trước lịch dự kiến.
             }
 
             int excludedBookingId = onlineReservation?.HotelBookingId ?? 0;
@@ -211,6 +214,21 @@ public sealed class HotelReceptionService : IHotelReceptionService
                 baseFoodPricePerDay,
                 medicalRecord.Weight,
                 estimatedStayDays);
+            decimal reservedFoodPricePerDay = onlineReservation?.FoodPlan?.PricePerDaySnapshot ?? 0;
+            decimal? reservedFoodWeight = onlineReservation?.FoodPlan?.PetWeightSnapshot;
+            decimal reservedFoodMultiplier = onlineReservation?.FoodPlan?.PortionMultiplierSnapshot ?? 0;
+            bool foodPriceChanged = reservedFoodPricePerDay > 0 &&
+                reservedFoodPricePerDay != foodQuote.PricePerDay;
+            if (foodPriceChanged && !request.FoodPriceChangeConfirmed)
+            {
+                string reservedWeightText = reservedFoodWeight.HasValue
+                    ? $"{reservedFoodWeight:0.##}kg, hệ số {reservedFoodMultiplier:0.##}"
+                    : "cân nặng trong hồ sơ khi đặt";
+                return HotelCommandResult.Fail(
+                    $"Giá thức ăn thay đổi từ {reservedFoodPricePerDay:N0}đ/ngày ({reservedWeightText}) " +
+                    $"sang {foodQuote.PricePerDay:N0}đ/ngày theo sổ y tế {medicalRecord.Weight:0.##}kg, " +
+                    $"hệ số {foodQuote.PortionMultiplier:0.##}. Staff phải xác nhận mức giá mới trước khi tiếp nhận.");
+            }
 
             int currentBookingId = onlineReservation?.HotelBookingId ?? 0;
             int reservedFoodUnits = await _context.HotelBookingFoodPlans
@@ -241,7 +259,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                 onlineReservation.ScheduledCheckInDate ??= onlineReservation.CheckInDate;
                 onlineReservation.ScheduledCheckOutDate ??= onlineReservation.CheckOutDate;
                 onlineReservation.CheckInDate = checkInDate;
-                onlineReservation.ActualCheckInAt = checkInDate;
+                onlineReservation.ActualCheckInAt = actualCheckInAt;
                 onlineReservation.FinalAmount = Math.Max(0, subtotal - onlineReservation.Discount + foodTotal);
                 onlineReservation.Status = "Đang ở";
                 hotelBooking = onlineReservation;
@@ -260,7 +278,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                     CheckOutDate = checkOutDate,
                     ScheduledCheckInDate = checkInDate,
                     ScheduledCheckOutDate = checkOutDate,
-                    ActualCheckInAt = checkInDate,
+                    ActualCheckInAt = actualCheckInAt,
                     StayDays = estimatedStayDays,
                     BaseDailyPrice = dailyPrice,
                     Subtotal = subtotal,
@@ -323,6 +341,44 @@ public sealed class HotelReceptionService : IHotelReceptionService
             }
             foodPlan.InventoryQuantityDeducted = foodQuote.InventoryUnits;
 
+            CustomerNotification? foodPriceNotification = null;
+            if (foodPriceChanged)
+            {
+                decimal oldFoodTotal = reservedFoodPricePerDay * estimatedStayDays;
+                decimal newFoodTotal = foodQuote.TotalAmount;
+                string reservedWeightText = reservedFoodWeight.HasValue
+                    ? $"{reservedFoodWeight:0.##}kg, hệ số {reservedFoodMultiplier:0.##}"
+                    : "cân nặng trong hồ sơ khi đặt";
+                string adjustmentMessage =
+                    $"Khi tiếp nhận {pet.Name}, giá gói {foodPlan.FoodNameSnapshot} được xác nhận lại từ " +
+                    $"{reservedFoodPricePerDay:N0}đ/ngày ({reservedWeightText}) thành " +
+                    $"{foodQuote.PricePerDay:N0}đ/ngày theo cân nặng sổ y tế {medicalRecord.Weight:0.##}kg, " +
+                    $"hệ số {foodQuote.PortionMultiplier:0.##}. Tổng thức ăn dự kiến cho {estimatedStayDays} ngày " +
+                    $"thay đổi từ {oldFoodTotal:N0}đ thành {newFoodTotal:N0}đ.";
+
+                foodPriceNotification = new CustomerNotification
+                {
+                    CustomerId = customer.CustomerId,
+                    HotelBooking = hotelBooking,
+                    Type = "HotelFoodPriceAdjusted",
+                    Title = $"Điều chỉnh giá thức ăn của {pet.Name}",
+                    Message = adjustmentMessage,
+                    LinkUrl = $"/Customer/HotelBooking/Details/{hotelBooking.HotelBookingId}",
+                    IsRead = false,
+                    CreatedAt = DateTime.Now
+                };
+                _context.CustomerNotifications.Add(foodPriceNotification);
+                _context.PetBioTimelines.Add(new PetBioTimeline
+                {
+                    PetId = pet.PetId,
+                    HotelBooking = hotelBooking,
+                    Date = DateTime.Now,
+                    Title = "Điều chỉnh giá thức ăn khi tiếp nhận",
+                    Type = "HotelFoodPriceAdjusted",
+                    Description = adjustmentMessage + $" Nhân viên xác nhận: {staffName}."
+                });
+            }
+
             _context.PetBioTimelines.Add(new PetBioTimeline
             {
                 PetId = pet.PetId,
@@ -370,7 +426,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                 CageId = cage.CageId,
                 RoomTypeId = cage.RoomTypeId,
                 DailyPriceSnapshot = dailyPrice,
-                StartedAt = checkInDate,
+                StartedAt = actualCheckInAt,
                 StartReason = "CheckIn",
                 CreatedAt = DateTime.Now
             });
@@ -378,6 +434,32 @@ public sealed class HotelReceptionService : IHotelReceptionService
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
+
+            if (foodPriceNotification != null)
+            {
+                try
+                {
+                    await _hotelCareHub.Clients
+                        .Group(HotelCareHub.GroupName(customer.CustomerId))
+                        .SendAsync("HotelNotificationCreated", new
+                        {
+                            notificationId = foodPriceNotification.NotificationId,
+                            bookingId = hotelBooking.HotelBookingId,
+                            petName = pet.Name,
+                            title = foodPriceNotification.Title,
+                            message = foodPriceNotification.Message,
+                            occurredAt = foodPriceNotification.CreatedAt,
+                            linkUrl = foodPriceNotification.LinkUrl
+                        });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "Food price notification was saved but realtime delivery failed for customer {CustomerId}.",
+                        customer.CustomerId);
+                }
+            }
 
             await _hotelEmailService.SendCheckInAsync(
                 customer.Email,
@@ -388,8 +470,15 @@ public sealed class HotelReceptionService : IHotelReceptionService
                 checkInDate,
                 checkOutDate);
 
-            return HotelCommandResult.Ok(
-                $"Đã hoàn tất tiếp nhận lưu trú cho {pet.Name} tại chuồng {cageId}!");
+            string successMessage = $"Đã hoàn tất tiếp nhận lưu trú cho {pet.Name} tại chuồng {cageId}!";
+            if (foodPriceChanged)
+            {
+                successMessage +=
+                    $" Giá thức ăn đã được xác nhận từ {reservedFoodPricePerDay:N0}đ/ngày " +
+                    $"sang {foodQuote.PricePerDay:N0}đ/ngày và đã gửi thông báo trên web cho khách hàng.";
+            }
+
+            return HotelCommandResult.Ok(successMessage);
         }
         catch (ServiceException ex)
         {
@@ -435,10 +524,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                 return HotelCommandResult.Fail("Booking không còn ở trạng thái chờ tiếp nhận.");
             }
 
-            if (booking.CheckInDate.Date > DateTime.Today)
-            {
-                return HotelCommandResult.Fail("Chưa đến ngày nhận của booking này.");
-            }
+            // [nam] Tạm thời cho phép Staff xử lý booking trước lịch dự kiến.
 
             if (booking.CheckInAssessment != null)
             {

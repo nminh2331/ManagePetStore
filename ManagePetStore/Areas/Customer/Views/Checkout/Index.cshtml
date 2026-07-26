@@ -136,17 +136,6 @@
                         }
                     </div>
 
-                    <form asp-action="ApplyVoucher" method="post" class="checkout-voucher-form">
-                        @Html.AntiForgeryToken()
-                        <div class="checkout-voucher-wrap">
-                            <input type="text"
-                                   name="voucherCode"
-                                   placeholder="Mã giảm giá..."
-                                   value="@Model.Cart.AppliedVoucherCode" />
-                            <button type="submit">Áp dụng</button>
-                        </div>
-                    </form>
-
                     <div class="cart-summary-row">
                         <span>Tạm tính</span>
                         <span>@Model.Cart.Subtotal.ToString("N0")đ</span>

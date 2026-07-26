@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/homepage.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/customer-notifications.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/datetime24.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/lib/cropper/cropper.min.css" asp-append-version="true" />
     <style>
         /* CSS cho phần Live Search Suggestions */
         .ps-search { position: relative; }
@@ -227,6 +229,7 @@
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/datetime24.js" asp-append-version="true"></script>
     <script src="~/js/homepage.js" asp-append-version="true"></script>
     <script src="~/js/customer-notifications.js" asp-append-version="true"></script>
     
@@ -313,6 +316,8 @@
             });
         });
     </script>
+    <script src="~/lib/cropper/cropper.min.js" asp-append-version="true"></script>
+    <script src="~/js/image-cropper.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

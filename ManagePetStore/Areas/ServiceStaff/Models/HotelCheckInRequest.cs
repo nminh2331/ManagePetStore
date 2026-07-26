@@ -28,6 +28,8 @@ public sealed class HotelCheckInRequest : IValidatableObject
 
     public bool HealthCheckConfirmed { get; set; }
 
+    public bool FoodPriceChangeConfirmed { get; set; }
+
     public int? RoomTypeId { get; set; }
 
     [StringLength(20, ErrorMessage = "Mã chuồng không được vượt quá 20 ký tự.")]
@@ -142,11 +144,6 @@ public sealed class HotelCheckInRequest : IValidatableObject
             }
         }
 
-        if (CheckInDate.HasValue && CheckInDate.Value > DateTime.Now)
-        {
-            yield return new ValidationResult(
-                "Ngày nhận chuồng không được sau thời điểm hiện tại.",
-                new[] { nameof(CheckInDate) });
-        }
+        // [nam] Tạm thời cho phép tiếp nhận trước lịch dự kiến; kiểm tra trùng lịch vẫn thực hiện tại service.
     }
 }

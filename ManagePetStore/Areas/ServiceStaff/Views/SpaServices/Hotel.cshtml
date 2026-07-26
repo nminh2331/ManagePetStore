@@ -1510,8 +1510,8 @@
                 @foreach (var b in onlineBookings)
                 {
                     bool hasMedicalRecord = petIdsWithMedicalRecords.Contains(b.PetId);
-                    bool isReceptionDateReached = b.CheckInDate.Date <= DateTime.Today;
-                    bool canReceiveBooking = isReceptionDateReached;
+                    // [nam] Tạm thời cho phép tiếp nhận booking trước lịch dự kiến.
+                    bool canReceiveBooking = true;
                     string expectedCheckOutValue = b.CheckOutDate.HasValue
                         ? b.CheckOutDate.Value.ToString("yyyy-MM-ddTHH:mm")
                         : string.Empty;
@@ -1527,7 +1527,7 @@
                                 <span style="font-size:0.72rem; color:#9E918B; font-weight:500;"> · @b.Pet?.Species</span>
                             </p>
                             <p class="booking-pet-meta">
-                                Chủ: @b.Customer?.FullName · Nhận: @b.CheckInDate.ToString("dd/MM/yyyy")
+                                Chủ: @b.Customer?.FullName · Nhận: @b.CheckInDate.ToString("dd/MM/yyyy HH:mm")
                             </p>
                             <span class="booking-health-tag" style="background:#EFF6FF; color:#2563EB;">
                                 ĐÃ ĐẶT ONLINE
@@ -1553,11 +1553,16 @@
                                     data-cage-id="@b.CageId"
                                     data-check-out="@expectedCheckOutValue"
                                     data-food-option-id="@(b.FoodPlan?.ProductSku ?? "")"
+                                    data-food-name="@(b.FoodPlan?.FoodNameSnapshot ?? "")"
+                                    data-food-base-price="@(b.FoodPlan?.BasePricePerDaySnapshot.ToString("0.##", CultureInfo.InvariantCulture) ?? "")"
+                                    data-food-price-per-day="@(b.FoodPlan?.PricePerDaySnapshot.ToString("0.##", CultureInfo.InvariantCulture) ?? "")"
+                                    data-food-weight="@(b.FoodPlan?.PetWeightSnapshot?.ToString("0.##", CultureInfo.InvariantCulture) ?? "")"
+                                    data-food-multiplier="@(b.FoodPlan?.PortionMultiplierSnapshot.ToString("0.##", CultureInfo.InvariantCulture) ?? "")"
                                     onclick="startOnlineReception(this)"
                                     disabled="@(!canReceiveBooking ? "disabled" : null)"
-                                    title="@(canReceiveBooking ? (hasMedicalRecord ? "Tiếp nhận bằng sổ y tế hiện có" : "Tiếp nhận và tạo sổ y tế trước khi vào chuồng") : "Chưa đến ngày nhận")">
+                                    title="@(hasMedicalRecord ? "Tiếp nhận bằng sổ y tế hiện có" : "Tiếp nhận và tạo sổ y tế trước khi vào chuồng")">
                                 <i class="fa-solid fa-clipboard-check" style="margin-right:4px;"></i>
-                                @(canReceiveBooking ? (hasMedicalRecord ? "Tiếp nhận" : "Tiếp nhận · cần tạo sổ") : "Chưa đến ngày")
+                                @(hasMedicalRecord ? "Tiếp nhận" : "Tiếp nhận · cần tạo sổ")
                             </button>
                             <button type="button"
                                     class="btn-cancel-reception-sm"
@@ -1618,7 +1623,7 @@
                                 <span style="font-size:0.72rem; color:#9E918B; font-weight:500;"> · @b.Pet?.Species</span>
                             </p>
                             <p class="booking-pet-meta">
-                                Chủ: @b.Customer?.FullName &nbsp;·&nbsp; Nhận: @b.CheckInDate.ToString("dd/MM/yyyy")
+                                Chủ: @b.Customer?.FullName &nbsp;·&nbsp; Nhận: @b.CheckInDate.ToString("dd/MM/yyyy HH:mm")
                             </p>
                             @if (hasPathology)
                             {
@@ -2197,6 +2202,26 @@
                             <span id="pricePreviewValue" style="font-size:1.1rem; font-weight:800; color:#FF7815;"></span>
                         </div>
                         <p style="font-size:0.72rem; color:#9E918B; margin:4px 0 0 0;" id="pricePreviewDetail"></p>
+                    </div>
+
+                    <div id="foodPriceChangeConfirmation" hidden
+                         style="background:#FFF7E6; border:1px solid #F4BE72; border-radius:8px; padding:14px 16px; margin-top:12px; color:#65420C;">
+                        <div style="display:flex; gap:9px; align-items:flex-start;">
+                            <i class="fa-solid fa-triangle-exclamation" style="margin-top:3px; color:#D97706;"></i>
+                            <div>
+                                <strong style="display:block; font-size:.82rem;">Giá thức ăn thay đổi khi tiếp nhận</strong>
+                                <p id="foodPriceChangeDetail" style="font-size:.75rem; line-height:1.5; margin:4px 0 10px;"></p>
+                                <label for="ci-foodPriceChangeConfirmed"
+                                       style="display:flex; gap:8px; align-items:flex-start; font-size:.76rem; font-weight:700; cursor:pointer;">
+                                    <input type="checkbox"
+                                           id="ci-foodPriceChangeConfirmed"
+                                           name="foodPriceChangeConfirmed"
+                                           value="true"
+                                           style="margin-top:3px;">
+                                    <span>Tôi xác nhận áp dụng mức giá mới. Hệ thống sẽ thông báo thay đổi này trên web của khách hàng.</span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
 
                     </section>
@@ -2819,6 +2844,12 @@ let pendingReceptionPetId = '';
 let pendingFoodOptionId = '';
 let selectedReceptionSpecies = '';
 let selectedReceptionWeight = null;
+let reservedFoodSku = '';
+let reservedFoodName = '';
+let reservedFoodBasePrice = null;
+let reservedFoodPricePerDay = null;
+let reservedFoodWeight = null;
+let reservedFoodMultiplier = null;
 
 function hideMedicalRecordSummary() {
     const summary = document.getElementById('medicalRecordSummary');
@@ -2867,6 +2898,12 @@ function clearOnlineReceptionContext() {
     pendingFoodOptionId = '';
     selectedReceptionSpecies = '';
     selectedReceptionWeight = null;
+    reservedFoodSku = '';
+    reservedFoodName = '';
+    reservedFoodBasePrice = null;
+    reservedFoodPricePerDay = null;
+    reservedFoodWeight = null;
+    reservedFoodMultiplier = null;
     document.getElementById('ci-hotelBookingId').value = '';
     document.getElementById('ci-phone').readOnly = false;
     const createMedicalRecordLink = document.getElementById('ci-createMedicalRecord');
@@ -2882,6 +2919,7 @@ function clearOnlineReceptionContext() {
     document.getElementById('checkInActionRow').hidden = true;
     document.getElementById('ci-cage').innerHTML = '<option value="">— Chọn loại chuồng trước —</option>';
     document.getElementById('pricePreview').style.display = 'none';
+    resetFoodPriceChangeConfirmation();
     hideMedicalRecordSummary();
     resetHealthCheckFields();
     filterFoodOptions('');
@@ -2890,9 +2928,10 @@ function clearOnlineReceptionContext() {
     const checkInInput = document.getElementById('ci-checkIn');
     const checkOutInput = document.getElementById('ci-checkOut');
     checkInInput.value = nowValue;
-    checkInInput.max = nowValue;
     checkOutInput.value = '';
     checkOutInput.min = nowValue;
+    window.DateTime24?.refresh(checkInInput);
+    window.DateTime24?.refresh(checkOutInput);
 
     setReceptionModeHint('Chọn “Dùng sổ y tế có sẵn” để bắt đầu.');
 }
@@ -2910,6 +2949,24 @@ function startOnlineReception(button) {
     const data = button.dataset;
     pendingReceptionPetId = data.petId || '';
     pendingFoodOptionId = data.foodOptionId || '';
+    reservedFoodSku = data.foodOptionId || '';
+    reservedFoodName = data.foodName || '';
+    const parsedReservedBasePrice = Number.parseFloat(data.foodBasePrice || '');
+    const parsedReservedPrice = Number.parseFloat(data.foodPricePerDay || '');
+    const parsedReservedWeight = Number.parseFloat(data.foodWeight || '');
+    const parsedReservedMultiplier = Number.parseFloat(data.foodMultiplier || '');
+    reservedFoodBasePrice = Number.isFinite(parsedReservedBasePrice) && parsedReservedBasePrice > 0
+        ? parsedReservedBasePrice
+        : null;
+    reservedFoodPricePerDay = Number.isFinite(parsedReservedPrice) && parsedReservedPrice > 0
+        ? parsedReservedPrice
+        : null;
+    reservedFoodWeight = Number.isFinite(parsedReservedWeight) && parsedReservedWeight > 0
+        ? parsedReservedWeight
+        : null;
+    reservedFoodMultiplier = Number.isFinite(parsedReservedMultiplier) && parsedReservedMultiplier > 0
+        ? parsedReservedMultiplier
+        : null;
 
     document.getElementById('ci-receptionSource').value = 'ExistingMedicalRecord';
     updateReceptionSource();
@@ -2925,6 +2982,8 @@ function startOnlineReception(button) {
     const nowValue = formatDateTimeLocal(new Date());
     document.getElementById('ci-checkIn').value = nowValue;
     document.getElementById('ci-checkOut').value = data.checkOut || '';
+    window.DateTime24?.refresh(document.getElementById('ci-checkIn'));
+    window.DateTime24?.refresh(document.getElementById('ci-checkOut'));
 
     if (data.roomTypeId) {
         document.getElementById('ci-roomType').value = data.roomTypeId;
@@ -3236,20 +3295,12 @@ function validateStayDates() {
     const checkOutInput = document.getElementById('ci-checkOut');
     const checkIn = checkInInput.value;
     const checkOut = checkOutInput.value;
-    const now = new Date();
 
     checkInInput.setCustomValidity('');
     checkOutInput.setCustomValidity('');
-    checkInInput.max = formatDateTimeLocal(now);
+    checkInInput.removeAttribute('max');
     if (checkIn) {
         checkOutInput.min = checkIn;
-    }
-
-    if (checkIn) {
-        const checkInDate = new Date(checkIn);
-        if (checkInDate > now) {
-            checkInInput.setCustomValidity('Ngày nhận chuồng không được sau thời điểm hiện tại.');
-        }
     }
 
     if (checkIn && checkOut) {
@@ -3278,6 +3329,15 @@ document.getElementById('checkInForm').addEventListener('submit', event => {
         event.preventDefault();
         setReceptionModeHint('Vui lòng tìm và chọn một sổ y tế khả dụng.', 'error');
         document.getElementById('ci-medicalRecord').focus();
+        return;
+    }
+
+    const foodPricePanel = document.getElementById('foodPriceChangeConfirmation');
+    const foodPriceConfirmation = document.getElementById('ci-foodPriceChangeConfirmed');
+    if (healthStatus !== 'Rejected' && !foodPricePanel.hidden && !foodPriceConfirmation.checked) {
+        event.preventDefault();
+        setReceptionModeHint('Giá thức ăn đã thay đổi. Staff phải xác nhận mức giá mới trước khi tiếp nhận.', 'error');
+        foodPriceConfirmation.focus();
         return;
     }
 
@@ -3331,6 +3391,65 @@ function resolveHotelFoodWeightMultiplier(weight) {
     return 1.8;
 }
 
+// [nam] Đưa phần xác nhận giá thức ăn về trạng thái mặc định.
+function resetFoodPriceChangeConfirmation() {
+    const panel = document.getElementById('foodPriceChangeConfirmation');
+    const checkbox = document.getElementById('ci-foodPriceChangeConfirmed');
+    panel.hidden = true;
+    panel.removeAttribute('data-price-signature');
+    checkbox.checked = false;
+    checkbox.required = false;
+    checkbox.setCustomValidity('');
+}
+
+// [nam] Yêu cầu Staff xác nhận nếu giá thức ăn lúc tiếp nhận khác giá tạm tính khi đặt online.
+function updateFoodPriceChangeConfirmation(foodOption, foodPricePerDay, stayDays) {
+    const panel = document.getElementById('foodPriceChangeConfirmation');
+    const detail = document.getElementById('foodPriceChangeDetail');
+    const checkbox = document.getElementById('ci-foodPriceChangeConfirmed');
+    const hasPriceChange = Boolean(foodOption?.value)
+        && Number.isFinite(reservedFoodPricePerDay)
+        && reservedFoodPricePerDay > 0
+        && foodPricePerDay > 0
+        && foodPricePerDay !== reservedFoodPricePerDay;
+
+    if (!hasPriceChange) {
+        resetFoodPriceChangeConfirmation();
+        return;
+    }
+
+    const signature = [
+        reservedFoodPricePerDay,
+        foodPricePerDay,
+        stayDays,
+        selectedReceptionWeight,
+        foodOption.value
+    ].join('|');
+    if (panel.dataset.priceSignature !== signature) {
+        checkbox.checked = false;
+    }
+
+    const oldWeightText = reservedFoodWeight
+        ? `${reservedFoodWeight.toLocaleString('vi-VN')}kg, hệ số ${(reservedFoodMultiplier || 1).toLocaleString('vi-VN')}`
+        : 'cân nặng trong hồ sơ khi đặt';
+    const newMultiplier = resolveHotelFoodWeightMultiplier(selectedReceptionWeight);
+    const oldTotal = reservedFoodPricePerDay * stayDays;
+    const newTotal = foodPricePerDay * stayDays;
+    const difference = newTotal - oldTotal;
+    const selectedFoodName = foodOption.textContent.split('·')[0].trim();
+
+    detail.textContent =
+        `${reservedFoodName || selectedFoodName}: ${reservedFoodPricePerDay.toLocaleString('vi-VN')}đ/ngày ` +
+        `(${oldWeightText}) → ${foodPricePerDay.toLocaleString('vi-VN')}đ/ngày ` +
+        `(sổ y tế ${selectedReceptionWeight.toLocaleString('vi-VN')}kg, hệ số ${newMultiplier.toLocaleString('vi-VN')}). ` +
+        `Tổng ${stayDays} ngày thay đổi từ ${oldTotal.toLocaleString('vi-VN')}đ thành ${newTotal.toLocaleString('vi-VN')}đ ` +
+        `(${difference >= 0 ? '+' : ''}${difference.toLocaleString('vi-VN')}đ).`;
+    panel.dataset.priceSignature = signature;
+    panel.hidden = false;
+    checkbox.required = true;
+    checkbox.setCustomValidity(checkbox.checked ? '' : 'Staff phải xác nhận mức giá thức ăn mới.');
+}
+
 function calcStay() {
     const checkIn = document.getElementById('ci-checkIn').value;
     const checkOut = document.getElementById('ci-checkOut').value;
@@ -3341,6 +3460,7 @@ function calcStay() {
 
     if (!checkIn || !checkOut || !roomSel.value) {
         pricePreview.style.display = 'none';
+        resetFoodPriceChangeConfirmation();
         return;
     }
 
@@ -3348,7 +3468,10 @@ function calcStay() {
     const dailyPrice = parseFloat(opt?.dataset?.price || '0');
     const foodSelect = document.getElementById('ci-foodOption');
     const foodOption = foodSelect.options[foodSelect.selectedIndex];
-    const foodBasePrice = parseFloat(foodOption?.dataset?.price || '0');
+    const productBasePrice = parseFloat(foodOption?.dataset?.price || '0');
+    const foodBasePrice = foodOption?.value === reservedFoodSku && reservedFoodBasePrice
+        ? reservedFoodBasePrice
+        : productBasePrice;
     const foodMultiplier = resolveHotelFoodWeightMultiplier(selectedReceptionWeight);
     const foodPrice = foodBasePrice > 0
         ? Math.ceil((foodBasePrice * foodMultiplier) / 1000) * 1000
@@ -3357,6 +3480,7 @@ function calcStay() {
     const d2 = new Date(checkOut);
     if (!validateStayDates() || d2 < d1) {
         pricePreview.style.display = 'none';
+        resetFoodPriceChangeConfirmation();
         return;
     }
 
@@ -3370,6 +3494,7 @@ function calcStay() {
     priceDet.textContent = `${diffDays} ngày × phòng ${dailyPrice.toLocaleString('vi-VN')}đ`
         + ` + thức ăn ${foodPrice.toLocaleString('vi-VN')}đ/ngày`
         + ` (pet ${selectedReceptionWeight?.toLocaleString('vi-VN') || '—'}kg, hệ số ${foodMultiplier.toLocaleString('vi-VN')}, ${inventoryUnits} suất chuẩn)`;
+    updateFoodPriceChangeConfirmation(foodOption, foodPrice, diffDays);
     pricePreview.style.display = 'block';
 }
 
@@ -3378,13 +3503,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const checkInInput = document.getElementById('ci-checkIn');
     const checkOutInput = document.getElementById('ci-checkOut');
     const nowValue = formatDateTimeLocal(new Date());
-    checkInInput.max = nowValue;
     if (!checkInInput.value || new Date(checkInInput.value) > new Date()) {
         checkInInput.value = nowValue;
     }
     checkOutInput.min = checkInInput.value;
     checkInInput.addEventListener('input', calcStay);
     checkOutInput.addEventListener('input', calcStay);
+    document.getElementById('ci-foodPriceChangeConfirmed').addEventListener('change', event => {
+        const panel = document.getElementById('foodPriceChangeConfirmation');
+        event.currentTarget.setCustomValidity(
+            !panel.hidden && !event.currentTarget.checked
+                ? 'Staff phải xác nhận mức giá thức ăn mới.'
+                : '');
+    });
     validateStayDates();
 });
 

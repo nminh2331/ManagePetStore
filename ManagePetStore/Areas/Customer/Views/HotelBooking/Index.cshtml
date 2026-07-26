@@ -6,9 +6,7 @@
 
     var showingFrom = Model.TotalFilteredItems == 0 ? 0 : ((Model.Page - 1) * Model.PageSize) + 1;
     var showingTo = Math.Min(Model.Page * Model.PageSize, Model.TotalFilteredItems);
-    string FormatBookingDateTime(DateTime value) => value.TimeOfDay == TimeSpan.Zero
-        ? value.ToString("dd/MM/yyyy")
-        : value.ToString("dd/MM/yyyy HH:mm");
+    string FormatBookingDateTime(DateTime value) => value.ToString("dd/MM/yyyy HH:mm");
 }
 
 @section Styles {

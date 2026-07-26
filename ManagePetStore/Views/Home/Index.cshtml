@@ -94,7 +94,11 @@ else
                 {
                     bool isHidden = productIndex >= 4;
                     <a asp-controller="Product" asp-action="Details" asp-route-id="@product.Sku" class="ps-product-card bs-item" style="@(isHidden ? "display:none;" : "")" data-index="@productIndex">
-                        @if (!string.IsNullOrEmpty(product.Badge))
+                        @if (!product.InStock)
+                        {
+                            <span class="ps-product-badge" style="background: #ef4444; color: white;">HẾT HÀNG</span>
+                        }
+                        else if (!string.IsNullOrEmpty(product.Badge))
                         {
                             <span class="ps-product-badge @product.BadgeType">@product.Badge</span>
                         }
@@ -120,6 +124,10 @@ else
                                 @if (product.InStock)
                                 {
                                     <span class="ps-product-stock">SẴN CÓ</span>
+                                }
+                                else
+                                {
+                                    <span class="ps-product-stock" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">HẾT HÀNG</span>
                                 }
                             </div>
                         </div>

@@ -107,9 +107,9 @@ public class CartService : ICartService
             return (false, "Không tìm thấy sản phẩm.");
         }
 
-        if (!product.InStock)
+        if (!product.InStock || product.Stock <= 0)
         {
-            return (false, "Sản phẩm đã hết hàng.");
+            return (false, "sản phẩm đã hết hàng , vui lòng chọn sản phẩm khác");
         }
 
         var items = GetCartItems();
