@@ -113,6 +113,16 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 .OrderByDescending(s => s.ServiceId)
                 .Skip((currentPage - 1) * pageSize)
                 .Take(pageSize)
+                //.Select(s => new SpaService
+                // {
+                //     ServiceId = s.ServiceId,         // <-- BẮT BUỘC (Để hiển thị Mã SVC & dùng cho nút Sửa/Xóa)
+                //     Name = s.Name,                   // <-- BẮT BUỘC (Để hiển thị Tên dịch vụ)
+                //     TargetSpecies = s.TargetSpecies, // Loại thú cưng (Chó, Mèo,...)
+                //     DurationMinutes = s.DurationMinutes, // Thời lượng (phút)
+                //     Price = s.Price,                 // Đơn giá (đ)
+                //     Active = s.Active,
+                //    ImageUrls = s.ImageUrls     // Trạng thái áp dụng (Bật/Tắt)
+                //})
                 .ToListAsync();
             
             ViewBag.Services = services;
