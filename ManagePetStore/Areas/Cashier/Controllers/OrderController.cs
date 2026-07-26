@@ -749,7 +749,9 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             }
 
             dto.TotalAmount = dto.Items.Sum(item => item.Price * item.Quantity);
-            decimal discount = dto.VoucherDiscount + (dto.PointsUsed * 500);
+            // Tính tỷ lệ quy đổi điểm theo Hạng thành viên hiện tại của khách (VIP: 3k, Vàng: 1.5k, Bạc: 1k, Đồng: 700đ, Thành viên: 500đ)
+            decimal pointRate = ManagePetStore.Services.Customer.CustomerRewardHelper.GetPointRateByTier(customer.MembershipTier);
+            decimal discount = dto.VoucherDiscount + (dto.PointsUsed * pointRate);
             decimal totalAmount = dto.TotalAmount - discount;
             if (totalAmount < 0) totalAmount = 0;
             if (dto.PaymentMethod == "Thanh toán online" && dto.OnlineAmount != totalAmount)
