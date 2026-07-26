@@ -43,6 +43,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
         int? staffUserId,
         string staffName)
     {
+        // [nam][Flow] Chuẩn hóa dữ liệu định danh; ActualCheckInAt luôn lấy từ server, không tin thời gian phía client.
         string customerPhone = DigitsOnly(request.CustomerPhone);
         string cageId = request.CageId.Trim().ToUpperInvariant();
         string healthNote = request.HealthNote?.Trim() ?? string.Empty;
@@ -50,9 +51,11 @@ public sealed class HotelReceptionService : IHotelReceptionService
         DateTime actualCheckInAt = DateTime.Now;
         DateTime? checkOutDate = request.CheckOutDate;
 
+        // [nam][BR] Khóa transaction ở mức Serializable để kết quả kiểm tra chuồng và tồn kho không bị thay đổi giữa chừng.
         await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         try
         {
+            // [nam][Validate] Chuồng phải tồn tại, đang trống và thuộc đúng loại chuồng còn hoạt động.
             var cage = await _context.Cages
                 .Include(item => item.RoomType)
                 .FirstOrDefaultAsync(item => item.CageId == cageId);
@@ -71,6 +74,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                 return HotelCommandResult.Fail("Chuồng đã chọn không thuộc loại chuồng đang hoạt động.");
             }
 
+            // [nam][Validate] Mỗi sổ y tế chỉ được gắn một lượt lưu trú và phải có cân nặng hợp lệ.
             var medicalRecord = await _context.MedicalRecords
                 .Include(record => record.Pet)
                     .ThenInclude(pet => pet.Customer)
@@ -91,6 +95,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                     "Sổ y tế chưa có cân nặng hợp lệ. Vui lòng cập nhật sổ trước khi tiếp nhận vào chuồng.");
             }
 
+            // [nam][Validate] SĐT được đối chiếu với chủ của pet trong sổ y tế để tránh tiếp nhận nhầm pet trùng tên.
             var pet = medicalRecord.Pet;
             var customer = pet.Customer;
             if (!string.Equals(DigitsOnly(customer.Phone), customerPhone, StringComparison.Ordinal))
@@ -103,6 +108,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                 return HotelCommandResult.Fail("Hồ sơ thú cưng đã chọn không còn hoạt động.");
             }
 
+            // [nam][Flow] Có HotelBookingId thì nối vào booking online; không có thì tạo lượt gửi trực tiếp tại quầy.
             HotelBooking? onlineReservation = null;
             if (request.HotelBookingId.HasValue)
             {
@@ -126,6 +132,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                 // [nam] Tạm thời cho phép Staff tiếp nhận booking trước lịch dự kiến.
             }
 
+            // [nam][BR] Một pet chỉ có một booking chặn tại một thời điểm; loại chính booking online đang tiếp nhận khỏi phép kiểm tra.
             int excludedBookingId = onlineReservation?.HotelBookingId ?? 0;
             bool petHasBlockingBooking = await _context.HotelBookings.AnyAsync(booking =>
                 booking.PetId == pet.PetId &&
@@ -150,6 +157,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                 checkOutDate = onlineReservation.CheckOutDate;
             }
 
+            // [nam][Validate] Gói ăn phải thuộc danh mục Hotel, đúng đơn vị ngày, đúng loài và có giá hợp lệ.
             string foodProductSku = request.FoodProductSku.Trim();
             var foodProduct = await _context.Products
                 .AsNoTracking()
@@ -176,6 +184,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                 return HotelCommandResult.Fail("Gói thức ăn chưa có giá bán hợp lệ.");
             }
 
+            // [nam][BR] Kiểm tra lại trùng lịch pet và chuồng ngay trước khi ghi, kể cả giao diện đã kiểm tra trước đó.
             if (await _availabilityService.HasPetConflictAsync(
                     pet.PetId,
                     checkInDate,
@@ -196,6 +205,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                     $"Chuồng {cageId} đã được giữ cho một lịch lưu trú khác trong khoảng thời gian này.");
             }
 
+            // [nam][BR] Booking online giữ snapshot giá phòng; gửi trực tiếp dùng bảng giá đang hiệu lực tại lúc tiếp nhận.
             int estimatedStayDays = HotelPricingPolicy.CalculateStayDays(
                 checkInDate,
                 checkOutDate ?? checkInDate.AddDays(1));
@@ -217,6 +227,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
             decimal reservedFoodPricePerDay = onlineReservation?.FoodPlan?.PricePerDaySnapshot ?? 0;
             decimal? reservedFoodWeight = onlineReservation?.FoodPlan?.PetWeightSnapshot;
             decimal reservedFoodMultiplier = onlineReservation?.FoodPlan?.PortionMultiplierSnapshot ?? 0;
+            // [nam][BR] Cân nặng sổ y tế là dữ liệu chốt; nếu làm đổi giá gói ăn, Staff phải xác nhận rõ trước khi tiếp nhận.
             bool foodPriceChanged = reservedFoodPricePerDay > 0 &&
                 reservedFoodPricePerDay != foodQuote.PricePerDay;
             if (foodPriceChanged && !request.FoodPriceChangeConfirmed)
@@ -230,6 +241,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                     $"hệ số {foodQuote.PortionMultiplier:0.##}. Staff phải xác nhận mức giá mới trước khi tiếp nhận.");
             }
 
+            // [nam][Validate] Cộng lại phần kho booking hiện tại đã giữ rồi trừ các reservation khác để tránh báo thiếu giả.
             int currentBookingId = onlineReservation?.HotelBookingId ?? 0;
             int reservedFoodUnits = await _context.HotelBookingFoodPlans
                 .Where(plan =>
@@ -253,6 +265,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
 
             decimal foodPricePerDay = foodQuote.PricePerDay;
             decimal foodTotal = foodQuote.TotalAmount;
+            // [nam][Flow] Booking online được chuyển trạng thái; lượt trực tiếp tạo booking mới và vẫn đi qua cùng luồng checkout.
             HotelBooking hotelBooking;
             if (onlineReservation != null)
             {
@@ -301,6 +314,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                 _context.HotelBookingFoodPlans.Add(foodPlan);
             }
 
+            // [nam][Flow] Đổi gói ăn thì hoàn gói cũ trước, sau đó đối soát đúng phần chênh lệch của gói mới.
             string? previousFoodProductSku = foodPlan.ProductSku;
             int previousInventoryQuantity = foodPlan.InventoryQuantityDeducted;
             if (previousInventoryQuantity > 0 &&
@@ -341,6 +355,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
             }
             foodPlan.InventoryQuantityDeducted = foodQuote.InventoryUnits;
 
+            // [nam][Flow] Mọi thay đổi giá do cân nặng được lưu đồng thời vào notification và timeline để có thể đối soát.
             CustomerNotification? foodPriceNotification = null;
             if (foodPriceChanged)
             {
@@ -408,6 +423,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                     staffName)
             });
 
+            // [nam][Flow] Lưu kết quả sức khỏe và mở phân đoạn ở chuồng trước khi đổi chuồng sang trạng thái đang dùng.
             _context.HotelCheckInAssessments.Add(new HotelCheckInAssessment
             {
                 HotelBooking = hotelBooking,
@@ -432,6 +448,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
             });
             cage.Status = "Đang dùng";
 
+            // [nam][Flow] Chỉ phát realtime/email sau khi toàn bộ booking, kho, chuồng và lịch sử đã commit thành công.
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
@@ -508,6 +525,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
         int? staffUserId,
         string staffName)
     {
+        // [nam][BR] Từ chối là một lệnh nguyên tử: lưu đánh giá, đổi trạng thái và hoàn kho phải cùng thành công hoặc cùng rollback.
         await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         try
         {
@@ -526,11 +544,13 @@ public sealed class HotelReceptionService : IHotelReceptionService
 
             // [nam] Tạm thời cho phép Staff xử lý booking trước lịch dự kiến.
 
+            // [nam][BR] Mỗi booking chỉ có một kết luận kiểm tra đầu vào để tránh Staff xử lý lặp.
             if (booking.CheckInAssessment != null)
             {
                 return HotelCommandResult.Fail("Booking này đã có kết luận kiểm tra sức khỏe.");
             }
 
+            // [nam][Validate] Sổ từ chối vẫn phải đúng pet, chưa dùng và có cân nặng hợp lệ.
             var medicalRecord = await _context.MedicalRecords
                 .FirstOrDefaultAsync(record =>
                     record.RecordId == request.MedicalRecordId!.Value &&
@@ -551,6 +571,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                 return HotelCommandResult.Fail("Số điện thoại không khớp với chủ của pet trong booking.");
             }
 
+            // [nam][Flow] Từ chối trước check-in phải giải phóng toàn bộ suất ăn đã giữ và chống hoàn kho lặp.
             if (booking.FoodPlan?.ProductSku != null && booking.FoodPlan.InventoryQuantityDeducted > 0)
             {
                 await _inventoryBatchService.RestockToBatches(

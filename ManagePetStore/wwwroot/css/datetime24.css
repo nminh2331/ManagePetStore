@@ -5,42 +5,157 @@
 }
 
 .datetime24-shell .datetime24-native {
+    position: absolute !important;
+    bottom: 0;
+    left: 0;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none;
+}
+
+.datetime24-trigger {
     width: 100%;
-    color: transparent !important;
-    caret-color: transparent;
-}
-
-.datetime24-shell .datetime24-native::-webkit-datetime-edit {
-    opacity: 0;
-}
-
-.datetime24-shell .datetime24-native::-webkit-calendar-picker-indicator {
-    position: relative;
-    z-index: 3;
-    opacity: 1;
+    padding-right: 44px !important;
+    color: inherit !important;
+    text-align: left;
     cursor: pointer;
 }
 
-.datetime24-display {
+.datetime24-trigger.datetime24-invalid {
+    border-color: #dc3545 !important;
+}
+
+.datetime24-icon {
     position: absolute;
     z-index: 2;
     top: 50%;
-    right: 46px;
-    left: 14px;
-    overflow: hidden;
-    color: inherit;
-    font: inherit;
-    line-height: 1.2;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    right: 14px;
+    width: 15px;
+    height: 15px;
+    border: 1.5px solid currentColor;
+    border-radius: 2px;
+    opacity: .65;
     pointer-events: none;
     transform: translateY(-50%);
 }
 
-.datetime24-display.is-placeholder {
-    color: #9e918b;
+.datetime24-icon::before {
+    position: absolute;
+    top: 3px;
+    right: 1px;
+    left: 1px;
+    border-top: 1.5px solid currentColor;
+    content: '';
 }
 
-.datetime24-native:disabled + .datetime24-display {
-    opacity: .65;
+.datetime24-picker {
+    position: absolute;
+    z-index: 1200;
+    top: calc(100% + 6px);
+    right: 0;
+    box-sizing: border-box;
+    width: min(330px, calc(100vw - 32px));
+    padding: 14px;
+    border: 1px solid #ded7d2;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 14px 36px rgba(45, 37, 33, .18);
+    color: #2d2521;
+    text-align: left;
+}
+
+.datetime24-picker.datetime24-align-left {
+    right: auto;
+    left: 0;
+}
+
+.datetime24-picker.datetime24-align-right {
+    right: 0;
+    left: auto;
+}
+
+.datetime24-picker[hidden] {
+    display: none;
+}
+
+.datetime24-date-field,
+.datetime24-time-field {
+    display: grid !important;
+    gap: 6px;
+    margin: 0 0 12px;
+}
+
+.datetime24-date-field > span,
+.datetime24-time-field > span {
+    color: #615650;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.datetime24-date,
+.datetime24-hour,
+.datetime24-minute {
+    box-sizing: border-box;
+    width: 100%;
+    height: 40px;
+    padding: 8px 10px;
+    border: 1px solid #d8d1cd !important;
+    border-radius: 5px !important;
+    background: #fff !important;
+    color: #2d2521 !important;
+    font: inherit;
+}
+
+.datetime24-time-selects {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 8px;
+    align-items: center;
+}
+
+.datetime24-time-selects strong {
+    font-size: 18px;
+}
+
+.datetime24-error {
+    min-height: 18px;
+    margin: 0;
+    color: #c73545;
+    font-size: 12px;
+}
+
+.datetime24-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.datetime24-actions button {
+    min-height: 36px;
+    padding: 7px 12px;
+    border: 1px solid #d8d1cd;
+    border-radius: 5px;
+    background: #fff;
+    color: #4d4541;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.datetime24-actions .datetime24-confirm {
+    border-color: #e65f00;
+    background: #e65f00;
+    color: #fff;
+}
+
+@media (max-width: 560px) {
+    .datetime24-picker {
+        right: auto;
+        left: 0;
+    }
 }

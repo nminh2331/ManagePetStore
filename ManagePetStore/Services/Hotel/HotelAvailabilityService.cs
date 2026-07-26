@@ -21,6 +21,7 @@ public sealed class HotelAvailabilityService : IHotelAvailabilityService
         DateTime checkInDate,
         DateTime checkOutDate)
     {
+        // [nam][Validate] Không trả chuồng cho loại phòng bị khóa hoặc nằm ngoài danh mục Hotel chuẩn.
         bool roomTypeExists = await _context.RoomTypes
             .AsNoTracking()
             .AnyAsync(roomType =>
@@ -32,6 +33,8 @@ public sealed class HotelAvailabilityService : IHotelAvailabilityService
             return HotelAvailabilityResult.Fail("Loại phòng không còn nhận đặt.");
         }
 
+        // [nam][BR] Hai khoảng [start, end) giao nhau khi start cũ < end mới và end cũ > start mới.
+        // Booking không có ngày trả được xem là đang chiếm chuồng vô thời hạn.
         var conflictingCageIds = await _context.HotelBookings
             .AsNoTracking()
             .Where(booking =>
@@ -77,6 +80,7 @@ public sealed class HotelAvailabilityService : IHotelAvailabilityService
         DateTime? checkOutDate,
         int excludedBookingId = 0)
     {
+        // [nam][BR] excludedBookingId cho phép sửa/chuyển chính booking hiện tại mà không tự xung đột.
         return _context.HotelBookings.AnyAsync(booking =>
             booking.PetId == petId &&
             booking.HotelBookingId != excludedBookingId &&
@@ -92,6 +96,7 @@ public sealed class HotelAvailabilityService : IHotelAvailabilityService
         DateTime? checkOutDate,
         int excludedBookingId = 0)
     {
+        // [nam][BR] Dùng cùng công thức khoảng nửa mở để lượt trước trả đúng lúc lượt sau nhận vẫn hợp lệ.
         return _context.HotelBookings.AnyAsync(booking =>
             booking.CageId == cageId &&
             booking.HotelBookingId != excludedBookingId &&

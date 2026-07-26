@@ -38,6 +38,7 @@ public sealed class HotelBookingService : IHotelBookingService
     // [nam] Kiểm tra pet, chuồng, thời gian, thức ăn và tạo booking Hotel trong một transaction.
     public async Task<HotelCommandResult> CreateAsync(HotelBookingRequest request, int customerId)
     {
+        // [nam][Flow] Chuẩn hóa khóa và thời gian một lần trước khi bắt đầu các truy vấn nghiệp vụ.
         int petId = request.PetId!.Value;
         int roomTypeId = request.RoomTypeId!.Value;
         string requestedCageId = request.CageId.Trim().ToUpperInvariant();
@@ -45,9 +46,11 @@ public sealed class HotelBookingService : IHotelBookingService
         DateTime checkOut = request.CheckOutDate!.Value;
         int stayDays = HotelPricingPolicy.CalculateStayDays(checkIn, checkOut);
 
+        // [nam][BR] Serializable khóa luồng kiểm tra và ghi để hai khách không đặt cùng chuồng/suất ăn đồng thời.
         await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         try
         {
+            // [nam][Validate] Pet phải thuộc đúng Customer, còn hoạt động và có cân nặng để tính khẩu phần.
             var customer = await _context.Customers.FirstOrDefaultAsync(item => item.CustomerId == customerId);
             if (customer == null)
             {
@@ -73,6 +76,7 @@ public sealed class HotelBookingService : IHotelBookingService
                     "Vui lòng cập nhật hồ sơ thú cưng trước khi đặt chuồng.");
             }
 
+            // [nam][Validate] Chỉ nhận loại chuồng thuộc danh mục Hotel và đang được phép kinh doanh.
             var roomType = await _context.RoomTypes
                 .AsNoTracking()
                 .FirstOrDefaultAsync(item =>
@@ -84,6 +88,7 @@ public sealed class HotelBookingService : IHotelBookingService
                 return HotelCommandResult.Fail("Loại phòng đã chọn hiện không còn hoạt động.");
             }
 
+            // [nam][Validate] Gói ăn phải là sản phẩm theo ngày, còn bán và tương thích loài của pet.
             string foodProductSku = request.FoodProductSku.Trim();
             var foodProduct = await _context.Products
                 .AsNoTracking()
@@ -111,6 +116,7 @@ public sealed class HotelBookingService : IHotelBookingService
                 return HotelCommandResult.Fail("Gói thức ăn chưa có giá bán hợp lệ.");
             }
 
+            // [nam][BR] Giá và số suất kho phụ thuộc cân nặng pet cùng tổng số ngày tính phí.
             var foodQuote = HotelFoodPricing.Calculate(foodProduct.Price, pet.Weight, stayDays);
             int reservedFoodUnits = await _context.HotelBookingFoodPlans
                 .Where(plan =>
@@ -126,11 +132,13 @@ public sealed class HotelBookingService : IHotelBookingService
                     $"không đủ {foodQuote.InventoryUnits} suất cho {stayDays} ngày ({foodQuote.WeightBand}).");
             }
 
+            // [nam][BR] Một pet không được có hai lượt lưu trú giao nhau, dù dùng hai chuồng khác nhau.
             if (await _availabilityService.HasPetConflictAsync(petId, checkIn, checkOut))
             {
                 return HotelCommandResult.Fail($"{pet.Name} đã có lịch lưu trú trùng với khoảng ngày bạn chọn.");
             }
 
+            // [nam][BR] Chuồng phải đúng loại, đang trống vận hành và không bị booking khác chiếm lịch.
             var cage = await _context.Cages
                 .AsNoTracking()
                 .FirstOrDefaultAsync(item =>
@@ -144,6 +152,7 @@ public sealed class HotelBookingService : IHotelBookingService
                     "Chuồng đã chọn không còn trống trong khoảng thời gian này. Vui lòng chọn lại.");
             }
 
+            // [nam][BR] Chụp giá tại thời điểm đặt để thay đổi bảng giá sau này không làm đổi booking cũ.
             decimal subtotal = roomType.DailyPrice * stayDays;
             decimal discountRate = HotelPricingPolicy.ResolveMembershipDiscountRate(customer.MembershipTier);
             decimal discount = decimal.Round(subtotal * discountRate, 0, MidpointRounding.AwayFromZero);
@@ -151,6 +160,7 @@ public sealed class HotelBookingService : IHotelBookingService
             decimal foodTotal = foodQuote.TotalAmount;
             decimal finalAmount = subtotal - discount + foodTotal;
 
+            // [nam][Flow] Trừ FIFO và tạo booking trong cùng transaction; lỗi ở bước sau sẽ rollback toàn bộ.
             await _inventoryBatchService.DeductStockFIFO(foodProduct.Sku, foodQuote.InventoryUnits);
 
             var booking = new HotelBooking
@@ -194,6 +204,7 @@ public sealed class HotelBookingService : IHotelBookingService
                 TotalAmount = foodTotal,
                 CreatedAt = DateTime.Now
             });
+            // [nam][Flow] Timeline là dấu vết nghiệp vụ để Customer và Staff xem lại lịch sử lưu trú.
             _context.PetBioTimelines.Add(new PetBioTimeline
             {
                 PetId = pet.PetId,
@@ -210,6 +221,7 @@ public sealed class HotelBookingService : IHotelBookingService
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
+            // [nam][Flow] Chỉ gửi email sau commit để không thông báo một booking chưa được lưu thành công.
             await _hotelEmailService.SendBookingCreatedAsync(
                 customer.Email,
                 customer.FullName,
@@ -245,6 +257,7 @@ public sealed class HotelBookingService : IHotelBookingService
     // [nam] Hủy booking của khách, hoàn tồn thức ăn và ghi lại hoạt động hủy.
     public async Task<HotelCommandResult> CancelAsync(int bookingId, int customerId)
     {
+        // [nam][Validate] Ghép CustomerId vào truy vấn để ngăn khách hủy booking không thuộc quyền sở hữu.
         var booking = await _context.HotelBookings
             .Include(item => item.Pet)
             .Include(item => item.FoodPlan)
@@ -257,12 +270,14 @@ public sealed class HotelBookingService : IHotelBookingService
                 "Không tìm thấy lịch đặt phòng hoặc bạn không có quyền hủy.");
         }
 
+        // [nam][BR] Chỉ booking chưa check-in mới được hủy online.
         if (!string.Equals(booking.Status, "Đã đặt", StringComparison.OrdinalIgnoreCase))
         {
             return HotelCommandResult.Fail(
                 "Chỉ có thể hủy lịch đang ở trạng thái Đã đặt.");
         }
 
+        // [nam][BR] Khách phải hủy trước giờ nhận ít nhất một giờ; sát giờ cần Staff xử lý trực tiếp.
         DateTime scheduledCheckIn = booking.ScheduledCheckInDate ?? booking.CheckInDate;
         if (scheduledCheckIn <= DateTime.Now.AddHours(1))
         {
@@ -274,6 +289,7 @@ public sealed class HotelBookingService : IHotelBookingService
         await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         try
         {
+            // [nam][Flow] Chỉ hoàn đúng lượng đã trừ và đặt về 0 để thao tác lặp không hoàn kho hai lần.
             if (booking.FoodPlan?.ProductSku != null && booking.FoodPlan.InventoryQuantityDeducted > 0)
             {
                 var stockDetails = new List<StockMovementDetail>

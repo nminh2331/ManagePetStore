@@ -24,6 +24,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CheckOut(int bookingId)
         {
+            // [nam][Flow] Tải đồng thời bảng kê và Order để quyết định trả pet dựa trên trạng thái thanh toán thật.
             var booking = await _context.HotelBookings
                 .Include(b => b.Cage)
                 .Include(b => b.Pet)
@@ -37,6 +38,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return Json(new { success = false, message = "Không tìm thấy booking." });
             }
 
+            // [nam][BR] Chỉ pet đang ở mới được trả; thao tác lặp sau khi đã trả bị chặn bằng trạng thái booking.
             if (!ActiveHotelStatuses.Contains(booking.Status))
             {
                 return Json(new { success = false, message = "Chỉ có thể trả chuồng cho lượt lưu trú đang hoạt động." });
@@ -48,11 +50,13 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return Json(new { success = false, message = "Booking chưa được chốt chi phí hoặc chưa được thu ngân tạo hóa đơn." });
             }
 
+            // [nam][BR] Có OrderId chưa đủ, hóa đơn liên kết phải đạt trạng thái thanh toán được phép finalize.
             if (!HotelCheckoutWorkflow.CanFinalize(checkout.OrderId, checkout.Order?.Status))
             {
                 return Json(new { success = false, message = "Hóa đơn lưu trú chuồng chưa thanh toán thành công." });
             }
 
+            // [nam][Flow] CheckoutAt đã chốt trong bảng kê là mốc trả thực tế dùng thống nhất cho lịch sử và tính tiền.
             booking.Status = "Đã trả";
             booking.ScheduledCheckInDate ??= booking.CheckInDate;
             booking.ScheduledCheckOutDate ??= booking.CheckOutDate;
@@ -71,6 +75,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 Description = $"Thú cưng được trả cho chủ nuôi. Chuồng cuối cùng: {booking.CageId}. Nhân viên: {staff.Name}."
             });
 
+            // [nam][BR] Sau khi trả pet, chuồng phải qua trạng thái dọn dẹp; không mở trống trực tiếp.
             if (booking.Cage != null)
             {
                 var previousCageStatus = booking.Cage.Status;
@@ -88,6 +93,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 });
             }
 
+            // [nam][Flow] Đóng phân đoạn chuồng cuối cùng để lịch sử không còn một khoảng lưu trú mở.
             var openStaySegment = await _context.HotelCageStaySegments
                 .Where(segment => segment.HotelBookingId == booking.HotelBookingId && segment.EndedAt == null)
                 .OrderByDescending(segment => segment.StartedAt)
@@ -103,6 +109,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             await _context.SaveChangesAsync();
 
+            // [nam][Flow] Chỉ gửi email sau khi trạng thái pet, chuồng và bảng kê đã lưu thành công.
             await _hotelEmailService.SendCheckOutAsync(
                 booking.Customer.Email,
                 booking.Customer.FullName,
@@ -139,6 +146,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return Json(new { success = true, message = "Lượt lưu trú đã sẵn sàng chốt lại chi phí." });
             }
 
+            // [nam][BR] Chỉ thu hồi khi chưa tạo hóa đơn hoặc hóa đơn đã hủy; đơn đang xử lý/đã trả tiền bị khóa.
             if (!HotelCheckoutWorkflow.CanReset(statement))
             {
                 return Json(new
@@ -194,6 +202,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> PrepareHotelCheckout(PrepareHotelCheckoutRequest request)
         {
+            // [nam][Validate] ModelState kiểm tra giới hạn tiền/mô tả trước khi service đối soát lại dữ liệu booking.
             if (!ModelState.IsValid)
             {
                 return Json(new { success = false, message = "Chi phí phát sinh không hợp lệ." });
@@ -226,6 +235,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return Json(new { success = false, message = "Không tìm thấy lịch đặt online." });
             }
 
+            // [nam][BR] Staff chỉ hủy booking online chưa check-in; booking đang ở phải đi qua checkout.
             if (!string.Equals(booking.Status, "Đã đặt", StringComparison.OrdinalIgnoreCase))
             {
                 return Json(new { success = false, message = "Chỉ có thể hủy lịch đặt online đang chờ tiếp nhận." });
@@ -234,6 +244,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
+                // [nam][Flow] Hoàn đúng số suất đã giữ và đặt về 0 để không hoàn kho hai lần khi request lặp.
                 if (booking.FoodPlan?.ProductSku != null && booking.FoodPlan.InventoryQuantityDeducted > 0)
                 {
                     await _inventoryBatchService.RestockToBatches(
