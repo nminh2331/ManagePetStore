@@ -4,9 +4,7 @@
     Layout = "~/Areas/ServiceStaff/Views/Shared/_ServiceLayout.cshtml";
     ViewData["Title"] = $"Nhật ký {Model.PetName}";
     var displayedLogs = Model.SelectedTab == "all" ? Model.AllLogs : Model.CurrentLogs;
-    string FormatStayDate(DateTime value) => value.TimeOfDay == TimeSpan.Zero
-        ? value.ToString("dd/MM/yyyy")
-        : value.ToString("dd/MM/yyyy HH:mm");
+    string FormatStayDate(DateTime value) => value.ToString("dd/MM/yyyy HH:mm");
 
     string ActivityLabel(string activityType) => activityType switch
     {

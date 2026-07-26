@@ -70,7 +70,7 @@
                                 <small>@booking.CustomerPhone</small>
                             </td>
                             <td><strong>@booking.CageId</strong><small>@booking.RoomTypeName</small></td>
-                            <td><strong>@booking.CheckInDate.ToString("dd/MM/yyyy")</strong><small>đến @(booking.CheckOutDate?.ToString("dd/MM/yyyy") ?? "chưa xác định")</small></td>
+                            <td><strong>@booking.CheckInDate.ToString("dd/MM/yyyy HH:mm")</strong><small>đến @(booking.CheckOutDate?.ToString("dd/MM/yyyy HH:mm") ?? "chưa xác định")</small></td>
                             <td><span class="hb-status hb-status-@booking.StatusKey">@booking.Status</span></td>
                             <td><strong>@booking.FinalAmount.ToString("N0")đ</strong></td>
                             <td>

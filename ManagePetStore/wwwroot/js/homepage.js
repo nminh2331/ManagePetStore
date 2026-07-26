@@ -58,6 +58,11 @@ function formatCurrency(amount) {
         return Number.isNaN(parsed.getTime()) ? null : parsed;
     }
 
+    // [nam] Đồng bộ lớp hiển thị ngày giờ 24h sau khi code thay đổi giá trị input.
+    function refreshDateTime24(input) {
+        window.DateTime24?.refresh(input);
+    }
+
     // [nam] Tính số ngày lưu trú cần tính phí từ thời gian nhận và trả.
     function getChargeableDays() {
         const start = parseDateTimeInput(checkIn?.value);
@@ -102,6 +107,9 @@ function formatCurrency(amount) {
             defaultCheckOut.setDate(defaultCheckOut.getDate() + 1);
             checkOut.value = formatDateTimeInput(defaultCheckOut);
         }
+
+        refreshDateTime24(checkIn);
+        refreshDateTime24(checkOut);
     }
 
     // [nam] Cập nhật thời gian trả sớm nhất và muộn nhất theo thời gian nhận.
@@ -123,6 +131,8 @@ function formatCurrency(amount) {
             defaultCheckOut.setDate(defaultCheckOut.getDate() + 1);
             checkOut.value = formatDateTimeInput(defaultCheckOut);
         }
+
+        refreshDateTime24(checkOut);
     }
 
     // [nam] Kiểm tra thời gian nhận, trả và thời lượng lưu trú ngay trên trình duyệt.
