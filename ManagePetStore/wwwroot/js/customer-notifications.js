@@ -10,6 +10,7 @@
     const toast = document.querySelector('[data-care-toast]');
     let toastTimer;
 
+    // [nam] Lấy CSRF token cho các thao tác cập nhật thông báo Hotel của khách hàng.
     const getCsrfToken = () => {
         const tokenInput = root.querySelector('input[name="__RequestVerificationToken"]');
         return tokenInput ? tokenInput.value : '';

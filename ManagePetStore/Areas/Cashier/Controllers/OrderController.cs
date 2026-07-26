@@ -11,6 +11,7 @@ using PayOS.Models;
 using PayOS.Models.V2.PaymentRequests;
 using ManagePetStore.Services.Warehouse;
 using System.Security.Claims;
+using System.Data;
 
 namespace ManagePetStore.Areas.Cashier.Controllers
 {
@@ -49,17 +50,139 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             await _context.SaveChangesAsync();
         }
 
+        private async Task CancelPendingPaymentOrderAsync(string orderId, string reason)
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            var order = await _context.Orders
+                .Include(item => item.Customer)
+                .FirstOrDefaultAsync(item => item.OrderId == orderId);
+            if (order == null)
+            {
+                return;
+            }
+
+            bool isPendingPayment = string.Equals(
+                order.Status,
+                "Chờ thanh toán",
+                StringComparison.OrdinalIgnoreCase);
+            bool isAlreadyCancelled = HotelCheckoutWorkflow.IsCancelled(order.Status);
+            if (!isPendingPayment && !isAlreadyCancelled)
+            {
+                return;
+            }
+
+            if (isPendingPayment)
+            {
+                order.Status = "Đã hủy";
+                order.OrderStatus = 0;
+                order.CancelReason = reason;
+                order.CanceledAt = DateTime.Now;
+                order.CanceledBy = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                    ?? User.Identity?.Name
+                    ?? "Cashier";
+            }
+
+            var hotelStatements = await _context.HotelCheckoutStatements
+                .Where(statement => statement.OrderId == orderId)
+                .ToListAsync();
+            foreach (var statement in hotelStatements)
+            {
+                statement.OrderId = null;
+                statement.Order = null;
+                statement.Status = "ReadyForPayment";
+                statement.PaidAt = null;
+            }
+
+            var spaBookings = await _context.SpaBookings
+                .Include(booking => booking.Service)
+                .Where(booking => booking.Notes != null &&
+                                  booking.Notes.Contains($"[POS {orderId}]"))
+                .ToListAsync();
+            foreach (var booking in spaBookings)
+            {
+                booking.Status = "Chờ thanh toán";
+                booking.Notes = RemoveCancelledOrderPrefix(
+                    booking.Notes,
+                    orderId,
+                    booking.Service?.Name);
+            }
+
+            await _context.SaveChangesAsync();
+            await ManagePetStore.Services.Customer.CustomerRewardHelper
+                .RecalculateCustomerPointsAndTierAsync(order.CustomerId, _context);
+            await transaction.CommitAsync();
+        }
+
+        private static string? RemoveCancelledOrderPrefix(
+            string? notes,
+            string orderId,
+            string? serviceName)
+        {
+            if (string.IsNullOrWhiteSpace(notes))
+            {
+                return null;
+            }
+
+            string exactPrefix = $"[POS {orderId}] | Dịch vụ: {serviceName ?? string.Empty} ";
+            if (notes.StartsWith(exactPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                string restored = notes[exactPrefix.Length..].Trim();
+                return restored.Length == 0 ? null : restored;
+            }
+
+            string marker = $"[POS {orderId}]";
+            int markerIndex = notes.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (markerIndex < 0)
+            {
+                return notes;
+            }
+
+            string restoredFallback = string.Concat(
+                    notes.AsSpan(0, markerIndex),
+                    notes.AsSpan(markerIndex + marker.Length))
+                .Trim()
+                .TrimStart('|')
+                .Trim();
+            return restoredFallback.Length == 0 ? null : restoredFallback;
+        }
+
+        private static bool IsSuccessfulPaymentStatus(string? status) =>
+            string.Equals(status, "PAID", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(status, "success", StringComparison.OrdinalIgnoreCase) ||
+            (status?.Contains("PAID", StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (status?.Contains("success", StringComparison.OrdinalIgnoreCase) ?? false);
+
+        private static bool IsCancelledPaymentStatus(string? status) =>
+            string.Equals(status, "cancel", StringComparison.OrdinalIgnoreCase) ||
+            (status?.Contains("cancel", StringComparison.OrdinalIgnoreCase) ?? false);
+
+        private static bool IsCompletedSpaBooking(SpaBooking booking) =>
+            booking.SpaStatus == "4" ||
+            (booking.SpaStatus?.EndsWith("|4", StringComparison.Ordinal) ?? false) ||
+            string.Equals(booking.SpaStatus, "Hoàn thành", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsUnpaidSpaBooking(SpaBooking booking) =>
+            string.Equals(booking.Status, "Chờ thanh toán", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(booking.Status, "pending", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(booking.Status, "Chưa thanh toán", StringComparison.OrdinalIgnoreCase);
+
         // GET: /Cashier/Order/Create (POS Screen)
         [HttpGet]
         public async Task<IActionResult> Create(string? orderId, string? status)
         {
-            if (!string.IsNullOrEmpty(orderId) && (status == "PAID" || status == "success" || (status != null && (status.Contains("PAID") || status.Contains("success")))))
+            if (!string.IsNullOrEmpty(orderId) && IsSuccessfulPaymentStatus(status))
             {
                 var order = await _context.Orders.Include(o => o.Customer).FirstOrDefaultAsync(o => o.OrderId == orderId);
                 if (order != null && order.Status == "Chờ thanh toán")
                 {
                     await UpdateOrderToPaidAsync(order);
                 }
+            }
+            else if (!string.IsNullOrEmpty(orderId) && IsCancelledPaymentStatus(status))
+            {
+                await CancelPendingPaymentOrderAsync(
+                    orderId,
+                    "Khách hàng hủy thanh toán trực tuyến qua PayOS.");
             }
             return View();
         }
@@ -70,22 +193,21 @@ namespace ManagePetStore.Areas.Cashier.Controllers
         {
             if (!string.IsNullOrEmpty(orderId))
             {
-                var order = await _context.Orders.Include(o => o.Customer).FirstOrDefaultAsync(o => o.OrderId == orderId);
-                if (order != null && order.Status == "Chờ thanh toán")
+                if (IsSuccessfulPaymentStatus(status))
                 {
-                    if (status == "PAID" || status == "success" || (status != null && (status.Contains("PAID") || status.Contains("success"))))
+                    var order = await _context.Orders
+                        .Include(item => item.Customer)
+                        .FirstOrDefaultAsync(item => item.OrderId == orderId);
+                    if (order != null && order.Status == "Chờ thanh toán")
                     {
                         await UpdateOrderToPaidAsync(order);
                     }
-                    else if (status == "cancel" || (status != null && (status.Contains("cancel") || status.Contains("CANCELLED"))))
-                    {
-                        order.Status = "Đã hủy";
-                        order.OrderStatus = 0; // Canceled
-                        order.CancelReason = "Khách hàng hủy thanh toán trực tuyến qua PayOS tại quầy.";
-                        _context.Entry(order).State = EntityState.Modified;
-                        await _context.SaveChangesAsync();
-                        await ManagePetStore.Services.Customer.CustomerRewardHelper.RecalculateCustomerPointsAndTierAsync(order.CustomerId, _context);
-                    }
+                }
+                else if (IsCancelledPaymentStatus(status))
+                {
+                    await CancelPendingPaymentOrderAsync(
+                        orderId,
+                        "Khách hàng hủy thanh toán trực tuyến qua PayOS tại quầy.");
                 }
             }
             return View();
@@ -423,12 +545,39 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             {
                 return Json(new { success = false, message = "Số lượng mặt hàng thanh toán phải lớn hơn 0." });
             }
+            if (dto.Items.Any(item =>
+                    item.Type != "Product" &&
+                    item.Type != "Spa" &&
+                    item.Type != "Hotel"))
+            {
+                return Json(new { success = false, message = "Hóa đơn chứa loại mặt hàng không được hỗ trợ." });
+            }
+            if (dto.PaymentMethod != "Tiền mặt" &&
+                dto.PaymentMethod != "Thanh toán online" &&
+                dto.PaymentMethod != "Tiền mặt + Online")
+            {
+                return Json(new { success = false, message = "Phương thức thanh toán không hợp lệ." });
+            }
+            if (dto.VoucherDiscount < 0)
+            {
+                return Json(new { success = false, message = "Số tiền giảm giá không hợp lệ." });
+            }
 
-            var hotelCheckoutIds = dto.Items
-                .Where(item => item.Type == "Hotel" && item.HotelCheckoutId.HasValue)
+            await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+            var hotelItems = dto.Items
+                .Where(item => item.Type == "Hotel")
+                .ToList();
+            var hotelCheckoutIds = hotelItems
+                .Where(item => item.HotelCheckoutId.HasValue)
                 .Select(item => item.HotelCheckoutId!.Value)
                 .Distinct()
                 .ToList();
+            if (hotelItems.Count != hotelCheckoutIds.Count)
+            {
+                return Json(new { success = false, message = "Bảng kê chuồng bị thiếu hoặc trùng liên kết thanh toán." });
+            }
+
             var hotelCheckouts = await _context.HotelCheckoutStatements
                 .Include(statement => statement.HotelBooking)
                     .ThenInclude(booking => booking.Cage)
@@ -439,11 +588,11 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             {
                 return Json(new { success = false, message = "Bảng kê chuồng không còn hợp lệ hoặc đã được thanh toán." });
             }
-            if (hotelCheckoutIds.Any() && dto.VoucherDiscount > 0)
+            if (hotelCheckoutIds.Any() && (dto.VoucherDiscount > 0 || dto.PointsUsed > 0))
             {
-                return Json(new { success = false, message = "Voucher POS chưa áp dụng cho hóa đơn có dịch vụ lưu trú chuồng." });
+                return Json(new { success = false, message = "Voucher và điểm thành viên chưa áp dụng cho hóa đơn có dịch vụ lưu trú chuồng." });
             }
-            foreach (var item in dto.Items.Where(item => item.Type == "Hotel"))
+            foreach (var item in hotelItems)
             {
                 if (!item.HotelCheckoutId.HasValue || !hotelCheckouts.TryGetValue(item.HotelCheckoutId.Value, out var statement))
                     return Json(new { success = false, message = "Thiếu liên kết bảng kê chuồng." });
@@ -452,10 +601,39 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 item.Price = statement.TotalAmount;
                 item.Total = statement.TotalAmount;
             }
-            dto.TotalAmount = dto.Items.Sum(item => item.Price * item.Quantity);
 
             // 2. Kiểm tra trùng lặp thanh toán lịch Spa
-            var linkedBookingIds = dto.Items.Where(i => i.BookingId.HasValue).Select(i => i.BookingId!.Value).ToList();
+            var linkedBookingIds = dto.Items
+                .Where(item => item.Type == "Spa" && item.BookingId.HasValue)
+                .Select(item => item.BookingId!.Value)
+                .Distinct()
+                .ToList();
+            if (dto.Items.Count(item => item.Type == "Spa" && item.BookingId.HasValue) != linkedBookingIds.Count)
+            {
+                return Json(new { success = false, message = "Một lịch Spa không thể xuất hiện nhiều lần trong cùng hóa đơn." });
+            }
+
+            var bookingsDict = await _context.SpaBookings
+                .Where(booking => linkedBookingIds.Contains(booking.BookingId))
+                .ToDictionaryAsync(booking => booking.BookingId);
+            if (bookingsDict.Count != linkedBookingIds.Count ||
+                bookingsDict.Values.Any(booking =>
+                    booking.CustomerId != dto.CustomerId ||
+                    !IsCompletedSpaBooking(booking) ||
+                    !IsUnpaidSpaBooking(booking)))
+            {
+                return Json(new { success = false, message = "Lịch Spa không còn hợp lệ, chưa hoàn thành hoặc đã được thanh toán." });
+            }
+
+            foreach (var item in dto.Items.Where(item => item.Type == "Spa" && item.BookingId.HasValue))
+            {
+                var booking = bookingsDict[item.BookingId!.Value];
+                item.Id = booking.ServiceId.ToString();
+                item.Quantity = 1;
+                item.Price = booking.Price;
+                item.Total = booking.Price;
+            }
+
             var requiredSpaIds = await _context.HotelStaySpaLinks
                 .Where(link => hotelCheckoutIds.Contains(link.HotelBooking.CheckoutStatement!.CheckoutStatementId))
                 .Select(link => link.SpaBookingId)
@@ -492,9 +670,74 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 return Json(new { success = false, message = "Khách hàng không tồn tại." });
             }
 
+            if (dto.PointsUsed < 0 || dto.PointsUsed > customer.LoyaltyPoints)
+            {
+                return Json(new { success = false, message = "Số điểm thành viên sử dụng không hợp lệ." });
+            }
+
+            var productSkus = dto.Items
+                .Where(item => item.Type == "Product")
+                .Select(item => item.Id)
+                .Distinct()
+                .ToList();
+            var productsDict = await _context.Products
+                .Where(product => productSkus.Contains(product.Sku) && !product.IsDeleted)
+                .ToDictionaryAsync(product => product.Sku);
+            if (productsDict.Count != productSkus.Count)
+            {
+                return Json(new { success = false, message = "Có sản phẩm không còn được kinh doanh." });
+            }
+
+            foreach (var item in dto.Items.Where(item => item.Type == "Product"))
+            {
+                var product = productsDict[item.Id];
+                item.Price = product.Price;
+                item.Total = product.Price * item.Quantity;
+            }
+
+            var newSpaItems = dto.Items
+                .Where(item => item.Type == "Spa" && !item.BookingId.HasValue)
+                .ToList();
+            var newSpaServiceIds = new List<int>();
+            foreach (var item in newSpaItems)
+            {
+                if (!int.TryParse(item.Id, out int serviceId))
+                {
+                    return Json(new { success = false, message = "Dịch vụ Spa không hợp lệ." });
+                }
+                newSpaServiceIds.Add(serviceId);
+            }
+
+            var spaServicesDict = await _context.SpaServices
+                .Where(service => newSpaServiceIds.Contains(service.ServiceId) && service.Active)
+                .ToDictionaryAsync(service => service.ServiceId);
+            if (spaServicesDict.Count != newSpaServiceIds.Distinct().Count())
+            {
+                return Json(new { success = false, message = "Có dịch vụ Spa không còn hoạt động." });
+            }
+
+            foreach (var item in newSpaItems)
+            {
+                int serviceId = int.Parse(item.Id);
+                item.Price = spaServicesDict[serviceId].Price;
+                item.Total = item.Price * item.Quantity;
+            }
+
+            dto.TotalAmount = dto.Items.Sum(item => item.Price * item.Quantity);
             decimal discount = dto.VoucherDiscount + (dto.PointsUsed * 500);
             decimal totalAmount = dto.TotalAmount - discount;
             if (totalAmount < 0) totalAmount = 0;
+            if (dto.PaymentMethod == "Thanh toán online" && dto.OnlineAmount != totalAmount)
+            {
+                return Json(new { success = false, message = "Số tiền thanh toán online không khớp tổng hóa đơn." });
+            }
+            if (dto.PaymentMethod == "Tiền mặt + Online" &&
+                (dto.CashAmount < 0 ||
+                 dto.OnlineAmount <= 0 ||
+                 dto.CashAmount + dto.OnlineAmount != totalAmount))
+            {
+                return Json(new { success = false, message = "Số tiền mặt và online không khớp tổng hóa đơn." });
+            }
 
             // Generate Order ID using orderCode pattern for PayOS compatibility
             long orderCode = 0;
@@ -529,23 +772,33 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
 
+            foreach (int checkoutId in hotelCheckoutIds)
+            {
+                int updatedStatements = await _context.HotelCheckoutStatements
+                    .Where(statement =>
+                        statement.CheckoutStatementId == checkoutId &&
+                        statement.Status == "ReadyForPayment" &&
+                        statement.OrderId == null)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(statement => statement.OrderId, order.OrderId)
+                        .SetProperty(statement => statement.Status, "LinkedToOrder"));
+                if (updatedStatements != 1)
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        message = "Bảng kê chuồng vừa được một giao dịch khác tiếp nhận. Vui lòng tải lại danh sách."
+                    });
+                }
+            }
+
             var systemStockDetails = new List<StockMovementDetail>();
 
             // Optimize lookups to avoid N+1 database queries
-            var productSkus = dto.Items.Where(i => i.Type == "Product").Select(i => i.Id).Distinct().ToList();
-            var productsDict = await _context.Products
-                .Where(p => productSkus.Contains(p.Sku))
-                .ToDictionaryAsync(p => p.Sku);
-
             var petIds = dto.Items.Where(i => i.Type == "Spa" && i.PetId.HasValue).Select(i => i.PetId!.Value).Distinct().ToList();
             var petsDict = await _context.Pets
                 .Where(p => petIds.Contains(p.PetId))
                 .ToDictionaryAsync(p => p.PetId);
-
-            var bookingIds = dto.Items.Where(i => i.Type == "Spa" && i.BookingId.HasValue).Select(i => i.BookingId!.Value).Distinct().ToList();
-            var bookingsDict = await _context.SpaBookings
-                .Where(b => bookingIds.Contains(b.BookingId))
-                .ToDictionaryAsync(b => b.BookingId);
 
             // Process Items
             foreach (var item in dto.Items)
@@ -628,9 +881,6 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 else if (item.Type == "Hotel" && item.HotelCheckoutId.HasValue)
                 {
                     orderItem.RoomTypeId = int.Parse(item.Id);
-                    var checkout = hotelCheckouts[item.HotelCheckoutId.Value];
-                    checkout.OrderId = order.OrderId;
-                    checkout.Status = "LinkedToOrder";
                 }
 
                 _context.OrderItems.Add(orderItem);
@@ -651,6 +901,8 @@ namespace ManagePetStore.Areas.Cashier.Controllers
 
             await _context.SaveChangesAsync();
             await ManagePetStore.Services.Customer.CustomerRewardHelper.RecalculateCustomerPointsAndTierAsync(customer.CustomerId, _context);
+            await transaction.CommitAsync();
+            _context.ChangeTracker.Clear();
 
             if (hasOnlinePayment)
             {
@@ -668,7 +920,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                         OrderCode = orderCode,
                         Amount = onlinePayAmount,
                         Description = $"POS {orderCode}",
-                        CancelUrl = dto.IsAtCounter ? $"{host}/Cashier/Order/CreateAtCounter?orderId={order.OrderId}&status=cancel" : $"{host}/Cashier/Order/Create?status=cancel",
+                        CancelUrl = dto.IsAtCounter ? $"{host}/Cashier/Order/CreateAtCounter?orderId={order.OrderId}&status=cancel" : $"{host}/Cashier/Order/Create?orderId={order.OrderId}&status=cancel",
                         ReturnUrl = dto.IsAtCounter ? $"{host}/Cashier/Order/CreateAtCounter?orderId={order.OrderId}&status=success" : $"{host}/Cashier/Order/Create?orderId={order.OrderId}&status=success",
                         Items = dto.Items.Select(item => new PaymentLinkItem
                         {
@@ -685,6 +937,12 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                     }
                     catch (Exception ex)
                     {
+                        if (hotelCheckoutIds.Any())
+                        {
+                            await CancelPendingPaymentOrderAsync(
+                                order.OrderId,
+                                $"Không thể khởi tạo thanh toán PayOS: {ex.Message}");
+                        }
                         return Json(new { success = false, message = $"Lỗi kết nối PayOS: {ex.Message}" });
                     }
                 }
@@ -776,6 +1034,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                     PetName = statement.HotelBooking.Pet.Name,
                     CageId = statement.HotelBooking.CageId,
                     RoomType = statement.HotelBooking.Cage.RoomType.Type,
+                    statement.DiscountAmount,
                     statement.TotalAmount,
                     Items = statement.Items.OrderBy(item => item.CheckoutItemId).Select(item => new
                     {
@@ -791,6 +1050,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 statement.PetName,
                 statement.CageId,
                 RoomType = CageTerminology.ForDisplay(statement.RoomType),
+                statement.DiscountAmount,
                 statement.TotalAmount,
                 Items = statement.Items.Select(item => new
                 {

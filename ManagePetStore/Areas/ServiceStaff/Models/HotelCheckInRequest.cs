@@ -90,6 +90,13 @@ public sealed class HotelCheckInRequest : IValidatableObject
                     new[] { nameof(CheckInDate) });
             }
 
+            if (!CheckOutDate.HasValue && !HotelBookingId.HasValue)
+            {
+                yield return new ValidationResult(
+                    "Ngày trả dự kiến là bắt buộc đối với lượt tiếp nhận trực tiếp.",
+                    new[] { nameof(CheckOutDate) });
+            }
+
             if (!RoomTypeId.HasValue || RoomTypeId.Value <= 0)
             {
                 yield return new ValidationResult(

@@ -19,7 +19,8 @@
     const dayInMilliseconds = 24 * 60 * 60 * 1000;
     let cageAvailabilitySequence = 0;
 
-    function openHotelModal() {
+// [nam] Mở modal đặt chuồng Hotel trên trang chủ.
+function openHotelModal() {
         if (overlay) {
             overlay.classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -27,14 +28,16 @@
         }
     }
 
-    function closeHotelModal() {
+// [nam] Đóng modal đặt chuồng Hotel và đưa giao diện về trạng thái ban đầu.
+function closeHotelModal() {
         if (overlay) {
             overlay.classList.remove('active');
             document.body.style.overflow = '';
         }
     }
 
-    function formatCurrency(amount) {
+// [nam] Định dạng số tiền hiển thị trong form đặt chuồng.
+function formatCurrency(amount) {
         return Math.round(amount).toLocaleString('vi-VN') + 'đ';
     }
 

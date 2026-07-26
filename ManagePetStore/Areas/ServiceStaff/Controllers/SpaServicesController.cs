@@ -1,18 +1,13 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
-using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.SignalR;
-using ManagePetStore.Hubs;
 using ManagePetStore.Models;
 using ManagePetStore.Areas.ServiceStaff.Models;
 using ManagePetStore.Services;
-using ManagePetStore.Services.Warehouse;
 using ManagePetStore.Areas.ServiceStaff.Helpers;
 using CustomerEntity = ManagePetStore.Models.Customer;
 
@@ -54,31 +49,13 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         private readonly PetStoreManagementContext _context;
-        private readonly IHotelBookingHistoryService _historyService;
-        private readonly IHotelCareMediaService _hotelCareMediaService;
-        private readonly IHubContext<HotelCareHub> _hotelCareHub;
-        private readonly IHotelCheckoutService _hotelCheckoutService;
-        private readonly IInventoryBatchService _inventoryBatchService;
-        private readonly IHotelEmailService _hotelEmailService;
         private readonly ILogger<SpaServicesController> _logger;
 
         public SpaServicesController(
             PetStoreManagementContext context,
-            IHotelBookingHistoryService historyService,
-            IHotelCareMediaService hotelCareMediaService,
-            IHubContext<HotelCareHub> hotelCareHub,
-            IHotelCheckoutService hotelCheckoutService,
-            IInventoryBatchService inventoryBatchService,
-            IHotelEmailService hotelEmailService,
             ILogger<SpaServicesController> logger)
         {
             _context = context;
-            _historyService = historyService;
-            _hotelCareMediaService = hotelCareMediaService;
-            _hotelCareHub = hotelCareHub;
-            _hotelCheckoutService = hotelCheckoutService;
-            _inventoryBatchService = inventoryBatchService;
-            _hotelEmailService = hotelEmailService;
             _logger = logger;
         }
 
