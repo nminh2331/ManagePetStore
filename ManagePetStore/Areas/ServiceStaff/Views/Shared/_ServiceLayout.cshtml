@@ -197,43 +197,11 @@
             border-bottom: 1px solid var(--border-light);
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: flex-end;
             padding: 0 40px;
             position: sticky;
             top: 0;
             z-index: 90;
-        }
-
-        .search-box-wrapper {
-            position: relative;
-            max-width: 340px;
-            width: 100%;
-        }
-
-        .search-box-wrapper i {
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-            font-size: 0.9rem;
-        }
-
-        .search-box-input {
-            width: 100%;
-            padding: 10px 16px 10px 44px;
-            border-radius: 20px;
-            border: 1px solid var(--border-light);
-            background-color: #FDFDFD;
-            font-size: 0.85rem;
-            transition: all 0.25s;
-        }
-
-        .search-box-input:focus {
-            outline: none;
-            border-color: var(--primary-orange);
-            background-color: #FFFFFF;
-            box-shadow: 0 0 0 3px rgba(255, 120, 21, 0.08);
         }
 
         .user-panel {
@@ -399,11 +367,6 @@
         <main class="service-content">
             <!-- Header -->
             <header class="service-header">
-                <div class="search-box-wrapper">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="text" class="search-box-input" placeholder="Tìm kiếm nhanh..." />
-                </div>
-
                 <div class="user-panel" style="position: relative;">
                     <button class="bell-icon-btn" id="staffBellBtn" type="button" title="Xem thông báo">
                         <i class="fa-regular fa-bell"></i>
