@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/datetime24.css" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="~/lib/cropper/cropper.min.css" asp-append-version="true" />
     <!-- Google Fonts Outfit Import for Premium Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -619,6 +620,8 @@
             });
         })();
     </script>
+    <script src="~/lib/cropper/cropper.min.js" asp-append-version="true"></script>
+    <script src="~/js/image-cropper.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
