@@ -123,7 +123,10 @@ namespace ManagePetStore.Controllers
         }
 
         // =========================================================================
-        // 3. QUÊN MẬT KHẨU (FORGOT PASSWORD)
+        // 3. LUỒNG RESET PASSWORD: QUÊN VÀ ĐẶT LẠI MẬT KHẨU NHÂN VIÊN / MANAGER / ADMIN
+        // - BƯỚC 1: Nhân viên nhập Email -> Validate tài khoản tồn tại, không bị khóa và không phải role Khách hàng -> Gửi mã OTP qua Email.
+        // - BƯỚC 2: Nhập mã OTP -> Xác thực mã hợp lệ và chưa hết hạn (trong 10 phút).
+        // - BƯỚC 3: Đặt mật khẩu mới -> Validate độ mạnh mật khẩu -> Cập nhật mật khẩu vào hệ thống.
         // =========================================================================
         [HttpGet("ForgotPassword")]
         public IActionResult ForgotPassword()
@@ -139,6 +142,11 @@ namespace ManagePetStore.Controllers
             return View(new ForgotPasswordViewModel());
         }
 
+        /// <summary>
+        /// LUỒNG RESET PASSWORD STAFF: Gửi mã OTP khôi phục mật khẩu cho Nhân viên qua Email
+        /// - VALIDATION 1: Email không được để trống & đúng định dạng.
+        /// - VALIDATION 2: Tài khoản phải thuộc về Nhân viên/Manager/Admin (RoleId != 5), tài khoản đang Active.
+        /// </summary>
         [HttpPost("ForgotPassword")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ForgotPassword(string email)

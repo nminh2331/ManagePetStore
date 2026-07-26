@@ -70,6 +70,12 @@ public class HomeController : Controller
         return PartialView("_FeaturedSpaServices", model);
     }
 
+    /// <summary>
+    /// LUỒNG VIEW HOMEPAGE: Tải và hiển thị dữ liệu trang chủ
+    /// - Lấy danh sách sản phẩm nổi bật, dịch vụ Spa nổi bật, banner quảng cáo, danh mục sản phẩm.
+    /// - Xử lý tìm kiếm từ khóa sản phẩm, lọc theo loài thú cưng (Chó/Mèo/Tất cả), lọc theo danh mục.
+    /// - Tính toán phân trang cho danh sách sản phẩm và dịch vụ Spa.
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> Index(string? search, string? category, string? species, int pageP = 1, int pageS = 1)
     {

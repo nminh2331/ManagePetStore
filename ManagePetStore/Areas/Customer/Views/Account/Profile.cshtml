@@ -1123,7 +1123,7 @@
 </div>
 
 <!-- Hidden File Input for Avatar Selection -->
-<input type="file" id="avatarFileInput" data-aspect-ratio="1" accept="image/png, image/jpeg" style="display: none;" />
+<input type="file" id="avatarFileInput" accept="image/png, image/jpeg" style="display: none;" />
 
 <!-- Custom CSS-Based Self-Contained Modal for Image Cropper -->
 <div class="custom-modal" id="cropModal">
@@ -1427,53 +1427,30 @@
         }
 
         function handleFileSelect(e) {
-            if (e.target.isCroppedPayload) {
-                e.target.isCroppedPayload = false;
-                const files = e.target.files;
-                if (!files || files.length === 0) return;
-                const croppedFile = files[0];
-
-                const formData = new FormData();
-                formData.append('avatarFile', croppedFile, croppedFile.name || 'avatar.png');
-
-                const tokenElement = document.querySelector('input[name="__RequestVerificationToken"]');
-                if (tokenElement) {
-                    formData.append('__RequestVerificationToken', tokenElement.value);
+            const files = e.target.files;
+            if (files && files.length > 0) {
+                const file = files[0];
+                
+                // Validate size on frontend (max 10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('Dung lượng ảnh vượt quá giới hạn 10MB.');
+                    fileInput.value = '';
+                    return;
                 }
 
-                fetch('/Customer/Account/UploadAvatar', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const avatarImg = document.getElementById('avatarImage');
-                        const avatarContainer = document.querySelector('.fb-avatar-wrapper');
-                        
-                        if (avatarImg) {
-                            avatarImg.src = data.avatarPath + '?t=' + new Date().getTime();
-                        } else if (avatarContainer) {
-                            avatarContainer.innerHTML = `
-                                <img id="avatarImage" src="${data.avatarPath}?t=${new Date().getTime()}" alt="Avatar" />
-                                <div class="avatar-upload-overlay" id="avatarUploadOverlay">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                </div>
-                            `;
-                            avatarContainer.addEventListener('click', function () {
-                                triggerAvatarSelect();
-                            });
-                        }
-                    } else {
-                        alert(data.message || 'Lỗi cập nhật ảnh đại diện');
-                    }
-                })
-                .catch(err => {
-                    console.error('Error updating avatar:', err);
-                });
+                // Validate extension on frontend
+                if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
+                    alert('Chỉ hỗ trợ file ảnh định dạng JPG hoặc PNG.');
+                    fileInput.value = '';
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    imageToCrop.src = event.target.result;
+                    cropModal.show();
+                };
+                reader.readAsDataURL(file);
             }
         }
 
