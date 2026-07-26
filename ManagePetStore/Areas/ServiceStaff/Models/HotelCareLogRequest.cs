@@ -23,6 +23,7 @@ public class HotelCareLogRequest
     [StringLength(1000)]
     public string? Note { get; set; }
 
+    [Required(ErrorMessage = "Vui lòng chọn thời gian thực hiện.")]
     public DateTime? OccurredAt { get; set; }
 
     public bool IsVisibleToCustomer { get; set; } = true;
