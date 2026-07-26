@@ -127,10 +127,7 @@ public class HomeController : Controller
         model.CurrentPageP = Math.Max(1, Math.Min(model.TotalPagesP, pageP));
         model.CurrentPageS = Math.Max(1, Math.Min(model.TotalPagesS, pageS));
 
-        model.BestSellers = productsList
-            .Skip((model.CurrentPageP - 1) * PageSizeP)
-            .Take(PageSizeP)
-            .ToList();
+        model.BestSellers = productsList.ToList();
 
         model.SpaServices = spaServicesList
             .Skip((model.CurrentPageS - 1) * PageSizeS)
@@ -323,10 +320,10 @@ public class HomeController : Controller
         // 1. Tải các sản phẩm từ database (cách ly trong try-catch)
         try
         {
-            var dbProducts = await _context.Products  //Bắt đầu truy vấn vào bảng Products trong Database. Chờ (await) đến khi lấy xong dữ liệu.
+            var dbProducts = await _context.Products
                 .Include(p => p.Category)
-                .Where(p => !p.IsDeleted) // Lọc bỏ các sản phẩm đã xóa
-                .OrderByDescending(p => p.Stock)   // Sắp xếp danh sách giảm dần theo số lượng tồn kho
+                .Where(p => !p.IsDeleted && p.Stock > 0) // Lọc bỏ các sản phẩm đã xóa hoặc hết hàng
+                .OrderByDescending(p => p.Stock)
                 .ToListAsync();  // Thực thi câu lệnh SQL và ép kết quả ra thành một List trong C#.
 
             foreach (var p in dbProducts)
