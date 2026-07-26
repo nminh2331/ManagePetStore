@@ -212,12 +212,19 @@
         .withAutomaticReconnect()
         .build();
 
-    connection.on('CareLogUpdated', data => {
+    // [nam] Hiển thị một thông báo Hotel realtime mới trên menu và toast của Customer.
+    const receiveHotelNotification = data => {
         increaseUnreadCount();
         prependNotification(data);
         showToast(data);
+    };
+
+    connection.on('CareLogUpdated', data => {
+        receiveHotelNotification(data);
         document.dispatchEvent(new CustomEvent('hotelCareLogUpdated', { detail: data }));
     });
+
+    connection.on('HotelNotificationCreated', receiveHotelNotification);
 
     connection.start().catch(error => console.warn('Hotel care realtime unavailable:', error));
 })();
