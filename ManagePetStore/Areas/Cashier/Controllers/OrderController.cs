@@ -531,7 +531,17 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             return Json(new { success = true, discount = discount, code = voucher.Code });
         }
 
-        // API: Submit Order
+        /// <summary>
+        /// LUỒNG CREATE COUNTER ORDER & COMPLETE UNIFIED CHECKOUT: TẠO ĐƠN VÀ THANH TOÁN TẠI QUẦY (POS)
+        /// - Thu ngân lập đơn hàng tại quầy cho Khách hàng (Sản phẩm, Dịch vụ Spa, Dịch vụ Hotel Lưu trú).
+        /// - VALIDATION 1: Kiểm tra danh sách mặt hàng, số lượng mặt hàng phải > 0.
+        /// - VALIDATION 2: Kiểm tra liên kết bảng kê chuồng (Hotel Checkout Statement) & Lịch hẹn Spa hoàn thành chưa thanh toán.
+        /// - VALIDATION 3: Kiểm tra tồn kho sản phẩm kinh doanh.
+        /// - VALIDATION 4: RÀNG BUỘC PHƯƠNG THỨC THANH TOÁN UNIFIED CHECKOUT:
+        ///   + "Tiền mặt" (Cash): Thu ngân nhận tiền mặt, tính tiền thừa (Change), đơn chuyển thành "Chờ xử lý" (hoặc hoàn tất).
+        ///   + "Thanh toán online" (Online - PayOS): Tạo mã QR PayOS cho khách quét, chuyển thành "Chờ thanh toán", nhận Webhook cập nhật.
+        ///   + "Tiền mặt + Online" (Split Payment): Kết hợp thanh toán tiền mặt (CashAmount) và chuyển khoản online (OnlineAmount = TotalAmount - CashAmount).
+        /// </summary>
         [HttpPost]
         public async Task<IActionResult> SubmitOrder([FromBody] PosSubmitOrderDto dto)
         {
@@ -540,7 +550,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 return Json(new { success = false, message = "Dữ liệu không hợp lệ." });
             }
 
-            // 1. Kiểm tra số lượng hợp lệ
+            // 1. Kiểm tra số lượng mặt hàng hợp lệ (> 0)
             if (dto.Items.Any(i => i.Quantity <= 0))
             {
                 return Json(new { success = false, message = "Số lượng mặt hàng thanh toán phải lớn hơn 0." });
@@ -552,6 +562,8 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             {
                 return Json(new { success = false, message = "Hóa đơn chứa loại mặt hàng không được hỗ trợ." });
             }
+
+            // Validate Phương thức thanh toán hợp lệ tại quầy
             if (dto.PaymentMethod != "Tiền mặt" &&
                 dto.PaymentMethod != "Thanh toán online" &&
                 dto.PaymentMethod != "Tiền mặt + Online")
@@ -737,7 +749,9 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             }
 
             dto.TotalAmount = dto.Items.Sum(item => item.Price * item.Quantity);
-            decimal discount = dto.VoucherDiscount + (dto.PointsUsed * 500);
+            // Tính tỷ lệ quy đổi điểm theo Hạng thành viên hiện tại của khách (VIP: 3k, Vàng: 1.5k, Bạc: 1k, Đồng: 700đ, Thành viên: 500đ)
+            decimal pointRate = ManagePetStore.Services.Customer.CustomerRewardHelper.GetPointRateByTier(customer.MembershipTier);
+            decimal discount = dto.VoucherDiscount + (dto.PointsUsed * pointRate);
             decimal totalAmount = dto.TotalAmount - discount;
             if (totalAmount < 0) totalAmount = 0;
             if (dto.PaymentMethod == "Thanh toán online" && dto.OnlineAmount != totalAmount)
