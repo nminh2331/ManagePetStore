@@ -48,6 +48,10 @@ public class ProductCategoryService : IProductCategoryService
     public async Task CreateCategory(ProductCategory category)
     {
         SanitizeCategory(category);
+        
+        if (await _categoryRepo.CategoryNameExists(category.Name))
+            throw new ServiceException($"Tên danh mục '{category.Name}' đã tồn tại.");
+            
         await _categoryRepo.AddCategory(category);
     }
 
@@ -63,6 +67,10 @@ public class ProductCategoryService : IProductCategoryService
             throw new ServiceException($"Không tìm thấy danh mục ID = {category.CategoryId}.");
 
         SanitizeCategory(category);
+        
+        if (await _categoryRepo.CategoryNameExists(category.Name, category.CategoryId))
+            throw new ServiceException($"Tên danh mục '{category.Name}' đã tồn tại.");
+            
         existing.Name = category.Name;
         existing.Description = category.Description;
         existing.Keywords = category.Keywords;

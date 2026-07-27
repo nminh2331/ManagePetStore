@@ -57,6 +57,9 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             ViewBag.Search          = search;
             ViewBag.Filter          = filter;
 
+            // Lấy các lô hàng sắp hết hạn (mặc định báo trước 30 ngày)
+            ViewBag.ExpiringBatches = await _batchService.GetExpiringBatches(30);
+
             return View(summary.Products);
         }
 

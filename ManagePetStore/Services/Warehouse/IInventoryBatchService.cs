@@ -17,13 +17,13 @@ public interface IInventoryBatchService
     Task CreateBatch(InventoryBatch batch);
     Task UpdateBatch(int batchId, int newQuantity, DateTime newExpiryDate);
     Task AdjustBatchQuantityAsync(int batchId, int quantityDelta);
-    
-    // Há»§y / XÃ³a lÃ´ hÃ ng
-    Task DeleteBatch(int batchId);
 
     // Xuáº¥t kho FIFO
     Task DeductStockFIFO(string productSku, int quantityToDeduct);
 
-    // Nháº­p kho láº¡i (hoÃ n tráº£) vÃ o cÃ¡c lÃ´ cÅ©
+    // Nhập kho lại (hoàn trả) vào các lô cũ
     Task RestockToBatches(string productSku, int quantityToRestock);
+
+    // Lấy các lô hàng sắp hết hạn
+    Task<IEnumerable<InventoryBatch>> GetExpiringBatches(int daysThreshold = 30);
 }
