@@ -1,3 +1,6 @@
+
+
+
 // HÀ HOÀNG HIỆP CODE - LUỒNG MUA HÀNG: USE CASE MANAGE CART (QUẢN LÝ GIỎ HÀNG)
 using ManagePetStore.Services.Customer;
 using Microsoft.AspNetCore.Mvc;
@@ -52,15 +55,16 @@ public class CartController : Controller
             currentPage = totalPages;
         }
 
-        // 5. Gán dữ liệu hiển thị cho ViewModel
+        // 5. Gán dữ liệu hiển thị cho ViewModel  --     // Dòng 56-64: Cắt dữ liệu hiển thị theo trang (Skip - Take)
+
         model.SearchTerm = normalizedSearch;
         model.Page = currentPage;
         model.TotalFilteredItems = totalFilteredItems;
         model.TotalPages = totalPages;
         model.FilteredQuantity = filteredItems.Sum(i => i.Quantity);
         model.VisibleItems = filteredItems
-            .Skip((currentPage - 1) * model.PageSize)
-            .Take(model.PageSize)
+            .Skip((currentPage - 1) * model.PageSize)   // // Bỏ qua các sản phẩm của các trang trước
+            .Take(model.PageSize)  //  // Lấy đúng số sản phẩm trong 1 trang (PageSize)
             .ToList();
 
         return View(model);
@@ -82,11 +86,11 @@ public class CartController : Controller
 
         if (success)
         {
-            TempData["SuccessMessage"] = message;
+            TempData["SuccessMessage"] = message;  //  // Báo thông báo xanh lên UI
             return RedirectToAction(nameof(Index));
         }
 
-        TempData["ErrorMessage"] = message;
+        TempData["ErrorMessage"] = message;   //// Báo lỗi đỏ lên UI (ví dụ: Hết hàng, Vượt quá tồn kho)
         // Trở về trang trước đó nếu URL hợp lệ (Local URL)
         if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
         {

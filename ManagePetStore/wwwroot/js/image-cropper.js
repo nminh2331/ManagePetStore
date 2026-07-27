@@ -118,28 +118,8 @@
                         <div class="crop-handle handle-n"  data-handle="n"></div>
                         <div class="crop-handle handle-s"  data-handle="s"></div>
                         <div class="crop-handle handle-w"  data-handle="w"></div>
-                        <div class="crop-handle handle-e"  data-handle="e"></div>
                     </div>
                 </div>
-
-                <!-- Toolbar -->
-                <div class="cropper-toolbar">
-                    <div class="cropper-btn-group">
-                        <span style="font-size: 0.8rem; font-weight: 700; color: #64748b; margin-right: 2px;">Tỉ lệ:</span>
-                        <button type="button" class="cropper-tool-btn ratio-btn active" data-ratio="0">Tự do</button>
-                        <button type="button" class="cropper-tool-btn ratio-btn" data-ratio="1">1:1</button>
-                        <button type="button" class="cropper-tool-btn ratio-btn" data-ratio="1.333">4:3</button>
-                        <button type="button" class="cropper-tool-btn ratio-btn" data-ratio="1.777">16:9</button>
-                    </div>
-
-                    <div class="cropper-btn-group">
-                        <button type="button" class="cropper-tool-btn" id="btnRotateLeft" title="Xoay trái 90°"><i class="bi bi-arrow-counterclockwise"></i> Xoay trái</button>
-                        <button type="button" class="cropper-tool-btn" id="btnRotateRight" title="Xoay phải 90°"><i class="bi bi-arrow-clockwise"></i> Xoay phải</button>
-                        <button type="button" class="cropper-tool-btn" id="btnZoomIn" title="Phóng to"><i class="bi bi-zoom-in"></i></button>
-                        <button type="button" class="cropper-tool-btn" id="btnZoomOut" title="Thu nhỏ"><i class="bi bi-zoom-out"></i></button>
-                    </div>
-                </div>
-
                 <!-- Footer -->
                 <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 12px;">
                     <div style="font-size: 0.82rem; color: #64748b;">
@@ -159,20 +139,6 @@
         document.getElementById('btnCancelGlobalCropX').addEventListener('click', closeModal);
         document.getElementById('btnCancelCropModal').addEventListener('click', closeModal);
         document.getElementById('btnDoneGlobalCrop').addEventListener('click', finishCropping);
-
-        document.getElementById('btnRotateLeft').addEventListener('click', () => { rotation = (rotation - 90 + 360) % 360; renderStage(); resetCropBox(); });
-        document.getElementById('btnRotateRight').addEventListener('click', () => { rotation = (rotation + 90) % 360; renderStage(); resetCropBox(); });
-        document.getElementById('btnZoomIn').addEventListener('click', () => { zoom = Math.min(zoom + 0.15, 2.5); renderStage(); });
-        document.getElementById('btnZoomOut').addEventListener('click', () => { zoom = Math.max(zoom - 0.15, 0.6); renderStage(); });
-
-        document.querySelectorAll('.ratio-btn').forEach(btn => {
-            btn.addEventListener('click', function () {
-                document.querySelectorAll('.ratio-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                aspectRatio = parseFloat(this.getAttribute('data-ratio')) || 0;
-                resetCropBox();
-            });
-        });
 
         setupDragEvents();
     }
