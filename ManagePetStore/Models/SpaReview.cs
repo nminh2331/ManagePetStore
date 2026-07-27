@@ -5,6 +5,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ManagePetStore.Models;
 
+/// <summary>
+/// NGƯỜI THỰC HIỆN: Nhật Minh
+/// CHỨC NĂNG: Model đại diện cho Đánh giá & Nhận xét Dịch vụ Spa (SpaReview).
+/// </summary>
 public partial class SpaReview
 {
     [Key]

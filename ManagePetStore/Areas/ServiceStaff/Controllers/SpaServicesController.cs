@@ -14,8 +14,18 @@ using CustomerEntity = ManagePetStore.Models.Customer;
 namespace ManagePetStore.Areas.ServiceStaff.Controllers
 {
     /// <summary>
-    /// Controller quản lý Vận hành & Đặt ca Spa dành cho Phân hệ ServiceStaff (Nhân viên Spa), Admin và Manager.
-    /// Bao gồm: Danh mục Dịch vụ Spa, Lịch phân ca Groomer theo ngày, Hàng đợi Real-time, Tiếp nhận khách vãng lai và Cập nhật Tiến độ Spa.
+    /// =========================================================================================
+    /// NGƯỜI THỰC HIỆN / TÁC GIẢ: NHẬT MINH
+    /// CHỨC NĂNG: Controller quản lý Vận hành, Danh mục Dịch vụ & Đặt ca Spa dành cho Phân hệ ServiceStaff (Nhân viên Spa), Admin và Manager.
+    /// CÁC USE CASE CỦA NHẬT MINH TRONG CONTROLLER NÀY:
+    /// - UC-31: Process Spa Checkout & Payment (Tự động sinh hóa đơn POS nháp khi ca Spa hoàn thành)
+    /// - UC-32: Manage Spa Bookings (Quản lý hàng đợi và phân ca đặt lịch Spa)
+    /// - UC-33: Manage Spa Services (CRUD & Bật/Tắt danh mục Dịch vụ Spa)
+    /// - UC-34: Update Spa Status (Cập nhật tiến độ kỹ thuật Spa 5 bước theo thời gian thực)
+    /// - UC-41: Receive Walk-in Pet (Tiếp nhận và quản lý thông tin khách vãng lai tại quầy)
+    /// - UC-42: Assign Staff (Phân công Groomer và kiểm tra trùng ca Interval Overlap Check)
+    /// - UC-43: Cancel Booking as Staff (Nhân viên hủy ca làm việc và giải phóng hàng đợi)
+    /// =========================================================================================
     /// </summary>
     [Area("ServiceStaff")]
     [Authorize(Roles = "service,admin,manager")]
@@ -23,13 +33,15 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
     public class SpaServicesController : Controller
     {
         /// <summary>
-        /// Danh sách 5 bước tiến độ chuẩn của dịch vụ Spa
+        /// NGƯỜI THỰC HIỆN: Nhật Minh
+        /// Danh sách 5 bước tiến độ chuẩn của dịch vụ Spa do Nhật Minh thiết kế:
         /// Index 0: Tiếp nhận | Index 1: Tắm & Sấy | Index 2: Cắt & Tỉa | Index 3: Massage | Index 4: Hoàn thành
         /// </summary>
         private static readonly string[] SpaProgressStatuses = ["Tiếp nhận", "Tắm & Sấy", "Cắt & Tỉa", "Massage", "Hoàn thành"];
 
         /// <summary>
-        /// Hàm hỗ trợ: Trích xuất số điện thoại từ chuỗi định dạng "Tên Khách Hàng (0987654321)"
+        /// NGƯỜI THỰC HIỆN: Nhật Minh
+        /// Hàm hỗ trợ: Trích xuất số điện thoại từ chuỗi định dạng "Tên Khách Hàng (0987654321)".
         /// </summary>
         /// <param name="ownerName">Chuỗi tên chủ nuôi kèm số điện thoại trong ngoặc đơn</param>
         /// <returns>Chuỗi số điện thoại 10 chữ số (hoặc rỗng nếu không tìm thấy)</returns>
@@ -51,6 +63,10 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         private readonly PetStoreManagementContext _context;
         private readonly ILogger<SpaServicesController> _logger;
 
+        /// <summary>
+        /// NGƯỜI THỰC HIỆN: Nhật Minh
+        /// Constructor khởi tạo các dịch vụ phụ thuộc (PetStoreManagementContext, Logger).
+        /// </summary>
         public SpaServicesController(
             PetStoreManagementContext context,
             ILogger<SpaServicesController> logger)
@@ -64,7 +80,8 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         // =========================================================================
         
         /// <summary>
-        /// Màn hình chính quản lý Vận hành & Đặt ca Spa.
+        /// NGƯỜI THỰC HIỆN: Nhật Minh
+        /// CHỨC NĂNG: UC-32, UC-33 & UC-41 - Màn hình chính quản lý Vận hành & Đặt ca Spa phía Nhân viên / Manager.
         /// Nạp dữ liệu danh mục dịch vụ (có phân trang), danh sách phân ca Groomer theo ngày, hàng đợi Real-time và khách vãng lai chờ tiếp nhận.
         /// </summary>
         /// <param name="date">Ngày cần xem lịch phân ca (Mặc định là ngày hôm nay)</param>
@@ -79,41 +96,43 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             var selectedDate = date ?? DateTime.Today;
             ViewBag.SelectedDate = selectedDate;
 
-            // Phân hệ 4.1: Nạp danh mục dịch vụ Spa có PHÂN TRANG (PageSize = 5)
+            // Nhật Minh: Nạp danh mục dịch vụ Spa có PHÂN TRANG (PageSize = 5)
             int pageSize = 5;
             int totalServices = await _context.SpaServices.CountAsync();
             int totalPages = (int)Math.Ceiling((double)totalServices / pageSize);
             int currentPage = servicePage < 1 ? 1 : (servicePage > totalPages ? totalPages : servicePage);
             if (currentPage < 1) currentPage = 1;
 
+            // Nhật Minh: Select từng cột thông tin dịch vụ Spa để tối ưu hiệu năng và lấy đủ các thuộc tính cần hiển thị
             var services = await _context.SpaServices.AsNoTracking()
                 .OrderByDescending(s => s.ServiceId)
                 .Skip((currentPage - 1) * pageSize)
                 .Take(pageSize)
-                //.Select(s => new SpaService
-                // {
-                //     ServiceId = s.ServiceId,         // <-- BẮT BUỘC (Để hiển thị Mã SVC & dùng cho nút Sửa/Xóa)
-                //     Name = s.Name,                   // <-- BẮT BUỘC (Để hiển thị Tên dịch vụ)
-                //     TargetSpecies = s.TargetSpecies, // Loại thú cưng (Chó, Mèo,...)
-                //     DurationMinutes = s.DurationMinutes, // Thời lượng (phút)
-                //     Price = s.Price,                 // Đơn giá (đ)
-                //     Active = s.Active,
-                //    ImageUrls = s.ImageUrls     // Trạng thái áp dụng (Bật/Tắt)
-                //})
+                .Select(s => new SpaService
+                {
+                    ServiceId = s.ServiceId,         // Mã ID dịch vụ Spa
+                    Name = s.Name,                   // Tên dịch vụ Spa
+                    TargetSpecies = s.TargetSpecies, // Loài thú cưng áp dụng (Chó, Mèo, Tất cả...)
+                    DurationMinutes = s.DurationMinutes, // Thời lượng thực hiện (phút)
+                    Price = s.Price,                 // Đơn giá niêm yết (VNĐ)
+                    Active = s.Active,               // Trạng thái hoạt động (Bật/Tắt)
+                    Description = s.Description,     // Mô tả chi tiết dịch vụ
+                    ImageUrls = s.ImageUrls          // Chuỗi JSON danh sách URL hình ảnh minh họa
+                })
                 .ToListAsync();
             
             ViewBag.Services = services;
             ViewBag.CurrentPage = currentPage;
             ViewBag.TotalPages = totalPages;
 
-            // Chỉ lấy dịch vụ đang Hoạt động (Active) cho các Dropdown chọn lựa
+            // Nhật Minh: Chỉ lấy dịch vụ đang Hoạt động (Active = true) cho các Dropdown chọn lựa
             var activeServices = await _context.SpaServices.AsNoTracking()
                 .Where(s => s.Active)
                 .OrderByDescending(s => s.ServiceId)
                 .ToListAsync();
             ViewBag.ActiveServices = activeServices;
 
-            // Phân hệ 4.2: Nạp danh sách Groomer và Phân ca theo ngày có PHÂN TRANG (PageSize = 3)
+            // Nhật Minh: Nạp danh sách Groomer và Phân ca theo ngày có PHÂN TRANG (PageSize = 3)
             int groomerPageSize = 3;
             int activeGroomersCount = await _context.Users.AsNoTracking()
                 .Include(u => u.Role)
@@ -144,7 +163,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             ViewBag.GroomerPage = currentGroomerPage;
             ViewBag.TotalGroomerPages = totalGroomerPages;
 
-            // Lấy danh sách toàn bộ Lịch hẹn Spa trong ngày được chọn
+            // Nhật Minh: Lấy danh sách toàn bộ Lịch hẹn Spa trong ngày được chọn
             var bookings = await _context.SpaBookings.AsNoTracking()
                 .Include(b => b.Pet)
                 .Include(b => b.Customer)
@@ -156,7 +175,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             var allActiveQueueItems = await _context.SpaQueues.AsNoTracking().ToListAsync();
             ViewBag.AllActiveQueueItems = allActiveQueueItems;
 
-            // Phân hệ 4.3: Hàng đợi Spa Real-time chính thức có PHÂN TRANG (PageSize = 4)
+            // Nhật Minh: Hàng đợi Spa Real-time chính thức có PHÂN TRANG (PageSize = 4)
             int queuePageSize = 4;
             int totalQueueItems = await _context.SpaQueues.AsNoTracking().CountAsync(q => !q.QueueNumber.StartsWith("PEND-WI-"));
             int totalQueuePages = (int)Math.Ceiling((double)totalQueueItems / queuePageSize);
@@ -175,7 +194,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             ViewBag.TotalQueuePages = totalQueuePages;
             ViewBag.TotalQueueItems = totalQueueItems;
 
-            // Nạp danh sách Khách vãng lai đang chờ duyệt (Mã số bắt đầu bằng PEND-WI-) có PHÂN TRANG (PageSize = 1)
+            // Nhật Minh: Nạp danh sách Khách vãng lai đang chờ duyệt (Mã số bắt đầu bằng PEND-WI-) có PHÂN TRANG (PageSize = 1)
             var walkInItems = await _context.SpaQueues.AsNoTracking()
                 .Where(q => q.QueueNumber.StartsWith("PEND-WI-"))
                 .OrderBy(q => q.ArrivalTime)
@@ -206,7 +225,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 ViewBag.WalkInPet = pet;
             }
 
-            // Dữ liệu danh sách Khách hàng cho các Dropdown
+            // Nhật Minh: Dữ liệu danh sách Khách hàng cho các Dropdown
             var customers = await _context.Customers.AsNoTracking()
                 .Include(c => c.Pets)
                 .OrderBy(c => c.FullName)
@@ -221,8 +240,17 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         // =========================================================================
         
         /// <summary>
-        /// Xử lý Thêm Dịch Vụ Spa Mới vào Hệ Thống (Phân Hệ Service Staff - UC-33).
-        /// Sử dụng SpaServiceValidationHelper để tách riêng phần Validate thông tin cơ bản và tệp ảnh đính kèm.
+        /// NGƯỜI THỰC HIỆN: Nhật Minh
+        /// CHỨC NĂNG: UC-33 (Manage Spa Services - Thêm dịch vụ Spa mới).
+        /// PHẦN VALIDATE DỮ LIỆU CỦA NHẬT MINH:
+        /// 1. Sử dụng SpaServiceValidationHelper.ValidateBasicInfo kiểm tra:
+        ///    - Tên không rỗng.
+        ///    - Thời lượng (phút) > 0.
+        ///    - Đơn giá (VNĐ) >= 0.
+        /// 2. Sử dụng SpaServiceValidationHelper.ValidateImageFiles kiểm tra:
+        ///    - Định dạng ảnh (PNG, JPG, JPEG).
+        ///    - Dung lượng ảnh <= 100MB.
+        /// 3. Kiểm tra trùng tên dịch vụ trong CSDL (không phân biệt hoa thường).
         /// </summary>
         /// <param name="name">Tên dịch vụ Spa mới</param>
         /// <param name="duration">Thời lượng thực hiện dự kiến (phút)</param>
@@ -230,7 +258,6 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         /// <param name="targetSpecies">Loài thú cưng áp dụng (Chó, Mèo, Tất cả...)</param>
         /// <param name="description">Mô tả chi tiết quy trình & lợi ích dịch vụ Spa</param>
         /// <param name="serviceImages">Danh sách các tệp hình ảnh minh họa được tải lên</param>
-        /// <returns>Chuyển hướng về màn hình quản lý danh mục Spa kèm thông báo kết quả</returns>
         [HttpPost("AddService")]
         public async Task<IActionResult> AddService(
             string name,
@@ -240,7 +267,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             string? description,
             List<IFormFile>? serviceImages)
         {
-            // 1. Kiểm tra tính hợp lệ cơ bản của dữ liệu qua Helper
+            // Nhật Minh Validate 1: Kiểm tra tính hợp lệ cơ bản của dữ liệu qua Helper
             var (isBasicValid, basicErrorMsg) = SpaServiceValidationHelper.ValidateBasicInfo(name, duration, price);
             if (!isBasicValid)
             {
@@ -248,7 +275,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // 2. Kiểm tra tính hợp lệ của tệp ảnh tải lên qua Helper
+            // Nhật Minh Validate 2: Kiểm tra tính hợp lệ của tệp ảnh tải lên (PNG/JPG/JPEG, < 100MB)
             var (isImagesValid, imagesErrorMsg) = SpaServiceValidationHelper.ValidateImageFiles(serviceImages);
             if (!isImagesValid)
             {
@@ -258,14 +285,14 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             var trimmedName = name.Trim();
 
-            // 3. Kiểm tra trùng tên dịch vụ trong cơ sở dữ liệu (không phân biệt hoa/thường)
+            // Nhật Minh Validate 3: Kiểm tra trùng tên dịch vụ trong cơ sở dữ liệu
             if (await _context.SpaServices.AnyAsync(s => s.Name.ToLower() == trimmedName.ToLower()))
             {
                 TempData["ErrorMessage"] = "Tên dịch vụ Spa này đã tồn tại trong hệ thống.";
                 return RedirectToAction(nameof(Index));
             }
 
-            // 4. Lưu trữ các tệp ảnh hợp lệ vào ổ đĩa server
+            // Nhật Minh: Lưu trữ các tệp ảnh hợp lệ vào thư mục /uploads/spaservices/
             List<string> savedImageUrls = new List<string>();
             if (serviceImages != null && serviceImages.Count > 0)
             {
@@ -291,7 +318,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 }
             }
 
-            // 5. Khởi tạo đối tượng SpaService và lưu vào Database
+            // Nhật Minh: Khởi tạo đối tượng SpaService và lưu vào Database
             var service = new SpaService
             {
                 Name = trimmedName,
@@ -311,8 +338,12 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         /// <summary>
-        /// Xử lý Chỉnh Sửa Thông Tin Dịch Vụ Spa Đã Tồn Tại trong Danh Mục (UC-33).
-        /// Sử dụng SpaServiceValidationHelper để tách riêng phần Validate thông tin cơ bản và tệp ảnh đính kèm.
+        /// NGƯỜI THỰC HIỆN: Nhật Minh
+        /// CHỨC NĂNG: UC-33 (Manage Spa Services - Chỉnh sửa thông tin Dịch vụ Spa).
+        /// PHẦN VALIDATE DỮ LIỆU CỦA NHẬT MINH:
+        /// 1. Kiểm tra sự tồn tại của dịch vụ theo ID.
+        /// 2. Sử dụng SpaServiceValidationHelper.ValidateBasicInfo và ValidateImageFiles để kiểm tra dữ liệu đầu vào.
+        /// 3. Kiểm tra trùng tên với các dịch vụ khác (trừ dịch vụ đang sửa).
         /// </summary>
         /// <param name="id">Mã ID duy nhất của dịch vụ Spa cần chỉnh sửa</param>
         /// <param name="name">Tên dịch vụ Spa cập nhật</param>
@@ -322,7 +353,6 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         /// <param name="description">Mô tả chi tiết dịch vụ cập nhật</param>
         /// <param name="serviceImages">Danh sách tệp ảnh tải lên thêm mới</param>
         /// <param name="keepExistingImages">Chuỗi JSON danh sách URL ảnh cũ giữ lại (nếu có)</param>
-        /// <returns>Chuyển hướng về màn hình quản lý danh mục Spa kèm thông báo kết quả</returns>
         [HttpPost("EditService")]
         public async Task<IActionResult> EditService(
             int id,
@@ -341,7 +371,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // 1. Kiểm tra tính hợp lệ cơ bản của dữ liệu qua Helper
+            // Nhật Minh Validate 1: Kiểm tra tính hợp lệ cơ bản của dữ liệu qua Helper
             var (isBasicValid, basicErrorMsg) = SpaServiceValidationHelper.ValidateBasicInfo(name, duration, price);
             if (!isBasicValid)
             {
@@ -349,7 +379,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // 2. Kiểm tra tính hợp lệ của tệp ảnh tải lên qua Helper
+            // Nhật Minh Validate 2: Kiểm tra tính hợp lệ của tệp ảnh tải lên qua Helper
             var (isImagesValid, imagesErrorMsg) = SpaServiceValidationHelper.ValidateImageFiles(serviceImages);
             if (!isImagesValid)
             {
@@ -359,14 +389,14 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             var trimmedName = name.Trim();
 
-            // 3. Kiểm tra trùng tên với các dịch vụ Spa khác trong cơ sở dữ liệu
+            // Nhật Minh Validate 3: Kiểm tra trùng tên với các dịch vụ Spa khác trong cơ sở dữ liệu
             if (await _context.SpaServices.AnyAsync(s => s.Name.ToLower() == trimmedName.ToLower() && s.ServiceId != id))
             {
                 TempData["ErrorMessage"] = "Tên dịch vụ Spa này đã trùng với một dịch vụ khác.";
                 return RedirectToAction(nameof(Index));
             }
 
-            // Phân tích danh sách ảnh hiện có cần giữ lại
+            // Nhật Minh: Phân tích danh sách ảnh hiện có cần giữ lại
             List<string> imageList = new List<string>();
             if (!string.IsNullOrEmpty(keepExistingImages))
             {
@@ -385,7 +415,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 catch { }
             }
 
-            // Tải lên các tệp ảnh đính kèm mới nếu có
+            // Nhật Minh: Tải lên các tệp ảnh đính kèm mới nếu có
             if (serviceImages != null && serviceImages.Count > 0)
             {
                 var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "spaservices");
@@ -410,7 +440,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 }
             }
 
-            // Cập nhật các thông tin thuộc tính của SpaService
+            // Nhật Minh: Cập nhật các thuộc tính của SpaService
             service.Name = trimmedName;
             service.DurationMinutes = duration;
             service.Price = price;
@@ -424,7 +454,12 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         /// <summary>
-        /// Xóa dịch vụ Spa (Tự động chuyển sang xóa mềm Active=false nếu dịch vụ đã phát sinh dữ liệu lịch hẹn/hóa đơn).
+        /// NGƯỜI THỰC HIỆN: Nhật Minh
+        /// CHỨC NĂNG: UC-33 (Manage Spa Services - Xóa dịch vụ Spa).
+        /// RÀNG BUỘC KINH DOANH CỦA NHẬT MINH:
+        /// - Tự động kiểm tra khóa ngoại (SpaBookings hoặc OrderItems).
+        /// - Nếu đã phát sinh dữ liệu: Chuyển sang XÓA MỀM (Soft delete bằng cách gán Active = false).
+        /// - Nếu chưa từng phát sinh dữ liệu: Tiến hành XÓA CỨNG (Hard delete khỏi CSDL).
         /// </summary>
         /// <param name="id">Mã ID dịch vụ Spa cần xóa</param>
         [HttpPost("DeleteService")]
@@ -436,20 +471,20 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return Json(new { success = false, message = "Không tìm thấy dịch vụ." });
             }
 
-            // Kiểm tra an toàn khóa ngoại với các bảng SpaBooking và OrderItem
+            // Nhật Minh Validate: Kiểm tra an toàn khóa ngoại với các bảng SpaBooking và OrderItem
             bool hasBookings = await _context.SpaBookings.AnyAsync(b => b.ServiceId == id);
             bool hasOrderItems = await _context.OrderItems.AnyAsync(o => o.SpaServiceId == id);
 
             if (hasBookings || hasOrderItems)
             {
-                // Thực hiện Xóa mềm (Soft delete) bằng cách đổi trạng thái Active = false
+                // Nhật Minh: Thực hiện Xóa mềm (Soft delete) bằng cách đổi trạng thái Active = false
                 service.Active = false;
                 await _context.SaveChangesAsync();
                 return Json(new { success = true, isSoftDeleted = true, message = "Dịch vụ đã phát sinh dữ liệu (lịch hẹn/hóa đơn). Hệ thống tự động chuyển sang trạng thái Ngưng hoạt động!" });
             }
             else
             {
-                // Thực hiện Xóa cứng (Hard delete) loại bỏ hoàn toàn khỏi DB
+                // Nhật Minh: Thực hiện Xóa cứng (Hard delete) loại bỏ hoàn toàn khỏi DB
                 _context.SpaServices.Remove(service);
                 await _context.SaveChangesAsync();
                 return Json(new { success = true, isSoftDeleted = false, message = "Xóa dịch vụ Spa thành công!" });
@@ -457,7 +492,8 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         /// <summary>
-        /// Đổi nhanh trạng thái Bật/Tắt (Hoạt động / Ngưng hoạt động) của một dịch vụ Spa.
+        /// NGƯỜI THỰC HIỆN: Nhật Minh
+        /// CHỨC NĂNG: UC-33 (Manage Spa Services - Đổi nhanh trạng thái Bật/Tắt hoạt động).
         /// </summary>
         /// <param name="id">Mã ID dịch vụ Spa</param>
         [HttpPost("ToggleActive")]
@@ -480,8 +516,16 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         // =========================================================================
         
         /// <summary>
+        /// NGƯỜI THỰC HIỆN: Nhật Minh
+        /// CHỨC NĂNG: UC-41 (Receive Walk-in Pet).
         /// Tiếp nhận nhanh khách vãng lai trực tiếp tại quầy Spa.
-        /// Tự động đăng ký Khách hàng và Thú cưng nếu chưa có thông tin trong hệ thống, sau đó đưa vào danh sách chờ duyệt (mã PEND-WI-).
+        /// PHẦN VALIDATE DỮ LIỆU CỦA NHẬT MINH:
+        /// 1. Sử dụng SpaServiceValidationHelper.ValidateWalkInInfo kiểm tra:
+        ///    - Thông tin rỗng (Tên pet, tên khách, SĐT, mã dịch vụ).
+        ///    - Số điện thoại phải gồm đúng 10 chữ số.
+        ///    - Cân nặng thú cưng trong khoảng 0 < kg <= 200.
+        /// 2. Đảm bảo dịch vụ Spa đã chọn đang Hoạt động (Active = true).
+        /// 3. Tự động sinh mã hàng đợi PEND-WI-xxx tăng dần độc lập.
         /// </summary>
         [HttpPost("QuickCheckIn")]
         public async Task<IActionResult> QuickCheckIn(
@@ -490,6 +534,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         {
             string redirectDate = DateTime.Today.ToString("yyyy-MM-dd");
 
+            // Nhật Minh Validate 1: Kiểm tra tính hợp lệ dữ liệu khách vãng lai qua Helper
             var (isWalkInValid, walkInErrorMsg) = SpaServiceValidationHelper.ValidateWalkInInfo(petName, customerName, phone, serviceId, weight);
             if (!isWalkInValid)
             {
@@ -499,6 +544,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             var cleanPhone = phone.Trim();
 
+            // Nhật Minh Validate 2: Kiểm tra dịch vụ có tồn tại và đang hoạt động không
             var service = await _context.SpaServices.FindAsync(serviceId);
             if (service == null || !service.Active)
             {
@@ -510,7 +556,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             {
                 try
                 {
-                    // 1. Tạo mới thông tin Khách hàng vãng lai độc lập (UserId = null)
+                    // Nhật Minh: 1. Tạo mới thông tin Khách hàng vãng lai độc lập tại quầy (UserId = null)
                     var cleanCustomerName = customerName.Trim();
                     if (cleanCustomerName.Length > 100)
                     {
@@ -523,12 +569,12 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                         Phone = cleanPhone,
                         CreatedAt = DateTime.Now,
                         MembershipTier = "Bronze",
-                        UserId = null // Đảm bảo luôn là hồ sơ Khách vãng lai độc lập tại quầy
+                        UserId = null
                     };
                     _context.Customers.Add(customer);
                     await _context.SaveChangesAsync();
 
-                    // 2. Tìm hoặc tạo mới thông tin Thú cưng
+                    // Nhật Minh: 2. Tìm hoặc tạo mới thông tin Thú cưng cho hồ sơ khách này
                     var cleanPetName = petName.Trim();
                     if (cleanPetName.Length > 50) cleanPetName = cleanPetName.Substring(0, 50);
 
@@ -572,7 +618,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     }
                     await _context.SaveChangesAsync();
 
-                    // 3. Tạo mã số hàng đợi tự động (định dạng: PEND-WI-701, PEND-WI-702...)
+                    // Nhật Minh: 3. Tạo mã số hàng đợi tự động (định dạng: PEND-WI-701, PEND-WI-702...)
                     var allQueueNumbers = await _context.SpaQueues
                         .Where(q => q.QueueNumber.StartsWith("WI-") || q.QueueNumber.StartsWith("PEND-WI-"))
                         .Select(q => q.QueueNumber)
@@ -602,7 +648,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                         ownerLabel = ownerLabel.Substring(0, 100);
                     }
 
-                    // 4. Lưu bản ghi vào bảng SpaQueues
+                    // Nhật Minh: 4. Lưu bản ghi vào bảng SpaQueues
                     var queueItem = new SpaQueue
                     {
                         QueueNumber = queueNumber,
@@ -631,8 +677,14 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         /// <summary>
+        /// NGƯỜI THỰC HIỆN: Nhật Minh
+        /// CHỨC NĂNG: UC-42 (Assign Staff) & UC-32 (Manage Spa Bookings).
         /// Bắt đầu thực hiện ca làm việc từ Hàng đợi Spa Real-time.
-        /// Gán Groomer phụ trách, kiểm tra trùng lịch va chạm khoảng thời gian (Interval Overlap Check), khởi tạo SpaBooking và kích hoạt tiến độ về "|0" (Tiếp nhận).
+        /// PHẦN VALIDATE & THUẬT TOÁN CỦA NHẬT MINH:
+        /// 1. Kiểm tra Groomer hợp lệ (Active = true & Role = "service").
+        /// 2. Áp dụng Thuật toán kiểm tra trùng ca làm việc (Interval Overlap Check):
+        ///    Kiểm tra nếu Groomer đã có ca Spa nào trùng khoảng thời gian (Start -> Start + DurationMinutes) thì chặn không cho phân công.
+        /// 3. Khởi tạo bản ghi SpaBooking và thiết lập trạng thái ban đầu SpaStatus = "|0" (Tiếp nhận).
         /// </summary>
         /// <param name="queueId">Mã ID hàng đợi cần bắt đầu</param>
         /// <param name="groomerId">Mã ID Groomer được phân công</param>
@@ -646,6 +698,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return Json(new { success = false, message = "Không tìm thấy hàng đợi." });
             }
 
+            // Nhật Minh Validate 1: Kiểm tra Groomer hợp lệ và hoạt động
             var groomer = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == groomerId);
             if (groomer == null || groomer.Status != "Active" || groomer.Role?.RoleName != "service")
             {
@@ -683,7 +736,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return Json(new { success = false, message = "Không có dịch vụ Spa khả dụng." });
             }
 
-            // Xác định thời gian hẹn kết hợp giữa ngày chọn và giờ trong Hàng đợi
+            // Nhật Minh: Xác định thời gian hẹn kết hợp giữa ngày chọn và giờ trong Hàng đợi
             DateTime targetDate = queueItem.ArrivalTime.Date;
             if (!string.IsNullOrEmpty(date) && DateTime.TryParse(date, out var parsedDate))
             {
@@ -695,7 +748,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             var existingBooking = await _context.SpaBookings
                 .FirstOrDefaultAsync(b => b.CustomerId == customer.CustomerId && b.PetId == pet.PetId && b.ServiceId == service.ServiceId && b.DateTime == targetBookingDateTime && b.SpaStatus != "Cancelled");
 
-            // Kiểm tra trùng lịch của Groomer tại khung giờ này (Áp dụng thuật toán Interval Overlap Check)
+            // Nhật Minh Validate 2: Thuật toán kiểm tra trùng lịch Groomer (Interval Overlap Check)
             var bookedSlotsToday = await _context.SpaBookings.AsNoTracking()
                 .Include(b => b.Service)
                 .Where(b => b.GroomerId == groomerId 
@@ -719,7 +772,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             if (existingBooking != null)
             {
-                // Nếu đã có lịch hẹn online, gán Groomer tiếp nhận và kích hoạt tiến độ sang "|0" (Tiếp nhận)
+                // Nhật Minh: Nếu đã có lịch hẹn online, gán Groomer tiếp nhận và kích hoạt tiến độ sang "|0" (Tiếp nhận)
                 existingBooking.GroomerId = groomerId;
                 existingBooking.SpaStatus = "|0";
                 
@@ -728,7 +781,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return Json(new { success = true, message = $"Bắt đầu thực hiện dịch vụ cho thú cưng {pet.Name}!" });
             }
 
-            // Tạo mới bản ghi SpaBooking nếu là khách vãng lai
+            // Nhật Minh: Tạo mới bản ghi SpaBooking cho khách vãng lai
             var booking = new SpaBooking
             {
                 CustomerId = customer.CustomerId,
@@ -738,7 +791,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 DateTime = targetBookingDateTime,
                 Price = service.Price,
                 Status = "Chưa thanh toán",
-                SpaStatus = "|0", // Khởi tạo index 0 (Tiếp nhận) làm active status ban đầu
+                SpaStatus = "|0", // Khởi tạo index 0 (Tiếp nhận)
                 Notes = queueItem.Note
             };
 
@@ -754,7 +807,8 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         // =========================================================================
         
         /// <summary>
-        /// Lấy chi tiết lịch hẹn Spa và phân giải tiến độ 5 bước để hiển thị lên Modal Tiến độ Spa phía Nhân viên.
+        /// NGƯỜI THỰC HIỆN: Nhật Minh
+        /// CHỨC NĂNG: UC-32 & UC-34 - Lấy chi tiết lịch hẹn Spa và phân giải tiến độ 5 bước để hiển thị lên Modal Tiến độ Spa phía Nhân viên.
         /// </summary>
         /// <param name="bookingId">Mã ID lịch hẹn Spa</param>
         [HttpGet("GetBookingDetails")]
@@ -776,7 +830,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             var completedSteps = new List<string>();
             var activeStep = "Tiếp nhận";
 
-            // Phân giải SpaStatus (Dạng nén index: "0,1|2" -> hoàn thành [0, 1], bước đang làm 2)
+            // Nhật Minh: Phân giải SpaStatus dạng nén (ví dụ: "0,1|2" -> completed steps [0, 1], active step 2)
             var dbStatus = booking.SpaStatus ?? "0";
             if (dbStatus.Contains("|"))
             {
@@ -803,7 +857,6 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             }
             else
             {
-                // Hỗ trợ Fallback dữ liệu cũ
                 if (statuses.Contains(dbStatus))
                 {
                     activeStep = dbStatus;
@@ -836,9 +889,15 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         /// <summary>
-        /// Cập nhật tiến độ thực hiện ca Spa.
-        /// Kiểm tra nếu ca đã Hoàn thành thì khóa không cho thay đổi. 
-        /// Nếu bấm "Hoàn thành" (bước 5), hệ thống tự động khởi tạo Hóa đơn nháp tại POS và tạo công việc StaffTask cho nhân viên.
+        /// NGƯỜI THỰC HIỆN: Nhật Minh
+        /// CHỨC NĂNG: UC-34 (Update Spa Status) & UC-31 (Process Spa Checkout & Payment).
+        /// Cập nhật tiến độ thực hiện ca Spa (5 bước tuyến tính).
+        /// PHẦN VALIDATE & NGHIỆP VỤ TỰ ĐỘNG CỦA NHẬT MINH:
+        /// 1. Ràng buộc bảo vệ: Nếu ca làm việc ĐÃ HOÀN THÀNH thì khóa không cho phép thay đổi tiến độ.
+        /// 2. Tự động đánh dấu tích tuyến tính cho tất cả các bước trước bước được bấm chọn.
+        /// 3. Khi bấm bước 5 ("Hoàn thành"):
+        ///    - Tự động đồng bộ tạo Hóa đơn POS nháp (Order & OrderItem) ở trạng thái "Chờ thanh toán".
+        ///    - Tự động lưu lịch sử công việc nhân viên vào bảng StaffTask với trạng thái Completed.
         /// </summary>
         /// <param name="bookingId">Mã ID lịch hẹn Spa</param>
         /// <param name="status">Tên bước trạng thái mới (Tiếp nhận, Tắm & Sấy, Cắt & Tỉa, Massage, Hoàn thành)</param>
@@ -851,7 +910,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return Json(new { success = false, message = "Không tìm thấy lịch hẹn." });
             }
 
-            // Ràng buộc bảo vệ: Ca đã Hoàn thành thì không được phép thay đổi/bấm lại nữa
+            // Nhật Minh Validate 1: Ca đã Hoàn thành thì không được phép thay đổi/bấm lại nữa
             if (booking.SpaStatus == "4" || (booking.SpaStatus != null && booking.SpaStatus.EndsWith("|4")) || booking.SpaStatus == "Hoàn thành")
             {
                 return Json(new { success = false, message = "Ca làm việc này đã hoàn thành. Không thể thay đổi hoặc bấm lại các bước tiến độ nữa." });
@@ -894,7 +953,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 else int.TryParse(dbStatus, out activeIndex);
             }
 
-            // Logic tích dấu tuyến tính: tự động hoàn thành tất cả các bước lên đến newIndex
+            // Nhật Minh: Logic tích dấu tuyến tính - tự động hoàn thành tất cả các bước lên đến newIndex
             completedIndexes.Clear();
             for (int i = 0; i <= newIndex; i++)
             {
@@ -903,17 +962,17 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             activeIndex = newIndex;
 
-            // Đóng gói lưu lại DB dưới dạng nén
+            // Nhật Minh: Đóng gói lưu lại DB dưới dạng nén "0,1,2|2"
             booking.SpaStatus = string.Join(",", completedIndexes) + "|" + activeIndex;
 
-            // Nếu nhân viên chọn "Hoàn thành" ca làm việc -> Sinh hóa đơn POS nháp và tạo StaffTask
+            // Nhật Minh: Nếu nhân viên chọn "Hoàn thành" ca làm việc -> Sinh hóa đơn POS nháp và tạo StaffTask
             if (status == "Hoàn thành")
             {
                 await _context.Entry(booking).Reference(b => b.Pet).LoadAsync();
                 await _context.Entry(booking).Reference(b => b.Customer).LoadAsync();
                 await _context.Entry(booking).Reference(b => b.Service).LoadAsync();
 
-                // Đồng bộ hóa đơn sang POS (Tạo Order và OrderItem trạng thái "Chờ thanh toán")
+                // Đồng bộ hóa đơn sang POS (Tạo Order và OrderItem trạng thái "Chờ thanh toán") - UC-31
                 if (booking.Status == "Chưa thanh toán")
                 {
                     bool hasExistingOrder = await _context.OrderItems
@@ -952,7 +1011,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     }
                 }
 
-                // Lưu bản ghi công việc hoàn thành vào bảng StaffTasks
+                // Nhật Minh: Lưu bản ghi công việc hoàn thành vào bảng StaffTasks
                 string taskId = $"TSK-SPA-{bookingId}";
                 var existingTask = await _context.StaffTasks.FirstOrDefaultAsync(t => t.TaskId == taskId);
                 if (existingTask == null)
@@ -992,7 +1051,12 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         /// <summary>
-        /// Hủy lịch hẹn Spa từ phía Nhân viên (Chỉ hủy được khi ca chưa bắt đầu thực hiện).
+        /// NGƯỜI THỰC HIỆN: Nhật Minh
+        /// CHỨC NĂNG: UC-43 (Cancel Booking as Staff).
+        /// Hủy lịch hẹn Spa từ phía Nhân viên.
+        /// PHẦN VALIDATE DỮ LIỆU CỦA NHẬT MINH:
+        /// - Chỉ được hủy các ca chưa bắt đầu (SpaStatus = "0" hoặc "|0"). Không cho hủy ca đã thực hiện.
+        /// - Giải phóng hàng đợi SpaQueues tương ứng.
         /// </summary>
         /// <param name="bookingId">Mã ID lịch hẹn Spa</param>
         [HttpPost("CancelBooking")]
@@ -1004,12 +1068,13 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return Json(new { success = false, message = "Không tìm thấy lịch hẹn." });
             }
 
+            // Nhật Minh Validate: Không cho hủy ca đã phát sinh tiến độ thực hiện
             if (booking.SpaStatus != null && booking.SpaStatus != "|0" && booking.SpaStatus != "0" && booking.SpaStatus != "Cancelled")
             {
                 return Json(new { success = false, message = "Không thể hủy/xóa lịch hẹn đã bắt đầu thực hiện dịch vụ." });
             }
 
-            // Giải phóng hàng đợi SpaQueues tương ứng
+            // Nhật Minh: Giải phóng hàng đợi SpaQueues tương ứng
             if (booking.CustomerId > 0 && booking.PetId > 0)
             {
                 var customer = await _context.Customers.FindAsync(booking.CustomerId);
@@ -1033,7 +1098,8 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         /// <summary>
-        /// API Polling: Lấy danh sách Hàng đợi Spa Real-time theo trang (Dùng để tự động làm mới hàng đợi mỗi 30 giây).
+        /// NGƯỜI THỰC HIỆN: Nhật Minh
+        /// CHỨC NĂNG: UC-32 - API Polling lấy danh sách Hàng đợi Spa Real-time theo trang (Dùng để tự động làm mới hàng đợi mỗi 30 giây).
         /// </summary>
         /// <param name="page">Số trang hiện tại</param>
         [HttpGet("GetRealtimeQueue")]
@@ -1070,7 +1136,8 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         /// <summary>
-        /// Lấy chi tiết thông tin Khách vãng lai đang chờ tiếp nhận.
+        /// NGƯỜI THỰC HIỆN: Nhật Minh
+        /// CHỨC NĂNG: UC-41 - Lấy chi tiết thông tin Khách vãng lai đang chờ tiếp nhận.
         /// </summary>
         /// <param name="queueId">Mã ID hàng đợi</param>
         [HttpGet("GetWalkInDetails")]
@@ -1112,7 +1179,8 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         /// <summary>
-        /// Lấy danh sách mã ID các Groomer đang bận ca làm tại một mốc ngày và giờ cụ thể.
+        /// NGƯỜI THỰC HIỆN: Nhật Minh
+        /// CHỨC NĂNG: UC-42 (Assign Staff) - Lấy danh sách mã ID các Groomer đang bận ca làm tại một mốc ngày và giờ cụ thể.
         /// </summary>
         /// <param name="date">Ngày kiểm tra (yyyy-MM-dd)</param>
         /// <param name="time">Mốc giờ kiểm tra (HH:mm)</param>
@@ -1147,13 +1215,18 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         /// <summary>
-        /// Cập nhật/Sửa thông tin của khách vãng lai trong hàng đợi.
+        /// NGƯỜI THỰC HIỆN: Nhật Minh
+        /// CHỨC NĂNG: UC-41 - Cập nhật/Sửa thông tin của khách vãng lai trong hàng đợi.
+        /// PHẦN VALIDATE DỮ LIỆU CỦA NHẬT MINH:
+        /// - Kiểm tra ID hàng đợi, Tên pet, Tên khách hàng, SĐT và Dịch vụ không được rỗng.
+        /// - Kiểm tra tính hợp lệ của Dịch vụ Spa được chọn (Active = true).
         /// </summary>
         [HttpPost("EditWalkIn")]
         public async Task<IActionResult> EditWalkIn(
             int queueId, string petName, string species, string breed, string age, decimal weight, 
             string customerName, string phone, int serviceId, string note, string timeSlot)
         {
+            // Nhật Minh Validate: Đảm bảo dữ liệu bắt buộc không rỗng
             if (queueId <= 0 || string.IsNullOrWhiteSpace(petName) || string.IsNullOrWhiteSpace(customerName) || string.IsNullOrWhiteSpace(phone) || serviceId <= 0)
             {
                 TempData["ErrorMessage"] = "Thông tin không hợp lệ.";
@@ -1225,7 +1298,8 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         /// <summary>
-        /// Duyệt chuyển Khách vãng lai từ danh sách chờ (PEND-WI-) sang Hàng đợi chính thức (WI-).
+        /// NGƯỜI THỰC HIỆN: Nhật Minh
+        /// CHỨC NĂNG: UC-41 - Duyệt chuyển Khách vãng lai từ danh sách chờ (PEND-WI-) sang Hàng đợi chính thức (WI-).
         /// </summary>
         /// <param name="queueId">Mã ID hàng đợi</param>
         [HttpPost("AcceptWalkIn")]
@@ -1248,13 +1322,19 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
 
         /// <summary>
-        /// Hủy thông tin hàng đợi và xóa khỏi danh sách (Kèm theo lý do hủy).
+        /// NGƯỜI THỰC HIỆN: Nhật Minh
+        /// CHỨC NĂNG: UC-43 (Cancel Booking as Staff).
+        /// Hủy thông tin hàng đợi và xóa khỏi danh sách (Kèm theo lý do hủy bắt buộc).
+        /// PHẦN VALIDATE DỮ LIỆU CỦA NHẬT MINH:
+        /// - Lý do hủy không được để trống.
+        /// - Tự động tạo bản ghi lịch hẹn Cancelled trong CSDL để phục vụ báo cáo lịch sử.
         /// </summary>
         /// <param name="queueId">Mã ID hàng đợi</param>
-        /// <param name="reason">Lý do hủy</param>
+        /// <param name="reason">Lý do hủy lịch hẹn</param>
         [HttpPost("CancelQueueItem")]
         public async Task<IActionResult> CancelQueueItem(int queueId, string reason)
         {
+            // Nhật Minh Validate: Lý do hủy bắt buộc
             if (string.IsNullOrWhiteSpace(reason))
             {
                 return Json(new { success = false, message = "Vui lòng cung cấp lý do hủy lịch hẹn." });
@@ -1292,7 +1372,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                             }
                             else
                             {
-                                // Tạo một lịch hẹn Cancelled cho khách vãng lai để lưu lại lịch sử hủy trong DB
+                                // Nhật Minh: Tạo một lịch hẹn Cancelled cho khách vãng lai để lưu lại lịch sử hủy trong DB
                                 var defaultGroomer = await _context.Users.Include(u => u.Role)
                                     .FirstOrDefaultAsync(u => u.Role.RoleName == "service" && u.Status == "Active")
                                     ?? await _context.Users.Include(u => u.Role)
