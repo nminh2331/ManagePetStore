@@ -21,23 +21,26 @@ public class CartController : Controller
     /// - Kiểm tra và tính toán phân trang (Pagination), chống tình trạng số trang vượt quá tổng số trang hợp lệ.
     /// </summary>
     [HttpGet]
+    ///Action Method Index() - Hiển thị trang giỏ hàng:
     public async Task<IActionResult> Index(string? searchTerm, int page = 1)
     {
         // 1. Lấy dữ liệu giỏ hàng đã được chuẩn hóa từ Session/Database
-        var model = await _cartService.GetCartPageAsync();
+        var model = await _cartService.GetCartPageAsync();  //Gọi _cartService.GetCartPageAsync() để đọc giỏ hàng từ Session, tính tổng tiền và đối chiếu tồn kho từ CSDL.
 
         // 2. Validate & Chuẩn hóa từ khóa tìm kiếm
         var normalizedSearch = searchTerm?.Trim() ?? "";
 
         // 3. Lọc danh sách sản phẩm theo từ khóa (Tìm theo Tên hoặc SKU)
+        // dùng LINQ lọc danh sách sản phẩm trong giỏ theo Tên sản phẩm hoặc Mã SKU (chấp nhận cả chữ hoa lẫn chữ thường).
         var filteredItems = model.Items   
             .Where(i => string.IsNullOrWhiteSpace(normalizedSearch) ||
                         i.Name.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
                         i.Sku.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-        // 4. RÀNG BUỘC PHÂN TRANG: Kiểm tra trang hiện tại và tính tổng số trang
-        var currentPage = page < 1 ? 1 : page;
+        // 4. RÀNG BUỘC PHÂN TRANG: Kiểm tra trang hiện tại và tính tổng số trang    ( validate và phân trang ) 
+        //Nếu người dùng gõ page < 1 thì ép về trang 1. Nếu gõ page > totalPages (vượt quá tổng số trang) thì ép về trang cuối cùng.
+        var currentPage = page < 1 ? 1 : page;  
         var totalFilteredItems = filteredItems.Count;
         var totalPages = totalFilteredItems == 0
             ? 0
@@ -70,6 +73,8 @@ public class CartController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+
+    // 2. Action Method Add() - Thêm sản phẩm vào giỏ hàng:
     public async Task<IActionResult> Add(string sku, int quantity = 1, string? returnUrl = null)
     {
         // Gọi Service thực hiện thêm sản phẩm & kiểm tra tồn kho kho hàng
