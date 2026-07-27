@@ -1,5 +1,5 @@
 
-// HÀ HOÀNG HIỆP CODE
+// HÀ HOÀNG HIỆP CODE -- xử lý cái manage cart 
 
 using ManagePetStore.Areas.Customer.Models;
 using ManagePetStore.Models;
@@ -28,6 +28,15 @@ public class CartService : ICartService
         _context = context;
     }
 
+    /// <summary>
+    /// LUỒNG MANAGE CART: Lấy dữ liệu toàn bộ trang giỏ hàng
+    /// - Kiểm tra từng sản phẩm còn trong DB/Tồn kho không.
+    /// - Tự động điều chỉnh số lượng nếu vượt quá tồn kho (MaxStock).
+    /// - Tính toán Voucher giảm giá nếu đã được áp dụng trước đó.
+    /// </summary>
+    /// 
+
+    /// Phương thức GetCartPageAsync() - Đọc & Validate Tồn kho thực tế:
     public async Task<CartPageViewModel> GetCartPageAsync()
     {
         var items = GetCartItems();
@@ -35,20 +44,21 @@ public class CartService : ICartService
 
         foreach (var item in items)
         {
-            var product = await _productResolver.ResolveAsync(item.Sku);
+            //Đọc thông tin sản phẩm từ CSDL qua _productResolver.
+            var product = await _productResolver.ResolveAsync(item.Sku);  
             if (product == null)
             {
                 continue;
             }
 
+            // RÀNG BUỘC TỒN KHO: Số lượng trong giỏ không được vượt quá số tồn thực tế trong kho
             var quantity = Math.Min(item.Quantity, product.Stock);
             if (quantity <= 0)
             {
                 continue;
             }
 
-            viewModel.Items.Add(new CartLineItemViewModel   //Chuyển dữ liệu đã resolve sang model để render view.
-
+            viewModel.Items.Add(new CartLineItemViewModel
             {
                 Sku = product.Sku,
                 Name = product.Name,
@@ -70,7 +80,7 @@ public class CartService : ICartService
         }).ToList());
 
 
-        //Xử lý voucher
+        // Xử lý áp dụng Voucher và tính toán số tiền giảm giá
         var appliedVoucher = GetAppliedVoucher();
         if (appliedVoucher != null)
         {
@@ -94,29 +104,43 @@ public class CartService : ICartService
         return GetCartItems().Sum(i => i.Quantity);
     }
 
+    /// <summary>
+    /// LUỒNG MANAGE CART: Thêm sản phẩm vào giỏ hàng
+    /// - VALIDATION 1: Số lượng yêu cầu thêm phải >= 1.
+    /// - VALIDATION 2: Kiểm tra sự tồn tại của SKU sản phẩm.
+    /// - VALIDATION 3: Kiểm tra trạng thái hết hàng (InStock = false hoặc Stock <= 0).
+    /// - RÀNG BUỘC TỒN KHO: Tổng số lượng trong giỏ không được vượt quá số tồn kho hiện tại.
+    /// </summary>
+    /// -----------------------------------------------------------------------------------------------------------------------------
+    //Phương thức AddItemAsync() - Thêm sản phẩm & Check điều kiện: ( VALIDATE ) 
     public async Task<(bool Success, string Message)> AddItemAsync(string sku, int quantity)
     {
-        if (quantity < 1)
+        if (quantity < 1)  //Check 1: Số lượng thêm phải >= 1.
         {
             return (false, "Số lượng không hợp lệ.");
         }
-
+        // Tìm mã SKU trong CSDL, nếu không tồn tại ➔ Báo lỗi "Không tìm thấy sản phẩm".
         var product = await _productResolver.ResolveAsync(sku);
         if (product == null)
         {
             return (false, "Không tìm thấy sản phẩm.");
         }
-
+        //Check 3: Kiểm tra cờ InStock == false hoặc Stock <= 0 ➔ Báo lỗi sản phẩm đã hết hàng.
         if (!product.InStock || product.Stock <= 0)
         {
             return (false, "sản phẩm đã hết hàng , vui lòng chọn sản phẩm khác");
         }
 
+        //(Xử lý sản phẩm đã có sẵn trong giỏ)
         var items = GetCartItems();
         var existing = items.FirstOrDefault(i => i.Sku.Equals(product.Sku, StringComparison.OrdinalIgnoreCase));
 
         if (existing != null)
         {
+            //Nếu sản phẩm đã nằm trong giỏ trước đó ➔ Cộng dồn số lượng existing.Quantity + quantity.
+
+            //iếp tục dùng Math.Min(..., product.Stock) để chặn không cho tổng số lượng vượt quá kho. 
+            //Nếu đã đạt tối đa tồn kho ➔ Trả về message thông báo "Chỉ còn X sản phẩm trong kho".
             var newQty = Math.Min(existing.Quantity + quantity, product.Stock);
             if (newQty == existing.Quantity)
             {
@@ -142,10 +166,15 @@ public class CartService : ICartService
             });
         }
 
-        SaveCartItems(items);
+        SaveCartItems(items);   //Lưu danh sách giỏ hàng sau khi cập nhật vào HttpContext.Session dưới dạng chuỗi JSON mã hóa.
         return (true, "Đã thêm sản phẩm vào giỏ hàng.");
     }
 
+    /// <summary>
+    /// LUỒNG MANAGE CART: Cập nhật số lượng trực tiếp cho 1 sản phẩm
+    /// - Nếu quantity < 1 -> Gọi xóa sản phẩm khỏi giỏ.
+    /// - Giới hạn số lượng bởi Stock hiện tại.
+    /// </summary>
     public async Task<(bool Success, string Message)> SetQuantityAsync(string sku, int quantity)
     {
         if (quantity < 1)
@@ -174,6 +203,7 @@ public class CartService : ICartService
         return (true, "Đã cập nhật số lượng.");
     }
 
+    //
     public async Task<(bool Success, string Message)> IncreaseQuantityAsync(string sku)
     {
         var items = GetCartItems();
@@ -211,6 +241,10 @@ public class CartService : ICartService
         return Task.FromResult((true, "Đã xóa sản phẩm khỏi giỏ hàng."));
     }
 
+    /// <summary>
+    /// LUỒNG MANAGE CART: Áp dụng mã giảm giá (Voucher)
+    /// - VALIDATION: Kiểm tra giỏ hàng có trống không, mã voucher có hợp lệ và còn hạn dùng không, kiểm tra giá trị đơn tối thiểu (MinOrder).
+    /// </summary>
     public async Task<(bool Success, string Message)> ApplyVoucherAsync(string code)
     {
         if (string.IsNullOrWhiteSpace(code))
@@ -251,6 +285,11 @@ public class CartService : ICartService
         ClearVoucher();
     }
 
+    /// <summary>
+    /// RÀNG BUỘC VOUCHER: Tính toán tiền giảm theo phần trăm (%) hoặc số tiền cố định
+    /// - Kiểm tra trạng thái Voucher (Status == true) và ngày hết hạn (ExpiryDate >= Today).
+    /// - Kiểm tra đơn hàng có đạt giá trị tối thiểu (subtotal >= MinOrder).
+    /// </summary>
     private async Task<decimal> CalculateVoucherDiscountAsync(string code, decimal subtotal)
     {
         try

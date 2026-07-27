@@ -123,19 +123,6 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
             }
         }
 
-        // Xử lý xóa lô hàng
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            var batch = await _batchService.GetBatchById(id);
-            if (batch == null) return NotFound();
-
-            string sku = batch.ProductSku;
-            await _batchService.DeleteBatch(id);
-
-            return RedirectToAction(nameof(Index), new { id = sku });
-        }
 
         // Đồng bộ tồn kho: Cập nhật Product.Stock (số lượng bên ngoài) cho khớp với tổng số lượng trong các lô hàng.
         [HttpPost]

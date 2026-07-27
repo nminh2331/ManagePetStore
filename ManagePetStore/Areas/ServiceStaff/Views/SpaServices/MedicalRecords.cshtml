@@ -88,7 +88,7 @@
                             <h2 class="h5 font-weight-bold text-dark mb-0">Danh sách thú cưng: Loài @selectedSpecies</h2>
                         </div>
                         <div class="col-md-5">
-                            <input type="text" id="petSearchInput" class="form-control px-4 rounded-pill" placeholder="Tìm theo tên thú cưng hoặc tên chủ..." style="border: 1px solid #efece9;" />
+                            <input type="text" id="petSearchInput" class="form-control px-4 rounded-pill" placeholder="Tìm theo tên hoặc ngày sinh/tuổi..." style="border: 1px solid #efece9;" />
                         </div>
                     </div>
 
@@ -105,7 +105,7 @@
                             @foreach (var pet in pets)
                             {
                                 var hasRecord = pet.MedicalRecords.Any();
-                                <div class="col-md-4 mb-4 pet-card-item" data-name="@pet.Name" data-owner="@pet.Customer.FullName" data-age="@pet.Age">
+                                <div class="col-md-4 mb-4 pet-card-item" data-name="@pet.Name" data-age="@pet.Age">
                                     <div class="card pet-item-card p-3 @(hasRecord ? "has-record-border" : "no-record-border")">
                                         <div class="d-flex align-items-center justify-content-between mb-3" style="gap: 8px;">
                                             <!-- Left side: Pet info -->
@@ -290,10 +290,6 @@
                         <div class="form-group mt-2">
                             <label class="form-label font-weight-bold d-block">Phòng ngừa Ký sinh trùng (Ve rận, giun)</label>
                             <div class="custom-control custom-checkbox custom-control-inline mr-4">
-                                <input type="checkbox" class="custom-control-input" id="preventChua" name="parasitePrevention" value="Chưa thực hiện các biện pháp phòng ngừa">
-                                <label class="custom-control-label font-weight-normal text-muted" for="preventChua" style="cursor: pointer;">Chưa thực hiện các biện pháp phòng ngừa</label>
-                            </div>
-                            <div class="custom-control custom-checkbox custom-control-inline mr-4">
                                 <input type="checkbox" class="custom-control-input" id="preventGiun" name="parasitePrevention" value="Đã tẩy giun đường ruột">
                                 <label class="custom-control-label font-weight-normal text-muted" for="preventGiun" style="cursor: pointer;">Đã tẩy giun đường ruột</label>
                             </div>
@@ -325,10 +321,6 @@
                         </div>
                         <div class="form-group mt-2">
                             <label class="form-label font-weight-bold d-block">Biểu hiện bất thường</label>
-                            <div class="custom-control custom-checkbox custom-control-inline mr-4">
-                                <input type="checkbox" class="custom-control-input" id="turtleKhongCo" name="abnormalSymptoms" value="Không có các biểu hiện bất thường trên">
-                                <label class="custom-control-label font-weight-normal text-muted" for="turtleKhongCo" style="cursor: pointer;">Không có các biểu hiện bất thường trên</label>
-                            </div>
                             <div class="custom-control custom-checkbox custom-control-inline mr-4">
                                 <input type="checkbox" class="custom-control-input" id="turtleSungMat" name="abnormalSymptoms" value="Sưng nhắm mắt">
                                 <label class="custom-control-label font-weight-normal text-muted" for="turtleSungMat" style="cursor: pointer;">Sưng nhắm mắt</label>
@@ -370,16 +362,12 @@
                         <div class="form-group mt-3">
                             <label class="form-label font-weight-bold d-block">Dấu hiệu tiêu hóa</label>
                             <div class="custom-control custom-checkbox custom-control-inline mr-4">
-                                <input type="checkbox" class="custom-control-input" id="hamsterBinhThuong" name="digestiveSigns" value="Bình thường (Phân khô, khuôn đẹp)">
-                                <label class="custom-control-label font-weight-normal text-muted" for="hamsterBinhThuong" style="cursor: pointer;">Bình thường (Phân khô, khuôn đẹp)</label>
-                            </div>
-                            <div class="custom-control custom-checkbox custom-control-inline mr-4">
-                                <input type="checkbox" class="custom-control-input" id="hamsterTieuChayNhe" name="digestiveSigns" value="Tiêu chảy nhẹ (Rối loạn tiêu hóa thông thường)">
-                                <label class="custom-control-label font-weight-normal text-muted" for="hamsterTieuChayNhe" style="cursor: pointer;">Tiêu chảy nhẹ (Rối loạn tiêu hóa thông thường)</label>
+                                <input type="checkbox" class="custom-control-input" id="hamsterUotDuoi" name="digestiveSigns" value="Ướt đuôi">
+                                <label class="custom-control-label font-weight-normal text-muted" for="hamsterUotDuoi" style="cursor: pointer;">Ướt đuôi (Bệnh nguy hiểm)</label>
                             </div>
                             <div class="custom-control custom-checkbox custom-control-inline">
-                                <input type="checkbox" class="custom-control-input" id="hamsterUotDuoi" name="digestiveSigns" value="Ướt đuôi (Tiêu chảy cấp - Nguy hiểm)">
-                                <label class="custom-control-label font-weight-normal text-muted" for="hamsterUotDuoi" style="cursor: pointer;">Ướt đuôi (Tiêu chảy cấp - Nguy hiểm)</label>
+                                <input type="checkbox" class="custom-control-input" id="hamsterTieuChay" name="digestiveSigns" value="Tiêu chảy">
+                                <label class="custom-control-label font-weight-normal text-muted" for="hamsterTieuChay" style="cursor: pointer;">Tiêu chảy</label>
                             </div>
                         </div>
                     </div>
@@ -430,41 +418,20 @@
         }
 
         $(document).ready(function () {
-            // Client-side search logic (Search by Pet Name or Owner Name)
+            // Client-side search logic (Search by Name and Age) without glass icon wrapper
             $('#petSearchInput').on('keyup', function () {
                 var query = $(this).val().trim().toLowerCase();
                 $('#petsGrid .pet-card-item').each(function () {
                     var name = ($(this).data('name') || '').toString().toLowerCase();
-                    var owner = ($(this).data('owner') || '').toString().toLowerCase();
+                    var age = ($(this).data('age') || '').toString().toLowerCase();
                     
-                    if (name.includes(query) || owner.includes(query)) {
+                    if (name.includes(query) || age.includes(query)) {
                         $(this).show();
                     } else {
                         $(this).hide();
                     }
                 });
             });
-
-            // Mutual exclusion helper for "None/Normal" options vs pathological options
-            function setupMutualExclusion(noneCheckboxId, groupName) {
-                var $noneCb = $('#' + noneCheckboxId);
-                
-                $noneCb.on('change', function () {
-                    if ($(this).is(':checked')) {
-                        $('input[name="' + groupName + '"]').not($noneCb).prop('checked', false);
-                    }
-                });
-
-                $('input[name="' + groupName + '"]').not($noneCb).on('change', function () {
-                    if ($(this).is(':checked')) {
-                        $noneCb.prop('checked', false);
-                    }
-                });
-            }
-
-            setupMutualExclusion('preventChua', 'parasitePrevention');
-            setupMutualExclusion('turtleKhongCo', 'abnormalSymptoms');
-            setupMutualExclusion('hamsterBinhThuong', 'digestiveSigns');
 
             // Form submission logic via AJAX with Toast notification
             $('#createRecordForm').on('submit', function (e) {

@@ -89,16 +89,7 @@
             <div class="ps-pd-price-box">
                 <div class="ps-pd-price-row">
                     <span class="ps-pd-price">@Model.Price.ToString("N0")đ</span>
-                    @if (Model.OriginalPrice > Model.Price)
-                    {
-                        <span class="ps-pd-original">@Model.OriginalPrice.ToString("N0")đ</span>
-                        <span class="ps-pd-discount-badge">@Model.DiscountPercent%</span>
-                    }
                 </div>
-                @if (Model.Savings > 0)
-                {
-                    <div class="ps-pd-savings">Tiết kiệm: @Model.Savings.ToString("N0")đ</div>
-                }
             </div>
 
             @if (Model.Sku.StartsWith("SPA-SVC-"))
@@ -710,37 +701,9 @@
                 });
             });
 
-            // 2. Quantity selector logic (for normal products)
-            var qtyMinus = document.getElementById('pdQtyMinus');
-            var qtyPlus = document.getElementById('pdQtyPlus');
+            // 2. Quantity selector logic is already handled in homepage.js
             var qtyValue = document.getElementById('pdQty');
             var qtyInput = document.getElementById('pdQtyInput');
-
-            if (qtyValue) {
-                var maxVal = parseInt(qtyValue.getAttribute('data-max')) || 99;
-                
-                if (qtyMinus) {
-                    qtyMinus.addEventListener('click', function () {
-                        var val = parseInt(qtyValue.textContent) || 1;
-                        if (val > 1) {
-                            val--;
-                            qtyValue.textContent = val;
-                            if (qtyInput) qtyInput.value = val;
-                        }
-                    });
-                }
-
-                if (qtyPlus) {
-                    qtyPlus.addEventListener('click', function () {
-                        var val = parseInt(qtyValue.textContent) || 1;
-                        if (val < maxVal) {
-                            val++;
-                            qtyValue.textContent = val;
-                            if (qtyInput) qtyInput.value = val;
-                        }
-                    });
-                }
-            }
 
             // Validation cho Thêm vào giỏ và Mua ngay khi hết hàng
             var isProductInStock = @(Model.InStock && Model.Stock > 0 ? "true" : "false");
@@ -749,6 +712,9 @@
 
             if (pdAddCartForm) {
                 pdAddCartForm.addEventListener('submit', function (e) {
+                    if (qtyInput && qtyValue) {
+                        qtyInput.value = parseInt(qtyValue.textContent) || 1;
+                    }
                     if (!isProductInStock) {
                         e.preventDefault();
                         alert('sản phẩm đã hết hàng , vui lòng chọn sản phẩm khác');
@@ -759,6 +725,9 @@
 
             if (pdBuyNowBtn) {
                 pdBuyNowBtn.addEventListener('click', function (e) {
+                    if (qtyInput && qtyValue) {
+                        qtyInput.value = parseInt(qtyValue.textContent) || 1;
+                    }
                     if (!isProductInStock) {
                         e.preventDefault();
                         alert('sản phẩm đã hết hàng , vui lòng chọn sản phẩm khác');

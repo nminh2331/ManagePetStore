@@ -29,16 +29,23 @@ public class OrderController : Controller
         _inventoryBatchService = inventoryBatchService;
     }
 
+    /// <summary>
+    /// LUỒNG VIEW ORDER HISTORY: Lịch sử đơn hàng của khách hàng
+    /// - Lấy danh sách tất cả các đơn hàng của khách hàng hiện tại.
+    /// - Hỗ trợ lọc theo trạng thái: Chờ xử lý (pending), Đã duyệt (approved), Đang giao (delivering), Hoàn thành (completed), Đã hủy (cancelled).
+    /// - Phân trang danh sách đơn hàng.
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> Index(string? searchTerm, string statusFilter = "all", int page = 1)
     {
-        //lấy thông tin customer đang đăng nhập
+        // 1. Lấy thông tin khách hàng đang đăng nhập
         var layout = await BuildSidebarViewModelAsync("orders");
         if (layout == null)
         {
             return RedirectToAction("Login", "Account", new { area = "Customer" });
         }
 
+        // 2. Query danh sách đơn hàng xếp theo thời gian mới nhất
         var orders = await _context.Orders
             .Where(o => o.CustomerId == layout.Customer.CustomerId)
             .OrderByDescending(o => o.Date)
@@ -51,6 +58,7 @@ public class OrderController : Controller
 
         IEnumerable<OrderListItemViewModel> filteredOrders = mappedOrders;
 
+        // Tìm kiếm theo Mã đơn hàng hoặc Trạng thái
         if (!string.IsNullOrWhiteSpace(normalizedSearch))
         {
             filteredOrders = filteredOrders.Where(o =>
@@ -59,6 +67,7 @@ public class OrderController : Controller
                 o.Status.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase));
         }
 
+        // Lọc theo bộ lọc trạng thái đơn
         filteredOrders = normalizedStatus switch
         {
             "pending" => filteredOrders.Where(o => o.StatusKey == "pending"),
@@ -123,6 +132,13 @@ public class OrderController : Controller
         return RedirectToAction(nameof(Index), new { searchTerm, statusFilter, page });
     }
 
+    /// <summary>
+    /// LUỒNG UPDATE ORDER STATUS: NÚT "ĐÃ NHẬN HÀNG" (Confirm Received) PHÍA KHÁCH HÀNG
+    /// - Khi Manager/Shipper đã bấm nút Giao hàng (Trạng thái đơn: "Đang giao" / delivering).
+    /// - Khách hàng nhận được hàng thực tế và bấm nút "Đã nhận hàng" trong Chi tiết/Danh sách đơn.
+    /// - RÀNG BUỘC: Chỉ đơn hàng đang ở trạng thái "delivering" mới được bấm xác nhận.
+    /// - KẾT QUẢ: Đơn đổi sang trạng thái "Đã hoàn thành", đồng bộ thanh toán Spa nếu có, tính lại điểm thưởng & hạng thành viên cho khách, và kích hoạt quyền đủ điều kiện gửi Yêu cầu trả hàng (Request Return).
+    /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ConfirmReceived(string orderId, string? returnAction, string? searchTerm, string statusFilter = "all", int page = 1)
@@ -148,12 +164,14 @@ public class OrderController : Controller
             return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);
         }
 
+        // RÀNG BUỘC TRẠNG THÁI: Đơn phải đang ở trạng thái Đang giao (delivering)
         if (OrderStatusHelper.ResolveStatusKey(order.Status) != "delivering")
         {
             TempData["ErrorMessage"] = "Chỉ có thể xác nhận với đơn hàng đang giao.";
             return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);
         }
 
+        // Cập nhật trạng thái đơn thành Đã hoàn thành
         order.Status = "Đã hoàn thành";
 
         // Đồng bộ trạng thái thanh toán của các Spa Booking đi kèm đơn hàng (nếu có)
@@ -167,12 +185,19 @@ public class OrderController : Controller
         }
 
         await _context.SaveChangesAsync();
+        // Tích điểm thưởng & tính lại hạng hội viên cho khách hàng
         await ManagePetStore.Services.Customer.CustomerRewardHelper.RecalculateCustomerPointsAndTierAsync(layout.Customer.CustomerId, _context);
 
         TempData["SuccessMessage"] = $"Đơn hàng {FormatDisplayOrderId(orderId)} đã được xác nhận nhận hàng.";
         return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);
     }
 
+    /// <summary>
+    /// LUỒNG UPDATE ORDER STATUS: HỦY ĐƠN HÀNG PHÍA KHÁCH HÀNG
+    /// - VALIDATION: Bắt buộc chọn hoặc nhập Lý do hủy đơn.
+    /// - RÀNG BUỘC: Khách hàng chỉ được phép Hủy đơn khi đơn đang ở trạng thái "Chờ xử lý" (pending).
+    /// - KẾT QUẢ: Đổi trạng thái sang "Đã hủy", hoàn lại số lượng tồn kho sản phẩm, hủy booking dịch vụ đi kèm.
+    /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Cancel(string orderId, string cancelReason, string? returnAction, string? searchTerm, string statusFilter = "all", int page = 1)
@@ -205,8 +230,9 @@ public class OrderController : Controller
             return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);
         }
 
+        // RÀNG BUỘC: Khách được phép hủy khi đơn ở trạng thái Chờ xử lý (pending) hoặc Chờ thanh toán (awaiting_payment)
         var statusKey = OrderStatusHelper.ResolveStatusKey(order.Status);
-        if (statusKey != "pending")
+        if (statusKey != "pending" && statusKey != "awaiting_payment")
         {
             TempData["ErrorMessage"] = "Chỉ có thể hủy đơn hàng ở trạng thái chờ xử lý hoặc chờ thanh toán.";
             return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);
@@ -221,9 +247,6 @@ public class OrderController : Controller
                 var product = await _context.Products.FirstOrDefaultAsync(p => p.Sku == item.ProductSku);
                 if (product != null)
                 {
-                    // Yêu cầu Issue 3: Không tự động Restock vào lô mới nhất nữa
-                    // await _inventoryBatchService.RestockToBatches(item.ProductSku, item.Quantity);
-                    
                     systemStockDetails.Add(new StockMovementDetail
                     {
                         ProductSku = item.ProductSku,

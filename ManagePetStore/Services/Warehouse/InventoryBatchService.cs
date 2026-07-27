@@ -90,19 +90,6 @@ public class InventoryBatchService : IInventoryBatchService
         await _productRepo.AdjustStockAsync(batch.ProductSku, quantityDelta);
     }
 
-    public async Task DeleteBatch(int batchId)
-    {
-        var batch = await _batchRepo.GetBatchById(batchId);
-        if (batch != null)
-        {
-            if (await _productRepo.ProductExists(batch.ProductSku))
-            {
-                await _productRepo.AdjustStockAsync(batch.ProductSku, -batch.CurrentQuantity);
-            }
-
-            await _batchRepo.DeleteBatch(batchId);
-        }
-    }
 
     public async Task DeductStockFIFO(string productSku, int quantityToDeduct)
     {
@@ -179,5 +166,10 @@ public class InventoryBatchService : IInventoryBatchService
 
         // Cập nhật tổng tồn kho
         await _productRepo.AdjustStockAsync(productSku, quantityToRestock);
+    }
+
+    public async Task<IEnumerable<InventoryBatch>> GetExpiringBatches(int daysThreshold = 30)
+    {
+        return await _batchRepo.GetExpiringBatches(daysThreshold);
     }
 }

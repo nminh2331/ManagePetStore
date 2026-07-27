@@ -81,6 +81,8 @@
 else
 {
     <!-- Best Selling Products -->
+    <!-- phần header của sản phẩm nổi bật -->
+
     <section class="ps-section" id="best-sellers">
         <div class="ps-section-header">
             <h2 class="ps-section-title">Sản phẩm nổi bật</h2>
@@ -90,6 +92,9 @@ else
         {
             <div class="ps-products-grid" id="best-sellers-grid">
                 @{ int productIndex = 0; }
+
+
+                    <!-- phần header của sản phẩm nổi bật -->
                 @foreach (var product in Model.BestSellers)
                 {
                     bool isHidden = productIndex >= 4;
@@ -117,10 +122,13 @@ else
                                     @:Chưa có đánh giá
                                 }
                             </div>
+                                <!-- phần hiển thị thông tin và sản phẩm  -->
+
                             <div class="ps-product-name">@product.Name</div>
                             <div class="ps-product-price-label">GIÁ ƯU ĐÃI</div>
                             <div class="ps-product-footer">
                                 <div class="ps-product-price">@product.Price.ToString("N0")đ</div>
+                                <!-- Phần hiển thị Trạng thái Tồn kho  -->
                                 @if (product.InStock)
                                 {
                                     <span class="ps-product-stock">SẴN CÓ</span>
@@ -135,7 +143,7 @@ else
                     productIndex++;
                 }
             </div>
-
+            <!-- phần điều hướng và phân trang  -->
             @if (Model.TotalPagesP > 1)
             {
                 <nav class="mt-4 d-flex justify-content-center" aria-label="Products Pagination">
