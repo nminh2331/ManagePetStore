@@ -212,6 +212,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
         // [nam] Thêm chuồng mới vào một loại chuồng hợp lệ.
         [HttpPost("AddCage")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddCage(
             string cageId, int roomTypeId, string feedSchedule, int portion)
         {
@@ -219,26 +220,26 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             if (string.IsNullOrWhiteSpace(cageId) || cageId.Trim().Length > 20 || roomTypeId <= 0)
             {
                 TempData["HotelError"] = "Mã chuồng là bắt buộc và không được vượt quá 20 ký tự.";
-                return RedirectToAction(nameof(CageCategories));
+                return RedirectToAction(nameof(CageCategories), new { tab = "cage" });
             }
 
             if (feedSchedule?.Trim().Length > 100)
             {
                 TempData["HotelError"] = "Lịch cho ăn không được vượt quá 100 ký tự.";
-                return RedirectToAction(nameof(CageCategories));
+                return RedirectToAction(nameof(CageCategories), new { tab = "cage" });
             }
 
             // [nam][BR] Khẩu phần cấu hình theo gram trong khung 10-10.000 và bước 10 gram.
             if (portion is < MinimumCagePortionGrams or > MaximumCagePortionGrams || portion % 10 != 0)
             {
                 TempData["HotelError"] = "Khẩu phần phải từ 10 đến 10.000 gram và theo bước 10 gram.";
-                return RedirectToAction(nameof(CageCategories));
+                return RedirectToAction(nameof(CageCategories), new { tab = "cage" });
             }
 
             if (await _context.Cages.AnyAsync(c => c.CageId == cageId.Trim().ToUpper()))
             {
                 TempData["HotelError"] = $"Mã chuồng '{cageId}' đã tồn tại.";
-                return RedirectToAction(nameof(CageCategories));
+                return RedirectToAction(nameof(CageCategories), new { tab = "cage" });
             }
 
             // [nam][Validate] Không cho tạo chuồng dưới loại đã khóa hoặc ngoài ba mã Hotel hỗ trợ.
@@ -249,7 +250,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             if (roomType == null)
             {
                 TempData["HotelError"] = "Chỉ được thêm chuồng vào Standard, VIP hoặc Luxury đang hoạt động.";
-                return RedirectToAction(nameof(CageCategories));
+                return RedirectToAction(nameof(CageCategories), new { tab = "cage" });
             }
 
             var cage = new Cage
@@ -265,11 +266,13 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             await _context.SaveChangesAsync();
 
             TempData["HotelSuccess"] = $"Thêm chuồng {cage.CageId} thành công!";
-            return RedirectToAction(nameof(CageCategories));
+            // [nam][Flow] Sau POST quay lại đúng tab Chuồng cụ thể thay vì rơi về tab Loại chuồng mặc định.
+            return RedirectToAction(nameof(CageCategories), new { tab = "cage" });
         }
 
         // [nam] Cập nhật loại, trạng thái và thông tin của chuồng.
         [HttpPost("EditCage")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> EditCage(
             string cageId, int roomTypeId, string feedSchedule, int portion)
         {
@@ -277,19 +280,19 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             if (cage == null)
             {
                 TempData["HotelError"] = "Không tìm thấy chuồng.";
-                return RedirectToAction(nameof(CageCategories));
+                return RedirectToAction(nameof(CageCategories), new { tab = "cage" });
             }
 
             if (feedSchedule?.Trim().Length > 100)
             {
                 TempData["HotelError"] = "Lịch cho ăn không được vượt quá 100 ký tự.";
-                return RedirectToAction(nameof(CageCategories));
+                return RedirectToAction(nameof(CageCategories), new { tab = "cage" });
             }
 
             if (portion is < MinimumCagePortionGrams or > MaximumCagePortionGrams || portion % 10 != 0)
             {
                 TempData["HotelError"] = "Khẩu phần phải từ 10 đến 10.000 gram và theo bước 10 gram.";
-                return RedirectToAction(nameof(CageCategories));
+                return RedirectToAction(nameof(CageCategories), new { tab = "cage" });
             }
 
             var roomType = await _context.RoomTypes.FirstOrDefaultAsync(item =>
@@ -299,7 +302,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             if (roomType == null)
             {
                 TempData["HotelError"] = "Chỉ được chuyển chuồng sang Standard, VIP hoặc Luxury đang hoạt động.";
-                return RedirectToAction(nameof(CageCategories));
+                return RedirectToAction(nameof(CageCategories), new { tab = "cage" });
             }
 
             cage.RoomTypeId = roomTypeId;
@@ -308,7 +311,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             await _context.SaveChangesAsync();
             TempData["HotelSuccess"] = $"Cập nhật chuồng {cageId} thành công!";
-            return RedirectToAction(nameof(CageCategories));
+            return RedirectToAction(nameof(CageCategories), new { tab = "cage" });
         }
 
         // [nam] Xóa chuồng khi không có dữ liệu lưu trú đang tham chiếu.

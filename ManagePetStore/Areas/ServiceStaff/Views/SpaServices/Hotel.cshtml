@@ -6,6 +6,9 @@
     bool isCheckInPage = pageMode == "checkin";
     bool isMapPage = pageMode == "map";
     bool isCategoryPage = pageMode == "categories";
+    string catalogTab = string.Equals(Context.Request.Query["tab"], "cage", StringComparison.OrdinalIgnoreCase)
+        ? "cage"
+        : "roomtype";
     ViewData["Title"] = isCheckInPage
         ? "Tiếp nhận lưu trú"
         : isCategoryPage
@@ -1709,18 +1712,18 @@
             </div>
 
             <div class="tab-nav" style="margin-top:20px;">
-                <button class="tab-btn active" onclick="switchTab('roomtype', this)" id="tab-roomtype">
+                <button class="tab-btn @(catalogTab == "roomtype" ? "active" : "")" onclick="switchTab('roomtype', this)" id="tab-roomtype">
                     <i class="fa-solid fa-layer-group"></i>
                     Loại chuồng
                 </button>
-                <button class="tab-btn" onclick="switchTab('cage', this)" id="tab-cage">
+                <button class="tab-btn @(catalogTab == "cage" ? "active" : "")" onclick="switchTab('cage', this)" id="tab-cage">
                     <i class="fa-solid fa-border-all"></i>
                     Chuồng cụ thể
                 </button>
             </div>
 
             <!-- TAB: Loại chuồng (RoomType) -->
-            <div class="tab-content active" id="tabContent-roomtype">
+            <div class="tab-content @(catalogTab == "roomtype" ? "active" : "")" id="tabContent-roomtype">
                 <div class="hotel-card-header" style="margin-bottom:14px; padding:0;">
                     <span style="font-size:0.8rem; color:#9E918B;">@ViewBag.TotalRoomTypes loại chuồng</span>
                     <span style="font-size:.74rem;color:#7D706A;"><i class="fa-solid fa-lock"></i> Danh mục cố định: Standard, VIP, Luxury</span>
@@ -1802,7 +1805,7 @@
             </div>
 
             <!-- TAB: Chuồng cụ thể (Cage) -->
-            <div class="tab-content" id="tabContent-cage">
+            <div class="tab-content @(catalogTab == "cage" ? "active" : "")" id="tabContent-cage">
                 <div class="hotel-card-header" style="margin-bottom:14px; padding:0;">
                     <span style="font-size:0.8rem; color:#9E918B;">@ViewBag.TotalCages chuồng</span>
                     <button class="add-btn-sm" data-bs-toggle="modal" data-bs-target="#addCageModal">
@@ -2834,6 +2837,11 @@ function switchTab(tabName, btn) {
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
     document.getElementById('tabContent-' + tabName).classList.add('active');
     btn.classList.add('active');
+
+    // [nam][Flow] Lưu tab vào URL để redirect, phân trang hoặc reload vẫn quay lại đúng vị trí.
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tabName);
+    window.history.replaceState({}, '', url);
 }
 
 // ===== RECEPTION: EXISTING MEDICAL RECORD =====
