@@ -15,7 +15,5 @@ public interface ICartService
     Task<(bool Success, string Message)> IncreaseQuantityAsync(string sku);  //tăng 1.
     Task<(bool Success, string Message)> DecreaseQuantityAsync(string sku);  // giảm 1 
     Task<(bool Success, string Message)> RemoveItemAsync(string sku);  // xóa item.
-    Task<(bool Success, string Message)> ApplyVoucherAsync(string code);  // add mã giảm giá
-    void ClearVoucher();
     void ClearCart();  //xóa sạch giỏ hàng.
 }
