@@ -43,13 +43,29 @@ public sealed class HotelReceptionService : IHotelReceptionService
         int? staffUserId,
         string staffName)
     {
-        // [nam][Flow] Chuẩn hóa dữ liệu định danh; ActualCheckInAt luôn lấy từ server, không tin thời gian phía client.
+        // [nam][Flow] Chuẩn hóa dữ liệu định danh; toàn bộ luồng nhận pet dùng giờ server, không tin thời gian phía client.
         string customerPhone = DigitsOnly(request.CustomerPhone);
         string cageId = request.CageId.Trim().ToUpperInvariant();
         string healthNote = request.HealthNote?.Trim() ?? string.Empty;
-        DateTime checkInDate = request.CheckInDate!.Value;
         DateTime actualCheckInAt = DateTime.Now;
+        DateTime checkInDate = actualCheckInAt;
         DateTime? checkOutDate = request.CheckOutDate;
+
+        // [nam][Validate] Lặp lại luật thời gian ở service tại đúng mốc server dùng để ghi nhận và tính lịch chuồng.
+        if (!checkOutDate.HasValue || checkOutDate.Value <= actualCheckInAt)
+        {
+            return HotelCommandResult.Fail("Ngày trả dự kiến phải sau thời gian tiếp nhận.");
+        }
+
+        if ((checkOutDate.Value - actualCheckInAt).TotalDays > 365)
+        {
+            return HotelCommandResult.Fail("Thời gian lưu trú dự kiến không được vượt quá 365 ngày.");
+        }
+
+        if (!HotelOperatingHoursPolicy.IsExpectedCheckoutWithinHandoverHours(checkOutDate.Value))
+        {
+            return HotelCommandResult.Fail(HotelOperatingHoursPolicy.ExpectedCheckoutError);
+        }
 
         // [nam][BR] Khóa transaction ở mức Serializable để kết quả kiểm tra chuồng và tồn kho không bị thay đổi giữa chừng.
         await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -150,11 +166,6 @@ public sealed class HotelReceptionService : IHotelReceptionService
                 return HotelCommandResult.Fail(
                     $"{pet.Name} đã đặt online chuồng {onlineReservation.CageId} trong ngày nhận này. " +
                     "Vui lòng chọn đúng chuồng đã giữ.");
-            }
-
-            if (onlineReservation?.CheckOutDate != null)
-            {
-                checkOutDate = onlineReservation.CheckOutDate;
             }
 
             // [nam][Validate] Gói ăn phải thuộc danh mục Hotel, đúng đơn vị ngày, đúng loài và có giá hợp lệ.
@@ -269,9 +280,11 @@ public sealed class HotelReceptionService : IHotelReceptionService
             HotelBooking hotelBooking;
             if (onlineReservation != null)
             {
+                // [nam][BR] Giữ nguyên lịch Customer đã đặt, còn mốc vận hành hiện tại dùng giờ nhận thật và ngày trả Staff xác nhận.
                 onlineReservation.ScheduledCheckInDate ??= onlineReservation.CheckInDate;
                 onlineReservation.ScheduledCheckOutDate ??= onlineReservation.CheckOutDate;
                 onlineReservation.CheckInDate = checkInDate;
+                onlineReservation.CheckOutDate = checkOutDate;
                 onlineReservation.ActualCheckInAt = actualCheckInAt;
                 onlineReservation.FinalAmount = Math.Max(0, subtotal - onlineReservation.Discount + foodTotal);
                 onlineReservation.Status = "Đang ở";
@@ -415,7 +428,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
                 Title = "Tiếp nhận lưu trú",
                 Type = "PetCheckIn",
                 Description = BuildPetCheckInDescription(
-                    request,
+                    actualCheckInAt,
                     cageId,
                     customer.FullName,
                     foodPlan.FoodNameSnapshot,
@@ -661,7 +674,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
 
     // [nam] Tạo nội dung timeline mô tả lần tiếp nhận pet vào chuồng.
     private static string BuildPetCheckInDescription(
-        HotelCheckInRequest request,
+        DateTime actualCheckInAt,
         string cageId,
         string customerName,
         string foodPlanName,
@@ -678,7 +691,7 @@ public sealed class HotelReceptionService : IHotelReceptionService
              + $"Chuồng tiếp nhận: {cageId}\n"
              + $"Chủ thú cưng: {customerName}\n"
              + $"Kế hoạch ăn: {foodPlanName}\n"
-             + $"Ngày nhận: {request.CheckInDate!.Value:dd/MM/yyyy HH:mm}\n"
+             + $"Ngày nhận: {actualCheckInAt:dd/MM/yyyy HH:mm}\n"
              + $"Ngày trả dự kiến: {expectedCheckout}\n"
              + $"Nhân viên tiếp nhận: {staffName}";
     }

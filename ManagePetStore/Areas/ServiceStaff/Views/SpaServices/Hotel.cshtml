@@ -2189,11 +2189,13 @@
 
                     <div class="grid-2">
                         <div class="hform-group">
-                            <label class="hform-label">Ngày nhận <span class="req">*</span></label>
-                            <input type="datetime-local" name="checkInDate" id="ci-checkIn" class="hform-control" required>
+                            <label class="hform-label">Thời gian tiếp nhận</label>
+                            <input type="hidden" id="ci-checkIn">
+                            <input type="text" id="ci-checkInDisplay" class="hform-control" readonly
+                                   aria-label="Thời gian tiếp nhận do hệ thống xác định">
                         </div>
                         <div class="hform-group">
-                            <label class="hform-label">Ngày trả dự kiến <span class="req">*</span></label>
+                            <label class="hform-label">Ngày trả dự kiến (07:00–21:30) <span class="req">*</span></label>
                             <input type="datetime-local" name="checkOutDate" id="ci-checkOut" class="hform-control" required>
                         </div>
                     </div>
@@ -2933,12 +2935,10 @@ function clearOnlineReceptionContext() {
     filterFoodOptions('');
 
     const nowValue = formatDateTimeLocal(new Date());
-    const checkInInput = document.getElementById('ci-checkIn');
     const checkOutInput = document.getElementById('ci-checkOut');
-    checkInInput.value = nowValue;
+    setReceptionCheckInPreview();
     checkOutInput.value = '';
     checkOutInput.min = nowValue;
-    window.DateTime24?.refresh(checkInInput);
     window.DateTime24?.refresh(checkOutInput);
 
     setReceptionModeHint('Chọn “Dùng sổ y tế có sẵn” để bắt đầu.');
@@ -2987,10 +2987,8 @@ function startOnlineReception(button) {
     document.getElementById('checkInCompletionSection').hidden = true;
     hideMedicalRecordSummary();
 
-    const nowValue = formatDateTimeLocal(new Date());
-    document.getElementById('ci-checkIn').value = nowValue;
+    setReceptionCheckInPreview();
     document.getElementById('ci-checkOut').value = data.checkOut || '';
-    window.DateTime24?.refresh(document.getElementById('ci-checkIn'));
     window.DateTime24?.refresh(document.getElementById('ci-checkOut'));
 
     if (data.roomTypeId) {
@@ -3315,15 +3313,25 @@ function formatDateTimeLocal(date) {
     return localDate.toISOString().slice(0, 16);
 }
 
+// [nam][Flow] Chỉ hiển thị giờ trình duyệt để Staff tham chiếu; server mới là nguồn chốt thời gian tiếp nhận.
+function setReceptionCheckInPreview(date = new Date()) {
+    const checkInInput = document.getElementById('ci-checkIn');
+    const display = document.getElementById('ci-checkInDisplay');
+    checkInInput.value = formatDateTimeLocal(date);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+    display.value = `${day}/${month}/${date.getFullYear()} ${hour}:${minute}`;
+}
+
 function validateStayDates() {
     const checkInInput = document.getElementById('ci-checkIn');
     const checkOutInput = document.getElementById('ci-checkOut');
     const checkIn = checkInInput.value;
     const checkOut = checkOutInput.value;
 
-    checkInInput.setCustomValidity('');
     checkOutInput.setCustomValidity('');
-    checkInInput.removeAttribute('max');
     if (checkIn) {
         checkOutInput.min = checkIn;
     }
@@ -3333,14 +3341,19 @@ function validateStayDates() {
         const checkOutDate = new Date(checkOut);
         const stayDays = (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24);
 
-        if (checkOutDate < checkInDate) {
-            checkOutInput.setCustomValidity('Ngày trả dự kiến không được trước ngày nhận.');
+        if (checkOutDate <= checkInDate) {
+            checkOutInput.setCustomValidity('Ngày trả dự kiến phải sau thời gian tiếp nhận.');
         } else if (stayDays > 365) {
             checkOutInput.setCustomValidity('Thời gian lưu trú dự kiến không được vượt quá 365 ngày.');
+        } else {
+            const checkoutMinutes = checkOutDate.getHours() * 60 + checkOutDate.getMinutes();
+            if (checkoutMinutes < 7 * 60 || checkoutMinutes > 21 * 60 + 30) {
+                checkOutInput.setCustomValidity('Thời gian trả dự kiến phải trong khung giờ bàn giao thú cưng từ 07:00 đến 21:30.');
+            }
         }
     }
 
-    return checkInInput.validity.valid && checkOutInput.validity.valid;
+    return checkOutInput.validity.valid;
 }
 
 document.getElementById('checkInForm').addEventListener('submit', event => {
@@ -3527,12 +3540,8 @@ function calcStay() {
 document.addEventListener('DOMContentLoaded', () => {
     const checkInInput = document.getElementById('ci-checkIn');
     const checkOutInput = document.getElementById('ci-checkOut');
-    const nowValue = formatDateTimeLocal(new Date());
-    if (!checkInInput.value || new Date(checkInInput.value) > new Date()) {
-        checkInInput.value = nowValue;
-    }
+    setReceptionCheckInPreview();
     checkOutInput.min = checkInInput.value;
-    checkInInput.addEventListener('input', calcStay);
     checkOutInput.addEventListener('input', calcStay);
     document.getElementById('ci-foodPriceChangeConfirmed').addEventListener('change', event => {
         const panel = document.getElementById('foodPriceChangeConfirmation');
