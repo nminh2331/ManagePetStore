@@ -27,6 +27,10 @@ public class ProductRepository : IProductRepository
             query = query.Where(p => p.IsDeleted == false);
         else if (filter == "deleted")
             query = query.Where(p => p.IsDeleted == true);
+        else if (filter == "out_of_stock")
+            query = query.Where(p => p.IsDeleted == false && p.Stock == 0);
+        else if (filter == "low_stock")
+            query = query.Where(p => p.IsDeleted == false && p.Stock > 0 && p.Stock <= p.MinStock);
         // "all" → không lọc, lấy toàn bộ
 
         return await query.OrderBy(p => p.Name).ToListAsync();

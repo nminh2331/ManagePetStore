@@ -80,4 +80,16 @@ public class ProductCategoryRepository : IProductCategoryRepository
     {
         return await _context.ProductCategories.AnyAsync(c => c.CategoryId == id);
     }
+
+    public async Task<bool> CategoryNameExists(string name, int? excludeId = null)
+    {
+        var query = _context.ProductCategories.Where(c => c.Name.ToLower() == name.ToLower());
+        
+        if (excludeId.HasValue)
+        {
+            query = query.Where(c => c.CategoryId != excludeId.Value);
+        }
+
+        return await query.AnyAsync();
+    }
 }

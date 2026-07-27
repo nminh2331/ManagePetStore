@@ -1,7 +1,11 @@
+
+// hà hoàng hiệp code phần view homepage 
+
 using ManagePetStore.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
+using System.Net.NetworkInformation;
 
 namespace ManagePetStore.Controllers;
 
@@ -70,16 +74,26 @@ public class HomeController : Controller
         return PartialView("_FeaturedSpaServices", model);
     }
 
+    /// <summary>
+    /// LUỒNG VIEW HOMEPAGE: Tải và hiển thị dữ liệu trang chủ
+    /// - Lấy danh sách sản phẩm nổi bật, dịch vụ Spa nổi bật, banner quảng cáo, danh mục sản phẩm.
+    /// - Xử lý tìm kiếm từ khóa sản phẩm, lọc theo loài thú cưng (Chó/Mèo/Tất cả), lọc theo danh mục.
+    /// - Tính toán phân trang cho danh sách sản phẩm và dịch vụ Spa.
+    /// </summary>
     [HttpGet]
+    //Khai báo Action Index nhận HTTP GET request từ trình duyệT
     public async Task<IActionResult> Index(string? search, string? category, string? species, int pageP = 1, int pageS = 1)
     {
         var model = GetStaticHomepageData();
         model.Pets = [];
         model.RoomTypes = [];
         model.HotelFoodOptions = [];
-        model.SearchKeyword = search?.Trim();
+        model.SearchKeyword = search?.Trim(); //Loại bỏ khoảng trắng thừa hai đầu từ khóa tìm kiếm (.Trim()).
+                                                  // Chuyển category về dạng chữ thường.
         model.SelectedCategorySlug = category?.Trim().ToLowerInvariant();
-        if (string.Equals(model.SelectedCategorySlug, "spa", StringComparison.OrdinalIgnoreCase))
+
+        //Nếu danh mục chọn là "spa", set lại SelectedCategorySlug = null để tránh trùng lặp giữa danh mục sản phẩm và danh mục dịch vụ Spa.
+        if (string.Equals(model.SelectedCategorySlug, "spa", StringComparison.OrdinalIgnoreCase))  
         {
             model.SelectedCategorySlug = null;
         }
@@ -93,8 +107,10 @@ public class HomeController : Controller
 
         ViewBag.SearchKeyword = model.SearchKeyword;
 
-        var catalog = await GetSearchableProductsAsync();
-        
+        //lấy toàn bộ danh sách sản phẩm từ DB
+        var catalog = await GetSearchableProductsAsync(); //Gọi hàm GetSearchableProductsAsync() để lấy toàn bộ danh sách sản phẩm từ DB. 
+
+       // Lọc tách thành 2 danh sách riêng biệt bằng LINQ: productsList(chỉ chứa Sản phẩm) và spaServicesList(chỉ chứa Dịch vụ Spa).
         var productsList = catalog.Where(p => !string.Equals(p.Category, "Dịch vụ Spa", StringComparison.OrdinalIgnoreCase)).ToList();
         var spaServicesList = catalog.Where(p => string.Equals(p.Category, "Dịch vụ Spa", StringComparison.OrdinalIgnoreCase)).ToList();
 
@@ -112,13 +128,13 @@ public class HomeController : Controller
         }
 
         // Phân trang
-        const int PageSizeP = 4;
-        const int PageSizeS = 4;
+        const int PageSizeP = 4;  // sản phẩm 4 cái 
+        const int PageSizeS = 4;   // spa 4 cái 
 
         int totalProducts = productsList.Count;
         int totalSpaServices = spaServicesList.Count;
 
-        model.TotalPagesP = (int)Math.Ceiling((double)totalProducts / PageSizeP);
+        model.TotalPagesP = (int)Math.Ceiling((double)totalProducts / PageSizeP);   //Dùng Math.Ceiling tính tổng số trang.
         model.TotalPagesS = (int)Math.Ceiling((double)totalSpaServices / PageSizeS);
 
         if (model.TotalPagesP == 0) model.TotalPagesP = 1;
@@ -129,13 +145,15 @@ public class HomeController : Controller
 
         model.BestSellers = productsList.ToList();
 
+        //Dùng .Skip().Take() cắt đúng 4 dịch vụ tương ứng với trang hiện tại.
         model.SpaServices = spaServicesList
             .Skip((model.CurrentPageS - 1) * PageSizeS)
             .Take(PageSizeS)
             .ToList();
                
         try
-        {
+        {// Phân tích (Truy vấn CSDL với EF Core):
+
             model.RoomTypes = await _context.RoomTypes
                 .AsNoTracking()
                 .Where(r => r.Status &&

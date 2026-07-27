@@ -34,4 +34,7 @@ public interface IProductCategoryRepository
 
     /// Returns true if a category with the given ID exists.
     Task<bool> CategoryExists(int id);
+
+    /// Returns true if a category with the given name exists.
+    Task<bool> CategoryNameExists(string name, int? excludeId = null);
 }

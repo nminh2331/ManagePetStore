@@ -353,17 +353,16 @@
         }
     }
 
-    function openModal(imgSrc, initialRatio) {
+    function openModal(imgSrc) {
         const modal = document.getElementById('globalImageCropperModal');
         if (!modal) return;
 
         rotation = 0;
         zoom = 1.0;
-        aspectRatio = (initialRatio !== undefined && !isNaN(initialRatio)) ? initialRatio : 1;
+        aspectRatio = 0;
 
         document.querySelectorAll('.ratio-btn').forEach(b => b.classList.remove('active'));
-        const activeBtn = document.querySelector(`.ratio-btn[data-ratio="${aspectRatio}"]`) || document.querySelector('.ratio-btn[data-ratio="1"]');
-        if (activeBtn) activeBtn.classList.add('active');
+        document.querySelector('.ratio-btn[data-ratio="0"]')?.classList.add('active');
 
         originalImage = new Image();
         originalImage.onload = function () {
@@ -438,6 +437,7 @@
         if (!input || input.type !== 'file') return;
 
         if (input.isCroppedPayload) {
+            input.isCroppedPayload = false;
             return;
         }
 
@@ -450,15 +450,10 @@
         currentInput = input;
         currentFile = file;
 
-        let reqRatio = 1; // Default to 1:1 ratio for card display aspect fitting
-        if (input.dataset && input.dataset.aspectRatio !== undefined) {
-            reqRatio = parseFloat(input.dataset.aspectRatio);
-        }
-
         const reader = new FileReader();
         reader.onload = function (evt) {
             createCropperModalHTML();
-            openModal(evt.target.result, reqRatio);
+            openModal(evt.target.result);
         };
         reader.readAsDataURL(file);
     }

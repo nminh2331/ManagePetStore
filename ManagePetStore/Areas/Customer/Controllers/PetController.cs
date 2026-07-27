@@ -25,12 +25,15 @@ public class PetController : Controller
         _env = env;
     }
 
+    /// <summary>
+    /// LUỒNG MANAGE PET PROFILES: Danh sách hồ sơ thú cưng của khách hàng
+    /// - Lấy danh sách thú cưng của khách hàng đang đăng nhập.
+    /// - RÀNG BUỘC SỔ Y TẾ: Nếu thú cưng đã có Sổ y tế (MedicalRecords), không cho phép chỉnh sửa thông tin hồ sơ nữa.
+    /// </summary>
     [HttpGet]
-
-    // Trang danh sách & Chuẩn bị Form Sửa
     public async Task<IActionResult> Index(int? editId = null)
     {
-        var page = await BuildPageViewModelAsync();   // Gọi hàm hỗ trợ để gom thông tin User, Khách hàng và danh sách Pets của người đó.
+        var page = await BuildPageViewModelAsync();
         if (page == null)
         {
             return RedirectToAction("Login", "Account", new { area = "Customer" });
@@ -38,13 +41,14 @@ public class PetController : Controller
 
         if (editId.HasValue)
         {
-            var pet = await GetOwnedPetAsync(editId.Value);  //  Nó kiểm tra xem thú cưng có ID đó có thực sự thuộc về khách hàng đang đăng nhập hay không.
+            var pet = await GetOwnedPetAsync(editId.Value);
             if (pet == null)
             {
                 TempData["ErrorMessage"] = "Không tìm thấy thú cưng hoặc bạn không có quyền truy cập.";
                 return RedirectToAction(nameof(Index));
             }
 
+            // RÀNG BUỘC KHÔNG CHO SỬA KHI ĐÃ CÓ SỔ Y TẾ
             var hasMedicalRecord = await _context.MedicalRecords.AnyAsync(mr => mr.PetId == editId.Value);
             if (hasMedicalRecord)
             {
@@ -52,16 +56,21 @@ public class PetController : Controller
                 return RedirectToAction(nameof(Index));
             }
 
-            page.EditPet = MapPetToForm(pet);  // Nếu đúng pet của mình, chuyển data từ DB sang dạng Form.
+            page.EditPet = MapPetToForm(pet);
             page.OpenEditModal = true;
         }
 
         return View(page);
     }
 
+    /// <summary>
+    /// LUỒNG MANAGE PET PROFILES: Thêm hồ sơ thú cưng mới
+    /// - VALIDATION 1: Kiểm tra các trường Tên, Chủng loài (Chó/Mèo), Giống, Ngày sinh, Cân nặng (> 0).
+    /// - VALIDATION 2: Kiểm tra định dạng ảnh (JPG, PNG, GIF, SVG) và kích thước tối đa (20MB).
+    /// - Tự động tính toán tuổi dựa trên Ngày sinh (FormatAge).
+    /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    // hàm thêm thú cưng mới 
     public async Task<IActionResult> Create(
         string name,
         string species,
