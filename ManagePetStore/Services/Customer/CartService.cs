@@ -68,10 +68,10 @@ public class CartService : ICartService
                 ImageUrl = product.ImageUrl,
                 UnitPrice = product.Price,  // // Lấy giá niêm yết mới nhất từ CSDL
                 Quantity = quantity,
-                MaxStock = product.Stock
+                MaxStock = product.Stock  //// Giới hạn nút Tăng số lượng ở FE
             });
         }
-
+        //Cập nhật lại Session giỏ hàng sau khi đã chuẩn hóa với tồn kho CSDL
         SaveCartItems(viewModel.Items.Select(i => new CartSessionItem
         {
             Sku = i.Sku,
@@ -150,7 +150,7 @@ public class CartService : ICartService
                 return (false, $"Chỉ còn {product.Stock} sản phẩm trong kho.");
             }
 
-            existing.Quantity = newQty;
+            existing.Quantity = newQty;   /// Cập nhật số lượng mới
             existing.Price = product.Price;
             existing.Name = product.Name;
             existing.ImageUrl = product.ImageUrl;
@@ -158,18 +158,19 @@ public class CartService : ICartService
         }
         else
         {
+            //        // Thêm mới sản phẩm vào giỏ
             items.Add(new CartSessionItem
             {
                 Sku = product.Sku,
                 Name = product.Name,
                 Price = product.Price,
                 ImageUrl = product.ImageUrl,
-                Quantity = Math.Min(quantity, product.Stock),
+                Quantity = Math.Min(quantity, product.Stock),  // kiểm soát trần tồn kho 
                 MaxStock = product.Stock
             });
         }
 
-        SaveCartItems(items);   //Lưu danh sách giỏ hàng sau khi cập nhật vào HttpContext.Session dưới dạng chuỗi JSON mã hóa.
+        SaveCartItems(items);   /// Lưu lại chuỗi JSON mã hóa vào HttpContext.Session
         return (true, "Đã thêm sản phẩm vào giỏ hàng.");
     }
 
