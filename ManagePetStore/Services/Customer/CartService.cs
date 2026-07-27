@@ -12,7 +12,6 @@ namespace ManagePetStore.Services.Customer;
 public class CartService : ICartService
 {
     private const string CartSessionKey = "ShoppingCart";  //Session key dùng để lưu cart
-    private const string VoucherSessionKey = "AppliedVoucher"; // Session key dùng để lưu voucher.
 
     private readonly IHttpContextAccessor _httpContextAccessor; 
     private readonly CartProductResolver _productResolver;
@@ -81,23 +80,6 @@ public class CartService : ICartService
             Quantity = i.Quantity,
             MaxStock = i.MaxStock
         }).ToList());
-
-
-        // Xử lý áp dụng Voucher và tính toán số tiền giảm giá
-        var appliedVoucher = GetAppliedVoucher();
-        if (appliedVoucher != null)
-        {
-            var discount = await CalculateVoucherDiscountAsync(appliedVoucher.Code, viewModel.Subtotal);
-            if (discount > 0)
-            {
-                viewModel.VoucherDiscount = discount;
-                viewModel.AppliedVoucherCode = appliedVoucher.Code;
-            }
-            else
-            {
-                ClearVoucher();
-            }
-        }
 
         return viewModel;
     }
@@ -207,7 +189,7 @@ public class CartService : ICartService
         return (true, "Đã cập nhật số lượng.");
     }
 
-    //
+    // hàm tăng số lượng sản phẩm trong giỏ hàng 
     public async Task<(bool Success, string Message)> IncreaseQuantityAsync(string sku)
     {
         var items = GetCartItems();
@@ -220,6 +202,8 @@ public class CartService : ICartService
         return await SetQuantityAsync(sku, existing.Quantity + 1);
     }
 
+
+    //    // hàm giảm số lượng sản phẩm trong giỏ hàng
     public async Task<(bool Success, string Message)> DecreaseQuantityAsync(string sku)
     {
         var items = GetCartItems();
@@ -237,6 +221,7 @@ public class CartService : ICartService
         return await SetQuantityAsync(sku, existing.Quantity - 1);
     }
 
+    // hàm xóa sản phẩm trong giỏ hàng 
     public Task<(bool Success, string Message)> RemoveItemAsync(string sku)
     {
         var items = GetCartItems();
@@ -245,108 +230,9 @@ public class CartService : ICartService
         return Task.FromResult((true, "Đã xóa sản phẩm khỏi giỏ hàng."));
     }
 
-    /// <summary>
-    /// LUỒNG MANAGE CART: Áp dụng mã giảm giá (Voucher)
-    /// - VALIDATION: Kiểm tra giỏ hàng có trống không, mã voucher có hợp lệ và còn hạn dùng không, kiểm tra giá trị đơn tối thiểu (MinOrder).
-    /// </summary>
-    public async Task<(bool Success, string Message)> ApplyVoucherAsync(string code)
-    {
-        if (string.IsNullOrWhiteSpace(code))
-        {
-            return (false, "Vui lòng nhập mã giảm giá.");
-        }
-
-        var cart = await GetCartPageAsync();
-        if (!cart.Items.Any())
-        {
-            return (false, "Giỏ hàng trống, không thể áp dụng voucher.");
-        }
-
-        var trimmedCode = code.Trim().ToUpperInvariant();
-        var discount = await CalculateVoucherDiscountAsync(trimmedCode, cart.Subtotal);
-        if (discount <= 0)
-        {
-            return (false, "Mã giảm giá không hợp lệ hoặc không đủ điều kiện áp dụng.");
-        }
-
-        SaveAppliedVoucher(new AppliedVoucherSession
-        {
-            Code = trimmedCode,
-            Discount = discount
-        });
-
-        return (true, $"Đã áp dụng mã {trimmedCode}. Giảm {discount:N0}đ.");
-    }
-
-    public void ClearVoucher()
-    {
-        _httpContextAccessor.HttpContext?.Session.Remove(VoucherSessionKey);
-    }
-
     public void ClearCart()
     {
         _httpContextAccessor.HttpContext?.Session.Remove(CartSessionKey);
-        ClearVoucher();
-    }
-
-    /// <summary>
-    /// RÀNG BUỘC VOUCHER: Tính toán tiền giảm theo phần trăm (%) hoặc số tiền cố định
-    /// - Kiểm tra trạng thái Voucher (Status == true) và ngày hết hạn (ExpiryDate >= Today).
-    /// - Kiểm tra đơn hàng có đạt giá trị tối thiểu (subtotal >= MinOrder).
-    /// </summary>
-    private async Task<decimal> CalculateVoucherDiscountAsync(string code, decimal subtotal)
-    {
-        try
-        {
-            var voucher = await _context.Vouchers
-                .FirstOrDefaultAsync(v => v.Code == code && v.Status && v.ExpiryDate >= DateTime.Today);
-
-            if (voucher != null && subtotal >= voucher.MinOrder)
-            {
-                return voucher.Type.Equals("Percent", StringComparison.OrdinalIgnoreCase)
-                    ? Math.Round(subtotal * voucher.Value / 100m, 0)
-                    : voucher.Value;
-            }
-        }
-        catch
-        {
-            // Fallback to demo vouchers below.
-        }
-
-        return code switch
-        {
-            "PET20" or "SALE20" when subtotal >= 200000 => 20000m,
-            "PET10" when subtotal >= 100000 => Math.Round(subtotal * 0.1m, 0),
-            _ => 0m
-        };
-    }
-
-    private AppliedVoucherSession? GetAppliedVoucher()
-    {
-        var session = _httpContextAccessor.HttpContext?.Session;
-        if (session == null)
-        {
-            return null;
-        }
-
-        var json = session.GetString(VoucherSessionKey);
-        if (string.IsNullOrEmpty(json))
-        {
-            return null;
-        }
-
-        return JsonSerializer.Deserialize<AppliedVoucherSession>(json);
-    }
-
-    private void SaveAppliedVoucher(AppliedVoucherSession voucher)
-    {
-        var session = _httpContextAccessor.HttpContext?.Session;
-        if (session == null)
-        {
-            return;
-        }
-
-        session.SetString(VoucherSessionKey, JsonSerializer.Serialize(voucher));
     }
 
     private List<CartSessionItem> GetCartItems()
