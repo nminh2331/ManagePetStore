@@ -144,13 +144,6 @@
                         <span>Phí vận chuyển</span>
                         <span>@Model.Cart.ShippingFee.ToString("N0")đ</span>
                     </div>
-                    @if (Model.Cart.VoucherDiscount > 0)
-                    {
-                        <div class="cart-summary-row cart-summary-discount">
-                            <span>Giảm giá voucher</span>
-                            <span>-@Model.Cart.VoucherDiscount.ToString("N0")đ</span>
-                        </div>
-                    }
 
                     <div class="cart-summary-total">
                         <span>TỔNG THANH TOÁN</span>

@@ -218,13 +218,6 @@
                             <span>Phí vận chuyển</span>
                             <span>@Model.ShippingFee.ToString("N0")đ</span>
                         </div>
-                        @if (Model.VoucherDiscount > 0)
-                        {
-                            <div class="cart-summary-row cart-summary-discount">
-                                <span>Giảm giá voucher</span>
-                                <span>-@Model.VoucherDiscount.ToString("N0")đ</span>
-                            </div>
-                        }
 
                         <div class="cart-summary-total">
                             <span>TỔNG THANH TOÁN</span>

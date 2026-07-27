@@ -95,15 +95,6 @@ public class CheckoutController : Controller
         return View(model);
     }
 
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ApplyVoucher(string voucherCode)
-    {
-        var (success, message) = await _cartService.ApplyVoucherAsync(voucherCode);
-        TempData[success ? "SuccessMessage" : "ErrorMessage"] = message;
-        return RedirectToAction(nameof(Index));
-    }
-
 
     /// <summary>
     /// LUỒNG PLACE ORDER & MAKE PAYMENT: Đặt hàng và Xử lý Thanh toán
@@ -224,7 +215,7 @@ public class CheckoutController : Controller
                 OrderId = orderId,
                 CustomerId = customer.CustomerId,
                 Subtotal = cart.Subtotal,
-                Discount = cart.VoucherDiscount,
+                Discount = 0,
                 Total = cart.GrandTotal,
                 PaymentMethod = normalizedPayment,
                 PointsRedeemed = 0,
