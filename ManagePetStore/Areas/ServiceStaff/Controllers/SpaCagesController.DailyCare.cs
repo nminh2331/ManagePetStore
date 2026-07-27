@@ -216,6 +216,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 .Include(item => item.Customer)
                 .Include(item => item.FoodPlan)
                 .Include(item => item.CheckInAssessment)
+                .Include(item => item.CheckoutStatement)
                 .FirstOrDefaultAsync(item => item.HotelBookingId == request.HotelBookingId);
 
             if (booking == null)
@@ -229,6 +230,18 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 ModelState.AddModelError(
                     string.Empty,
                     "Chỉ có thể ghi nhật ký sau khi pet đã tiếp nhận và trong lúc còn ở chuồng.");
+            }
+
+            // [nam][BR] Không nhận thêm phụ phí sau khi bảng kê đã chốt, tránh nhật ký và hóa đơn lệch tiền.
+            // Daily Care không tính phí vẫn được phép ghi cho tới khi pet hoàn tất checkout.
+            bool checkoutCostIsLocked = booking.CheckoutStatement != null &&
+                (!string.Equals(booking.CheckoutStatement.Status, "Draft", StringComparison.OrdinalIgnoreCase) ||
+                 !string.IsNullOrWhiteSpace(booking.CheckoutStatement.OrderId));
+            if (request.IsExtraCharge && checkoutCostIsLocked)
+            {
+                ModelState.AddModelError(
+                    nameof(request.IsExtraCharge),
+                    "Bảng kê chi phí đã gửi thu ngân. Không thể thêm bữa ngoài gói có phụ phí.");
             }
 
             // [nam][BR] Thời gian nhật ký phải nằm từ lúc tiếp nhận thật đến hiện tại.

@@ -416,10 +416,12 @@ public class HotelCheckoutService : IHotelCheckoutService
         }
     }
 
+    // [nam] Kết quả nội bộ của phép tính phí trả muộn, tách số giờ và thành tiền.
     private readonly record struct LateFeeQuote(int ChargeableHours, decimal Amount)
     {
         public static LateFeeQuote None => new(0, 0);
     }
 
+    // [nam] Kết quả nội bộ của phép tính tiền chuồng theo số ngày, đơn giá và tổng tiền.
     private readonly record struct RoomChargeQuote(int ChargeableDays, decimal UnitPrice, decimal Amount);
 }
