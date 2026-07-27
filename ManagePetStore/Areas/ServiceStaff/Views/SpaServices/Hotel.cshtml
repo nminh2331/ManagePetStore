@@ -3190,28 +3190,45 @@ function renderMedicalRecordSummary(record) {
         ['Cân nặng', `${record.weight} kg`],
         ['Tình trạng sức khỏe', record.healthStatus],
         ['Triệu chứng / bệnh lý', record.symptoms],
-        ['Hướng xử lý / điều trị', record.treatment],
-        ['Tiêm phòng', record.vaccinationStatus],
-        ['Phòng ký sinh trùng', record.parasitePrevention],
-        ['Kiểm tra thể chất', record.physicalCheck],
-        ['Tình trạng mai', record.shellStatus],
-        ['Điều kiện nuôi', record.rearingConditions],
-        ['Triệu chứng bất thường', record.abnormalSymptoms],
-        ['Răng cửa', record.incisorCheck],
-        ['Lông / da', record.furSkinCheck],
-        ['Dấu hiệu tiêu hóa', record.digestiveSigns]
+        ['Hướng xử lý / điều trị', record.treatment]
     ];
+
+    // [nam][BR] Hồ sơ cũ có thể đã lưu nhầm giá trị mặc định của section ẩn.
+    // Chỉ nhóm lâm sàng đúng loài mới được dùng để ra quyết định tiếp nhận.
+    const species = (record.species || '').trim().toLocaleLowerCase('vi');
+    if (['chó', 'mèo', 'dog', 'cat'].includes(species)) {
+        fields.push(
+            ['Tiêm phòng', record.vaccinationStatus],
+            ['Phòng ký sinh trùng', record.parasitePrevention],
+            ['Kiểm tra thể chất', record.physicalCheck]
+        );
+    } else if (['rùa', 'turtle'].includes(species)) {
+        fields.push(
+            ['Tình trạng mai', record.shellStatus],
+            ['Điều kiện nuôi', record.rearingConditions],
+            ['Triệu chứng bất thường', record.abnormalSymptoms]
+        );
+    } else if (['chuột', 'hamster', 'mouse'].includes(species)) {
+        fields.push(
+            ['Răng cửa', record.incisorCheck],
+            ['Lông / da', record.furSkinCheck],
+            ['Dấu hiệu tiêu hóa', record.digestiveSigns]
+        );
+    }
+
     const grid = document.createElement('div');
     grid.className = 'medical-record-grid';
-    fields.forEach(([label, value]) => {
+    fields
+        .filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '')
+        .forEach(([label, value]) => {
         const line = document.createElement('div');
         const labelElement = document.createElement('span');
         labelElement.textContent = label;
         const valueElement = document.createElement('b');
-        valueElement.textContent = value || 'Chưa ghi nhận';
+        valueElement.textContent = value;
         line.append(labelElement, valueElement);
         grid.appendChild(line);
-    });
+        });
     summary.appendChild(grid);
     summary.classList.add('visible');
 
