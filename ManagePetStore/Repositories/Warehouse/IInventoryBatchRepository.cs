@@ -26,6 +26,7 @@ public interface IInventoryBatchRepository
     /// Điều chỉnh số lượng lô hàng an toàn (Atomic)
     Task<int> AdjustBatchQuantityAsync(int batchId, int quantityDelta);
 
-    /// Xóa lô hàng theo BatchId.
-    Task DeleteBatch(int batchId);
+
+    /// Lấy các lô hàng sắp hết hạn (còn tồn kho và ngày hết hạn <= ngày hiện tại + số ngày).
+    Task<IEnumerable<InventoryBatch>> GetExpiringBatches(int daysThreshold);
 }

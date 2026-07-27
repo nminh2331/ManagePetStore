@@ -51,13 +51,14 @@ public class InventoryBatchRepository : IInventoryBatchRepository
             .ExecuteUpdateAsync(s => s.SetProperty(b => b.CurrentQuantity, b => b.CurrentQuantity + quantityDelta));
     }
 
-    public async Task DeleteBatch(int batchId)
+
+    public async Task<IEnumerable<InventoryBatch>> GetExpiringBatches(int daysThreshold)
     {
-        var batch = await _context.InventoryBatches.FindAsync(batchId);
-        if (batch is not null)
-        {
-            _context.InventoryBatches.Remove(batch);
-            await _context.SaveChangesAsync();
-        }
+        var thresholdDate = DateTime.Now.AddDays(daysThreshold);
+        return await _context.InventoryBatches
+            .Include(b => b.ProductSkuNavigation)
+            .Where(b => b.CurrentQuantity > 0 && b.ExpiryDate <= thresholdDate)
+            .OrderBy(b => b.ExpiryDate)
+            .ToListAsync();
     }
 }

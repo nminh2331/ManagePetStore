@@ -97,12 +97,6 @@
                                        class="btn btn-sm btn-outline-primary" style="border-radius:8px;" title="Chỉnh sửa">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <form asp-action="Delete" asp-route-id="@batch.BatchId" method="post" class="d-inline"
-                                          onsubmit="return confirm('Bạn có chắc muốn xóa lô hàng này? Số lượng tồn kho sản phẩm sẽ bị giảm đi tương ứng.');">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius:8px;" title="Xóa">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
                                 </td>
                             </tr>
                         }
