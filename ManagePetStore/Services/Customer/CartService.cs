@@ -1,5 +1,5 @@
 
-// HÀ HOÀNG HIỆP CODE
+// HÀ HOÀNG HIỆP CODE -- xử lý cái manage cart
 
 using ManagePetStore.Areas.Customer.Models;
 using ManagePetStore.Models;
@@ -28,6 +28,12 @@ public class CartService : ICartService
         _context = context;
     }
 
+    /// <summary>
+    /// LUỒNG MANAGE CART: Lấy dữ liệu toàn bộ trang giỏ hàng
+    /// - Kiểm tra từng sản phẩm còn trong DB/Tồn kho không.
+    /// - Tự động điều chỉnh số lượng nếu vượt quá tồn kho (MaxStock).
+    /// - Tính toán Voucher giảm giá nếu đã được áp dụng trước đó.
+    /// </summary>
     public async Task<CartPageViewModel> GetCartPageAsync()
     {
         var items = GetCartItems();
@@ -41,14 +47,14 @@ public class CartService : ICartService
                 continue;
             }
 
+            // RÀNG BUỘC TỒN KHO: Số lượng trong giỏ không được vượt quá số tồn thực tế trong kho
             var quantity = Math.Min(item.Quantity, product.Stock);
             if (quantity <= 0)
             {
                 continue;
             }
 
-            viewModel.Items.Add(new CartLineItemViewModel   //Chuyển dữ liệu đã resolve sang model để render view.
-
+            viewModel.Items.Add(new CartLineItemViewModel
             {
                 Sku = product.Sku,
                 Name = product.Name,
@@ -70,7 +76,7 @@ public class CartService : ICartService
         }).ToList());
 
 
-        //Xử lý voucher
+        // Xử lý áp dụng Voucher và tính toán số tiền giảm giá
         var appliedVoucher = GetAppliedVoucher();
         if (appliedVoucher != null)
         {
@@ -94,6 +100,13 @@ public class CartService : ICartService
         return GetCartItems().Sum(i => i.Quantity);
     }
 
+    /// <summary>
+    /// LUỒNG MANAGE CART: Thêm sản phẩm vào giỏ hàng
+    /// - VALIDATION 1: Số lượng yêu cầu thêm phải >= 1.
+    /// - VALIDATION 2: Kiểm tra sự tồn tại của SKU sản phẩm.
+    /// - VALIDATION 3: Kiểm tra trạng thái hết hàng (InStock = false hoặc Stock <= 0).
+    /// - RÀNG BUỘC TỒN KHO: Tổng số lượng trong giỏ không được vượt quá số tồn kho hiện tại.
+    /// </summary>
     public async Task<(bool Success, string Message)> AddItemAsync(string sku, int quantity)
     {
         if (quantity < 1)
@@ -146,6 +159,11 @@ public class CartService : ICartService
         return (true, "Đã thêm sản phẩm vào giỏ hàng.");
     }
 
+    /// <summary>
+    /// LUỒNG MANAGE CART: Cập nhật số lượng trực tiếp cho 1 sản phẩm
+    /// - Nếu quantity < 1 -> Gọi xóa sản phẩm khỏi giỏ.
+    /// - Giới hạn số lượng bởi Stock hiện tại.
+    /// </summary>
     public async Task<(bool Success, string Message)> SetQuantityAsync(string sku, int quantity)
     {
         if (quantity < 1)
@@ -211,6 +229,10 @@ public class CartService : ICartService
         return Task.FromResult((true, "Đã xóa sản phẩm khỏi giỏ hàng."));
     }
 
+    /// <summary>
+    /// LUỒNG MANAGE CART: Áp dụng mã giảm giá (Voucher)
+    /// - VALIDATION: Kiểm tra giỏ hàng có trống không, mã voucher có hợp lệ và còn hạn dùng không, kiểm tra giá trị đơn tối thiểu (MinOrder).
+    /// </summary>
     public async Task<(bool Success, string Message)> ApplyVoucherAsync(string code)
     {
         if (string.IsNullOrWhiteSpace(code))
@@ -251,6 +273,11 @@ public class CartService : ICartService
         ClearVoucher();
     }
 
+    /// <summary>
+    /// RÀNG BUỘC VOUCHER: Tính toán tiền giảm theo phần trăm (%) hoặc số tiền cố định
+    /// - Kiểm tra trạng thái Voucher (Status == true) và ngày hết hạn (ExpiryDate >= Today).
+    /// - Kiểm tra đơn hàng có đạt giá trị tối thiểu (subtotal >= MinOrder).
+    /// </summary>
     private async Task<decimal> CalculateVoucherDiscountAsync(string code, decimal subtotal)
     {
         try

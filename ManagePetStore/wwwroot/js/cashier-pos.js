@@ -142,6 +142,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // [nam] Chọn bảng kê lưu trú và thêm cùng dịch vụ Spa liên kết vào giỏ thu ngân.
     window.handleSelectHotelCheckout = function (item) {
+        // [nam][BR] Một giỏ chỉ thu cho một Customer; đổi khách phải xóa giỏ cũ để không ghép sai hóa đơn.
         if (currentCustomer && cart.length > 0 && currentCustomer.customerId !== item.customerId) {
             if (!confirm(`Giỏ hiện thuộc ${currentCustomer.fullName}. Chuyển sang ${item.customerName} và xóa giỏ cũ?`)) return;
             clearCurrentCartAndCustomer();
@@ -257,6 +258,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // [nam] Voucher không áp dụng cho Spa chờ thu hoặc bảng kê chuồng chờ thu.
     function hasPendingServiceItems() {
+        // [nam][BR] Hotel đã có giảm giá snapshot và Spa chờ thu đã có giá chốt nên không giảm voucher lần hai.
         return cart.some(item =>
             item.type === 'Hotel' ||
             (item.type === 'Spa' && Boolean(item.bookingId)));

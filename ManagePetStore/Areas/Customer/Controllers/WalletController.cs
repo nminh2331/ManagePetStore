@@ -1,3 +1,4 @@
+// HÀ HOÀNG HIỆP CODE - LUỒNG VÍ ĐIỆN TỬ: USE CASE MANAGE WALLET (QUẢN LÝ VÍ ĐIỆN TỬ KHÁCH HÀNG)
 using System.Security.Claims;
 using ManagePetStore.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -32,11 +33,20 @@ namespace ManagePetStore.Areas.Customer.Controllers
             return customer?.CustomerId;
         }
 
+        /// <summary>
+        /// LUỒNG MANAGE WALLET: Xem thông tin và số dư ví điện tử
+        /// - Chuyển hướng người dùng sang tab Wallet trong trang Profile tài khoản.
+        /// </summary>
         public IActionResult Index()
         {
             return Redirect("/Customer/Account/Profile?tab=wallet");
         }
 
+        /// <summary>
+        /// LUỒNG MANAGE WALLET: Nạp tiền vào ví điện tử qua cổng PayOS
+        /// - VALIDATION 1: Số tiền nạp tối thiểu là 10,000 VND (amount >= 10000).
+        /// - Xử lý tạo link thanh toán PayOS và chuyển hướng người dùng đến trang nạp tiền QR Code.
+        /// </summary>
         [HttpPost]
         public async Task<IActionResult> Deposit(decimal amount)
         {
@@ -46,6 +56,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 return RedirectToAction("Login", "Account", new { area = "Customer" });
             }
 
+            // RÀNG BUỘC SỐ TIỀN NẠP TỐI THIỂU
             if (amount < 10000)
             {
                 TempData["Error"] = "Số tiền nạp tối thiểu là 10,000 VND.";
@@ -72,7 +83,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
 
                 var paymentLinkResult = await _payOS.PaymentRequests.CreateAsync(paymentData);
                 
-                // Save orderCode to session to verify later
+                // Lưu thông tin giao dịch tạm vào Session để đối soát sau khi nạp xong
                 HttpContext.Session.SetString("DepositOrderCode", orderCode.ToString());
                 HttpContext.Session.SetString("DepositAmount", amount.ToString());
 
@@ -85,6 +96,12 @@ namespace ManagePetStore.Areas.Customer.Controllers
             }
         }
 
+        /// <summary>
+        /// LUỒNG MANAGE WALLET: Xử lý kết quả nạp tiền thành công từ cổng PayOS
+        /// - Kiểm tra trạng thái giao dịch từ PayOS (PAID).
+        /// - Cộng trực tiếp số tiền nạp vào số dư ví của khách hàng (Wallet.Balance += amount).
+        /// - Ghi nhận lịch sử giao dịch nạp tiền (WalletTransaction: Type = "Deposit").
+        /// </summary>
         public async Task<IActionResult> DepositSuccess([FromQuery] string? status, [FromQuery] string? cancel)
         {
             var customerId = await GetCurrentCustomerIdAsync();
@@ -119,9 +136,11 @@ namespace ManagePetStore.Areas.Customer.Controllers
                     var wallet = await _context.Wallets.FirstOrDefaultAsync(w => w.CustomerId == customerId);
                     if (wallet != null)
                     {
+                        // Cộng tiền số dư ví
                         wallet.Balance += amount;
                         wallet.UpdatedAt = DateTime.Now;
 
+                        // Tạo nhật ký giao dịch ví
                         var transaction = new WalletTransaction
                         {
                             WalletId = wallet.WalletId,

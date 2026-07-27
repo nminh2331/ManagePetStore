@@ -160,6 +160,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // [nam] Nạp booking lưu trú và các Spa liên kết vào giỏ thanh toán tại quầy.
     window.handleSelectHotelCheckout = async function (hotelCheckoutId) {
+        // [nam][Validate] Bảng kê phải còn trong danh sách ReadyForPayment tại thời điểm Cashier chọn.
         const item = readyHotelCheckouts.find(row => row.hotelCheckoutId === hotelCheckoutId);
         if (!item) {
             alert('Bảng kê chuồng không còn trong danh sách chờ thu. Vui lòng tải lại.');
@@ -167,6 +168,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        // [nam][BR] Một giỏ chỉ thu cho một Customer; đổi khách phải xóa giỏ cũ để không ghép sai hóa đơn.
         if (currentCustomer && cart.length > 0 && currentCustomer.customerId !== item.customerId) {
             if (!confirm(`Giỏ hiện thuộc ${currentCustomer.fullName}. Chuyển sang ${item.customerName} và xóa giỏ cũ?`)) return;
             clearCurrentCartAndCustomer();
@@ -178,6 +180,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const linkedSpaBookings = (item.linkedSpaBookingIds || [])
             .map(spaId => completedSpaBookings.find(row => row.bookingId === spaId))
             .filter(Boolean);
+        // [nam][Validate] Không cho thu nếu thiếu bất kỳ Spa liên kết nào để tránh tạo hóa đơn thiếu khoản dịch vụ.
         if (linkedSpaBookings.length !== (item.linkedSpaBookingIds || []).length) {
             alert('Chưa tải đủ dịch vụ Spa liên kết. Vui lòng thử lại để tránh thiếu khoản thu.');
             return;
@@ -371,6 +374,16 @@ document.addEventListener('DOMContentLoaded', function () {
         renderCustomerInfo();
     };
 
+    function getPointRateByTier(tier) {
+        if (!tier) return 500;
+        const t = tier.toString().trim().toLowerCase();
+        if (t === 'vip') return 3000;
+        if (t === 'vàng' || t === 'gold') return 1500;
+        if (t === 'bạc' || t === 'silver') return 1000;
+        if (t === 'đồng' || t === 'bronze') return 700;
+        return 500;
+    }
+
     function renderCustomerInfo() {
         if (!currentCustomer) {
             document.getElementById('selectedCustomerInfo').style.display = 'none';
@@ -385,13 +398,18 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('lblCustomerTier').textContent = currentCustomer.membershipTier;
         document.getElementById('lblCustomerPoints').textContent = currentCustomer.loyaltyPoints;
 
-        // Pet selector logic removed
+        // Cập nhật nhãn và tỷ lệ quy đổi điểm của hạng thành viên
+        const pointRate = getPointRateByTier(currentCustomer.membershipTier);
+        const rateLabel = document.getElementById('lblPointRateText');
+        if (rateLabel) {
+            rateLabel.textContent = `Dùng điểm giảm giá (1đ = ${pointRate.toLocaleString('vi-VN')}đ)`;
+        }
 
         document.getElementById('lblCustomerPointsVal').textContent = currentCustomer.loyaltyPoints;
         const totalAmount = cart.reduce((acc, curr) => acc + curr.total, 0);
-        const maxDiscountPoints = Math.floor(totalAmount / 500);
+        const maxDiscountPoints = Math.floor(totalAmount / pointRate);
         const pointsToUse = Math.min(currentCustomer.loyaltyPoints, maxDiscountPoints);
-        document.getElementById('lblMaxDiscountVal').textContent = formatCurrency(pointsToUse * 500);
+        document.getElementById('lblMaxDiscountVal').textContent = formatCurrency(pointsToUse * pointRate);
         document.getElementById('loyaltyGroup').style.display = 'block';
 
         document.getElementById('selectedCustomerInfo').style.display = 'block';
@@ -749,6 +767,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // === CALCULATE PAYMENT REAL-TIME ===
     function recalculatePayment() {
         const subtotal = cart.reduce((acc, curr) => acc + curr.total, 0);
+        // [nam][BR] Không dùng thêm điểm thành viên khi giỏ có Hotel vì giảm giá đã được snapshot lúc đặt.
         const hasHotelItem = cart.some(item => item.type === 'Hotel');
         const usePointsCheckbox = document.getElementById('chkUsePoints');
         let discount = 0;
@@ -759,13 +778,14 @@ document.addEventListener('DOMContentLoaded', function () {
         if (hasHotelItem) usePointsCheckbox.checked = false;
 
         if (currentCustomer && !hasHotelItem) {
-            const maxDiscountPoints = Math.floor(subtotal / 500);
+            const pointRate = getPointRateByTier(currentCustomer.membershipTier);
+            const maxDiscountPoints = Math.floor(subtotal / pointRate);
             const pointsToUse = Math.min(currentCustomer.loyaltyPoints, maxDiscountPoints);
-            document.getElementById('lblMaxDiscountVal').textContent = formatCurrency(pointsToUse * 500);
+            document.getElementById('lblMaxDiscountVal').textContent = formatCurrency(pointsToUse * pointRate);
 
             if (usePointsCheckbox.checked) {
                 pointsUsed = pointsToUse;
-                discount = pointsUsed * 500;
+                discount = pointsUsed * pointRate;
             }
         }
 
@@ -814,7 +834,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const subtotal = cart.reduce((acc, curr) => acc + curr.total, 0);
         let discount = 0;
         if (currentCustomer && document.getElementById('chkUsePoints').checked) {
-            discount = Math.min(currentCustomer.loyaltyPoints, Math.floor(subtotal / 500)) * 500;
+            const pointRate = getPointRateByTier(currentCustomer.membershipTier);
+            discount = Math.min(currentCustomer.loyaltyPoints, Math.floor(subtotal / pointRate)) * pointRate;
         }
         const finalTotal = Math.max(0, subtotal - discount);
 
@@ -900,11 +921,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const usePoints = document.getElementById('chkUsePoints').checked;
 
         let pointsUsed = 0;
+        let pointRate = 500;
         if (usePoints && currentCustomer) {
-            pointsUsed = Math.min(currentCustomer.loyaltyPoints, Math.floor(subtotal / 500));
+            pointRate = getPointRateByTier(currentCustomer.membershipTier);
+            pointsUsed = Math.min(currentCustomer.loyaltyPoints, Math.floor(subtotal / pointRate));
         }
 
-        const finalTotal = subtotal - (pointsUsed * 500);
+        const finalTotal = subtotal - (pointsUsed * pointRate);
         const cashRaw = document.getElementById('txtCashReceived').value.replace(/[^0-9]/g, '');
         const cashVal = parseFloat(cashRaw) || 0;
 

@@ -68,6 +68,7 @@ function formatCurrency(amount) {
         const start = parseDateTimeInput(checkIn?.value);
         const end = parseDateTimeInput(checkOut?.value);
 
+        // [nam][BR] Có phần lẻ của 24 giờ vẫn làm tròn lên một ngày tính phí.
         if (!start || !end) return 0;
         return Math.ceil((end - start) / dayInMilliseconds);
     }
@@ -90,6 +91,7 @@ function formatCurrency(amount) {
         const latestCheckIn = new Date(earliestCheckIn);
         latestCheckIn.setDate(latestCheckIn.getDate() + 365);
 
+        // [nam][BR] Khách chỉ đặt từ mốc 15 phút kế tiếp và tối đa trước 365 ngày.
         checkIn.min = formatDateTimeInput(earliestCheckIn);
         checkIn.max = formatDateTimeInput(latestCheckIn);
 
@@ -119,6 +121,7 @@ function formatCurrency(amount) {
         const start = parseDateTimeInput(checkIn.value);
         const minimumCheckOut = new Date(start);
         const maximumCheckOut = new Date(start);
+        // [nam][BR] Ngày trả tối thiểu sau 15 phút và tối đa 90 ngày so với ngày nhận.
         minimumCheckOut.setMinutes(minimumCheckOut.getMinutes() + 15);
         maximumCheckOut.setDate(maximumCheckOut.getDate() + 90);
 
@@ -142,6 +145,7 @@ function formatCurrency(amount) {
         checkIn.setCustomValidity('');
         checkOut.setCustomValidity('');
 
+        // [nam][Validate] Validation client cho phản hồi sớm; server vẫn lặp lại toàn bộ luật này.
         const now = new Date();
         const start = parseDateTimeInput(checkIn.value);
         const end = parseDateTimeInput(checkOut.value);
@@ -182,6 +186,7 @@ function formatCurrency(amount) {
     // [nam] Tải bất đồng bộ các chuồng trống và bỏ qua phản hồi cũ khi người dùng đổi bộ lọc.
     async function loadAvailableCages() {
         if (!cageSelect) return;
+        // [nam][Flow] Sequence loại phản hồi cũ nếu người dùng đổi bộ lọc khi request đang chạy.
         const sequence = ++cageAvailabilitySequence;
         cageSelect.setCustomValidity('');
 
@@ -243,6 +248,7 @@ function formatCurrency(amount) {
 
     // [nam] Quy đổi cân nặng pet thành hệ số khẩu phần thức ăn.
     function getWeightMultiplier(weight) {
+        // [nam][BR] Hệ số này chỉ để báo giá UI; service tính lại từ cân nặng server trước khi tạo booking.
         if (!weight) return 0;
         if (weight <= 5) return 1;
         if (weight <= 15) return 1.25;
@@ -393,6 +399,7 @@ function formatCurrency(amount) {
 
     if (form) {
         form.addEventListener('submit', function (e) {
+            // [nam][Validate] Cổng cuối phía client yêu cầu ngày, tồn thức ăn và chuồng đều hợp lệ.
             const hasValidDates = validateHotelDates();
             const hasAvailableFood = validateFoodAvailability();
             if (cageSelect && (!cageSelect.value || cageSelect.disabled)) {

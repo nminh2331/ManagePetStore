@@ -22,6 +22,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         // [nam] Kiểm tra giới hạn giá ngày và giá giờ của loại chuồng.
         private static string? ValidateRoomTypePricing(decimal dailyPrice, decimal hourlyPrice)
         {
+            // [nam][BR] Giá ngày và phí quá giờ phải nằm trong khung cấu hình nghiệp vụ của Hotel.
             if (dailyPrice < MinimumRoomTypeDailyPrice)
             {
                 return "Giá theo ngày không được thấp hơn 150.000đ.";
@@ -37,6 +38,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return "Giá chuồng không được vượt quá 100.000.000đ.";
             }
 
+            // [nam][BR] Một giờ phụ thu không được đắt hơn trọn một ngày và mọi giá dùng bước 1.000đ.
             if (hourlyPrice > dailyPrice)
             {
                 return "Phí quá giờ không được lớn hơn giá theo ngày.";
@@ -54,6 +56,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         // [nam] Kiểm tra tên, kích thước và sức chứa của loại chuồng.
         private static string? ValidateRoomTypeDetails(string? type, string? size, int capacity)
         {
+            // [nam][Validate] Giới hạn độ dài và sức chứa bảo vệ cả DB lẫn bố cục màn danh mục.
             if (string.IsNullOrWhiteSpace(type) || type.Trim().Length > 100)
             {
                 return "Tên loại chuồng là bắt buộc và không được vượt quá 100 ký tự.";
@@ -94,6 +97,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return RedirectToAction(nameof(CageCategories));
             }
 
+            // [nam][BR] Tên loại chuồng là duy nhất không phân biệt hoa/thường.
             if (await _context.RoomTypes.AnyAsync(r => r.Type.ToLower() == type.Trim().ToLower()))
             {
                 TempData["HotelError"] = "Tên loại chuồng này đã tồn tại.";
@@ -177,6 +181,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             if (roomType == null)
                 return Json(new { success = false, message = "Không tìm thấy loại chuồng." });
 
+            // [nam][BR] Loại đã được tham chiếu chỉ ngừng hoạt động; xóa vật lý sẽ làm mất liên kết lịch sử.
             bool hasCages = await _context.Cages.AnyAsync(c => c.RoomTypeId == id);
             bool hasOrders = await _context.OrderItems.AnyAsync(o => o.RoomTypeId == id);
 
@@ -210,6 +215,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         public async Task<IActionResult> AddCage(
             string cageId, int roomTypeId, string feedSchedule, int portion)
         {
+            // [nam][Validate] CageId là khóa nghiệp vụ tối đa 20 ký tự; RoomTypeId phải là khóa dương.
             if (string.IsNullOrWhiteSpace(cageId) || cageId.Trim().Length > 20 || roomTypeId <= 0)
             {
                 TempData["HotelError"] = "Mã chuồng là bắt buộc và không được vượt quá 20 ký tự.";
@@ -222,6 +228,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return RedirectToAction(nameof(CageCategories));
             }
 
+            // [nam][BR] Khẩu phần cấu hình theo gram trong khung 10-10.000 và bước 10 gram.
             if (portion is < MinimumCagePortionGrams or > MaximumCagePortionGrams || portion % 10 != 0)
             {
                 TempData["HotelError"] = "Khẩu phần phải từ 10 đến 10.000 gram và theo bước 10 gram.";
@@ -234,6 +241,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return RedirectToAction(nameof(CageCategories));
             }
 
+            // [nam][Validate] Không cho tạo chuồng dưới loại đã khóa hoặc ngoài ba mã Hotel hỗ trợ.
             var roomType = await _context.RoomTypes.FirstOrDefaultAsync(item =>
                 item.RoomTypeId == roomTypeId &&
                 item.Status &&
@@ -311,6 +319,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             if (cage == null)
                 return Json(new { success = false, message = "Không tìm thấy chuồng." });
 
+            // [nam][BR] Chỉ xóa vật lý chuồng trống chưa từng có booking để bảo toàn lịch sử lưu trú.
             if (cage.Status != "Trống")
                 return Json(new { success = false, message = "Không thể xóa chuồng đang có thú cưng." });
 

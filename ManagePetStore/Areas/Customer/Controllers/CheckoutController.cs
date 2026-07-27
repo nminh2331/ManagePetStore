@@ -1,4 +1,4 @@
-// hà hoàng hiệp code 
+// hà hoàng hiệp code -- xử lý phần place order và make payment
 using System.Security.Claims;
 using ManagePetStore.Areas.Customer.Models;
 using ManagePetStore.Services.Customer;
@@ -85,7 +85,16 @@ public class CheckoutController : Controller
     }
 
 
-    //Đây là action chốt đơn thật sự.
+    /// <summary>
+    /// LUỒNG PLACE ORDER & MAKE PAYMENT: Đặt hàng và Xử lý Thanh toán
+    /// - VALIDATION 1: Kiểm tra Giỏ hàng không được rỗng.
+    /// - VALIDATION 2: Kiểm tra thông tin Khách hàng đăng nhập.
+    /// - VALIDATION 3: Validate định dạng Họ tên (chỉ chữ/khoảng trắng), SĐT (10 chữ số), Email đúng định dạng.
+    /// - RÀNG BUỘC PHƯƠNG THỨC THANH TOÁN:
+    ///   + "Tiền mặt" (COD): Trạng thái đơn "Chờ xử lý".
+    ///   + "Ví điện tử": Kiểm tra số dư ví (Balance >= GrandTotal), trừ số dư và lưu lịch sử giao dịch ví. Trạng thái đơn "Chờ xử lý".
+    ///   + "Thanh toán online" (PayOS): Trạng thái đơn "Chờ thanh toán", tạo link thanh toán QR Code PayOS.
+    /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Confirm(
@@ -100,14 +109,16 @@ public class CheckoutController : Controller
         var trimmedPhone = phone?.Trim() ?? string.Empty;
         var trimmedEmail = email?.Trim() ?? string.Empty;
         var trimmedShippingAddress = shippingAddress?.Trim() ?? string.Empty;
-        //Kiểm tra lại cart
+
+        // 1. Kiểm tra giỏ hàng
         var cart = await _cartService.GetCartPageAsync();
         if (!cart.Items.Any())
         {
             TempData["ErrorMessage"] = "Giỏ hàng trống.";
             return RedirectToAction("Index", "Cart");
         }
-        //Kiểm tra customer lần nữa
+
+        // 2. Kiểm tra thông tin tài khoản khách hàng
         var customer = await GetCurrentCustomerAsync();
         if (customer == null)
         {
@@ -115,6 +126,7 @@ public class CheckoutController : Controller
             return RedirectToAction("Index", "Cart");
         }
 
+        // 3. VALIDATION DỮ LIỆU ĐẦU VÀO: Bắt buộc nhập đầy đủ thông tin giao hàng
         if (string.IsNullOrWhiteSpace(trimmedFullName) ||
             string.IsNullOrWhiteSpace(trimmedPhone) ||
             string.IsNullOrWhiteSpace(trimmedEmail) ||
@@ -124,6 +136,7 @@ public class CheckoutController : Controller
             return RedirectToAction(nameof(Index));
         }
 
+        // Validate Regex Họ tên
         var fullNameRegex = new Regex(@"^[\p{L}\s]+$");
         if (!fullNameRegex.IsMatch(trimmedFullName))
         {
@@ -131,6 +144,7 @@ public class CheckoutController : Controller
             return RedirectToAction(nameof(Index));
         }
 
+        // Validate Regex Số điện thoại (10 chữ số)
         var phoneRegex = new Regex(@"^\d{10}$");
         if (!phoneRegex.IsMatch(trimmedPhone))
         {
@@ -138,6 +152,7 @@ public class CheckoutController : Controller
             return RedirectToAction(nameof(Index));
         }
 
+        // Validate Regex Email
         var emailRegex = new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$");
         if (!emailRegex.IsMatch(trimmedEmail))
         {
@@ -145,6 +160,7 @@ public class CheckoutController : Controller
             return RedirectToAction(nameof(Index));
         }
 
+        // 4. Validate và chuẩn hóa phương thức thanh toán
         var normalizedPayment = NormalizePaymentMethod(paymentMethod);
         if (normalizedPayment == null)
         {
@@ -152,6 +168,7 @@ public class CheckoutController : Controller
             return RedirectToAction(nameof(Index));
         }
 
+        // RÀNG BUỘC VÍ ĐIỆN TỬ: Kiểm tra số dư ví nếu chọn thanh toán qua Ví điện tử
         Wallet? customerWallet = null;
         if (normalizedPayment == "Ví điện tử")
         {
@@ -163,6 +180,7 @@ public class CheckoutController : Controller
             }
         }
 
+        // 5. Tạo mã đơn hàng duy nhất (Mã số cho Online hoặc Mã chuỗi ngày giờ cho Tiền mặt/Ví)
         long orderCode = 0;
         string orderId;
         if (normalizedPayment == "Thanh toán online")

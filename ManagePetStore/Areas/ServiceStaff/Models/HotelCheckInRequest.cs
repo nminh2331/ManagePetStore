@@ -47,6 +47,7 @@ public sealed class HotelCheckInRequest : IValidatableObject
     // [nam] Kiểm tra nguồn tiếp nhận, kết luận sức khoẻ và dữ liệu chuồng trước check-in.
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
+        // [nam][Validate] Hiện hệ thống chỉ tiếp nhận từ sổ y tế có sẵn; giá trị khác có thể là request sửa tay.
         if (!string.Equals(ReceptionSource, ExistingMedicalRecordSource, StringComparison.Ordinal))
         {
             yield return new ValidationResult(
@@ -54,6 +55,7 @@ public sealed class HotelCheckInRequest : IValidatableObject
                 new[] { nameof(ReceptionSource) });
         }
 
+        // [nam][BR] Kết luận sức khỏe chỉ có ba trạng thái chuẩn; Monitor và Rejected bắt buộc giải thích.
         var validHealthStatuses = new[] { FitStatus, MonitorStatus, RejectedStatus };
         if (!validHealthStatuses.Contains(HealthStatus, StringComparer.Ordinal))
         {
@@ -76,6 +78,7 @@ public sealed class HotelCheckInRequest : IValidatableObject
                 new[] { nameof(HealthNote) });
         }
 
+        // [nam][BR] Chỉ ghi nhận từ chối cho booking online đã tồn tại; lượt gửi trực tiếp chưa tạo booking để hủy.
         if (HealthStatus == RejectedStatus && !HotelBookingId.HasValue)
         {
             yield return new ValidationResult(
@@ -83,6 +86,7 @@ public sealed class HotelCheckInRequest : IValidatableObject
                 new[] { nameof(HotelBookingId) });
         }
 
+        // [nam][Validate] Luồng được nhận mới bắt buộc đủ ngày, loại chuồng, chuồng và gói thức ăn.
         if (HealthStatus != RejectedStatus)
         {
             if (!CheckInDate.HasValue)
@@ -121,6 +125,7 @@ public sealed class HotelCheckInRequest : IValidatableObject
             }
         }
 
+        // [nam][BR] Checkbox xác nhận là bằng chứng Staff đã trực tiếp hoàn tất kiểm tra sức khỏe.
         if (!HealthCheckConfirmed)
         {
             yield return new ValidationResult(
@@ -128,6 +133,7 @@ public sealed class HotelCheckInRequest : IValidatableObject
                 new[] { nameof(HealthCheckConfirmed) });
         }
 
+        // [nam][BR] Khoảng lưu trú phải dương và luồng Staff cho phép tối đa 365 ngày.
         if (CheckInDate.HasValue && CheckOutDate.HasValue)
         {
             if (CheckOutDate.Value <= CheckInDate.Value)

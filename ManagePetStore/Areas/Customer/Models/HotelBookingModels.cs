@@ -36,6 +36,7 @@ public class HotelBookingRequest : IValidatableObject
     {
         if (!CheckInDate.HasValue || !CheckOutDate.HasValue)
         {
+            // [nam][Validate] Thuộc tính Required chịu trách nhiệm báo thiếu; tránh sinh lỗi thời gian trùng lặp.
             yield break;
         }
 
@@ -44,6 +45,7 @@ public class HotelBookingRequest : IValidatableObject
         var now = DateTime.Now;
         var latestAllowedCheckIn = now.AddDays(365);
 
+        // [nam][BR] Booking online chỉ nhận các mốc 15 phút để đồng bộ lịch vận hành chuồng.
         if (checkIn.Minute % 15 != 0 || checkIn.Second != 0 ||
             checkOut.Minute % 15 != 0 || checkOut.Second != 0)
         {
@@ -52,6 +54,7 @@ public class HotelBookingRequest : IValidatableObject
                 [nameof(CheckInDate), nameof(CheckOutDate)]);
         }
 
+        // [nam][BR] Chỉ nhận lịch từ hiện tại đến tối đa 365 ngày trong tương lai.
         if (checkIn < now)
         {
             yield return new ValidationResult(
@@ -66,6 +69,7 @@ public class HotelBookingRequest : IValidatableObject
                 [nameof(CheckInDate)]);
         }
 
+        // [nam][BR] Ngày trả phải sau ngày nhận và một lượt lưu trú không vượt quá 90 ngày.
         if (checkOut <= checkIn)
         {
             yield return new ValidationResult(

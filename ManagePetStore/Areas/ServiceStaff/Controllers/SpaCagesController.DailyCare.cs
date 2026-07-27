@@ -29,7 +29,11 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 : (int?)null;
             var query = _context.HotelBookings
                 .AsNoTracking()
-                .Where(booking => ActiveHotelStatuses.Contains(booking.Status));
+                // [nam][BR] Danh sách chăm sóc chỉ hiện pet đã được tiếp nhận thật và chưa checkout.
+                .Where(booking =>
+                    ActiveHotelStatuses.Contains(booking.Status) &&
+                    booking.ActualCheckOutAt == null &&
+                    (booking.ActualCheckInAt.HasValue || booking.CheckInAssessment != null));
 
             if (!string.IsNullOrWhiteSpace(normalizedSearch))
             {
@@ -58,10 +62,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     CageId = booking.CageId,
                     RoomTypeCode = booking.Cage.RoomType.Code,
                     RoomTypeName = booking.Cage.RoomType.Type,
-                    CheckInAt = booking.ActualCheckInAt ??
-                        (booking.CheckInAssessment != null
-                            ? booking.CheckInAssessment.AssessedAt
-                            : booking.CheckInDate <= DateTime.Now ? booking.CheckInDate : DateTime.Now),
+                    CheckInAt = booking.ActualCheckInAt ?? booking.CheckInAssessment!.AssessedAt,
                     ExpectedCheckOutAt = booking.ScheduledCheckOutDate ?? booking.CheckOutDate,
                     CareLogCount = booking.FoodDiaryLogs.Count,
                     LastCareAt = booking.FoodDiaryLogs
@@ -103,7 +104,8 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 .OrderByDescending(booking => booking.HotelBookingId)
                 .ToListAsync();
 
-            var activeBooking = bookings.FirstOrDefault(booking => ActiveHotelStatuses.Contains(booking.Status));
+            // [nam][BR] Booking đặt trước chưa tiếp nhận không được coi là lượt đang chăm sóc.
+            var activeBooking = bookings.FirstOrDefault(IsCareStayOpen);
             var logs = await _context.FoodDiaryLogs
                 .AsNoTracking()
                 .Where(log => log.HotelBookingId.HasValue &&
@@ -183,6 +185,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         [RequestSizeLimit(55 * 1024 * 1024)]
         public async Task<IActionResult> CreateHotelCareLog(HotelCareLogRequest request)
         {
+            // [nam][Validate] Chỉ nhận loại hoạt động trong whitelist để dữ liệu lịch sử và bộ lọc luôn nhất quán.
             var allowedActivityTypes = new[]
             {
                 "General", "Feeding", "Health", "Exercise", "Hygiene", "Medication", "CameraSnapshot"
@@ -193,6 +196,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 ModelState.AddModelError(nameof(request.ActivityType), "Loại hoạt động không hợp lệ.");
             }
 
+            // [nam][BR] Trường thức ăn và phụ phí chỉ có ý nghĩa với hoạt động Feeding; loại khác phải xóa dữ liệu gửi thừa.
             bool isFeeding = string.Equals(request.ActivityType, "Feeding", StringComparison.OrdinalIgnoreCase);
             if (!isFeeding)
             {
@@ -219,29 +223,33 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return NotFound();
             }
 
-            if (!string.Equals(booking.Status, "Active", StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(booking.Status, "Đang ở", StringComparison.OrdinalIgnoreCase))
-            {
-                ModelState.AddModelError(string.Empty, "Chỉ có thể cập nhật nhật ký cho booking đang lưu trú.");
-            }
-
-            var occurredAt = request.OccurredAt ?? DateTime.Now;
-            var effectiveCheckInAt = ResolveCareStayStart(booking);
-            if (!booking.ActualCheckInAt.HasValue)
-            {
-                booking.ActualCheckInAt = effectiveCheckInAt;
-            }
-
-            var earliestAllowed = effectiveCheckInAt.AddHours(-1);
-            if (occurredAt > DateTime.Now.AddMinutes(5))
-            {
-                ModelState.AddModelError(nameof(request.OccurredAt), "Thời gian nhật ký không được ở tương lai.");
-            }
-            else if (occurredAt < earliestAllowed)
+            // [nam][BR] Chỉ booking đã tiếp nhận và chưa checkout mới được ghi nhật ký.
+            if (!IsCareStayOpen(booking))
             {
                 ModelState.AddModelError(
-                    nameof(request.OccurredAt),
-                    $"Thời gian nhật ký phải từ {earliestAllowed:dd/MM/yyyy HH:mm} trở đi.");
+                    string.Empty,
+                    "Chỉ có thể ghi nhật ký sau khi pet đã tiếp nhận và trong lúc còn ở chuồng.");
+            }
+
+            // [nam][BR] Thời gian nhật ký phải nằm từ lúc tiếp nhận thật đến hiện tại.
+            var occurredAt = request.OccurredAt ?? DateTime.Now;
+            if (IsCareStayOpen(booking))
+            {
+                var effectiveCheckInAt = ResolveActualCareStayStart(booking);
+                // Giao diện chọn theo phút, nên mốc tiếp nhận cũng được so sánh ở độ chính xác phút.
+                var earliestAllowed = effectiveCheckInAt.AddTicks(
+                    -(effectiveCheckInAt.Ticks % TimeSpan.TicksPerMinute));
+
+                if (occurredAt > DateTime.Now)
+                {
+                    ModelState.AddModelError(nameof(request.OccurredAt), "Thời gian nhật ký không được ở tương lai.");
+                }
+                else if (occurredAt < earliestAllowed)
+                {
+                    ModelState.AddModelError(
+                        nameof(request.OccurredAt),
+                        $"Thời gian nhật ký phải từ lúc tiếp nhận {earliestAllowed:dd/MM/yyyy HH:mm} trở đi.");
+                }
             }
 
             if (!ModelState.IsValid)
@@ -253,6 +261,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return RedirectAfterCareLog(request, booking);
             }
 
+            // [nam][Validate] Media được service kiểm tra loại tệp, dung lượng và chữ ký trước khi lưu URL vào nhật ký.
             HotelCareMediaResult? media = null;
             try
             {
@@ -268,6 +277,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 ? parsedUserId
                 : (int?)null;
             var staffName = User.FindFirstValue("FullName") ?? User.Identity?.Name ?? "Nhân viên";
+            // [nam][Flow] Chuẩn hóa nội dung trước khi dùng chung cho log, thông báo web và email.
             var safeTitle = request.Title.Trim();
             var safeStatus = request.Status.Trim();
             var safeNote = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
@@ -313,6 +323,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             };
 
             _context.FoodDiaryLogs.Add(careLog);
+            // [nam][BR] Chỉ tạo notification/realtime khi Staff chọn cho phép Customer nhìn thấy cập nhật.
             CustomerNotification? notification = null;
             if (request.IsVisibleToCustomer)
             {
@@ -335,12 +346,14 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             }
             catch (Exception ex)
             {
+                // [nam][Flow] Nếu lưu DB thất bại phải xóa media vừa tải để không để lại tệp mồ côi.
                 await _hotelCareMediaService.DeleteAsync(media?.PublicUrl);
                 _logger.LogError(ex, "Cannot save daily care log for hotel booking {HotelBookingId}.", booking.HotelBookingId);
                 TempData["HotelCareError"] = "Không thể lưu nhật ký lúc này. Vui lòng thử lại.";
                 return RedirectAfterCareLog(request, booking);
             }
 
+            // [nam][Flow] Realtime và email chạy sau SaveChanges; lỗi gửi không được làm mất nhật ký đã lưu.
             if (notification != null)
             {
                 try
@@ -379,7 +392,22 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return RedirectAfterCareLog(request, booking);
         }
 
-        // [nam] Xác định thời điểm pet thực sự bắt đầu lưu trú, kể cả booking cũ thiếu ActualCheckInAt.
+        // [nam] Xác định một booking đã tiếp nhận thật và pet vẫn còn ở chuồng.
+        private static bool IsCareStayOpen(HotelBooking booking)
+        {
+            return ActiveHotelStatuses.Contains(booking.Status) &&
+                   booking.ActualCheckOutAt == null &&
+                   (booking.ActualCheckInAt.HasValue || booking.CheckInAssessment != null);
+        }
+
+        // [nam] Lấy mốc tiếp nhận thật để validate nhật ký; không dùng ngày đặt dự kiến.
+        private static DateTime ResolveActualCareStayStart(HotelBooking booking)
+        {
+            return booking.ActualCheckInAt ?? booking.CheckInAssessment?.AssessedAt
+                ?? throw new InvalidOperationException("Booking chưa có mốc tiếp nhận thực tế.");
+        }
+
+        // [nam] Xác định thời điểm hiển thị của lượt lưu trú, kể cả dữ liệu lịch sử cũ.
         private static DateTime ResolveCareStayStart(HotelBooking booking)
         {
             if (booking.ActualCheckInAt.HasValue)
@@ -392,10 +420,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return booking.CheckInAssessment.AssessedAt;
             }
 
-            var scheduledCheckIn = booking.ScheduledCheckInDate ?? booking.CheckInDate;
-            return ActiveHotelStatuses.Contains(booking.Status) && scheduledCheckIn > DateTime.Now
-                ? DateTime.Now
-                : scheduledCheckIn;
+            return booking.ScheduledCheckInDate ?? booking.CheckInDate;
         }
 
         // [nam] Chuyển Staff về đúng màn hình sau khi cập nhật nhật ký chăm sóc.
