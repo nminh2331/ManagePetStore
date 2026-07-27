@@ -499,21 +499,25 @@
 
         // View Transition Helpers
         function showCreateScreen(petId, petName, petSpecies, currentWeight) {
+            var form = document.getElementById('createRecordForm');
+            form.reset();
             $('#formPetId').val(petId);
             $('#createPetNameHeader').text(petName);
             $('#formWeight').val(currentWeight);
 
-            // Hide specific form parts
-            $('#formDogCatSection, #formTurtleSection, #formHamsterSection').hide();
+            // [BR] Input trong section ẩn phải bị disable; nếu chỉ hide, trình duyệt vẫn
+            // submit giá trị mặc định của loài khác và làm sai nội dung sổ y tế.
+            var $speciesSections = $('#formDogCatSection, #formTurtleSection, #formHamsterSection');
+            $speciesSections.hide().find(':input').prop('disabled', true);
             
             // Normalize species name to show correct section
-            var species = petSpecies.toLowerCase();
+            var species = (petSpecies || '').trim().toLocaleLowerCase('vi');
             if (species === 'chó' || species === 'mèo' || species === 'dog' || species === 'cat') {
-                $('#formDogCatSection').show();
+                $('#formDogCatSection').show().find(':input').prop('disabled', false);
             } else if (species === 'rùa' || species === 'turtle') {
-                $('#formTurtleSection').show();
-            } else if (species === 'chuột' || species === 'hamster') {
-                $('#formHamsterSection').show();
+                $('#formTurtleSection').show().find(':input').prop('disabled', false);
+            } else if (species === 'chuột' || species === 'hamster' || species === 'mouse') {
+                $('#formHamsterSection').show().find(':input').prop('disabled', false);
             }
             
             // Transition Screens

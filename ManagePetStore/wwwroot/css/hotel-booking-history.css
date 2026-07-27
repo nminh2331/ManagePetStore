@@ -575,13 +575,18 @@
 
 .hbh-care-form textarea { resize: vertical; }
 .hbh-care-form small { color: #8b817b; font-size: 11px; }
+/* [nam] Bộ chọn Daily Care tách giờ/phút để luôn hiển thị theo chuẩn 24h. */
 .pdc-datetime-control {
     display: grid;
     grid-template-columns: minmax(135px, 1fr) 70px 8px 70px;
     align-items: center;
     gap: 6px;
 }
-.hbh-care-form label > .pdc-datetime-control { font-size: 13px; }
+.hbh-care-form label > .pdc-datetime-control {
+    color: inherit;
+    font-size: 13px;
+    font-weight: 400;
+}
 .pdc-datetime-control b { color: #625954; text-align: center; }
 .hbh-care-form .pdc-field-error { color: #b42318; font-weight: 600; }
 .hbh-care-form-wide { grid-column: 1 / -1; }

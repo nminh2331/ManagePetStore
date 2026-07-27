@@ -198,18 +198,19 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     customerPhone = item.Pet.Customer.Phone,
                     dateCreated = item.DateCreated.ToString("dd/MM/yyyy HH:mm"),
                     item.Weight,
-                    healthStatus = item.HealthStatus ?? "Chưa ghi nhận",
-                    symptoms = item.Symptoms ?? "Không ghi nhận",
-                    treatment = item.Treatment ?? "Không ghi nhận",
-                    vaccinationStatus = item.VaccinationStatus ?? "Chưa ghi nhận",
-                    parasitePrevention = item.ParasitePrevention ?? "Chưa ghi nhận",
-                    physicalCheck = item.PhysicalCheck ?? "Không ghi nhận",
-                    shellStatus = item.ShellStatus ?? "Không ghi nhận",
-                    rearingConditions = item.RearingConditions ?? "Không ghi nhận",
-                    abnormalSymptoms = item.AbnormalSymptoms ?? "Không ghi nhận",
-                    incisorCheck = item.IncisorCheck ?? "Không ghi nhận",
-                    furSkinCheck = item.FurSkinCheck ?? "Không ghi nhận",
-                    digestiveSigns = item.DigestiveSigns ?? "Không ghi nhận"
+                    // [nam][Flow] Trả dữ liệu gốc; giao diện tiếp nhận chỉ hiển thị trường có giá trị và đúng loài.
+                    healthStatus = item.HealthStatus,
+                    symptoms = item.Symptoms,
+                    treatment = item.Treatment,
+                    vaccinationStatus = item.VaccinationStatus,
+                    parasitePrevention = item.ParasitePrevention,
+                    physicalCheck = item.PhysicalCheck,
+                    shellStatus = item.ShellStatus,
+                    rearingConditions = item.RearingConditions,
+                    abnormalSymptoms = item.AbnormalSymptoms,
+                    incisorCheck = item.IncisorCheck,
+                    furSkinCheck = item.FurSkinCheck,
+                    digestiveSigns = item.DigestiveSigns
                 })
                 .FirstOrDefaultAsync();
 
@@ -371,6 +372,11 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return Json(new { success = false, message = "Phải ghi nhận tình trạng sức khỏe trong sổ y tế." });
             }
 
+            string normalizedSpecies = pet.Species.Trim().ToLowerInvariant();
+            bool isDogOrCat = normalizedSpecies is "chó" or "mèo" or "dog" or "cat";
+            bool isTurtle = normalizedSpecies is "rùa" or "turtle";
+            bool isRodent = normalizedSpecies is "chuột" or "hamster" or "mouse";
+
             // Kiểm tra xem thú cưng có đơn đặt lưu trú chuồng đang hoạt động không
             int? activeHotelBookingId = await _context.HotelBookings
                 .AsNoTracking()
@@ -381,25 +387,26 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 .Select(booking => (int?)booking.HotelBookingId)
                 .FirstOrDefaultAsync();
 
-            // Khởi tạo đối tượng Sổ y tế mới
+            // [BR] Chỉ lưu nhóm thông tin lâm sàng đúng loài. Đây cũng là lớp bảo vệ
+            // khi client cũ hoặc request sửa tay gửi kèm giá trị mặc định của nhóm đang ẩn.
             var record = new MedicalRecord
             {
                 PetId = petId,
                 HotelBookingId = activeHotelBookingId,
                 DateCreated = DateTime.Now,
                 Weight = weight,
-                HealthStatus = healthStatus,
-                Symptoms = symptoms,
-                Treatment = treatment,
-                VaccinationStatus = vaccinationStatus,
-                ParasitePrevention = parasitePrevention != null ? string.Join(", ", parasitePrevention) : "",
-                PhysicalCheck = physicalCheck,
-                ShellStatus = shellStatus,
-                RearingConditions = rearingConditions,
-                AbnormalSymptoms = abnormalSymptoms != null ? string.Join(", ", abnormalSymptoms) : "",
-                IncisorCheck = incisorCheck,
-                FurSkinCheck = furSkinCheck,
-                DigestiveSigns = digestiveSigns != null ? string.Join(", ", digestiveSigns) : ""
+                HealthStatus = healthStatus.Trim(),
+                Symptoms = NormalizeOptionalText(symptoms),
+                Treatment = NormalizeOptionalText(treatment),
+                VaccinationStatus = isDogOrCat ? NormalizeOptionalText(vaccinationStatus) : null,
+                ParasitePrevention = isDogOrCat ? JoinSelections(parasitePrevention) : null,
+                PhysicalCheck = isDogOrCat ? NormalizeOptionalText(physicalCheck) : null,
+                ShellStatus = isTurtle ? NormalizeOptionalText(shellStatus) : null,
+                RearingConditions = isTurtle ? NormalizeOptionalText(rearingConditions) : null,
+                AbnormalSymptoms = isTurtle ? JoinSelections(abnormalSymptoms) : null,
+                IncisorCheck = isRodent ? NormalizeOptionalText(incisorCheck) : null,
+                FurSkinCheck = isRodent ? NormalizeOptionalText(furSkinCheck) : null,
+                DigestiveSigns = isRodent ? JoinSelections(digestiveSigns) : null
             };
 
             // Cập nhật thông tin cân nặng và trạng thái bệnh lý gần nhất cho thú cưng
@@ -465,6 +472,27 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             }
 
             return Json(new { success = true, message = "Tạo sổ y tế thành công!" });
+        }
+
+        // [Validate] Chuẩn hóa trường tùy chọn để database không chứa chuỗi rỗng giả dữ liệu.
+        private static string? NormalizeOptionalText(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+        // [Validate] Loại lựa chọn rỗng/trùng trước khi lưu các nhóm checkbox của sổ y tế.
+        private static string? JoinSelections(string[]? values)
+        {
+            if (values == null)
+            {
+                return null;
+            }
+
+            string[] normalizedValues = values
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Select(value => value.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            return normalizedValues.Length == 0 ? null : string.Join(", ", normalizedValues);
         }
     }
 }

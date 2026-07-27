@@ -6,6 +6,9 @@
     bool isCheckInPage = pageMode == "checkin";
     bool isMapPage = pageMode == "map";
     bool isCategoryPage = pageMode == "categories";
+    string catalogTab = string.Equals(Context.Request.Query["tab"], "cage", StringComparison.OrdinalIgnoreCase)
+        ? "cage"
+        : "roomtype";
     ViewData["Title"] = isCheckInPage
         ? "Tiếp nhận lưu trú"
         : isCategoryPage
@@ -1709,18 +1712,18 @@
             </div>
 
             <div class="tab-nav" style="margin-top:20px;">
-                <button class="tab-btn active" onclick="switchTab('roomtype', this)" id="tab-roomtype">
+                <button class="tab-btn @(catalogTab == "roomtype" ? "active" : "")" onclick="switchTab('roomtype', this)" id="tab-roomtype">
                     <i class="fa-solid fa-layer-group"></i>
                     Loại chuồng
                 </button>
-                <button class="tab-btn" onclick="switchTab('cage', this)" id="tab-cage">
+                <button class="tab-btn @(catalogTab == "cage" ? "active" : "")" onclick="switchTab('cage', this)" id="tab-cage">
                     <i class="fa-solid fa-border-all"></i>
                     Chuồng cụ thể
                 </button>
             </div>
 
             <!-- TAB: Loại chuồng (RoomType) -->
-            <div class="tab-content active" id="tabContent-roomtype">
+            <div class="tab-content @(catalogTab == "roomtype" ? "active" : "")" id="tabContent-roomtype">
                 <div class="hotel-card-header" style="margin-bottom:14px; padding:0;">
                     <span style="font-size:0.8rem; color:#9E918B;">@ViewBag.TotalRoomTypes loại chuồng</span>
                     <span style="font-size:.74rem;color:#7D706A;"><i class="fa-solid fa-lock"></i> Danh mục cố định: Standard, VIP, Luxury</span>
@@ -1802,7 +1805,7 @@
             </div>
 
             <!-- TAB: Chuồng cụ thể (Cage) -->
-            <div class="tab-content" id="tabContent-cage">
+            <div class="tab-content @(catalogTab == "cage" ? "active" : "")" id="tabContent-cage">
                 <div class="hotel-card-header" style="margin-bottom:14px; padding:0;">
                     <span style="font-size:0.8rem; color:#9E918B;">@ViewBag.TotalCages chuồng</span>
                     <button class="add-btn-sm" data-bs-toggle="modal" data-bs-target="#addCageModal">
@@ -2186,11 +2189,13 @@
 
                     <div class="grid-2">
                         <div class="hform-group">
-                            <label class="hform-label">Ngày nhận <span class="req">*</span></label>
-                            <input type="datetime-local" name="checkInDate" id="ci-checkIn" class="hform-control" required>
+                            <label class="hform-label">Thời gian tiếp nhận</label>
+                            <input type="hidden" id="ci-checkIn">
+                            <input type="text" id="ci-checkInDisplay" class="hform-control" readonly
+                                   aria-label="Thời gian tiếp nhận do hệ thống xác định">
                         </div>
                         <div class="hform-group">
-                            <label class="hform-label">Ngày trả dự kiến <span class="req">*</span></label>
+                            <label class="hform-label">Ngày trả dự kiến (07:00–21:30) <span class="req">*</span></label>
                             <input type="datetime-local" name="checkOutDate" id="ci-checkOut" class="hform-control" required>
                         </div>
                     </div>
@@ -2834,6 +2839,11 @@ function switchTab(tabName, btn) {
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
     document.getElementById('tabContent-' + tabName).classList.add('active');
     btn.classList.add('active');
+
+    // [nam][Flow] Lưu tab vào URL để redirect, phân trang hoặc reload vẫn quay lại đúng vị trí.
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tabName);
+    window.history.replaceState({}, '', url);
 }
 
 // ===== RECEPTION: EXISTING MEDICAL RECORD =====
@@ -2925,12 +2935,10 @@ function clearOnlineReceptionContext() {
     filterFoodOptions('');
 
     const nowValue = formatDateTimeLocal(new Date());
-    const checkInInput = document.getElementById('ci-checkIn');
     const checkOutInput = document.getElementById('ci-checkOut');
-    checkInInput.value = nowValue;
+    setReceptionCheckInPreview();
     checkOutInput.value = '';
     checkOutInput.min = nowValue;
-    window.DateTime24?.refresh(checkInInput);
     window.DateTime24?.refresh(checkOutInput);
 
     setReceptionModeHint('Chọn “Dùng sổ y tế có sẵn” để bắt đầu.');
@@ -2979,10 +2987,8 @@ function startOnlineReception(button) {
     document.getElementById('checkInCompletionSection').hidden = true;
     hideMedicalRecordSummary();
 
-    const nowValue = formatDateTimeLocal(new Date());
-    document.getElementById('ci-checkIn').value = nowValue;
+    setReceptionCheckInPreview();
     document.getElementById('ci-checkOut').value = data.checkOut || '';
-    window.DateTime24?.refresh(document.getElementById('ci-checkIn'));
     window.DateTime24?.refresh(document.getElementById('ci-checkOut'));
 
     if (data.roomTypeId) {
@@ -3182,28 +3188,45 @@ function renderMedicalRecordSummary(record) {
         ['Cân nặng', `${record.weight} kg`],
         ['Tình trạng sức khỏe', record.healthStatus],
         ['Triệu chứng / bệnh lý', record.symptoms],
-        ['Hướng xử lý / điều trị', record.treatment],
-        ['Tiêm phòng', record.vaccinationStatus],
-        ['Phòng ký sinh trùng', record.parasitePrevention],
-        ['Kiểm tra thể chất', record.physicalCheck],
-        ['Tình trạng mai', record.shellStatus],
-        ['Điều kiện nuôi', record.rearingConditions],
-        ['Triệu chứng bất thường', record.abnormalSymptoms],
-        ['Răng cửa', record.incisorCheck],
-        ['Lông / da', record.furSkinCheck],
-        ['Dấu hiệu tiêu hóa', record.digestiveSigns]
+        ['Hướng xử lý / điều trị', record.treatment]
     ];
+
+    // [nam][BR] Hồ sơ cũ có thể đã lưu nhầm giá trị mặc định của section ẩn.
+    // Chỉ nhóm lâm sàng đúng loài mới được dùng để ra quyết định tiếp nhận.
+    const species = (record.species || '').trim().toLocaleLowerCase('vi');
+    if (['chó', 'mèo', 'dog', 'cat'].includes(species)) {
+        fields.push(
+            ['Tiêm phòng', record.vaccinationStatus],
+            ['Phòng ký sinh trùng', record.parasitePrevention],
+            ['Kiểm tra thể chất', record.physicalCheck]
+        );
+    } else if (['rùa', 'turtle'].includes(species)) {
+        fields.push(
+            ['Tình trạng mai', record.shellStatus],
+            ['Điều kiện nuôi', record.rearingConditions],
+            ['Triệu chứng bất thường', record.abnormalSymptoms]
+        );
+    } else if (['chuột', 'hamster', 'mouse'].includes(species)) {
+        fields.push(
+            ['Răng cửa', record.incisorCheck],
+            ['Lông / da', record.furSkinCheck],
+            ['Dấu hiệu tiêu hóa', record.digestiveSigns]
+        );
+    }
+
     const grid = document.createElement('div');
     grid.className = 'medical-record-grid';
-    fields.forEach(([label, value]) => {
+    fields
+        .filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '')
+        .forEach(([label, value]) => {
         const line = document.createElement('div');
         const labelElement = document.createElement('span');
         labelElement.textContent = label;
         const valueElement = document.createElement('b');
-        valueElement.textContent = value || 'Chưa ghi nhận';
+        valueElement.textContent = value;
         line.append(labelElement, valueElement);
         grid.appendChild(line);
-    });
+        });
     summary.appendChild(grid);
     summary.classList.add('visible');
 
@@ -3290,15 +3313,25 @@ function formatDateTimeLocal(date) {
     return localDate.toISOString().slice(0, 16);
 }
 
+// [nam][Flow] Chỉ hiển thị giờ trình duyệt để Staff tham chiếu; server mới là nguồn chốt thời gian tiếp nhận.
+function setReceptionCheckInPreview(date = new Date()) {
+    const checkInInput = document.getElementById('ci-checkIn');
+    const display = document.getElementById('ci-checkInDisplay');
+    checkInInput.value = formatDateTimeLocal(date);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+    display.value = `${day}/${month}/${date.getFullYear()} ${hour}:${minute}`;
+}
+
 function validateStayDates() {
     const checkInInput = document.getElementById('ci-checkIn');
     const checkOutInput = document.getElementById('ci-checkOut');
     const checkIn = checkInInput.value;
     const checkOut = checkOutInput.value;
 
-    checkInInput.setCustomValidity('');
     checkOutInput.setCustomValidity('');
-    checkInInput.removeAttribute('max');
     if (checkIn) {
         checkOutInput.min = checkIn;
     }
@@ -3308,14 +3341,19 @@ function validateStayDates() {
         const checkOutDate = new Date(checkOut);
         const stayDays = (checkOutDate - checkInDate) / (1000 * 60 * 60 * 24);
 
-        if (checkOutDate < checkInDate) {
-            checkOutInput.setCustomValidity('Ngày trả dự kiến không được trước ngày nhận.');
+        if (checkOutDate <= checkInDate) {
+            checkOutInput.setCustomValidity('Ngày trả dự kiến phải sau thời gian tiếp nhận.');
         } else if (stayDays > 365) {
             checkOutInput.setCustomValidity('Thời gian lưu trú dự kiến không được vượt quá 365 ngày.');
+        } else {
+            const checkoutMinutes = checkOutDate.getHours() * 60 + checkOutDate.getMinutes();
+            if (checkoutMinutes < 7 * 60 || checkoutMinutes > 21 * 60 + 30) {
+                checkOutInput.setCustomValidity('Thời gian trả dự kiến phải trong khung giờ bàn giao thú cưng từ 07:00 đến 21:30.');
+            }
         }
     }
 
-    return checkInInput.validity.valid && checkOutInput.validity.valid;
+    return checkOutInput.validity.valid;
 }
 
 document.getElementById('checkInForm').addEventListener('submit', event => {
@@ -3502,12 +3540,8 @@ function calcStay() {
 document.addEventListener('DOMContentLoaded', () => {
     const checkInInput = document.getElementById('ci-checkIn');
     const checkOutInput = document.getElementById('ci-checkOut');
-    const nowValue = formatDateTimeLocal(new Date());
-    if (!checkInInput.value || new Date(checkInInput.value) > new Date()) {
-        checkInInput.value = nowValue;
-    }
+    setReceptionCheckInPreview();
     checkOutInput.min = checkInInput.value;
-    checkInInput.addEventListener('input', calcStay);
     checkOutInput.addEventListener('input', calcStay);
     document.getElementById('ci-foodPriceChangeConfirmed').addEventListener('change', event => {
         const panel = document.getElementById('foodPriceChangeConfirmation');

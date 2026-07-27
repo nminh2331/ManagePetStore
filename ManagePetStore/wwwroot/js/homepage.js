@@ -17,6 +17,8 @@
     const foodPricingNote = document.getElementById('hotelFoodPricingNote');
     const foodTotalEl = document.getElementById('hotelFoodTotal');
     const dayInMilliseconds = 24 * 60 * 60 * 1000;
+    const handoverOpenMinutes = 7 * 60;
+    const handoverLastMinutes = 21 * 60 + 30;
     let cageAvailabilitySequence = 0;
 
 // [nam] Mở modal đặt chuồng Hotel trên trang chủ.
@@ -162,6 +164,15 @@ function formatCurrency(amount) {
         if (start && end && end - start > 90 * dayInMilliseconds) {
             checkOut.setCustomValidity('Mỗi lượt đặt phòng không được vượt quá 90 ngày.');
             return false;
+        }
+
+        // [nam][Validate] Giờ trả dự kiến phải đủ thời gian để Staff bàn giao pet trước khi cửa hàng đóng cửa.
+        if (end) {
+            const checkoutMinutes = end.getHours() * 60 + end.getMinutes();
+            if (checkoutMinutes < handoverOpenMinutes || checkoutMinutes > handoverLastMinutes) {
+                checkOut.setCustomValidity('Thời gian trả dự kiến phải trong khung giờ bàn giao thú cưng từ 07:00 đến 21:30.');
+                return false;
+            }
         }
 
         return true;
