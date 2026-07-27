@@ -39,23 +39,26 @@ public class CartService : ICartService
     /// Phương thức GetCartPageAsync() - Đọc & Validate Tồn kho thực tế:
     public async Task<CartPageViewModel> GetCartPageAsync()
     {
-        var items = GetCartItems();
+        var items = GetCartItems();  // // Đọc danh sách sản phẩm từ Session ("ShoppingCart")
         var viewModel = new CartPageViewModel();
 
         foreach (var item in items)
         {
             //Đọc thông tin sản phẩm từ CSDL qua _productResolver.
-            var product = await _productResolver.ResolveAsync(item.Sku);  
+            var product = await _productResolver.ResolveAsync(item.Sku);  //  Đọc thông tin sản phẩm mới nhất từ CSDL qua mã SKU
             if (product == null)
             {
-                continue;
+                continue;  //// Sản phẩm đã bị xóa khỏi CSDL -> Bỏ qua
             }
 
+
             // RÀNG BUỘC TỒN KHO: Số lượng trong giỏ không được vượt quá số tồn thực tế trong kho
+            // // Nếu số lượng lưu trong Session (item.Quantity) lớn hơn Tồn kho trong CSDL (product.Stock)
+            // ➔ Tự động ép về đúng số lượng tồn kho khả dụng (Math.Min)
             var quantity = Math.Min(item.Quantity, product.Stock);
             if (quantity <= 0)
             {
-                continue;
+                continue;  //// Nếu hết hàng (Stock = 0) -> Bỏ qua
             }
 
             viewModel.Items.Add(new CartLineItemViewModel
@@ -63,7 +66,7 @@ public class CartService : ICartService
                 Sku = product.Sku,
                 Name = product.Name,
                 ImageUrl = product.ImageUrl,
-                UnitPrice = product.Price,
+                UnitPrice = product.Price,  // // Lấy giá niêm yết mới nhất từ CSDL
                 Quantity = quantity,
                 MaxStock = product.Stock
             });
