@@ -3,6 +3,10 @@ using System.Collections.Generic;
 
 namespace ManagePetStore.Models;
 
+/// <summary>
+/// NGƯỜI THỰC HIỆN: Nhật Minh
+/// CHỨC NĂNG: Model đại diện cho Danh mục Dịch vụ Spa (SpaService).
+/// </summary>
 public partial class SpaService
 {
     public int ServiceId { get; set; }
