@@ -60,6 +60,16 @@ public class HotelCheckoutService : IHotelCheckoutService
              booking.CheckoutStatement.OrderId != null);
         if (checkoutAlreadyPrepared)
         {
+            // A ready statement may be prepared again after Spa has just completed.
+            // Heal the link before returning so the cashier always receives one complete bill.
+            if (booking.CheckoutStatement!.OrderId == null &&
+                string.Equals(booking.CheckoutStatement.Status, "ReadyForPayment", StringComparison.OrdinalIgnoreCase))
+            {
+                await LinkCompletedUnpaidSpaAsync(booking);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+
             // Idempotent: a stale browser click must not create or update the checkout again.
             return BuildPreview(
                 booking,
@@ -138,20 +148,33 @@ public class HotelCheckoutService : IHotelCheckoutService
             Description = $"{staffName} đã lập bảng kê tạm tính {preview.TotalAmount:N0}đ và gửi sang quầy thu ngân. Pet vẫn đang lưu trú cho đến khi hoàn tất trả pet."
         });
 
-        // [nam][BR] Chỉ ghép Spa đã hoàn thành, chưa thanh toán, cùng pet/customer và phát sinh trong lượt lưu trú.
+        // [nam][BR] Khi Staff trả chuồng, gom mọi Spa đã xong/chưa thu của đúng pet và khách.
+        // Không dùng giờ hẹn Spa để quyết định vì dịch vụ có thể hoàn thành sớm hơn lịch.
+        await LinkCompletedUnpaidSpaAsync(booking);
+
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return await GetPreviewAsync(booking.HotelBookingId) ?? preview;
+    }
+
+    private async Task LinkCompletedUnpaidSpaAsync(HotelBooking booking)
+    {
         var completedSpaIds = await _context.SpaBookings
             .Where(spa => spa.PetId == booking.PetId &&
                           spa.CustomerId == booking.CustomerId &&
-                          (spa.SpaStatus == "4" || spa.SpaStatus.EndsWith("|4")) &&
+                          (spa.SpaStatus == "4" || spa.SpaStatus.EndsWith("|4") || spa.SpaStatus == "Hoàn thành") &&
                           (spa.Status == "Chờ thanh toán" || spa.Status == "pending" || spa.Status == "Chưa thanh toán") &&
-                          spa.DateTime >= booking.CheckInDate && spa.DateTime <= checkoutAt)
+                          (spa.Notes == null || !spa.Notes.Contains("OD-")) &&
+                          (spa.HotelStayLink == null || spa.HotelStayLink.HotelBookingId == booking.HotelBookingId))
             .Select(spa => spa.BookingId)
             .ToListAsync();
-        var linkedSpaIds = await _context.HotelStaySpaLinks
-            .Where(link => completedSpaIds.Contains(link.SpaBookingId))
+
+        var existingSpaIds = await _context.HotelStaySpaLinks
+            .Where(link => link.HotelBookingId == booking.HotelBookingId)
             .Select(link => link.SpaBookingId)
             .ToListAsync();
-        foreach (var spaId in completedSpaIds.Except(linkedSpaIds))
+
+        foreach (var spaId in completedSpaIds.Except(existingSpaIds))
         {
             _context.HotelStaySpaLinks.Add(new HotelStaySpaLink
             {
@@ -160,10 +183,6 @@ public class HotelCheckoutService : IHotelCheckoutService
                 LinkedAt = DateTime.Now
             });
         }
-
-        await _context.SaveChangesAsync();
-        await transaction.CommitAsync();
-        return await GetPreviewAsync(booking.HotelBookingId) ?? preview;
     }
 
     // [nam] Khấu trừ hoặc hoàn kho phần thức ăn chênh lệch theo số ngày thực tế.
