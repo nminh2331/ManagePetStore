@@ -230,9 +230,9 @@ public class OrderController : Controller
             return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);
         }
 
-        // RÀNG BUỘC: Khách chỉ được hủy khi đơn ở trạng thái Chờ xử lý (pending)
+        // RÀNG BUỘC: Khách được phép hủy khi đơn ở trạng thái Chờ xử lý (pending) hoặc Chờ thanh toán (awaiting_payment)
         var statusKey = OrderStatusHelper.ResolveStatusKey(order.Status);
-        if (statusKey != "pending")
+        if (statusKey != "pending" && statusKey != "awaiting_payment")
         {
             TempData["ErrorMessage"] = "Chỉ có thể hủy đơn hàng ở trạng thái chờ xử lý hoặc chờ thanh toán.";
             return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);

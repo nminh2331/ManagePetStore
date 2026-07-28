@@ -45,6 +45,26 @@ public class CheckoutController : Controller
     [HttpGet]
     public async Task<IActionResult> Index()
     {
+        string? payOsCancel = Request.Query["cancel"];
+        string? payOsStatus = Request.Query["status"];
+        string? orderCodeStr = Request.Query["orderCode"];
+
+        if (payOsCancel == "true" || payOsStatus == "CANCELLED")
+        {
+            if (!string.IsNullOrEmpty(orderCodeStr) && long.TryParse(orderCodeStr, out long code))
+            {
+                var targetOrderId = $"ORD-{code}";
+                var orderToCancel = await _context.Orders.FirstOrDefaultAsync(o => o.OrderId == targetOrderId || o.OrderId == $"OD-{code}");
+                if (orderToCancel != null && orderToCancel.Status == "Chờ thanh toán")
+                {
+                    orderToCancel.Status = "Đã hủy";
+                    _context.Entry(orderToCancel).State = EntityState.Modified;
+                    await _context.SaveChangesAsync();
+                }
+            }
+            TempData["ErrorMessage"] = "Giao dịch thanh toán online đã bị hủy.";
+        }
+
         var cart = await _cartService.GetCartPageAsync(); // Lấy cart
         if (!cart.Items.Any())
         {
@@ -73,15 +93,6 @@ public class CheckoutController : Controller
         };
 
         return View(model);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ApplyVoucher(string voucherCode)
-    {
-        var (success, message) = await _cartService.ApplyVoucherAsync(voucherCode);
-        TempData[success ? "SuccessMessage" : "ErrorMessage"] = message;
-        return RedirectToAction(nameof(Index));
     }
 
 
@@ -204,7 +215,7 @@ public class CheckoutController : Controller
                 OrderId = orderId,
                 CustomerId = customer.CustomerId,
                 Subtotal = cart.Subtotal,
-                Discount = cart.VoucherDiscount,
+                Discount = 0,
                 Total = cart.GrandTotal,
                 PaymentMethod = normalizedPayment,
                 PointsRedeemed = 0,
@@ -384,7 +395,7 @@ public class CheckoutController : Controller
                     OrderCode = orderCode,
                     Amount = (long)cart.GrandTotal,
                     Description = $"PetStore {orderCode}",
-                    CancelUrl = $"{host}/Customer/Checkout/Index",
+                    CancelUrl = $"{host}/Customer/Checkout/Success?orderId={orderId}&cancel=true",
                     ReturnUrl = $"{host}/Customer/Checkout/Success?orderId={orderId}",
                     Items = cart.Items.Select(item => new PaymentLinkItem
                     {

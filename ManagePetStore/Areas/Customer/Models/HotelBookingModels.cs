@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ManagePetStore.Models;
 
 namespace ManagePetStore.Areas.Customer.Models;
 
@@ -69,6 +70,14 @@ public class HotelBookingRequest : IValidatableObject
                 [nameof(CheckInDate)]);
         }
 
+        // [nam][BR] Khách chỉ có thể bàn giao pet cho cửa hàng trong khung giờ tiếp nhận.
+        if (!HotelOperatingHoursPolicy.IsExpectedCheckInWithinHandoverHours(checkIn))
+        {
+            yield return new ValidationResult(
+                HotelOperatingHoursPolicy.ExpectedCheckInError,
+                [nameof(CheckInDate)]);
+        }
+
         // [nam][BR] Ngày trả phải sau ngày nhận và một lượt lưu trú không vượt quá 90 ngày.
         if (checkOut <= checkIn)
         {
@@ -82,6 +91,14 @@ public class HotelBookingRequest : IValidatableObject
         {
             yield return new ValidationResult(
                 "Mỗi lượt đặt phòng không được vượt quá 90 ngày.",
+                [nameof(CheckOutDate)]);
+        }
+
+        // [nam][BR] Khách chỉ hẹn giờ nhận lại pet trong khung giờ cửa hàng có thể bàn giao.
+        if (!HotelOperatingHoursPolicy.IsExpectedCheckoutWithinHandoverHours(checkOut))
+        {
+            yield return new ValidationResult(
+                HotelOperatingHoursPolicy.ExpectedCheckoutError,
                 [nameof(CheckOutDate)]);
         }
     }

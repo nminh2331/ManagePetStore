@@ -17,12 +17,20 @@ using CustomerEntity = ManagePetStore.Models.Customer;
 
 namespace ManagePetStore.Areas.ServiceStaff.Controllers
 {
+    /// <summary>
+    /// Controller quản lý sổ y tế cho dịch vụ Spa & Lưu trú thú cưng.
+    /// Cho phép nhân viên dịch vụ xem danh sách thú cưng theo loài, tìm kiếm theo tên thú cưng/chủ nuôi,
+    /// xem lịch sử khám bệnh và tạo mới sổ y tế với thông tin đặc thù theo loài (Chó, Mèo, Rùa, Chuột).
+    /// </summary>
     [Area("ServiceStaff")]
     [Authorize(Roles = "service,admin,manager")]
     [Route("SpaServices")]
     public class SpaMedicalRecordsController : Controller
     {
+        /// <summary> Trạng thái đặt phòng khách sạn đang hoạt động </summary>
         private static readonly string[] ActiveHotelStatuses = ["Active", "Đang ở"];
+        
+        /// <summary> Trạng thái đặt phòng ngăn cản tạo tiếp nhận mới </summary>
         private static readonly string[] BlockingHotelStatuses = ["Đã đặt", "Active", "Đang ở"];
 
         private readonly PetStoreManagementContext _context;
@@ -34,6 +42,9 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         private readonly IHotelEmailService _hotelEmailService;
         private readonly ILogger<SpaMedicalRecordsController> _logger;
 
+        /// <summary>
+        /// Khởi tạo SpaMedicalRecordsController với các dependency dịch vụ cần thiết.
+        /// </summary>
         public SpaMedicalRecordsController(
             PetStoreManagementContext context,
             IHotelBookingHistoryService historyService,
@@ -54,6 +65,10 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             _logger = logger;
         }
 
+        /// <summary>
+        /// Lấy thông tin snapshot của nhân viên đang đăng nhập (ID và Họ tên).
+        /// </summary>
+        /// <returns>Tuple chứa UserId (nếu có) và Họ tên nhân viên.</returns>
         private (int? UserId, string Name) GetCurrentStaffSnapshot()
         {
             int? userId = null;
@@ -70,6 +85,13 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return (userId, staffName);
         }
 
+        /// <summary>
+        /// Tìm kiếm các sổ y tế khả dụng để phục vụ việc tiếp nhận lưu trú chuồng (Hotel Check-in).
+        /// Hỗ trợ tìm theo số điện thoại khách hàng hoặc ID đơn đặt lịch lưu trú.
+        /// </summary>
+        /// <param name="phone">Số điện thoại của khách hàng cần tìm kiếm.</param>
+        /// <param name="hotelBookingId">ID đơn đặt lịch lưu trú (nếu tìm theo đơn đặt online).</param>
+        /// <returns>JSON kết quả chứa danh sách sổ y tế hợp lệ của khách hàng.</returns>
         [HttpGet("SearchAvailableHotelMedicalRecords")]
         public async Task<IActionResult> SearchAvailableHotelMedicalRecords(string? phone, int? hotelBookingId = null)
         {
@@ -151,6 +173,11 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             });
         }
 
+        /// <summary>
+        /// Lấy thông tin tóm tắt chi tiết của một sổ y tế cụ thể để hiển thị khi tiếp nhận gửi thú cưng.
+        /// </summary>
+        /// <param name="recordId">Mã sổ y tế cần xem thông tin tóm tắt.</param>
+        /// <returns>JSON chứa thông tin tóm tắt chi tiết của sổ y tế.</returns>
         [HttpGet("GetHotelMedicalRecordSummary")]
         public async Task<IActionResult> GetHotelMedicalRecordSummary(int recordId)
         {
@@ -171,18 +198,19 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     customerPhone = item.Pet.Customer.Phone,
                     dateCreated = item.DateCreated.ToString("dd/MM/yyyy HH:mm"),
                     item.Weight,
-                    healthStatus = item.HealthStatus ?? "Chưa ghi nhận",
-                    symptoms = item.Symptoms ?? "Không ghi nhận",
-                    treatment = item.Treatment ?? "Không ghi nhận",
-                    vaccinationStatus = item.VaccinationStatus ?? "Chưa ghi nhận",
-                    parasitePrevention = item.ParasitePrevention ?? "Chưa ghi nhận",
-                    physicalCheck = item.PhysicalCheck ?? "Không ghi nhận",
-                    shellStatus = item.ShellStatus ?? "Không ghi nhận",
-                    rearingConditions = item.RearingConditions ?? "Không ghi nhận",
-                    abnormalSymptoms = item.AbnormalSymptoms ?? "Không ghi nhận",
-                    incisorCheck = item.IncisorCheck ?? "Không ghi nhận",
-                    furSkinCheck = item.FurSkinCheck ?? "Không ghi nhận",
-                    digestiveSigns = item.DigestiveSigns ?? "Không ghi nhận"
+                    // [nam][Flow] Trả dữ liệu gốc; giao diện tiếp nhận chỉ hiển thị trường có giá trị và đúng loài.
+                    healthStatus = item.HealthStatus,
+                    symptoms = item.Symptoms,
+                    treatment = item.Treatment,
+                    vaccinationStatus = item.VaccinationStatus,
+                    parasitePrevention = item.ParasitePrevention,
+                    physicalCheck = item.PhysicalCheck,
+                    shellStatus = item.ShellStatus,
+                    rearingConditions = item.RearingConditions,
+                    abnormalSymptoms = item.AbnormalSymptoms,
+                    incisorCheck = item.IncisorCheck,
+                    furSkinCheck = item.FurSkinCheck,
+                    digestiveSigns = item.DigestiveSigns
                 })
                 .FirstOrDefaultAsync();
 
@@ -191,6 +219,15 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 : Json(new { success = true, record });
         }
 
+        /// <summary>
+        /// Hiển thị trang quản lý sổ y tế thú cưng.
+        /// Hỗ trợ lọc theo loài (Chó, Mèo, Rùa, Chuột) hoặc chỉ định trước ID thú cưng/đơn lưu trú.
+        /// </summary>
+        /// <param name="species">Tên loài thú cưng (Chó, Mèo, Rùa, Chuột).</param>
+        /// <param name="petId">Mã thú cưng được chọn trước (nếu từ trang tiếp nhận chuyển sang).</param>
+        /// <param name="hotelBookingId">Mã đơn lưu trú (nếu có).</param>
+        /// <param name="returnUrl">Đường dẫn quay lại sau khi hoàn tất tạo sổ y tế.</param>
+        /// <returns>View quản lý sổ y tế kèm dữ liệu danh sách thú cưng.</returns>
         [HttpGet("MedicalRecords")]
         public async Task<IActionResult> MedicalRecords(
             string? species,
@@ -249,6 +286,11 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return View("~/Areas/ServiceStaff/Views/SpaServices/MedicalRecords.cshtml");
         }
 
+        /// <summary>
+        /// Lấy toàn bộ lịch sử các lần tạo/cập nhật sổ y tế của một thú cưng.
+        /// </summary>
+        /// <param name="petId">Mã thú cưng cần lấy lịch sử sổ y tế.</param>
+        /// <returns>JSON chứa danh sách các bản ghi lịch sử sổ khám y tế.</returns>
         [HttpGet("GetPetMedicalHistory")]
         public async Task<IActionResult> GetPetMedicalHistory(int petId)
         {
@@ -277,6 +319,26 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             return Json(records);
         }
 
+        /// <summary>
+        /// Xử lý tạo mới một bản ghi sổ y tế cho thú cưng.
+        /// Lưu trữ thông tin sức khỏe chung, thông tin đặc thù theo loài, cập nhật cân nặng/bệnh lý thú cưng,
+        /// ghi mốc thời gian lưu trú (nếu có) và gửi thông báo Realtime/SignalR tới chủ nuôi.
+        /// </summary>
+        /// <param name="petId">ID thú cưng được khám.</param>
+        /// <param name="weight">Cân nặng hiện tại (kg).</param>
+        /// <param name="healthStatus">Trạng thái sức khỏe tổng quan (Khỏe mạnh, Cần theo dõi, Đang ốm).</param>
+        /// <param name="symptoms">Mô tả chẩn đoán / triệu chứng.</param>
+        /// <param name="treatment">Hướng xử lý / Kê đơn thuốc.</param>
+        /// <param name="vaccinationStatus">Tình trạng tiêm phòng (Chó/Mèo).</param>
+        /// <param name="parasitePrevention">Các biện pháp phòng ngừa ký sinh trùng (Chó/Mèo).</param>
+        /// <param name="physicalCheck">Kiểm tra thể chất sơ bộ (Chó/Mèo).</param>
+        /// <param name="shellStatus">Tình trạng mai rùa (Rùa).</param>
+        /// <param name="rearingConditions">Điều kiện nuôi tại nhà (Rùa).</param>
+        /// <param name="abnormalSymptoms">Các biểu hiện bất thường (Rùa).</param>
+        /// <param name="incisorCheck">Kiểm tra răng cửa (Chuột/Hamster).</param>
+        /// <param name="furSkinCheck">Kiểm tra lông/da (Chuột/Hamster).</param>
+        /// <param name="digestiveSigns">Dấu hiệu tiêu hóa (Chuột/Hamster).</param>
+        /// <returns>JSON kết quả thông báo thành công hoặc thất bại.</returns>
         [HttpPost("CreateMedicalRecord")]
         public async Task<IActionResult> CreateMedicalRecord(
             int petId, 
@@ -310,6 +372,12 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 return Json(new { success = false, message = "Phải ghi nhận tình trạng sức khỏe trong sổ y tế." });
             }
 
+            string normalizedSpecies = pet.Species.Trim().ToLowerInvariant();
+            bool isDogOrCat = normalizedSpecies is "chó" or "mèo" or "dog" or "cat";
+            bool isTurtle = normalizedSpecies is "rùa" or "turtle";
+            bool isRodent = normalizedSpecies is "chuột" or "hamster" or "mouse";
+
+            // Kiểm tra xem thú cưng có đơn đặt lưu trú chuồng đang hoạt động không
             int? activeHotelBookingId = await _context.HotelBookings
                 .AsNoTracking()
                 .Where(booking =>
@@ -319,26 +387,29 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 .Select(booking => (int?)booking.HotelBookingId)
                 .FirstOrDefaultAsync();
 
+            // [BR] Chỉ lưu nhóm thông tin lâm sàng đúng loài. Đây cũng là lớp bảo vệ
+            // khi client cũ hoặc request sửa tay gửi kèm giá trị mặc định của nhóm đang ẩn.
             var record = new MedicalRecord
             {
                 PetId = petId,
                 HotelBookingId = activeHotelBookingId,
                 DateCreated = DateTime.Now,
                 Weight = weight,
-                HealthStatus = healthStatus,
-                Symptoms = symptoms,
-                Treatment = treatment,
-                VaccinationStatus = vaccinationStatus,
-                ParasitePrevention = parasitePrevention != null ? string.Join(", ", parasitePrevention) : "",
-                PhysicalCheck = physicalCheck,
-                ShellStatus = shellStatus,
-                RearingConditions = rearingConditions,
-                AbnormalSymptoms = abnormalSymptoms != null ? string.Join(", ", abnormalSymptoms) : "",
-                IncisorCheck = incisorCheck,
-                FurSkinCheck = furSkinCheck,
-                DigestiveSigns = digestiveSigns != null ? string.Join(", ", digestiveSigns) : ""
+                HealthStatus = healthStatus.Trim(),
+                Symptoms = NormalizeOptionalText(symptoms),
+                Treatment = NormalizeOptionalText(treatment),
+                VaccinationStatus = isDogOrCat ? NormalizeOptionalText(vaccinationStatus) : null,
+                ParasitePrevention = isDogOrCat ? JoinSelections(parasitePrevention) : null,
+                PhysicalCheck = isDogOrCat ? NormalizeOptionalText(physicalCheck) : null,
+                ShellStatus = isTurtle ? NormalizeOptionalText(shellStatus) : null,
+                RearingConditions = isTurtle ? NormalizeOptionalText(rearingConditions) : null,
+                AbnormalSymptoms = isTurtle ? JoinSelections(abnormalSymptoms) : null,
+                IncisorCheck = isRodent ? NormalizeOptionalText(incisorCheck) : null,
+                FurSkinCheck = isRodent ? NormalizeOptionalText(furSkinCheck) : null,
+                DigestiveSigns = isRodent ? JoinSelections(digestiveSigns) : null
             };
 
+            // Cập nhật thông tin cân nặng và trạng thái bệnh lý gần nhất cho thú cưng
             pet.Weight = weight;
             if (!string.IsNullOrWhiteSpace(healthStatus))
             {
@@ -346,6 +417,8 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             }
             
             _context.MedicalRecords.Add(record);
+
+            // Nếu đang trong quá trình lưu trú chuồng, tạo mốc thời gian nhật ký chăm sóc
             if (activeHotelBookingId.HasValue)
             {
                 var staff = GetCurrentStaffSnapshot();
@@ -360,6 +433,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 });
             }
 
+            // Gửi thông báo đến tài khoản chủ nuôi
             var notification = new CustomerNotification
             {
                 CustomerId = pet.CustomerId,
@@ -374,6 +448,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             _context.CustomerNotifications.Add(notification);
             await _context.SaveChangesAsync();
 
+            // Phát bản tin Realtime qua SignalR cho giao diện khách hàng
             try
             {
                 await _hotelCareHub.Clients
@@ -397,6 +472,27 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
             }
 
             return Json(new { success = true, message = "Tạo sổ y tế thành công!" });
+        }
+
+        // [Validate] Chuẩn hóa trường tùy chọn để database không chứa chuỗi rỗng giả dữ liệu.
+        private static string? NormalizeOptionalText(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+        // [Validate] Loại lựa chọn rỗng/trùng trước khi lưu các nhóm checkbox của sổ y tế.
+        private static string? JoinSelections(string[]? values)
+        {
+            if (values == null)
+            {
+                return null;
+            }
+
+            string[] normalizedValues = values
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Select(value => value.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            return normalizedValues.Length == 0 ? null : string.Join(", ", normalizedValues);
         }
     }
 }

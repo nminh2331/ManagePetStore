@@ -1,3 +1,6 @@
+
+
+
 // HÀ HOÀNG HIỆP CODE - LUỒNG MUA HÀNG: USE CASE MANAGE CART (QUẢN LÝ GIỎ HÀNG)
 using ManagePetStore.Services.Customer;
 using Microsoft.AspNetCore.Mvc;
@@ -21,23 +24,26 @@ public class CartController : Controller
     /// - Kiểm tra và tính toán phân trang (Pagination), chống tình trạng số trang vượt quá tổng số trang hợp lệ.
     /// </summary>
     [HttpGet]
+    ///Action Method Index() - Hiển thị trang giỏ hàng:
     public async Task<IActionResult> Index(string? searchTerm, int page = 1)
     {
         // 1. Lấy dữ liệu giỏ hàng đã được chuẩn hóa từ Session/Database
-        var model = await _cartService.GetCartPageAsync();
+        var model = await _cartService.GetCartPageAsync();  //Gọi _cartService.GetCartPageAsync() để đọc giỏ hàng từ Session, tính tổng tiền và đối chiếu tồn kho từ CSDL.
 
         // 2. Validate & Chuẩn hóa từ khóa tìm kiếm
         var normalizedSearch = searchTerm?.Trim() ?? "";
 
         // 3. Lọc danh sách sản phẩm theo từ khóa (Tìm theo Tên hoặc SKU)
+        // dùng LINQ lọc danh sách sản phẩm trong giỏ theo Tên sản phẩm hoặc Mã SKU (chấp nhận cả chữ hoa lẫn chữ thường).
         var filteredItems = model.Items   
             .Where(i => string.IsNullOrWhiteSpace(normalizedSearch) ||
                         i.Name.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
                         i.Sku.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-        // 4. RÀNG BUỘC PHÂN TRANG: Kiểm tra trang hiện tại và tính tổng số trang
-        var currentPage = page < 1 ? 1 : page;
+        // 4. RÀNG BUỘC PHÂN TRANG: Kiểm tra trang hiện tại và tính tổng số trang    ( validate và phân trang ) 
+        //Nếu người dùng gõ page < 1 thì ép về trang 1. Nếu gõ page > totalPages (vượt quá tổng số trang) thì ép về trang cuối cùng.
+        var currentPage = page < 1 ? 1 : page;  
         var totalFilteredItems = filteredItems.Count;
         var totalPages = totalFilteredItems == 0
             ? 0
@@ -49,15 +55,16 @@ public class CartController : Controller
             currentPage = totalPages;
         }
 
-        // 5. Gán dữ liệu hiển thị cho ViewModel
+        // 5. Gán dữ liệu hiển thị cho ViewModel  --     // Dòng 56-64: Cắt dữ liệu hiển thị theo trang (Skip - Take)
+
         model.SearchTerm = normalizedSearch;
         model.Page = currentPage;
         model.TotalFilteredItems = totalFilteredItems;
         model.TotalPages = totalPages;
         model.FilteredQuantity = filteredItems.Sum(i => i.Quantity);
         model.VisibleItems = filteredItems
-            .Skip((currentPage - 1) * model.PageSize)
-            .Take(model.PageSize)
+            .Skip((currentPage - 1) * model.PageSize)   // // Bỏ qua các sản phẩm của các trang trước
+            .Take(model.PageSize)  //  // Lấy đúng số sản phẩm trong 1 trang (PageSize)
             .ToList();
 
         return View(model);
@@ -70,6 +77,8 @@ public class CartController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+
+    // 2. Action Method Add() - Thêm sản phẩm vào giỏ hàng:
     public async Task<IActionResult> Add(string sku, int quantity = 1, string? returnUrl = null)
     {
         // Gọi Service thực hiện thêm sản phẩm & kiểm tra tồn kho kho hàng
@@ -77,11 +86,11 @@ public class CartController : Controller
 
         if (success)
         {
-            TempData["SuccessMessage"] = message;
+            TempData["SuccessMessage"] = message;  //  // Báo thông báo xanh lên UI
             return RedirectToAction(nameof(Index));
         }
 
-        TempData["ErrorMessage"] = message;
+        TempData["ErrorMessage"] = message;   //// Báo lỗi đỏ lên UI (ví dụ: Hết hàng, Vượt quá tồn kho)
         // Trở về trang trước đó nếu URL hợp lệ (Local URL)
         if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
         {

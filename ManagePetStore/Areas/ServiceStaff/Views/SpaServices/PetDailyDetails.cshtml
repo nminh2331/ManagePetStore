@@ -320,6 +320,8 @@
         const extraCharge = document.getElementById('careIsExtraCharge');
         const extraChargeField = document.getElementById('careExtraChargeField');
 
+        // Ghép ngày, giờ và phút thành giá trị yyyy-MM-ddTHH:mm cho ASP.NET model binding.
+        // Cùng lúc validate theo phút để khớp chính xác với ràng buộc ở backend.
         function syncOccurredAt(showError = false) {
             const value = `${occurredDate.value}T${occurredHour.value}:${occurredMinute.value}`;
             occurredAt.value = value;
@@ -343,16 +345,19 @@
             return !message;
         }
 
+        // Cập nhật input ẩn ngay khi Staff đổi bất kỳ thành phần thời gian nào.
         [occurredDate, occurredHour, occurredMinute].forEach(control => {
             control.addEventListener('change', () => syncOccurredAt(true));
         });
 
+        // Validate lại tại thời điểm submit vì giới hạn "hiện tại" thay đổi theo thời gian.
         careForm.addEventListener('submit', event => {
             if (!syncOccurredAt(true)) {
                 event.preventDefault();
             }
         });
 
+        // Phụ phí chỉ xuất hiện khi đây là hoạt động ăn uống và Staff đánh dấu bữa ngoài gói.
         function updateExtraChargeField() {
             extraChargeField.hidden = activityType.value !== 'Feeding' || !extraCharge.checked;
             if (extraChargeField.hidden) {
@@ -360,6 +365,7 @@
             }
         }
 
+        // Thông tin thức ăn không thuộc các hoạt động chăm sóc khác nên phải ẩn và xóa giá trị cũ.
         function updateFeedingFields() {
             const isFeeding = activityType.value === 'Feeding';
             feedingFields.forEach(field => field.hidden = !isFeeding);

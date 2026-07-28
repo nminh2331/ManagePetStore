@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ManagePetStore.Models;
 
 namespace ManagePetStore.Areas.ServiceStaff.Models;
 
@@ -34,8 +35,6 @@ public sealed class HotelCheckInRequest : IValidatableObject
 
     [StringLength(20, ErrorMessage = "Mã chuồng không được vượt quá 20 ký tự.")]
     public string CageId { get; set; } = string.Empty;
-
-    public DateTime? CheckInDate { get; set; }
 
     public DateTime? CheckOutDate { get; set; }
 
@@ -86,20 +85,13 @@ public sealed class HotelCheckInRequest : IValidatableObject
                 new[] { nameof(HotelBookingId) });
         }
 
-        // [nam][Validate] Luồng được nhận mới bắt buộc đủ ngày, loại chuồng, chuồng và gói thức ăn.
+        // [nam][Validate] Luồng được nhận mới bắt buộc đủ ngày trả, loại chuồng, chuồng và gói thức ăn.
         if (HealthStatus != RejectedStatus)
         {
-            if (!CheckInDate.HasValue)
+            if (!CheckOutDate.HasValue)
             {
                 yield return new ValidationResult(
-                    "Ngày nhận là bắt buộc.",
-                    new[] { nameof(CheckInDate) });
-            }
-
-            if (!CheckOutDate.HasValue && !HotelBookingId.HasValue)
-            {
-                yield return new ValidationResult(
-                    "Ngày trả dự kiến là bắt buộc đối với lượt tiếp nhận trực tiếp.",
+                    "Ngày trả dự kiến là bắt buộc.",
                     new[] { nameof(CheckOutDate) });
             }
 
@@ -133,23 +125,31 @@ public sealed class HotelCheckInRequest : IValidatableObject
                 new[] { nameof(HealthCheckConfirmed) });
         }
 
-        // [nam][BR] Khoảng lưu trú phải dương và luồng Staff cho phép tối đa 365 ngày.
-        if (CheckInDate.HasValue && CheckOutDate.HasValue)
+        // [nam][BR] Giờ nhận thật do server chốt; ngày trả phải nằm trong 365 ngày và giờ bàn giao của cửa hàng.
+        if (HealthStatus != RejectedStatus && CheckOutDate.HasValue)
         {
-            if (CheckOutDate.Value <= CheckInDate.Value)
+            DateTime serverNow = DateTime.Now;
+            if (CheckOutDate.Value <= serverNow)
             {
                 yield return new ValidationResult(
-                    "Ngày trả dự kiến phải sau ngày nhận.",
+                    "Ngày trả dự kiến phải sau thời gian tiếp nhận.",
                     new[] { nameof(CheckOutDate) });
             }
-            else if ((CheckOutDate.Value - CheckInDate.Value).TotalDays > 365)
+            else if ((CheckOutDate.Value - serverNow).TotalDays > 365)
             {
                 yield return new ValidationResult(
                     "Thời gian lưu trú dự kiến không được vượt quá 365 ngày.",
                     new[] { nameof(CheckOutDate) });
             }
+
+            if (!HotelOperatingHoursPolicy.IsExpectedCheckoutWithinHandoverHours(CheckOutDate.Value))
+            {
+                yield return new ValidationResult(
+                    HotelOperatingHoursPolicy.ExpectedCheckoutError,
+                    new[] { nameof(CheckOutDate) });
+            }
         }
 
-        // [nam] Tạm thời cho phép tiếp nhận trước lịch dự kiến; kiểm tra trùng lịch vẫn thực hiện tại service.
+        // [nam][BR] Staff được tiếp nhận sớm hơn lịch đặt; service dùng giờ server và vẫn kiểm tra trùng lịch thực tế.
     }
 }

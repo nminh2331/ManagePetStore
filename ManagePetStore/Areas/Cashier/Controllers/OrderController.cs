@@ -480,57 +480,6 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             return Json(new { success = true, data = statements });
         }
 
-        // API: Kiểm tra và áp dụng Voucher
-        [HttpGet]
-        public async Task<IActionResult> CheckVoucher(string code, decimal subtotal)
-        {
-            if (string.IsNullOrWhiteSpace(code))
-            {
-                return Json(new { success = false, message = "Vui lòng nhập mã giảm giá." });
-            }
-
-            var cleanCode = code.Trim().ToUpper();
-            var voucher = await _context.Vouchers
-                .AsNoTracking()
-                .FirstOrDefaultAsync(v => v.Code == cleanCode && v.Status && v.ExpiryDate >= DateTime.Today);
-
-            if (voucher == null)
-            {
-                // Hỗ trợ một số mã test nếu database trống
-                if (cleanCode == "PET20" || cleanCode == "SALE20")
-                {
-                    if (subtotal < 200000)
-                        return Json(new { success = false, message = "Đơn hàng tối thiểu 200.000đ để sử dụng voucher này." });
-                    return Json(new { success = true, discount = 20000m, code = cleanCode });
-                }
-                if (cleanCode == "PET10")
-                {
-                    if (subtotal < 100000)
-                        return Json(new { success = false, message = "Đơn hàng tối thiểu 100.000đ để sử dụng voucher này." });
-                    return Json(new { success = true, discount = Math.Round(subtotal * 0.1m, 0), code = cleanCode });
-                }
-
-                return Json(new { success = false, message = "Mã giảm giá không tồn tại hoặc đã hết hạn." });
-            }
-
-            if (subtotal < voucher.MinOrder)
-            {
-                return Json(new { success = false, message = $"Giá trị đơn hàng chưa đạt mức tối thiểu {voucher.MinOrder:N0}đ." });
-            }
-
-            decimal discount = 0;
-            if (voucher.Type.Equals("Percent", StringComparison.OrdinalIgnoreCase) || voucher.Type.Equals("Percentage", StringComparison.OrdinalIgnoreCase))
-            {
-                discount = Math.Round(subtotal * voucher.Value / 100m, 0);
-            }
-            else
-            {
-                discount = voucher.Value;
-            }
-
-            return Json(new { success = true, discount = discount, code = voucher.Code });
-        }
-
         /// <summary>
         /// LUỒNG CREATE COUNTER ORDER & COMPLETE UNIFIED CHECKOUT: TẠO ĐƠN VÀ THANH TOÁN TẠI QUẦY (POS)
         /// - Thu ngân lập đơn hàng tại quầy cho Khách hàng (Sản phẩm, Dịch vụ Spa, Dịch vụ Hotel Lưu trú).
@@ -751,7 +700,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             dto.TotalAmount = dto.Items.Sum(item => item.Price * item.Quantity);
             // Tính tỷ lệ quy đổi điểm theo Hạng thành viên hiện tại của khách (VIP: 3k, Vàng: 1.5k, Bạc: 1k, Đồng: 700đ, Thành viên: 500đ)
             decimal pointRate = ManagePetStore.Services.Customer.CustomerRewardHelper.GetPointRateByTier(customer.MembershipTier);
-            decimal discount = dto.VoucherDiscount + (dto.PointsUsed * pointRate);
+            decimal discount = dto.PointsUsed * pointRate;
             decimal totalAmount = dto.TotalAmount - discount;
             if (totalAmount < 0) totalAmount = 0;
             if (dto.PaymentMethod == "Thanh toán online" && dto.OnlineAmount != totalAmount)

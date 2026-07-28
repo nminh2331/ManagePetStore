@@ -1,8 +1,12 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace ManagePetStore.Models;
 
+/// <summary>
+/// NGƯỜI THỰC HIỆN: Nhật Minh
+/// CHỨC NĂNG: Model đại diện cho thông tin Đặt lịch hẹn Spa (SpaBooking).
+/// </summary>
 public partial class SpaBooking
 {
     public int BookingId { get; set; }
