@@ -33,6 +33,9 @@
             <h5 class="alert-heading fw-bold mb-1">Cảnh báo mâu thuẫn dữ liệu!</h5>
             <p class="mb-0">Tổng tồn kho của sản phẩm (@productStock) đang lớn hơn tổng số lượng trong các lô hàng (@totalBatchStock).</p>
         </div>
+        @* 
+        Nút đồng bộ tồn kho đã được ẩn đi để nhân viên kho không bấm nhầm. 
+        Admin/Dev có thể gọi trực tiếp POST /Warehouse/InventoryBatch/SyncStock nếu cần fix lỗi.
         <form asp-action="SyncStock" asp-route-productSku="@product?.Sku" method="post"
               onsubmit="return confirm('Hệ thống sẽ cập nhật tồn kho sản phẩm về đúng tổng số lượng trong các lô hàng. Tiếp tục?');">
             @Html.AntiForgeryToken()
@@ -40,6 +43,7 @@
                 <i class="fas fa-sync-alt"></i> Đồng bộ tồn kho
             </button>
         </form>
+        *@
     </div>
 }
 
