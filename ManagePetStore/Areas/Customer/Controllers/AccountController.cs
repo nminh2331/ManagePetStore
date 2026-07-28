@@ -567,7 +567,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
                     return View(new ForgotPasswordViewModel { Email = trimmedEmail });
                 }
 
-                var otpCode = GenerateOtpCode();
+                var otpCode = GenerateOtpCode();  // GEN CODE 
                 var pending = new PendingPasswordReset
                 {
                     Email = trimmedEmail,
@@ -1204,6 +1204,8 @@ namespace ManagePetStore.Areas.Customer.Controllers
         [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
+
+        //Khách Hàng Gửi Yêu Cầu Trả Hàng 
         public async Task<IActionResult> CreateReturnRequest(
             string orderId, 
             string reason, 
@@ -1225,13 +1227,14 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 TempData["ErrorMessage"] = "Không tìm thấy hồ sơ khách hàng.";
                 return Redirect("/Customer/Account/Profile?tab=return");
             }
+            //    // Dòng 1229: Validate Bắt buộc chọn sản phẩm & nhập lý do
 
             if (string.IsNullOrWhiteSpace(orderId) || string.IsNullOrWhiteSpace(reason) || selectedSkus == null || !selectedSkus.Any())
             {
                 TempData["ErrorMessage"] = "Vui lòng chọn ít nhất một sản phẩm và nhập lý do trả hàng.";
                 return Redirect("/Customer/Account/Profile?tab=return");
             }
-
+            //Validate Số lượng Ảnh minh chứng (Từ 1 đến 3 ảnh)
             if (evidenceFiles == null || !evidenceFiles.Any() || evidenceFiles.All(f => f == null || f.Length == 0))
             {
                 TempData["ErrorMessage"] = "Vui lòng cung cấp ít nhất 1 ảnh minh chứng.";
@@ -1243,7 +1246,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 TempData["ErrorMessage"] = "Chỉ được phép tải lên tối đa 3 ảnh minh chứng.";
                 return Redirect("/Customer/Account/Profile?tab=return");
             }
-
+            //VALIDATE VIDEO 
             if (evidenceVideo == null || evidenceVideo.Length == 0)
             {
                 TempData["ErrorMessage"] = "Vui lòng cung cấp 1 video đập hộp sản phẩm để chứng minh.";
@@ -1259,7 +1262,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 TempData["ErrorMessage"] = "Không tìm thấy đơn hàng tương ứng.";
                 return Redirect("/Customer/Account/Profile?tab=return");
             }
-
+            //Ràng buộc trạng thái đơn hàng (Bắt buộc phải 'completed')
             if (OrderStatusHelper.ResolveStatusKey(order.Status) != "completed")
             {
                 TempData["ErrorMessage"] = "Chỉ có thể yêu cầu trả hàng đối với đơn hàng đã giao thành công.";
@@ -1273,8 +1276,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 TempData["ErrorMessage"] = "Đơn hàng này đã có yêu cầu trả hàng đang được xử lý.";
                 return Redirect("/Customer/Account/Profile?tab=return");
             }
-
-            // Save upload files
+            // LƯU ẢNH 
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
             var imageUrls = new List<string>();
             var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "returns");
@@ -1315,7 +1317,7 @@ namespace ManagePetStore.Areas.Customer.Controllers
                 return Redirect("/Customer/Account/Profile?tab=return");
             }
 
-            // Save video
+            // LƯU VIDEO 
             var allowedVideoExtensions = new[] { ".mp4", ".mov", ".webm" };
             var videoExt = Path.GetExtension(evidenceVideo.FileName).ToLowerInvariant();
             if (!allowedVideoExtensions.Contains(videoExt))
@@ -1338,6 +1340,8 @@ namespace ManagePetStore.Areas.Customer.Controllers
             }
             var videoUrl = "/uploads/returns/" + videoFileName;
 
+
+            //Tính toán tiền hoàn (RefundAmount)
             decimal refundAmount = 0;
             var requestItems = new List<ReturnRequestItem>();
 
@@ -1364,13 +1368,14 @@ namespace ManagePetStore.Areas.Customer.Controllers
                     RefundPrice = orderItem.Price
                 });
             }
+            //  : Tạo Entity ReturnRequest mới
 
             var returnRequest = new ReturnRequest
             {
                 OrderId = orderId,
                 CustomerId = customer.CustomerId,
                 Reason = reason.Trim(),
-                Status = "Submitted",
+                Status = "Submitted",  //// Trạng thái ban đầu: Chờ duyệt online
                 RefundAmount = refundAmount,
                 CreatedAt = DateTime.Now,
                 Notes = "IMAGES:" + string.Join(";", imageUrls) + "|VIDEO:" + videoUrl,

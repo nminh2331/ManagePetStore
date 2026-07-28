@@ -1,3 +1,7 @@
+
+// XỬ LÝ CÁI 
+
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -492,6 +496,8 @@ namespace ManagePetStore.Areas.Cashier.Controllers
         ///   + "Tiền mặt + Online" (Split Payment): Kết hợp thanh toán tiền mặt (CashAmount) và chuyển khoản online (OnlineAmount = TotalAmount - CashAmount).
         /// </summary>
         [HttpPost]
+
+        // Kiểm Tra Đầu Vào & Ràng Buộc Cơ Bản 
         public async Task<IActionResult> SubmitOrder([FromBody] PosSubmitOrderDto dto)
         {
             if (dto.CustomerId == 0 || dto.Items == null || !dto.Items.Any())
@@ -638,6 +644,8 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 }
             }
 
+
+            //Kiểm Tra Tồn Kho Sản Phẩm & Quy Đổi Điểm Thưởng Hội Viên  
             var customer = await _context.Customers.FindAsync(dto.CustomerId);
             if (customer == null)
             {
@@ -698,6 +706,8 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             }
 
             dto.TotalAmount = dto.Items.Sum(item => item.Price * item.Quantity);
+       
+            
             // Tính tỷ lệ quy đổi điểm theo Hạng thành viên hiện tại của khách (VIP: 3k, Vàng: 1.5k, Bạc: 1k, Đồng: 700đ, Thành viên: 500đ)
             decimal pointRate = ManagePetStore.Services.Customer.CustomerRewardHelper.GetPointRateByTier(customer.MembershipTier);
             decimal discount = dto.PointsUsed * pointRate;
@@ -715,7 +725,8 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 return Json(new { success = false, message = "Số tiền mặt và online không khớp tổng hóa đơn." });
             }
 
-            // Generate Order ID using orderCode pattern for PayOS compatibility
+            //Khởi Tạo Mã Đơn POS OD- & Thêm Vào CSDL
+            // Tạo mã đơn hàng bán tại quầy dạng OD-MMddHHmmssXX tương thích với chuẩn PayOS VietQR.
             long orderCode = 0;
             string newOrderId = "";
             var numericString = $"{DateTime.Now:MMddHHmmss}{Random.Shared.Next(10, 99)}";
@@ -740,7 +751,8 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 PaymentMethod = dto.PaymentMethod ?? "Tiền mặt",
                 PointsEarned = pointsEarned,
                 PointsRedeemed = dto.PointsUsed,
-                Status = hasOnlinePayment ? "Chờ thanh toán" : "Chờ xử lý",
+                // Nếu có phần thanh toán chuyển khoản online (PayOS) -> Gán trạng thái "Chờ thanh toán". Nếu thu tiền mặt -> Gán trạng thái "Chờ xử lý"
+                Status = hasOnlinePayment ? "Chờ thanh toán" : "Chờ xử lý",  //
                 OrderStatus = hasOnlinePayment ? 1 : 2,
                 CancelReason = !string.IsNullOrWhiteSpace(dto.VoucherCode) ? $"VOUCHER:{dto.VoucherCode.Trim().ToUpper()}" : null
             };
@@ -880,6 +892,8 @@ namespace ManagePetStore.Areas.Cashier.Controllers
             await transaction.CommitAsync();
             _context.ChangeTracker.Clear();
 
+
+            //Tạo Mã QR PayOS Cho Khách Quét Tại Quầy
             if (hasOnlinePayment)
             {
                 long onlinePayAmount = (long)totalAmount;
@@ -908,7 +922,7 @@ namespace ManagePetStore.Areas.Cashier.Controllers
 
                     try
                     {
-                        var paymentLinkResult = await _payOS.PaymentRequests.CreateAsync(paymentRequest);
+                        var paymentLinkResult = await _payOS.PaymentRequests.CreateAsync(paymentRequest);  //sinh link VietQR động paymentLinkResult.CheckoutUrl.
                         return Json(new { success = true, orderId = order.OrderId, redirectUrl = paymentLinkResult.CheckoutUrl, qrCode = paymentLinkResult.CheckoutUrl });
                     }
                     catch (Exception ex)
