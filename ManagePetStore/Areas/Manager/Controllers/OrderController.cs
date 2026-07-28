@@ -71,6 +71,8 @@ public class OrderController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+
+    // XỦ LÝ PHÊ DUYỆT ĐƠN HÀNG Phê Duyệt Đơn Hàng
     public async Task<IActionResult> Approve(string orderId, string? searchTerm, string statusFilter = "all", int page = 1)
     {
         var order = await _context.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
@@ -124,7 +126,7 @@ public class OrderController : Controller
         var managerName = User.FindFirst("FullName")?.Value
             ?? User.FindFirst(ClaimTypes.Name)?.Value
             ?? "Quản lý";
-
+        //// Đổi trạng thái sang "Đã từ chối" (Rejected) và lưu người từ chối
         order.Status = OrderStatusHelper.Rejected;
         order.CancelReason = cancelReason.Trim();
         order.CanceledBy = managerName;
@@ -158,7 +160,8 @@ public class OrderController : Controller
             TempData["ErrorMessage"] = "Chỉ có thể giao hàng khi đơn đã được phê duyệt.";
             return RedirectToAction(nameof(Delivery), new { searchTerm, statusFilter, page });
         }
-
+       
+        //    // Đổi trạng thái sang "Đang giao" (Delivering)
         order.Status = OrderStatusHelper.Delivering;
         await _context.SaveChangesAsync();
         TempData["SuccessMessage"] = $"Đơn hàng {FormatDisplayOrderId(orderId)} đã chuyển sang trạng thái đang giao hàng.";

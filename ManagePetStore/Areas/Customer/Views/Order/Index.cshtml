@@ -1,3 +1,9 @@
+
+<!-- HÀ HOÀNG HIEPJ CODE  ;
+PHẦN LỊCH SỬ ĐƠN HÀNG 
+--PHẦN HỦY ĐƠN VÀ ĐÃ NHẬN HÀNG CỦA VIEW ORDER HISTORY  -->
+
+
 @model ManagePetStore.Areas.Customer.Models.OrderHistoryPageViewModel
 
 @{
@@ -185,6 +191,7 @@
                                             <div class="co-action-group">
                                                 @if (order.CanConfirmReceived)
                                                 {
+                                                    <!-- NÚT ĐÃ NHẬN HÀNG KHI Ở TRANG THÁI ĐANG GIAO -->
                                                     <form asp-action="ConfirmReceived" method="post" class="co-action-form">
                                                         @Html.AntiForgeryToken()
                                                         <input type="hidden" name="orderId" value="@order.OrderId" />
@@ -200,6 +207,7 @@
 
                                                 @if (order.CanCancel)
                                                 {
+                                                    <!-- NÚT HỦY ĐƠN KHI Ở CHỜ XỬ LÝ-->
                                                     <button type="button" 
                                                             class="co-btn-cancel js-open-cancel-order" 
                                                             data-order-id="@order.OrderId" 
