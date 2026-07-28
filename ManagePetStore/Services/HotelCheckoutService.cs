@@ -258,18 +258,31 @@ public class HotelCheckoutService : IHotelCheckoutService
         // [nam][BR] Hóa đơn không được âm kể cả dữ liệu giảm giá cũ lớn hơn các khoản còn lại.
         var total = Math.Max(0, roomAmount - booking.Discount + planFoodAmount + extraFoodAmount + addonAmount + lateFee + otherAmount);
 
-        var items = new List<HotelCheckoutPreviewItem>
+        var items = new List<HotelCheckoutPreviewItem>();
+        if (roomQuote.FullDays > 0)
         {
-            new()
+            items.Add(new HotelCheckoutPreviewItem
             {
                 ChargeType = "Room",
                 Description = $"Phòng {booking.Cage.RoomType.Type} · chuồng {booking.CageId}",
-                Quantity = roomQuote.ChargeableDays,
+                Quantity = roomQuote.FullDays,
                 Unit = "ngày",
-                UnitPrice = roomQuote.UnitPrice,
-                Amount = roomAmount
-            }
-        };
+                UnitPrice = roomQuote.DailyPrice,
+                Amount = roomQuote.FullDays * roomQuote.DailyPrice
+            });
+        }
+        if (roomQuote.ExtraHours > 0)
+        {
+            items.Add(new HotelCheckoutPreviewItem
+            {
+                ChargeType = "RoomHourly",
+                Description = $"Giờ lẻ phòng {booking.Cage.RoomType.Type} · chuồng {booking.CageId}",
+                Quantity = roomQuote.ExtraHours,
+                Unit = "giờ",
+                UnitPrice = roomQuote.HourlyPrice,
+                Amount = roomQuote.ExtraHours * roomQuote.HourlyPrice
+            });
+        }
         if (planFoodAmount > 0)
         {
             string weightDetail = booking.FoodPlan!.PetWeightSnapshot.HasValue
@@ -327,9 +340,11 @@ public class HotelCheckoutService : IHotelCheckoutService
     // [nam] Tính số ngày thức ăn cần thu theo thời gian lưu trú thực tế.
     private static int ResolveFoodDays(HotelBooking booking, DateTime checkoutAt)
     {
-        // [nam][BR] Gói không có giá không phát sinh tiền; ngày ăn bắt đầu từ check-in thực tế nếu đã ghi nhận.
+        // [nam][BR] Gói không có giá không phát sinh tiền; nhận sớm không làm tăng thêm ngày ăn.
         if (booking.FoodPlan == null || booking.FoodPlan.PricePerDaySnapshot <= 0) return 0;
-        var start = booking.ActualCheckInAt ?? booking.CheckInDate;
+        var actualStart = booking.ActualCheckInAt ?? booking.CheckInDate;
+        var scheduledStart = booking.ScheduledCheckInDate ?? booking.CheckInDate;
+        var start = actualStart < scheduledStart ? scheduledStart : actualStart;
         return HotelPricingPolicy.CalculateStayDays(start, checkoutAt);
     }
 
@@ -345,19 +360,46 @@ public class HotelCheckoutService : IHotelCheckoutService
         {
             int bookedDays = Math.Max(booking.StayDays, 1);
             decimal savedAmount = Math.Max(0, booking.Subtotal);
+            DateTime scheduledStart = booking.ScheduledCheckInDate ?? booking.CheckInDate;
+            DateTime scheduledEnd = booking.ScheduledCheckOutDate
+                ?? booking.CheckOutDate
+                ?? scheduledStart.AddDays(bookedDays);
+            var policyQuote = HotelPricingPolicy.CalculateRoomCharge(
+                scheduledStart,
+                scheduledEnd,
+                booking.BaseDailyPrice,
+                booking.Cage.RoomType.HourlyPrice);
+
+            // Booking mới hiển thị tách ngày/giờ; dữ liệu cũ vẫn giữ nguyên giá snapshot đã chốt.
+            if (policyQuote.TotalAmount == savedAmount)
+            {
+                return new RoomChargeQuote(
+                    policyQuote.FullDays,
+                    policyQuote.ExtraHours,
+                    policyQuote.DailyPrice,
+                    policyQuote.HourlyPrice,
+                    savedAmount);
+            }
+
             decimal effectiveUnitPrice = bookedDays > 0
                 ? decimal.Round(savedAmount / bookedDays, 2, MidpointRounding.AwayFromZero)
                 : booking.BaseDailyPrice;
-            return new RoomChargeQuote(bookedDays, effectiveUnitPrice, savedAmount);
+            return new RoomChargeQuote(bookedDays, 0, effectiveUnitPrice, 0, savedAmount);
         }
 
-        // [nam][BR] Lượt gửi trực tiếp tính ceil theo mỗi 24 giờ thực tế, tối thiểu một ngày theo pricing policy.
+        // [nam][BR] Lượt không có lịch tính ngày đủ + giờ lẻ theo thời gian thực tế.
         var start = booking.ActualCheckInAt ?? booking.CheckInDate;
-        int actualDays = HotelPricingPolicy.CalculateStayDays(start, checkoutAt);
-        return new RoomChargeQuote(
-            actualDays,
+        var actualQuote = HotelPricingPolicy.CalculateRoomCharge(
+            start,
+            checkoutAt,
             booking.BaseDailyPrice,
-            booking.BaseDailyPrice * actualDays);
+            booking.Cage.RoomType.HourlyPrice);
+        return new RoomChargeQuote(
+            actualQuote.FullDays,
+            actualQuote.ExtraHours,
+            actualQuote.DailyPrice,
+            actualQuote.HourlyPrice,
+            actualQuote.TotalAmount);
     }
 
     // [nam] Tính số giờ và tiền phụ thu khi trả pet sau thời gian miễn phí.
@@ -442,5 +484,13 @@ public class HotelCheckoutService : IHotelCheckoutService
     }
 
     // [nam] Kết quả nội bộ của phép tính tiền chuồng theo số ngày, đơn giá và tổng tiền.
-    private readonly record struct RoomChargeQuote(int ChargeableDays, decimal UnitPrice, decimal Amount);
+    private readonly record struct RoomChargeQuote(
+        int FullDays,
+        int ExtraHours,
+        decimal DailyPrice,
+        decimal HourlyPrice,
+        decimal Amount)
+    {
+        public int ChargeableDays => FullDays + (ExtraHours > 0 ? 1 : 0);
+    }
 }

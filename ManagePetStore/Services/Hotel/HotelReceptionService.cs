@@ -90,6 +90,13 @@ public sealed class HotelReceptionService : IHotelReceptionService
                 return HotelCommandResult.Fail("Chuồng đã chọn không thuộc loại chuồng đang hoạt động.");
             }
 
+            if (cage.RoomType.DailyPrice <= 0 ||
+                cage.RoomType.HourlyPrice <= 0 ||
+                cage.RoomType.HourlyPrice > cage.RoomType.DailyPrice)
+            {
+                return HotelCommandResult.Fail("Bảng giá ngày/giờ của loại chuồng chưa hợp lệ.");
+            }
+
             // [nam][Validate] Mỗi sổ y tế chỉ được gắn một lượt lưu trú và phải có cân nặng hợp lệ.
             var medicalRecord = await _context.MedicalRecords
                 .Include(record => record.Pet)
@@ -217,15 +224,23 @@ public sealed class HotelReceptionService : IHotelReceptionService
             }
 
             // [nam][BR] Booking online giữ snapshot giá phòng; gửi trực tiếp dùng bảng giá đang hiệu lực tại lúc tiếp nhận.
+            DateTime servicePricingStart = onlineReservation?.ScheduledCheckInDate
+                ?? onlineReservation?.CheckInDate
+                ?? checkInDate;
             int estimatedStayDays = HotelPricingPolicy.CalculateStayDays(
-                checkInDate,
+                servicePricingStart,
                 checkOutDate ?? checkInDate.AddDays(1));
             decimal dailyPrice = onlineReservation?.BaseDailyPrice > 0
                 ? onlineReservation.BaseDailyPrice
                 : cage.RoomType.DailyPrice;
+            var roomQuote = HotelPricingPolicy.CalculateRoomCharge(
+                checkInDate,
+                checkOutDate ?? checkInDate.AddDays(1),
+                dailyPrice,
+                cage.RoomType.HourlyPrice);
             decimal subtotal = onlineReservation?.Subtotal > 0
                 ? onlineReservation.Subtotal
-                : dailyPrice * estimatedStayDays;
+                : roomQuote.TotalAmount;
             bool keepReservedFoodSnapshot = onlineReservation?.FoodPlan?.ProductSku == foodProduct.Sku;
             decimal baseFoodPricePerDay = keepReservedFoodSnapshot &&
                 onlineReservation!.FoodPlan!.BasePricePerDaySnapshot > 0

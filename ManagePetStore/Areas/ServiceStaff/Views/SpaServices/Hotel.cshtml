@@ -1518,6 +1518,7 @@
                     string expectedCheckOutValue = b.CheckOutDate.HasValue
                         ? b.CheckOutDate.Value.ToString("yyyy-MM-ddTHH:mm")
                         : string.Empty;
+                    string expectedCheckInValue = (b.ScheduledCheckInDate ?? b.CheckInDate).ToString("yyyy-MM-ddTHH:mm");
                     <div class="booking-item">
                         <div class="booking-cage-badge">
                             @b.CageId
@@ -1540,7 +1541,7 @@
                             @if (b.CheckOutDate.HasValue)
                             {
                                 <strong>Trả @b.CheckOutDate.Value.ToString("dd/MM")</strong>
-                                <span>@b.StayDays đêm · @b.FinalAmount.ToString("N0")đ</span>
+                                <span>@b.StayDays ngày dịch vụ · @b.FinalAmount.ToString("N0")đ</span>
                             }
                         </div>
                         <div class="booking-action-row">
@@ -1554,7 +1555,9 @@
                                     data-pet-id="@b.PetId"
                                     data-room-type-id="@(b.Cage != null ? b.Cage.RoomTypeId.ToString() : "")"
                                     data-cage-id="@b.CageId"
+                                    data-check-in="@expectedCheckInValue"
                                     data-check-out="@expectedCheckOutValue"
+                                    data-room-subtotal="@b.Subtotal.ToString("0.##", CultureInfo.InvariantCulture)"
                                     data-food-option-id="@(b.FoodPlan?.ProductSku ?? "")"
                                     data-food-name="@(b.FoodPlan?.FoodNameSnapshot ?? "")"
                                     data-food-base-price="@(b.FoodPlan?.BasePricePerDaySnapshot.ToString("0.##", CultureInfo.InvariantCulture) ?? "")"
@@ -1650,7 +1653,7 @@
                                 <strong style="color: @(daysLeft <= 1 ? "#DC3545" : "#2D2521")">
                                     Trả @b.CheckOutDate.Value.ToString("dd/MM")
                                 </strong>
-                                <span>@b.StayDays ngày · @b.FinalAmount.ToString("N0")đ</span>
+                                <span>@b.StayDays ngày dịch vụ · @b.FinalAmount.ToString("N0")đ</span>
                             }
                             else
                             {
@@ -2173,7 +2176,7 @@
                                 <option value="">— Chọn loại chuồng —</option>
                                 @foreach (var rt in activeRoomTypes)
                                 {
-                                    <option value="@rt.RoomTypeId" data-price="@rt.DailyPrice">
+                                    <option value="@rt.RoomTypeId" data-price="@rt.DailyPrice" data-hourly-price="@rt.HourlyPrice">
                                         @rt.Type — @rt.DailyPrice.ToString("N0")đ/ngày
                                     </option>
                                 }
@@ -2860,6 +2863,8 @@ let reservedFoodBasePrice = null;
 let reservedFoodPricePerDay = null;
 let reservedFoodWeight = null;
 let reservedFoodMultiplier = null;
+let reservedPricingCheckIn = '';
+let reservedRoomSubtotal = null;
 
 function hideMedicalRecordSummary() {
     const summary = document.getElementById('medicalRecordSummary');
@@ -2914,6 +2919,8 @@ function clearOnlineReceptionContext() {
     reservedFoodPricePerDay = null;
     reservedFoodWeight = null;
     reservedFoodMultiplier = null;
+    reservedPricingCheckIn = '';
+    reservedRoomSubtotal = null;
     document.getElementById('ci-hotelBookingId').value = '';
     document.getElementById('ci-phone').readOnly = false;
     const createMedicalRecordLink = document.getElementById('ci-createMedicalRecord');
@@ -2963,6 +2970,7 @@ function startOnlineReception(button) {
     const parsedReservedPrice = Number.parseFloat(data.foodPricePerDay || '');
     const parsedReservedWeight = Number.parseFloat(data.foodWeight || '');
     const parsedReservedMultiplier = Number.parseFloat(data.foodMultiplier || '');
+    const parsedRoomSubtotal = Number.parseFloat(data.roomSubtotal || '');
     reservedFoodBasePrice = Number.isFinite(parsedReservedBasePrice) && parsedReservedBasePrice > 0
         ? parsedReservedBasePrice
         : null;
@@ -2974,6 +2982,10 @@ function startOnlineReception(button) {
         : null;
     reservedFoodMultiplier = Number.isFinite(parsedReservedMultiplier) && parsedReservedMultiplier > 0
         ? parsedReservedMultiplier
+        : null;
+    reservedPricingCheckIn = data.checkIn || '';
+    reservedRoomSubtotal = Number.isFinite(parsedRoomSubtotal) && parsedRoomSubtotal > 0
+        ? parsedRoomSubtotal
         : null;
 
     document.getElementById('ci-receptionSource').value = 'ExistingMedicalRecord';
@@ -3488,6 +3500,29 @@ function updateFoodPriceChangeConfirmation(foodOption, foodPricePerDay, stayDays
     checkbox.setCustomValidity(checkbox.checked ? '' : 'Staff phải xác nhận mức giá thức ăn mới.');
 }
 
+function calculateReceptionRoomQuote(checkIn, checkOut, dailyPrice, hourlyPrice) {
+    const totalHours = Math.max(0, (checkOut - checkIn) / (1000 * 60 * 60));
+    if (totalHours <= 24) {
+        return { fullDays: 1, extraHours: 0, total: dailyPrice, durationText: '1 ngày' };
+    }
+
+    let fullDays = Math.floor(totalHours / 24);
+    const remainingHours = totalHours - fullDays * 24;
+    let extraHours = remainingHours > 0 ? Math.ceil(remainingHours) : 0;
+    const extraAmount = Math.min(extraHours * hourlyPrice, dailyPrice);
+    if (extraAmount >= dailyPrice) {
+        fullDays += 1;
+        extraHours = 0;
+    }
+
+    return {
+        fullDays,
+        extraHours,
+        total: fullDays * dailyPrice + extraHours * hourlyPrice,
+        durationText: extraHours > 0 ? `${fullDays} ngày + ${extraHours} giờ` : `${fullDays} ngày`
+    };
+}
+
 function calcStay() {
     const checkIn = document.getElementById('ci-checkIn').value;
     const checkOut = document.getElementById('ci-checkOut').value;
@@ -3504,6 +3539,7 @@ function calcStay() {
 
     const opt = roomSel.options[roomSel.selectedIndex];
     const dailyPrice = parseFloat(opt?.dataset?.price || '0');
+    const hourlyPrice = parseFloat(opt?.dataset?.hourlyPrice || '0');
     const foodSelect = document.getElementById('ci-foodOption');
     const foodOption = foodSelect.options[foodSelect.selectedIndex];
     const productBasePrice = parseFloat(foodOption?.dataset?.price || '0');
@@ -3522,14 +3558,21 @@ function calcStay() {
         return;
     }
 
-    const diffDays = Math.max(1, Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24)));
+    const foodPricingStart = reservedPricingCheckIn
+        ? new Date(reservedPricingCheckIn)
+        : d1;
+    const diffDays = Math.max(1, Math.ceil((d2 - foodPricingStart) / (1000 * 60 * 60 * 24)));
+    const roomQuote = calculateReceptionRoomQuote(d1, d2, dailyPrice, hourlyPrice);
 
-    const roomTotal = dailyPrice * diffDays;
+    const roomTotal = reservedRoomSubtotal ?? roomQuote.total;
     const foodTotal = foodPrice * diffDays;
     const inventoryUnits = Math.ceil(diffDays * foodMultiplier);
     const total = roomTotal + foodTotal;
     priceVal.textContent = total.toLocaleString('vi-VN') + 'đ';
-    priceDet.textContent = `${diffDays} ngày × phòng ${dailyPrice.toLocaleString('vi-VN')}đ`
+    const roomDetail = reservedRoomSubtotal
+        ? `phòng đã chốt ${roomTotal.toLocaleString('vi-VN')}đ`
+        : `${roomQuote.durationText} tiền phòng ${roomTotal.toLocaleString('vi-VN')}đ`;
+    priceDet.textContent = roomDetail
         + ` + thức ăn ${foodPrice.toLocaleString('vi-VN')}đ/ngày`
         + ` (pet ${selectedReceptionWeight?.toLocaleString('vi-VN') || '—'}kg, hệ số ${foodMultiplier.toLocaleString('vi-VN')}, ${inventoryUnits} suất chuẩn)`;
     updateFoodPriceChangeConfirmation(foodOption, foodPrice, diffDays);

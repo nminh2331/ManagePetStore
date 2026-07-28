@@ -74,11 +74,37 @@ public partial class HotelBookingController
                 TempData["ErrorMessage"] = "Chuồng đích không còn khả dụng trong thời gian lưu trú.";
                 return RedirectToAction(nameof(Details), new { id });
             }
+            if (targetCage.RoomType.HourlyPrice <= 0 || targetCage.RoomType.HourlyPrice > targetCage.RoomType.DailyPrice)
+            {
+                TempData["ErrorMessage"] = "Bảng giá ngày/giờ của chuồng đích chưa hợp lệ.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
 
-            int remainingDays = ResolveRemainingChargeDays(booking);
-            decimal discountRate = ResolveDiscountRate(customer.MembershipTier);
+            string statusKey = ResolveStatusKey(booking.Status);
+            DateTime intervalEnd = booking.ScheduledCheckOutDate
+                ?? booking.CheckOutDate
+                ?? booking.CheckInDate.AddDays(Math.Max(booking.StayDays, 1));
+            DateTime pricingStart = statusKey == "reserved"
+                ? booking.ScheduledCheckInDate ?? booking.CheckInDate
+                : DateTime.Now;
+            int remainingDays = HotelPricingPolicy.CalculateStayDays(pricingStart, intervalEnd);
+            var targetQuote = HotelPricingPolicy.CalculateRoomCharge(
+                pricingStart,
+                intervalEnd,
+                targetCage.RoomType.DailyPrice,
+                targetCage.RoomType.HourlyPrice);
+            decimal sourceRoomAmount = statusKey == "reserved"
+                ? booking.Subtotal
+                : HotelPricingPolicy.CalculateRoomCharge(
+                    pricingStart,
+                    intervalEnd,
+                    booking.BaseDailyPrice,
+                    booking.Cage.RoomType.HourlyPrice).TotalAmount;
+            decimal discountRate = booking.Subtotal > 0
+                ? Math.Clamp(booking.Discount / booking.Subtotal, 0, 1)
+                : 0;
             decimal estimatedDifference = decimal.Round(
-                (targetCage.RoomType.DailyPrice - booking.BaseDailyPrice) * remainingDays * (1 - discountRate),
+                (targetQuote.TotalAmount - sourceRoomAmount) * (1 - discountRate),
                 0,
                 MidpointRounding.AwayFromZero);
 
@@ -123,8 +149,7 @@ public partial class HotelBookingController
 
     // [nam] Tính các chuồng có thể chuyển đến và chênh lệch chi phí ước tính.
     private async Task<List<HotelCageChangeOptionViewModel>> GetAvailableCageChangeOptionsAsync(
-        HotelBookingHistoryDetailViewModel booking,
-        string membershipTier)
+        HotelBookingHistoryDetailViewModel booking)
     {
         var intervalStart = booking.StatusKey == "active" ? DateTime.Now : booking.CheckInDate;
         var intervalEnd = booking.ScheduledCheckOutDate
@@ -139,16 +164,32 @@ public partial class HotelBookingController
             .Select(item => item.CageId)
             .Distinct()
             .ToListAsync();
-        int remainingDays = booking.StatusKey == "reserved"
-            ? Math.Max(booking.StayDays, 1)
-            : Math.Max(1, (int)Math.Ceiling((intervalEnd - DateTime.Now).TotalHours / 24d));
-        decimal discountRate = ResolveDiscountRate(membershipTier);
+        var pricingStart = booking.StatusKey == "reserved"
+            ? booking.ScheduledCheckInDate ?? booking.CheckInDate
+            : DateTime.Now;
+        decimal discountRate = booking.Subtotal > 0
+            ? Math.Clamp(booking.Discount / booking.Subtotal, 0, 1)
+            : 0;
+        var sourcePricing = await _context.Cages
+            .AsNoTracking()
+            .Where(cage => cage.CageId == booking.CageId)
+            .Select(cage => new { cage.RoomType.HourlyPrice })
+            .FirstAsync();
+        decimal sourceRoomAmount = booking.StatusKey == "reserved"
+            ? booking.Subtotal
+            : HotelPricingPolicy.CalculateRoomCharge(
+                pricingStart,
+                intervalEnd,
+                booking.BaseDailyPrice,
+                sourcePricing.HourlyPrice).TotalAmount;
 
         var cages = await _context.Cages
             .AsNoTracking()
             .Where(cage => cage.CageId != booking.CageId &&
                            cage.Status == "Trống" &&
                            cage.RoomType.Status &&
+                           cage.RoomType.HourlyPrice > 0 &&
+                           cage.RoomType.HourlyPrice <= cage.RoomType.DailyPrice &&
                            HotelRoomTypeCatalog.Codes.Contains(cage.RoomType.Code) &&
                            !conflictingCageIds.Contains(cage.CageId))
             .OrderBy(cage => cage.RoomType.DailyPrice)
@@ -159,7 +200,8 @@ public partial class HotelBookingController
                 RoomTypeName = cage.RoomType.Type,
                 RoomTypeCode = cage.RoomType.Code,
                 Size = cage.RoomType.Size,
-                DailyPrice = cage.RoomType.DailyPrice
+                DailyPrice = cage.RoomType.DailyPrice,
+                HourlyPrice = cage.RoomType.HourlyPrice
             })
             .ToListAsync();
 
@@ -171,7 +213,11 @@ public partial class HotelBookingController
             Size = cage.Size,
             DailyPrice = cage.DailyPrice,
             EstimatedPriceDifference = decimal.Round(
-                (cage.DailyPrice - booking.BaseDailyPrice) * remainingDays * (1 - discountRate),
+                (HotelPricingPolicy.CalculateRoomCharge(
+                    pricingStart,
+                    intervalEnd,
+                    cage.DailyPrice,
+                    cage.HourlyPrice).TotalAmount - sourceRoomAmount) * (1 - discountRate),
                 0,
                 MidpointRounding.AwayFromZero)
         }).ToList();
@@ -189,20 +235,6 @@ public partial class HotelBookingController
             intervalStart,
             intervalEnd,
             booking.HotelBookingId);
-    }
-
-    // [nam] Tính số ngày còn lại dùng để ước tính chênh lệch giá đổi chuồng.
-    private static int ResolveRemainingChargeDays(HotelBooking booking)
-    {
-        if (ResolveStatusKey(booking.Status) == "reserved")
-        {
-            return Math.Max(booking.StayDays, 1);
-        }
-
-        var expectedCheckout = booking.ScheduledCheckOutDate
-            ?? booking.CheckOutDate
-            ?? DateTime.Now.AddDays(1);
-        return Math.Max(1, (int)Math.Ceiling((expectedCheckout - DateTime.Now).TotalHours / 24d));
     }
 
 }

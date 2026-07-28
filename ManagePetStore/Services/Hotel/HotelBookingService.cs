@@ -99,6 +99,11 @@ public sealed class HotelBookingService : IHotelBookingService
                 return HotelCommandResult.Fail("Loại phòng đã chọn hiện không còn hoạt động.");
             }
 
+            if (roomType.DailyPrice <= 0 || roomType.HourlyPrice <= 0 || roomType.HourlyPrice > roomType.DailyPrice)
+            {
+                return HotelCommandResult.Fail("Bảng giá ngày/giờ của loại phòng chưa hợp lệ.");
+            }
+
             // [nam][Validate] Gói ăn phải là sản phẩm theo ngày, còn bán và tương thích loài của pet.
             string foodProductSku = request.FoodProductSku.Trim();
             var foodProduct = await _context.Products
@@ -164,7 +169,12 @@ public sealed class HotelBookingService : IHotelBookingService
             }
 
             // [nam][BR] Chụp giá tại thời điểm đặt để thay đổi bảng giá sau này không làm đổi booking cũ.
-            decimal subtotal = roomType.DailyPrice * stayDays;
+            var roomQuote = HotelPricingPolicy.CalculateRoomCharge(
+                checkIn,
+                checkOut,
+                roomType.DailyPrice,
+                roomType.HourlyPrice);
+            decimal subtotal = roomQuote.TotalAmount;
             decimal discountRate = HotelPricingPolicy.ResolveMembershipDiscountRate(customer.MembershipTier);
             decimal discount = decimal.Round(subtotal * discountRate, 0, MidpointRounding.AwayFromZero);
             decimal foodPricePerDay = foodQuote.PricePerDay;
@@ -224,6 +234,7 @@ public sealed class HotelBookingService : IHotelBookingService
                 Title = "Đặt chuồng lưu trú",
                 Type = "HotelBookingCreated",
                 Description = $"Khách hàng đặt chuồng {cage.CageId} từ {checkIn:dd/MM/yyyy HH:mm} đến {checkOut:dd/MM/yyyy HH:mm}; " +
+                    $"tiền phòng {roomQuote.DurationText}: {roomQuote.TotalAmount:N0}đ; " +
                     $"gói ăn {foodProduct.Name} ({foodProduct.Sku}) {foodPricePerDay:N0}đ/ngày, " +
                     $"tạm tính theo cân nặng hồ sơ {foodQuote.PetWeightKg:0.##}kg, hệ số {foodQuote.PortionMultiplier:0.##} ({foodQuote.WeightBand}). " +
                     "Giá và khẩu phần cuối cùng được xác nhận khi tiếp nhận."
