@@ -1,3 +1,4 @@
+<!-- HIỆP CODE : XỬ LÝ NÚT PHÊ DUYỆT , TỪ CHỐI , GIAO HÀNG CỦA LUỒNG MANAGER ORDER VÀ UPDATE ORDER STATUS-->
 @model ManagePetStore.Areas.Manager.Models.OrderManagementPageViewModel
 @{
     Layout = "_ManagerLayout";
@@ -313,7 +314,7 @@
                         </td>
                         <td>
                             @if (order.CanShip)
-                            {
+                            {// NÚT GIAO HÀNG ĐÂY KHI ĐƠN HÀNG ĐÃ ĐƯỢC DUYỆT 
                                 <form asp-action="Ship" method="post" class="manager-inline-form">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="orderId" value="@order.OrderId" />

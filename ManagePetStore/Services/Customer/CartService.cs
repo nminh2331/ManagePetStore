@@ -230,12 +230,17 @@ public class CartService : ICartService
         return Task.FromResult((true, "Đã xóa sản phẩm khỏi giỏ hàng."));
     }
 
+
+    //1. Hàm ClearCart() - Xóa toàn bộ giỏ hàng
     public void ClearCart()
     {
         _httpContextAccessor.HttpContext?.Session.Remove(CartSessionKey);
     }
 
-    private List<CartSessionItem> GetCartItems()
+
+    //2. Hàm GetCartItems() - Lấy danh sách sản phẩm trong giỏ
+    //mục đích : Đọc dữ liệu từ Session, chuyển đổi từ chuỗi văn bản (JSON) thành một danh sách đối tượng C# (List<CartSessionItem>).
+    private List<CartSessionItem> GetCartItems() //
     {
         var session = _httpContextAccessor.HttpContext?.Session;
         if (session == null)
@@ -243,15 +248,17 @@ public class CartService : ICartService
             return [];
         }
 
-        var json = session.GetString(CartSessionKey);
-        if (string.IsNullOrEmpty(json))
+        var json = session.GetString(CartSessionKey);  //Lấy dữ liệu giỏ hàng dưới dạng chuỗi văn bản thuần túy.
+        if (string.IsNullOrEmpty(json)) //Kiểm tra nếu chuỗi rỗng (tức là người dùng chưa thêm gì vào giỏ), cũng trả về mảng rỗng [].
         {
             return [];
         }
 
-        return JsonSerializer.Deserialize<List<CartSessionItem>>(json) ?? [];
+        return JsonSerializer.Deserialize<List<CartSessionItem>>(json) ?? []; //Hàm cốt lõi. Nó "dịch" chuỗi JSON thành danh sách các đối tượng C#.
     }
 
+    //Lưu giỏ hàng
+    //Mục đích: Nhận vào một danh sách sản phẩm đã bị thay đổi (thêm, bớt, cập nhật số lượng) và lưu đè lại vào Session.
     private void SaveCartItems(List<CartSessionItem> items)
     {
         var session = _httpContextAccessor.HttpContext?.Session;
@@ -266,7 +273,7 @@ public class CartService : ICartService
             return;
         }
 
-        var json = JsonSerializer.Serialize(items);
-        session.SetString(CartSessionKey, json);
+        var json = JsonSerializer.Serialize(items);  //hàm này "đóng gói" danh sách đối tượng C# thành một chuỗi văn bản JSON.
+        session.SetString(CartSessionKey, json);  //Lưu chuỗi JSON vừa tạo vào bộ nhớ Session.
     }
 }
