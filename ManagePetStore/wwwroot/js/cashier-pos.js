@@ -975,7 +975,8 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('paymentModal').style.display = 'flex';
     });
 
-    // Confirm Payment
+    // // HÀM GỬI ĐƠN HÀNG TỪ MÀN HÌNH POS SANG BACKEND
+
     document.getElementById('btnConfirmPayment').addEventListener('click', async () => {
 
         const subtotal = cart.reduce((acc, curr) => acc + curr.total, 0);

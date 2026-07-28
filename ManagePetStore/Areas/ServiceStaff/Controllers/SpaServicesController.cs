@@ -105,6 +105,7 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
 
             // Nhật Minh: Select từng cột thông tin dịch vụ Spa để tối ưu hiệu năng và lấy đủ các thuộc tính cần hiển thị
             var services = await _context.SpaServices.AsNoTracking()
+                //.OrderBy(s => s.Price);
                 .OrderByDescending(s => s.ServiceId)
                 .Skip((currentPage - 1) * pageSize)
                 .Take(pageSize)
@@ -1417,3 +1418,5 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
         }
     }
 }
+
+

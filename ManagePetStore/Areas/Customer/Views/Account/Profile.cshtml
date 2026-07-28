@@ -1048,7 +1048,7 @@
                     </div>
                 </div>
 
-                <!-- Create Return Form (Hidden by default) -->
+                <!-- FORM ĐĂNG KÍ TRẢ HÀNG -->
                 <div id="return-form-container" style="display: none; border-top: 1px solid #eee; padding-top: 25px; margin-top: 15px;">
                     <h5 class="fw-bold text-start mb-4" id="returnFormHeader">Tạo yêu cầu trả hàng cho đơn hàng</h5>
                     
@@ -1065,10 +1065,12 @@
                             </div>
                         </div>
 
+                        <!-- LÝ DO TRẢ HÀNG -->
                         <div class="mb-4 text-start">
                             <label for="returnReason" class="form-label fw-bold text-muted" style="font-size: 0.85rem; text-transform: uppercase;">2. Lý do trả hàng / hoàn tiền *</label>
                             <textarea name="reason" id="returnReason" class="form-control" rows="3" required placeholder="Mô tả lý do trả hàng (ví dụ: Sản phẩm bị rách bao bì, cận ngày hết hạn, giao nhầm mẫu mã...)"></textarea>
                         </div>
+                            <!-- Chọn tối đa 3 ảnh minh chứng (Format: .jpg, .jpeg, .png, .webp) -->
 
                         <div class="mb-4 text-start">
                             <label for="evidenceFiles" class="form-label fw-bold text-muted" style="font-size: 0.85rem; text-transform: uppercase;">3. Ảnh minh chứng * (Tải lên từ 1 - 3 ảnh, tối đa 5MB/ảnh)</label>
@@ -1076,6 +1078,7 @@
                             <div class="form-text text-danger" id="evidenceValidationError" style="display: none; font-size: 0.85rem; margin-top: 5px;"></div>
                             <div id="evidencePreviewContainer" class="d-flex gap-2 mt-2 flex-wrap"></div>
                         </div>
+                            <!-- Chọn 1 Video đập hộp khui hàng (Format: .mp4, .mov, .webm - Max 20MB) -->
 
                         <div class="mb-4 text-start">
                             <label for="evidenceVideo" class="form-label fw-bold text-muted" style="font-size: 0.85rem; text-transform: uppercase;">4. Video đập hộp sản phẩm * (Tối đa 20MB, định dạng .mp4, .mov, .webm, dài 10 - 15s)</label>
