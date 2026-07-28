@@ -156,6 +156,15 @@ function formatCurrency(amount) {
             return false;
         }
 
+        // [nam][Validate] Giờ nhận phòng phải nằm trong khung giờ cửa hàng có thể tiếp nhận pet.
+        if (start) {
+            const checkInMinutes = start.getHours() * 60 + start.getMinutes();
+            if (checkInMinutes < handoverOpenMinutes || checkInMinutes > handoverLastMinutes) {
+                checkIn.setCustomValidity('Thời gian nhận phòng phải trong khung giờ tiếp nhận thú cưng từ 07:00 đến 21:30.');
+                return false;
+            }
+        }
+
         if (start && end && end <= start) {
             checkOut.setCustomValidity('Thời gian trả phòng phải sau thời gian nhận phòng.');
             return false;

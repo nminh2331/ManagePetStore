@@ -23,12 +23,20 @@ List<ValidationResult> Validate(object model)
 bool HasCheckoutHoursError(IEnumerable<ValidationResult> results) =>
     results.Any(result => result.ErrorMessage == HotelOperatingHoursPolicy.ExpectedCheckoutError);
 
+bool HasCheckInHoursError(IEnumerable<ValidationResult> results) =>
+    results.Any(result => result.ErrorMessage == HotelOperatingHoursPolicy.ExpectedCheckInError);
+
 DateTime testDay = DateTime.Today.AddDays(2);
 
 Check("06:59 bị chặn", !HotelOperatingHoursPolicy.IsExpectedCheckoutWithinHandoverHours(testDay.AddHours(6).AddMinutes(59)));
 Check("07:00 được chấp nhận", HotelOperatingHoursPolicy.IsExpectedCheckoutWithinHandoverHours(testDay.AddHours(7)));
 Check("21:30 được chấp nhận", HotelOperatingHoursPolicy.IsExpectedCheckoutWithinHandoverHours(testDay.AddHours(21).AddMinutes(30)));
 Check("21:31 bị chặn", !HotelOperatingHoursPolicy.IsExpectedCheckoutWithinHandoverHours(testDay.AddHours(21).AddMinutes(31)));
+
+Check("Check-in 06:59 bị chặn", !HotelOperatingHoursPolicy.IsExpectedCheckInWithinHandoverHours(testDay.AddHours(6).AddMinutes(59)));
+Check("Check-in 07:00 được chấp nhận", HotelOperatingHoursPolicy.IsExpectedCheckInWithinHandoverHours(testDay.AddHours(7)));
+Check("Check-in 21:30 được chấp nhận", HotelOperatingHoursPolicy.IsExpectedCheckInWithinHandoverHours(testDay.AddHours(21).AddMinutes(30)));
+Check("Check-in 21:31 bị chặn", !HotelOperatingHoursPolicy.IsExpectedCheckInWithinHandoverHours(testDay.AddHours(21).AddMinutes(31)));
 
 HotelBookingRequest CustomerRequest(DateTime checkout) => new()
 {
@@ -42,6 +50,16 @@ HotelBookingRequest CustomerRequest(DateTime checkout) => new()
 
 Check("Customer checkout 21:30 hợp lệ", Validate(CustomerRequest(testDay.AddDays(1).AddHours(21).AddMinutes(30))).Count == 0);
 Check("Customer checkout 21:31 nhận đúng lỗi giờ", HasCheckoutHoursError(Validate(CustomerRequest(testDay.AddDays(1).AddHours(21).AddMinutes(31)))));
+
+Check("Customer check-in 06:45 nhận đúng lỗi giờ", HasCheckInHoursError(Validate(new HotelBookingRequest
+{
+    PetId = 1,
+    RoomTypeId = 1,
+    CageId = "A1",
+    CheckInDate = testDay.AddHours(6).AddMinutes(45),
+    CheckOutDate = testDay.AddDays(1).AddHours(14),
+    FoodProductSku = "CAGE-FOOD-DEFAULT"
+})));
 
 HotelCheckInRequest StaffRequest(DateTime checkout) => new()
 {

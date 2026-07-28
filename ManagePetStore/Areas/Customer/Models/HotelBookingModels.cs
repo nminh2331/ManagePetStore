@@ -70,6 +70,14 @@ public class HotelBookingRequest : IValidatableObject
                 [nameof(CheckInDate)]);
         }
 
+        // [nam][BR] Khách chỉ có thể bàn giao pet cho cửa hàng trong khung giờ tiếp nhận.
+        if (!HotelOperatingHoursPolicy.IsExpectedCheckInWithinHandoverHours(checkIn))
+        {
+            yield return new ValidationResult(
+                HotelOperatingHoursPolicy.ExpectedCheckInError,
+                [nameof(CheckInDate)]);
+        }
+
         // [nam][BR] Ngày trả phải sau ngày nhận và một lượt lưu trú không vượt quá 90 ngày.
         if (checkOut <= checkIn)
         {

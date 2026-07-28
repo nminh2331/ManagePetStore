@@ -46,7 +46,12 @@ public sealed class HotelBookingService : IHotelBookingService
         DateTime checkOut = request.CheckOutDate!.Value;
         int stayDays = HotelPricingPolicy.CalculateStayDays(checkIn, checkOut);
 
-        // [nam][Validate] Service tự bảo vệ luật giờ bàn giao kể cả khi request không đi qua giao diện đặt chuồng.
+        // [nam][Validate] Service tự bảo vệ luật giờ tiếp nhận/bàn giao kể cả khi request không đi qua giao diện đặt chuồng.
+        if (!HotelOperatingHoursPolicy.IsExpectedCheckInWithinHandoverHours(checkIn))
+        {
+            return HotelCommandResult.Fail(HotelOperatingHoursPolicy.ExpectedCheckInError);
+        }
+
         if (!HotelOperatingHoursPolicy.IsExpectedCheckoutWithinHandoverHours(checkOut))
         {
             return HotelCommandResult.Fail(HotelOperatingHoursPolicy.ExpectedCheckoutError);
