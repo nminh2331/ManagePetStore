@@ -168,6 +168,7 @@ public class HomeController : Controller
                     Size = r.Size,
                     Capacity = r.Capacity,
                     DailyPrice = r.DailyPrice,
+                    HourlyPrice = r.HourlyPrice,
                     HasAc = r.HasAc,
                     HasCamera = r.HasCamera,
                     HasPremiumFood = r.HasPremiumFood
@@ -620,9 +621,9 @@ public class HomeController : Controller
             ],
             RoomTypes =
             [
-                new RoomTypeOptionItem { Id = 2, Code = HotelRoomTypeCatalog.StandardCode, Name = "Phòng Standard", Size = "1.0m x 1.0m", Capacity = 1, DailyPrice = 200000, HasAc = true },
-                new RoomTypeOptionItem { Id = 1, Code = HotelRoomTypeCatalog.VipCode, Name = "Phòng VIP", Size = "1.5m x 1.5m", Capacity = 1, DailyPrice = 500000, HasAc = true, HasCamera = true },
-                new RoomTypeOptionItem { Id = 3, Code = HotelRoomTypeCatalog.LuxuryCode, Name = "Phòng Luxury", Size = "2.0m x 1.8m", Capacity = 1, DailyPrice = 750000, HasAc = true, HasCamera = true }
+                new RoomTypeOptionItem { Id = 2, Code = HotelRoomTypeCatalog.StandardCode, Name = "Phòng Standard", Size = "1.0m x 1.0m", Capacity = 1, DailyPrice = 200000, HourlyPrice = 40000, HasAc = true },
+                new RoomTypeOptionItem { Id = 1, Code = HotelRoomTypeCatalog.VipCode, Name = "Phòng VIP", Size = "1.5m x 1.5m", Capacity = 1, DailyPrice = 500000, HourlyPrice = 40000, HasAc = true, HasCamera = true },
+                new RoomTypeOptionItem { Id = 3, Code = HotelRoomTypeCatalog.LuxuryCode, Name = "Phòng Luxury", Size = "2.0m x 1.8m", Capacity = 1, DailyPrice = 750000, HourlyPrice = 40000, HasAc = true, HasCamera = true }
             ]
         };
     }

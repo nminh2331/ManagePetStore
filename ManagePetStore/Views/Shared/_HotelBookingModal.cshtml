@@ -115,6 +115,7 @@
                                     <option value="@room.Id"
                                             data-code="@room.Code"
                                             data-price="@room.DailyPrice"
+                                            data-hourly-price="@room.HourlyPrice"
                                             data-size="@room.Size"
                                             data-capacity="@room.Capacity"
                                             data-ac="@room.HasAc.ToString().ToLowerInvariant()"
@@ -180,7 +181,7 @@
                         <span class="hotel-discount">-@discountPercent%</span>
                     </div>
                     <div class="hotel-summary-row">
-                        <span>Số ngày tính phí</span>
+                        <span>Thời gian tính phí</span>
                         <strong id="hotelNights">1 ngày</strong>
                     </div>
                     <div class="hotel-summary-row">

@@ -125,7 +125,7 @@ public partial class HotelBookingController
 
         bool canRequestCageChange = booking.StatusKey is "reserved" or "active";
         List<HotelCageChangeOptionViewModel> availableCages = canRequestCageChange && pendingRequest == null
-            ? await GetAvailableCageChangeOptionsAsync(booking, layout.Customer.MembershipTier)
+            ? await GetAvailableCageChangeOptionsAsync(booking)
             : [];
 
         return View(new HotelBookingDetailPageViewModel

@@ -239,6 +239,11 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 {
                     return Json(new { success = false, message = "Chuồng đích không còn ở trạng thái sẵn sàng." });
                 }
+                if (changeRequest.TargetCage.RoomType.HourlyPrice <= 0 ||
+                    changeRequest.TargetCage.RoomType.HourlyPrice > changeRequest.TargetCage.RoomType.DailyPrice)
+                {
+                    return Json(new { success = false, message = "Bảng giá ngày/giờ của chuồng đích chưa hợp lệ." });
+                }
 
                 // [nam][BR] Booking đang ở chỉ kiểm tra từ hiện tại; booking đã đặt kiểm tra toàn bộ khoảng dự kiến.
                 var intervalStart = statusKey == "active" ? now : booking.CheckInDate;
@@ -255,12 +260,18 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                     return Json(new { success = false, message = "Chuồng đích vừa có lịch đặt trùng; chưa thể duyệt yêu cầu." });
                 }
 
-                // [nam][BR] Chênh lệch giá tính toàn kỳ với booking chưa nhận, nhưng chỉ tính số ngày còn lại nếu pet đang ở.
-                int remainingDays = statusKey == "reserved"
-                    ? Math.Max(booking.StayDays, 1)
-                    : Math.Max(1, (int)Math.Ceiling((intervalEnd - now).TotalHours / 24d));
+                // [nam][BR] Chênh lệch giá dùng cùng policy ngày + giờ với luồng đặt và checkout.
+                DateTime pricingStart = statusKey == "reserved"
+                    ? booking.ScheduledCheckInDate ?? booking.CheckInDate
+                    : now;
+                int remainingDays = HotelPricingPolicy.CalculateStayDays(pricingStart, intervalEnd);
                 decimal oldDailyPrice = booking.BaseDailyPrice;
                 decimal newDailyPrice = changeRequest.TargetCage.RoomType.DailyPrice;
+                var targetRoomQuote = HotelPricingPolicy.CalculateRoomCharge(
+                    pricingStart,
+                    intervalEnd,
+                    newDailyPrice,
+                    changeRequest.TargetCage.RoomType.HourlyPrice);
                 decimal discountRate = booking.Subtotal > 0
                     ? Math.Clamp(booking.Discount / booking.Subtotal, 0, 1)
                     : 0;
@@ -269,13 +280,18 @@ namespace ManagePetStore.Areas.ServiceStaff.Controllers
                 // [nam][BR] Giữ nguyên tỷ lệ giảm giá ban đầu khi tính lại giá chuồng mới.
                 if (statusKey == "reserved")
                 {
-                    booking.Subtotal = newDailyPrice * Math.Max(booking.StayDays, 1);
+                    booking.Subtotal = targetRoomQuote.TotalAmount;
                     booking.Discount = decimal.Round(booking.Subtotal * discountRate, 0, MidpointRounding.AwayFromZero);
                     booking.FinalAmount = Math.Max(0, booking.Subtotal - booking.Discount + (booking.FoodPlan?.TotalAmount ?? 0));
                 }
                 else
                 {
-                    decimal rawDifference = (newDailyPrice - oldDailyPrice) * remainingDays;
+                    var sourceRoomQuote = HotelPricingPolicy.CalculateRoomCharge(
+                        pricingStart,
+                        intervalEnd,
+                        oldDailyPrice,
+                        changeRequest.SourceCage.RoomType.HourlyPrice);
+                    decimal rawDifference = targetRoomQuote.TotalAmount - sourceRoomQuote.TotalAmount;
                     decimal discountDifference = decimal.Round(rawDifference * discountRate, 0, MidpointRounding.AwayFromZero);
                     booking.Subtotal = Math.Max(0, booking.Subtotal + rawDifference);
                     booking.Discount = Math.Max(0, booking.Discount + discountDifference);

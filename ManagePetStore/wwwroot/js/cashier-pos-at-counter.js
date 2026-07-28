@@ -145,10 +145,14 @@ document.addEventListener('DOMContentLoaded', function () {
             if (countHotelEl) countHotelEl.textContent = rows.length;
 
             list.innerHTML = rows.length ? rows.map(item => {
+                const linkedSpaCount = (item.linkedSpaBookingIds || []).length;
+                const combinedTotal = item.total + (item.linkedSpas || []).reduce((sum, spa) => sum + spa.price, 0);
+                const bundledLabel = linkedSpaCount ? `<div style="font-size:11px;color:#f97316;"><i class="bi bi-link"></i> Kèm ${linkedSpaCount} dịch vụ Spa trong cùng hóa đơn</div>` : '';
                 return `<div class="pos-spa-item" style="padding:16px;border:1px solid var(--pos-border);border-radius:8px;background:#fff;display:grid;gap:8px;align-items:stretch;height:auto;cursor:default;">
                     <div style="display:flex;justify-content:space-between;gap:8px;"><strong>HB#${item.hotelBookingId}</strong><small>${item.preparedAt}</small></div>
                     <div style="font-size:12px;text-align:left;"><div><strong>Khách:</strong> ${item.customerName} (${item.customerPhone})</div><div><strong>Pet:</strong> ${item.petName}</div><div><strong>Phòng:</strong> ${item.roomTypeName} · ${item.cageId}</div></div>
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><strong style="color:#ef4444;">${formatCurrency(item.total)}</strong><button class="btn-pos-primary" style="padding:5px 9px;font-size:11px;" onclick="handleSelectHotelCheckout(${item.hotelCheckoutId})"><i class="bi bi-plus-circle"></i> Thu tiền</button></div>
+                    ${bundledLabel}
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><strong style="color:#ef4444;">${formatCurrency(combinedTotal)}</strong><button class="btn-pos-primary" style="padding:5px 9px;font-size:11px;" onclick="handleSelectHotelCheckout(${item.hotelCheckoutId})"><i class="bi bi-plus-circle"></i> Thu tiền</button></div>
                 </div>`;
             }).join('') : '<p style="color:var(--pos-text-muted);font-size:13px;">Không có bảng kê chuồng nào đang chờ thu.</p>';
         } catch (err) {
@@ -174,14 +178,15 @@ document.addEventListener('DOMContentLoaded', function () {
             clearCurrentCartAndCustomer();
         }
 
-        if (!completedSpaBookings.length && (item.linkedSpaBookingIds || []).length) {
+        const expectedSpaIds = item.linkedSpaBookingIds || [];
+        if (!Array.isArray(item.linkedSpas) && !completedSpaBookings.length && expectedSpaIds.length) {
             await loadCompletedSpaBookingsForHotel();
         }
-        const linkedSpaBookings = (item.linkedSpaBookingIds || [])
-            .map(spaId => completedSpaBookings.find(row => row.bookingId === spaId))
-            .filter(Boolean);
+        const linkedSpaBookings = Array.isArray(item.linkedSpas)
+            ? item.linkedSpas
+            : expectedSpaIds.map(spaId => completedSpaBookings.find(row => row.bookingId === spaId)).filter(Boolean);
         // [nam][Validate] Không cho thu nếu thiếu bất kỳ Spa liên kết nào để tránh tạo hóa đơn thiếu khoản dịch vụ.
-        if (linkedSpaBookings.length !== (item.linkedSpaBookingIds || []).length) {
+        if (linkedSpaBookings.length !== expectedSpaIds.length) {
             alert('Chưa tải đủ dịch vụ Spa liên kết. Vui lòng thử lại để tránh thiếu khoản thu.');
             return;
         }

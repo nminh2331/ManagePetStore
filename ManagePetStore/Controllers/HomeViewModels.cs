@@ -84,6 +84,7 @@ public class RoomTypeOptionItem
     public string Size { get; set; } = "";
     public int Capacity { get; set; }
     public decimal DailyPrice { get; set; }
+    public decimal HourlyPrice { get; set; }
     public bool HasAc { get; set; }
     public bool HasCamera { get; set; }
     public bool HasPremiumFood { get; set; }

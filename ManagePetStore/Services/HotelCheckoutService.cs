@@ -60,6 +60,16 @@ public class HotelCheckoutService : IHotelCheckoutService
              booking.CheckoutStatement.OrderId != null);
         if (checkoutAlreadyPrepared)
         {
+            // A ready statement may be prepared again after Spa has just completed.
+            // Heal the link before returning so the cashier always receives one complete bill.
+            if (booking.CheckoutStatement!.OrderId == null &&
+                string.Equals(booking.CheckoutStatement.Status, "ReadyForPayment", StringComparison.OrdinalIgnoreCase))
+            {
+                await LinkCompletedUnpaidSpaAsync(booking);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+
             // Idempotent: a stale browser click must not create or update the checkout again.
             return BuildPreview(
                 booking,
@@ -138,20 +148,33 @@ public class HotelCheckoutService : IHotelCheckoutService
             Description = $"{staffName} đã lập bảng kê tạm tính {preview.TotalAmount:N0}đ và gửi sang quầy thu ngân. Pet vẫn đang lưu trú cho đến khi hoàn tất trả pet."
         });
 
-        // [nam][BR] Chỉ ghép Spa đã hoàn thành, chưa thanh toán, cùng pet/customer và phát sinh trong lượt lưu trú.
+        // [nam][BR] Khi Staff trả chuồng, gom mọi Spa đã xong/chưa thu của đúng pet và khách.
+        // Không dùng giờ hẹn Spa để quyết định vì dịch vụ có thể hoàn thành sớm hơn lịch.
+        await LinkCompletedUnpaidSpaAsync(booking);
+
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return await GetPreviewAsync(booking.HotelBookingId) ?? preview;
+    }
+
+    private async Task LinkCompletedUnpaidSpaAsync(HotelBooking booking)
+    {
         var completedSpaIds = await _context.SpaBookings
             .Where(spa => spa.PetId == booking.PetId &&
                           spa.CustomerId == booking.CustomerId &&
-                          (spa.SpaStatus == "4" || spa.SpaStatus.EndsWith("|4")) &&
+                          (spa.SpaStatus == "4" || spa.SpaStatus.EndsWith("|4") || spa.SpaStatus == "Hoàn thành") &&
                           (spa.Status == "Chờ thanh toán" || spa.Status == "pending" || spa.Status == "Chưa thanh toán") &&
-                          spa.DateTime >= booking.CheckInDate && spa.DateTime <= checkoutAt)
+                          (spa.Notes == null || !spa.Notes.Contains("OD-")) &&
+                          (spa.HotelStayLink == null || spa.HotelStayLink.HotelBookingId == booking.HotelBookingId))
             .Select(spa => spa.BookingId)
             .ToListAsync();
-        var linkedSpaIds = await _context.HotelStaySpaLinks
-            .Where(link => completedSpaIds.Contains(link.SpaBookingId))
+
+        var existingSpaIds = await _context.HotelStaySpaLinks
+            .Where(link => link.HotelBookingId == booking.HotelBookingId)
             .Select(link => link.SpaBookingId)
             .ToListAsync();
-        foreach (var spaId in completedSpaIds.Except(linkedSpaIds))
+
+        foreach (var spaId in completedSpaIds.Except(existingSpaIds))
         {
             _context.HotelStaySpaLinks.Add(new HotelStaySpaLink
             {
@@ -160,10 +183,6 @@ public class HotelCheckoutService : IHotelCheckoutService
                 LinkedAt = DateTime.Now
             });
         }
-
-        await _context.SaveChangesAsync();
-        await transaction.CommitAsync();
-        return await GetPreviewAsync(booking.HotelBookingId) ?? preview;
     }
 
     // [nam] Khấu trừ hoặc hoàn kho phần thức ăn chênh lệch theo số ngày thực tế.
@@ -239,18 +258,31 @@ public class HotelCheckoutService : IHotelCheckoutService
         // [nam][BR] Hóa đơn không được âm kể cả dữ liệu giảm giá cũ lớn hơn các khoản còn lại.
         var total = Math.Max(0, roomAmount - booking.Discount + planFoodAmount + extraFoodAmount + addonAmount + lateFee + otherAmount);
 
-        var items = new List<HotelCheckoutPreviewItem>
+        var items = new List<HotelCheckoutPreviewItem>();
+        if (roomQuote.FullDays > 0)
         {
-            new()
+            items.Add(new HotelCheckoutPreviewItem
             {
                 ChargeType = "Room",
                 Description = $"Phòng {booking.Cage.RoomType.Type} · chuồng {booking.CageId}",
-                Quantity = roomQuote.ChargeableDays,
+                Quantity = roomQuote.FullDays,
                 Unit = "ngày",
-                UnitPrice = roomQuote.UnitPrice,
-                Amount = roomAmount
-            }
-        };
+                UnitPrice = roomQuote.DailyPrice,
+                Amount = roomQuote.FullDays * roomQuote.DailyPrice
+            });
+        }
+        if (roomQuote.ExtraHours > 0)
+        {
+            items.Add(new HotelCheckoutPreviewItem
+            {
+                ChargeType = "RoomHourly",
+                Description = $"Giờ lẻ phòng {booking.Cage.RoomType.Type} · chuồng {booking.CageId}",
+                Quantity = roomQuote.ExtraHours,
+                Unit = "giờ",
+                UnitPrice = roomQuote.HourlyPrice,
+                Amount = roomQuote.ExtraHours * roomQuote.HourlyPrice
+            });
+        }
         if (planFoodAmount > 0)
         {
             string weightDetail = booking.FoodPlan!.PetWeightSnapshot.HasValue
@@ -308,9 +340,11 @@ public class HotelCheckoutService : IHotelCheckoutService
     // [nam] Tính số ngày thức ăn cần thu theo thời gian lưu trú thực tế.
     private static int ResolveFoodDays(HotelBooking booking, DateTime checkoutAt)
     {
-        // [nam][BR] Gói không có giá không phát sinh tiền; ngày ăn bắt đầu từ check-in thực tế nếu đã ghi nhận.
+        // [nam][BR] Gói không có giá không phát sinh tiền; nhận sớm không làm tăng thêm ngày ăn.
         if (booking.FoodPlan == null || booking.FoodPlan.PricePerDaySnapshot <= 0) return 0;
-        var start = booking.ActualCheckInAt ?? booking.CheckInDate;
+        var actualStart = booking.ActualCheckInAt ?? booking.CheckInDate;
+        var scheduledStart = booking.ScheduledCheckInDate ?? booking.CheckInDate;
+        var start = actualStart < scheduledStart ? scheduledStart : actualStart;
         return HotelPricingPolicy.CalculateStayDays(start, checkoutAt);
     }
 
@@ -326,19 +360,46 @@ public class HotelCheckoutService : IHotelCheckoutService
         {
             int bookedDays = Math.Max(booking.StayDays, 1);
             decimal savedAmount = Math.Max(0, booking.Subtotal);
+            DateTime scheduledStart = booking.ScheduledCheckInDate ?? booking.CheckInDate;
+            DateTime scheduledEnd = booking.ScheduledCheckOutDate
+                ?? booking.CheckOutDate
+                ?? scheduledStart.AddDays(bookedDays);
+            var policyQuote = HotelPricingPolicy.CalculateRoomCharge(
+                scheduledStart,
+                scheduledEnd,
+                booking.BaseDailyPrice,
+                booking.Cage.RoomType.HourlyPrice);
+
+            // Booking mới hiển thị tách ngày/giờ; dữ liệu cũ vẫn giữ nguyên giá snapshot đã chốt.
+            if (policyQuote.TotalAmount == savedAmount)
+            {
+                return new RoomChargeQuote(
+                    policyQuote.FullDays,
+                    policyQuote.ExtraHours,
+                    policyQuote.DailyPrice,
+                    policyQuote.HourlyPrice,
+                    savedAmount);
+            }
+
             decimal effectiveUnitPrice = bookedDays > 0
                 ? decimal.Round(savedAmount / bookedDays, 2, MidpointRounding.AwayFromZero)
                 : booking.BaseDailyPrice;
-            return new RoomChargeQuote(bookedDays, effectiveUnitPrice, savedAmount);
+            return new RoomChargeQuote(bookedDays, 0, effectiveUnitPrice, 0, savedAmount);
         }
 
-        // [nam][BR] Lượt gửi trực tiếp tính ceil theo mỗi 24 giờ thực tế, tối thiểu một ngày theo pricing policy.
+        // [nam][BR] Lượt không có lịch tính ngày đủ + giờ lẻ theo thời gian thực tế.
         var start = booking.ActualCheckInAt ?? booking.CheckInDate;
-        int actualDays = HotelPricingPolicy.CalculateStayDays(start, checkoutAt);
-        return new RoomChargeQuote(
-            actualDays,
+        var actualQuote = HotelPricingPolicy.CalculateRoomCharge(
+            start,
+            checkoutAt,
             booking.BaseDailyPrice,
-            booking.BaseDailyPrice * actualDays);
+            booking.Cage.RoomType.HourlyPrice);
+        return new RoomChargeQuote(
+            actualQuote.FullDays,
+            actualQuote.ExtraHours,
+            actualQuote.DailyPrice,
+            actualQuote.HourlyPrice,
+            actualQuote.TotalAmount);
     }
 
     // [nam] Tính số giờ và tiền phụ thu khi trả pet sau thời gian miễn phí.
@@ -423,5 +484,13 @@ public class HotelCheckoutService : IHotelCheckoutService
     }
 
     // [nam] Kết quả nội bộ của phép tính tiền chuồng theo số ngày, đơn giá và tổng tiền.
-    private readonly record struct RoomChargeQuote(int ChargeableDays, decimal UnitPrice, decimal Amount);
+    private readonly record struct RoomChargeQuote(
+        int FullDays,
+        int ExtraHours,
+        decimal DailyPrice,
+        decimal HourlyPrice,
+        decimal Amount)
+    {
+        public int ChargeableDays => FullDays + (ExtraHours > 0 ? 1 : 0);
+    }
 }

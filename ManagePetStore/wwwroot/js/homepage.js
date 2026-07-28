@@ -75,6 +75,36 @@ function formatCurrency(amount) {
         return Math.ceil((end - start) / dayInMilliseconds);
     }
 
+    // [nam] Tính tiền phòng theo ngày đủ + giờ lẻ, phần giờ bị chặn trần bằng giá một ngày.
+    function getRoomQuote(dailyPrice, hourlyPrice) {
+        const start = parseDateTimeInput(checkIn?.value);
+        const end = parseDateTimeInput(checkOut?.value);
+        if (!start || !end || end <= start || dailyPrice <= 0 || hourlyPrice <= 0) {
+            return { fullDays: 1, extraHours: 0, total: dailyPrice, durationText: '1 ngày' };
+        }
+
+        const totalHours = (end - start) / (60 * 60 * 1000);
+        if (totalHours <= 24) {
+            return { fullDays: 1, extraHours: 0, total: dailyPrice, durationText: '1 ngày' };
+        }
+
+        let fullDays = Math.floor(totalHours / 24);
+        const remainingHours = totalHours - fullDays * 24;
+        let extraHours = remainingHours > 0 ? Math.ceil(remainingHours) : 0;
+        const extraAmount = Math.min(extraHours * hourlyPrice, dailyPrice);
+        if (extraAmount >= dailyPrice) {
+            fullDays += 1;
+            extraHours = 0;
+        }
+
+        return {
+            fullDays,
+            extraHours,
+            total: fullDays * dailyPrice + (extraHours * hourlyPrice),
+            durationText: extraHours > 0 ? `${fullDays} ngày + ${extraHours} giờ` : `${fullDays} ngày`
+        };
+    }
+
     // [nam] Làm tròn thời gian lên mốc 15 phút kế tiếp.
     function roundUpToQuarterHour(date) {
         const rounded = new Date(date);
@@ -313,15 +343,16 @@ function formatCurrency(amount) {
 
         const selected = roomSelect.options[roomSelect.selectedIndex];
         const dailyPrice = parseFloat(selected?.dataset.price) || 0;
-        const nights = Math.max(1, getChargeableDays());
+        const hourlyPrice = parseFloat(selected?.dataset.hourlyPrice) || 0;
         const discountPercent = parseFloat(form?.dataset.discountPercent) || 0;
 
-        const subtotal = dailyPrice * nights;
-        const discounted = subtotal * (1 - discountPercent / 100);
-        const foodTotal = getFoodQuote().total;
+        const roomQuote = getRoomQuote(dailyPrice, hourlyPrice);
+        const foodQuote = getFoodQuote();
+        const discounted = roomQuote.total * (1 - discountPercent / 100);
+        const foodTotal = foodQuote.total;
         totalEl.textContent = formatCurrency(discounted + foodTotal);
         if (foodTotalEl) foodTotalEl.textContent = formatCurrency(foodTotal);
-        if (nightsEl) nightsEl.textContent = nights + ' ngày';
+        if (nightsEl) nightsEl.textContent = `${roomQuote.durationText} · thức ăn ${foodQuote.nights} ngày`;
     }
 
     // [nam] Cập nhật diễn giải giá gói ăn và tính lại tổng booking.

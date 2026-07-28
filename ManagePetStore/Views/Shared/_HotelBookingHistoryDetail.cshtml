@@ -39,7 +39,7 @@
         <strong>@(Model.ActualCheckOutAt?.ToString("dd/MM/yyyy HH:mm") ?? FormatScheduledDateTime(scheduledCheckOut))</strong>
         @if (Model.ActualCheckOutAt.HasValue) { <small>Dự kiến: @FormatScheduledDateTime(scheduledCheckOut)</small> }
     </div>
-    <div><span>Thời gian</span><strong>@Model.StayDays ngày</strong></div>
+    <div><span>Thời gian</span><strong>@Model.StayDays ngày dịch vụ/thức ăn</strong></div>
 </div>
 
 <div class="hbh-detail-grid">

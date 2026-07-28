@@ -426,29 +426,56 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                 .OrderByDescending(b => b.DateTime)
                 .ToListAsync();
 
+            var bookingIds = bookings.Select(booking => booking.BookingId).ToList();
+            var bundledSpaLinks = await _context.HotelStaySpaLinks
+                .AsNoTracking()
+                .Where(link => bookingIds.Contains(link.SpaBookingId) &&
+                               link.HotelBooking.CheckoutStatement != null &&
+                               link.HotelBooking.CheckoutStatement.Status == "ReadyForPayment" &&
+                               link.HotelBooking.CheckoutStatement.OrderId == null)
+                .Select(link => new
+                {
+                    link.SpaBookingId,
+                    link.HotelBookingId,
+                    HotelCheckoutId = link.HotelBooking.CheckoutStatement!.CheckoutStatementId
+                })
+                .ToListAsync();
+            var bundledSpaById = bundledSpaLinks.ToDictionary(link => link.SpaBookingId);
+
+            var activeHotelStays = await _context.HotelBookings
+                .AsNoTracking()
+                .Where(hotel => hotel.Status == "Active" || hotel.Status == "Đang ở")
+                .Select(hotel => new { hotel.PetId, hotel.CustomerId })
+                .ToListAsync();
+
             var validBookings = bookings
                 .Where(b => !activeQueueItems.Any(q => q.PetName != null && b.Pet != null && q.PetName.Trim().Equals(b.Pet.Name.Trim(), StringComparison.OrdinalIgnoreCase) && q.ArrivalTime.Date == b.DateTime.Date && q.ArrivalTime.Hour == b.DateTime.Hour))
-                .Select(b => new
+                .Select(b =>
                 {
-                    BookingId = b.BookingId,
-                    CustomerId = b.CustomerId,
-                    CustomerName = b.Customer?.FullName ?? "Khách hàng",
-                    CustomerPhone = b.Customer?.Phone ?? "",
-                    PetName = b.Pet?.Name ?? "Thú cưng",
-                    PetId = b.PetId,
-                    PetWeight = b.Pet?.Weight ?? 0,
-                    ServiceName = b.Service?.Name ?? "Dịch vụ Spa",
-                    ServiceId = b.ServiceId,
-                    Price = b.Price,
-                    GroomerId = b.GroomerId,
-                    GroomerName = b.Groomer?.FullName ?? "Groomer",
-                    DateTime = b.DateTime.ToString("dd/MM/yyyy HH:mm"),
-                    HeldForHotel = _context.HotelBookings.Any(hotel =>
-                        hotel.PetId == b.PetId &&
-                        hotel.CustomerId == b.CustomerId &&
-                        (hotel.Status == "Active" || hotel.Status == "Đang ở") &&
-                        b.DateTime >= hotel.CheckInDate &&
-                        (!hotel.CheckOutDate.HasValue || b.DateTime <= hotel.CheckOutDate.Value))
+                    bundledSpaById.TryGetValue(b.BookingId, out var bundledLink);
+                    bool heldForHotel = bundledLink != null || activeHotelStays.Any(hotel =>
+                        hotel.PetId == b.PetId && hotel.CustomerId == b.CustomerId);
+
+                    return new
+                    {
+                        BookingId = b.BookingId,
+                        CustomerId = b.CustomerId,
+                        CustomerName = b.Customer?.FullName ?? "Khách hàng",
+                        CustomerPhone = b.Customer?.Phone ?? "",
+                        PetName = b.Pet?.Name ?? "Thú cưng",
+                        PetId = b.PetId,
+                        PetWeight = b.Pet?.Weight ?? 0,
+                        ServiceName = b.Service?.Name ?? "Dịch vụ Spa",
+                        ServiceId = b.ServiceId,
+                        Price = b.Price,
+                        GroomerId = b.GroomerId,
+                        GroomerName = b.Groomer?.FullName ?? "Groomer",
+                        DateTime = b.DateTime.ToString("dd/MM/yyyy HH:mm"),
+                        HeldForHotel = heldForHotel,
+                        BundledWithHotel = bundledLink != null,
+                        LinkedHotelBookingId = bundledLink?.HotelBookingId,
+                        LinkedHotelCheckoutId = bundledLink?.HotelCheckoutId
+                    };
                 })
                 .ToList();
 
@@ -478,7 +505,23 @@ namespace ManagePetStore.Areas.Cashier.Controllers
                     statement.HotelBooking.CageId,
                     Total = statement.TotalAmount,
                     PreparedAt = statement.PreparedAt.ToString("dd/MM/yyyy HH:mm"),
-                    LinkedSpaBookingIds = statement.HotelBooking.SpaLinks.Select(link => link.SpaBookingId).ToList()
+                    LinkedSpaBookingIds = statement.HotelBooking.SpaLinks.Select(link => link.SpaBookingId).ToList(),
+                    LinkedSpas = statement.HotelBooking.SpaLinks.Select(link => new
+                    {
+                        BookingId = link.SpaBookingId,
+                        CustomerId = link.SpaBooking.CustomerId,
+                        CustomerName = link.SpaBooking.Customer.FullName,
+                        CustomerPhone = link.SpaBooking.Customer.Phone,
+                        PetId = link.SpaBooking.PetId,
+                        PetName = link.SpaBooking.Pet.Name,
+                        PetWeight = link.SpaBooking.Pet.Weight,
+                        ServiceId = link.SpaBooking.ServiceId,
+                        ServiceName = link.SpaBooking.Service.Name,
+                        Price = link.SpaBooking.Price,
+                        GroomerId = link.SpaBooking.GroomerId,
+                        GroomerName = link.SpaBooking.Groomer != null ? link.SpaBooking.Groomer.FullName : "Groomer",
+                        DateTime = link.SpaBooking.DateTime.ToString("dd/MM/yyyy HH:mm")
+                    }).ToList()
                 })
                 .ToListAsync();
             return Json(new { success = true, data = statements });

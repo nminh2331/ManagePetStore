@@ -88,6 +88,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (list) {
                         list.innerHTML = data.data.map(b => {
                             const bookingJson = JSON.stringify(b).replace(/'/g, "&#39;");
+                            const isBundled = Boolean(b.bundledWithHotel);
+                            const isHeld = Boolean(b.heldForHotel);
+                            const buttonLabel = isBundled
+                                ? `Đã ghép HB#${b.linkedHotelBookingId}`
+                                : (isHeld ? 'Chờ trả chuồng' : 'Thu tiền');
+                            const buttonIcon = isBundled
+                                ? 'bi-link-45deg'
+                                : (isHeld ? 'bi-hourglass-split' : 'bi-plus-circle');
+                            const buttonAttributes = isHeld
+                                ? `disabled title="${isBundled ? 'Spa đã được ghép vào bảng kê chuồng' : 'Spa thuộc lượt lưu trú chuồng đang ở'}"`
+                                : `onclick='handleSelectCompletedSpa(${bookingJson})'`;
                             return `
                                 <div class="pos-spa-item" style="padding:16px; border: 1px solid var(--pos-border); border-radius:12px; display:flex; flex-direction:column; gap:8px; cursor:default; background:#fff; align-items: stretch; height: auto;">
                                     <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -102,8 +113,8 @@ document.addEventListener('DOMContentLoaded', function () {
                                     </div>
                                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
                                         <strong style="color:#ef4444; font-size:14px;">${formatCurrency(b.price)}</strong>
-                                        <button class="btn-pos-primary" style="padding:4px 8px; font-size:11px; border-radius:6px;" ${b.heldForHotel ? 'disabled title="Spa thuộc lượt lưu trú chuồng đang ở"' : `onclick='handleSelectCompletedSpa(${bookingJson})'`}>
-                                            <i class="bi ${b.heldForHotel ? 'bi-hourglass-split' : 'bi-plus-circle'}"></i> ${b.heldForHotel ? 'Chờ trả chuồng' : 'Thu tiền'}
+                                        <button class="btn-pos-primary" style="padding:4px 8px; font-size:11px; border-radius:6px;" ${buttonAttributes}>
+                                            <i class="bi ${buttonIcon}"></i> ${buttonLabel}
                                         </button>
                                     </div>
                                 </div>
@@ -128,10 +139,14 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('emptyHotelPending').style.display = rows.length ? 'none' : 'block';
             document.getElementById('listHotelPending').innerHTML = rows.map(item => {
                 const json = JSON.stringify(item).replace(/'/g, "&#39;");
+                const linkedSpaCount = (item.linkedSpaBookingIds || []).length;
+                const combinedTotal = item.total + (item.linkedSpas || []).reduce((sum, spa) => sum + spa.price, 0);
+                const bundledLabel = linkedSpaCount ? `<div style="font-size:11px;color:#f97316;"><i class="bi bi-link-45deg"></i> Kèm ${linkedSpaCount} dịch vụ Spa trong cùng hóa đơn</div>` : '';
                 return `<div class="pos-spa-item" style="padding:16px;border:1px solid var(--pos-border);border-radius:8px;background:#fff;display:grid;gap:8px;">
                     <div style="display:flex;justify-content:space-between;"><strong>HB#${item.hotelBookingId}</strong><small>${item.preparedAt}</small></div>
                     <div style="font-size:12px;"><div><strong>Khách:</strong> ${item.customerName} (${item.customerPhone})</div><div><strong>Pet:</strong> ${item.petName}</div><div><strong>Phòng:</strong> ${item.roomTypeName} · ${item.cageId}</div></div>
-                    <div style="display:flex;justify-content:space-between;align-items:center;"><strong style="color:#ef4444;">${formatCurrency(item.total)}</strong><button class="btn-pos-primary" style="padding:5px 9px;font-size:11px;" onclick='handleSelectHotelCheckout(${json})'><i class="bi bi-plus-circle"></i> Thu tiền</button></div>
+                    ${bundledLabel}
+                    <div style="display:flex;justify-content:space-between;align-items:center;"><strong style="color:#ef4444;">${formatCurrency(combinedTotal)}</strong><button class="btn-pos-primary" style="padding:5px 9px;font-size:11px;" onclick='handleSelectHotelCheckout(${json})'><i class="bi bi-plus-circle"></i> Thu tiền</button></div>
                 </div>`;
             }).join('');
         } catch (error) {
@@ -147,13 +162,21 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!confirm(`Giỏ hiện thuộc ${currentCustomer.fullName}. Chuyển sang ${item.customerName} và xóa giỏ cũ?`)) return;
             clearCurrentCartAndCustomer();
         }
+        const expectedSpaIds = item.linkedSpaBookingIds || [];
+        const linkedSpaBookings = Array.isArray(item.linkedSpas)
+            ? item.linkedSpas
+            : expectedSpaIds.map(spaId => completedSpaBookings.find(row => row.bookingId === spaId)).filter(Boolean);
+        if (linkedSpaBookings.length !== expectedSpaIds.length) {
+            alert('Chưa tải đủ dịch vụ Spa liên kết. Vui lòng tải lại để tránh thiếu khoản thu.');
+            return;
+        }
+
         handleSelectCustomer({ customerId:item.customerId, fullName:item.customerName, phone:item.customerPhone, membershipTier:'Thành viên', loyaltyPoints:0, pets:[{ petId:item.petId, name:item.petName, weight:item.petWeight }] });
         cart = cart.filter(row => !(row.type === 'Hotel' && row.hotelCheckoutId === item.hotelCheckoutId));
         cart.push({ type:'Hotel', id:String(item.roomTypeId), name:`Chuồng ${item.roomTypeName} - ${item.petName}`, quantity:1, price:item.total, total:item.total, petId:item.petId, petName:item.petName, hotelCheckoutId:item.hotelCheckoutId });
 
-        (item.linkedSpaBookingIds || []).forEach(spaId => {
-            const spa = completedSpaBookings.find(row => row.bookingId === spaId);
-            if (!spa || cart.some(row => row.type === 'Spa' && row.bookingId === spa.bookingId)) return;
+        linkedSpaBookings.forEach(spa => {
+            if (cart.some(row => row.type === 'Spa' && row.bookingId === spa.bookingId)) return;
             cart.push({ type:'Spa', id:String(spa.serviceId), name:spa.serviceName, quantity:1, price:spa.price, total:spa.price, petId:spa.petId, petName:spa.petName, petWeight:spa.petWeight || 5, groomerId:spa.groomerId, appointmentTime:new Date().toISOString(), bookingId:spa.bookingId });
         });
         saveCartLocally();
