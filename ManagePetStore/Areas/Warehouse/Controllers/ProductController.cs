@@ -80,11 +80,11 @@ namespace ManagePetStore.Areas.Warehouse.Controllers
         {
             if (ImageFile != null && ImageFile.Length > 0)
             {
-                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+                var allowedExtensions = new[] { ".jpg",".png",};
                 var extension = Path.GetExtension(ImageFile.FileName).ToLowerInvariant();
                 if (!allowedExtensions.Contains(extension))
                 {
-                    ModelState.AddModelError("ImageUrl", "Chỉ chấp nhận các định dạng ảnh (.jpg, .jpeg, .png, .gif, .webp).");
+                    ModelState.AddModelError("ImageUrl", "Chỉ chấp nhận các định dạng ảnh (.jpg,.png).");
                 }
                 else
                 {
