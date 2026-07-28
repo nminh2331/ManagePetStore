@@ -1,3 +1,5 @@
+
+
 // hà hoàng hiệp code -- xử lý phần place order và make payment
 using System.Security.Claims;
 using ManagePetStore.Areas.Customer.Models;
@@ -44,28 +46,39 @@ public class CheckoutController : Controller
 
     [HttpGet]
     public async Task<IActionResult> Index()
-    {
+    {//Ví dụ URL lúc này sẽ là: /Checkout?cancel=true&status=CANCELLED&orderCode=123456.
+     ////Code sẽ bóc tách các giá trị true, CANCELLED và 123456 gán vào 3 biến tương ứng.
+     ///
         string? payOsCancel = Request.Query["cancel"];
         string? payOsStatus = Request.Query["status"];
         string? orderCodeStr = Request.Query["orderCode"];
 
+        // LOGIC HỦY ĐƠN HÀNG 
         if (payOsCancel == "true" || payOsStatus == "CANCELLED")
         {
             if (!string.IsNullOrEmpty(orderCodeStr) && long.TryParse(orderCodeStr, out long code))
             {
-                var targetOrderId = $"ORD-{code}";
+                var targetOrderId = $"ORD-{code}";  //Ghép nối chuỗi để tạo ra mã đơn hàng chuẩn trong hệ thống của bạn (Ví dụ hệ thống lưu mã là ORD-123456).
+
+                //Chọc vào Database (_context.Orders), tìm đơn hàng đầu tiên (FirstOrDefaultAsync) có mã khớp với ORD-123456 hoặc chuẩn cũ là OD-123456.
                 var orderToCancel = await _context.Orders.FirstOrDefaultAsync(o => o.OrderId == targetOrderId || o.OrderId == $"OD-{code}");
+
                 if (orderToCancel != null && orderToCancel.Status == "Chờ thanh toán")
                 {
-                    orderToCancel.Status = "Đã hủy";
-                    _context.Entry(orderToCancel).State = EntityState.Modified;
-                    await _context.SaveChangesAsync();
+                    orderToCancel.Status = "Đã hủy";  //Cập nhật trạng thái của đơn hàng đó thành "Đã hủy" trong bộ nhớ.
+                   
+                    _context.Entry(orderToCancel).State = EntityState.Modified; 
+                    //Đánh dấu cho hệ thống biết rằng bản ghi đơn hàng này vừa bị chỉnh sửa, cần phải được lưu lại.
+                 
+                    await _context.SaveChangesAsync(); //Lưu sự thay đổi trạng thái này xuống Database vật lý một cách vĩnh viễn
                 }
             }
             TempData["ErrorMessage"] = "Giao dịch thanh toán online đã bị hủy.";
+            //Lưu một câu thông báo màu đỏ vào bộ nhớ tạm TempData để lát nữa hiển thị ra màn hình cho người dùng biết họ vừa hủy giao dịch
         }
 
-        var cart = await _cartService.GetCartPageAsync(); // Lấy cart
+        var cart = await _cartService.GetCartPageAsync(); // Gọi sang CartService để lấy toàn bộ dữ liệu giỏ hàng hiện tại của người dùng
+                                                          // (bao gồm danh sách sản phẩm, số lượng, tổng tiền).
         if (!cart.Items.Any())
         {
             TempData["ErrorMessage"] = "Giỏ hàng trống. Vui lòng thêm sản phẩm trước khi thanh toán.";
@@ -112,7 +125,7 @@ public class CheckoutController : Controller
         string fullName,
         string phone,
         string email,
-        string shippingAddress,
+        string shippingAddress,     
         string? orderNote,
         string paymentMethod)
     {
@@ -121,7 +134,7 @@ public class CheckoutController : Controller
         var trimmedEmail = email?.Trim() ?? string.Empty;
         var trimmedShippingAddress = shippingAddress?.Trim() ?? string.Empty;
 
-        // 1. Kiểm tra giỏ hàng
+        // 1. Kiểm tra giỏ hàng  --Lấy thông tin giỏ hàng từ CartService
         var cart = await _cartService.GetCartPageAsync();
         if (!cart.Items.Any())
         {
@@ -137,7 +150,7 @@ public class CheckoutController : Controller
             return RedirectToAction("Index", "Cart");
         }
 
-        // 3. VALIDATION DỮ LIỆU ĐẦU VÀO: Bắt buộc nhập đầy đủ thông tin giao hàng
+        // 3. VALIDATION DỮ LIỆU ĐẦU VÀO: Bắt buộc nhập đầy đủ thông tin giao hàng - Bắt lỗi nhập thiếu 1 trong 4 trường bắt buộc
         if (string.IsNullOrWhiteSpace(trimmedFullName) ||
             string.IsNullOrWhiteSpace(trimmedPhone) ||
             string.IsNullOrWhiteSpace(trimmedEmail) ||
@@ -147,7 +160,7 @@ public class CheckoutController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        // Validate Regex Họ tên
+        // Validate Regex Họ tên  - BE VALIDATE REGEX HỌ TÊN (Chỉ chứa chữ & khoảng trắng)
         var fullNameRegex = new Regex(@"^[\p{L}\s]+$");
         if (!fullNameRegex.IsMatch(trimmedFullName))
         {
@@ -208,6 +221,7 @@ public class CheckoutController : Controller
 
         try
         {
+            // Khởi tạo Transaction đảm bảo tính toàn vẹn dữ liệu (Atomic)
             await using var transaction = await _context.Database.BeginTransactionAsync();
             //Tạo entity Order
             var order = new Order
@@ -224,7 +238,7 @@ public class CheckoutController : Controller
                 Date = DateTime.Now
             };
 
-            _context.Orders.Add(order);  //Đưa entity vào change tracker, chưa save ngay.
+            _context.Orders.Add(order);  //Đưa entity vào dbCONTEXT change tracker, chưa save ngay.
 
             var systemStockDetails = new List<StockMovementDetail>();
 
@@ -362,8 +376,9 @@ public class CheckoutController : Controller
                     bool isOnlinePayment = normalizedPayment == "Thanh toán online";
                     await EnsureProductForOrderItemAsync(item, deductStock: !isOnlinePayment);
                 }
-                //Tạo OrderItem
-
+          
+                
+                //   Thêm chi tiết đơn hàng(OrderItems)
                 _context.OrderItems.Add(new OrderItem
                 {
                     OrderId = orderId,
@@ -386,17 +401,27 @@ public class CheckoutController : Controller
             }
 
 
+            // Gọi Cổng Thanh Toán PayOS & Gửi Email Hóa Đơn 
             string? payosCheckoutUrl = null;
+            //NẾU CHỌN THANH TOÁN ONLINE -> GỌI SDK PAYOS TẠO VIETQR
             if (normalizedPayment == "Thanh toán online")
             {
-                var host = $"{Request.Scheme}://{Request.Host}";
-                var paymentRequest = new CreatePaymentLinkRequest
+                var host = $"{Request.Scheme}://{Request.Host}"; //Tự động lấy Domain của Website (Host URL)
+               
+                var paymentRequest = new CreatePaymentLinkRequest  //Đóng gói dữ liệu yêu cầu thanh toán
                 {
-                    OrderCode = orderCode,
-                    Amount = (long)cart.GrandTotal,
-                    Description = $"PetStore {orderCode}",
+                    OrderCode = orderCode,  // MÃ ĐƠN HÀNG
+                    Amount = (long)cart.GrandTotal,  // TỔNG TIỀN 
+                    Description = $"PetStore {orderCode}",  //Nội dung chuyển khoản ngân hàng
+                   
+                    // tự động đưa khách quay lại website của bạn nếu khách bấm Hủy thanh toán trên giao diện PayOS
                     CancelUrl = $"{host}/Customer/Checkout/Success?orderId={orderId}&cancel=true",
+                  
+                    //Đường dẫn PayOS sẽ đưa khách quay về sau khi khách đã quét mã thanh toán thành công.
                     ReturnUrl = $"{host}/Customer/Checkout/Success?orderId={orderId}",
+
+                    //Sử dụng LINQ .Select(...) để duyệt danh sách sản phẩm trong giỏ hàng (cart.Items)
+                    //và chuyển đổi thành danh sách chi tiết món hàng (PaymentLinkItem) mà PayOS yêu cầu để hiển thị trên hóa đơn điện tử của PayOS.
                     Items = cart.Items.Select(item => new PaymentLinkItem
                     {
                         Name = item.Name,
@@ -405,19 +430,27 @@ public class CheckoutController : Controller
                     }).ToList()
                 };
 
+                //Gọi API PayOS tạo link thanh toán
+                //Gửi toàn bộ dữ liệu vừa chuẩn bị sang hệ thống server của PayOS để tạo một link thanh toán VietQR động.
                 var paymentLinkResult = await _payOS.PaymentRequests.CreateAsync(paymentRequest);
-                payosCheckoutUrl = paymentLinkResult.CheckoutUrl;
+                payosCheckoutUrl = paymentLinkResult.CheckoutUrl; //Nhận kết quả trả về từ PayOS và lấy ra đường dẫn trang thanh toán
             }
 
-            // Loyalty points will be calculated when the order is completed.
+            // ĐIỂM TÍCH LŨY SẼ ĐƯỢC TÍNH KHI ĐƠN HOÀN THÀNH 
             _context.Entry(customer).State = EntityState.Modified;
 
+
+            //TRỪ TIỀN VÍ ĐIỆN TỬ (Nếu PHƯƠNG THỨC THANH TOÁN  = Ví điện tử)
             if (normalizedPayment == "Ví điện tử" && customerWallet != null)
             {
-                customerWallet.Balance -= cart.GrandTotal;
+                customerWallet.Balance -= cart.GrandTotal;  // TRỪ SỐ DƯ BALANCE
                 customerWallet.UpdatedAt = DateTime.Now;
+               
+                //Thủ công thông báo cho Entity Framework biết rằng thông tin ví tiền của khách hàng (customerWallet) đã bị thay đổi,
+                //và chuẩn bị cập nhật (UPDATE) nó xuống CSDL.
                 _context.Entry(customerWallet).State = EntityState.Modified;
 
+                //    // Ghi nhật ký lịch sử giao dịch Ví (WalletTransaction)
                 _context.WalletTransactions.Add(new WalletTransaction
                 {
                     WalletId = customerWallet.WalletId,
@@ -429,6 +462,7 @@ public class CheckoutController : Controller
                 });
             }
 
+            // TRỪ TỒN KHO SẢN PHẨM HỆ THỐNG (Gửi thông tin sang StockMovementService)
             if (systemStockDetails.Any())
             {
                 await _stockMovementService.CreateSystemMovement(
@@ -446,21 +480,27 @@ public class CheckoutController : Controller
             await transaction.CommitAsync();
 
             if (normalizedPayment != "Thanh toán online")
-            {
+            {  //Xử lý xóa Giỏ hàng (Cho trường hợp KHÔNG phải thanh toán online)
                 _cartService.ClearCart();
             }
 
             if (normalizedPayment == "Thanh toán online")
             {
                 if (!string.IsNullOrWhiteSpace(orderNote))
-                {
+                { //ếu có ghi chú đơn hàng (orderNote), tiến hành cắt khoảng trắng thừa (.Trim())
+                  //và lưu vào cả TempData lẫn Session để giữ lại ghi chú này khi khách quay về từ PayOS
                     TempData["OrderNote"] = orderNote.Trim();
                     HttpContext.Session.SetString("OrderNote", orderNote.Trim());
                 }
-                // Store cart items in session so email can be sent after PayOS confirms payment
+                //Chuyển danh sách sản phẩm trong giỏ (cart.Items) thành chuỗi văn bản JSON, rồi lưu vào Session kèm theo mã đơn hàng orderId.
                 var cartItemsJson = System.Text.Json.JsonSerializer.Serialize(cart.Items.ToList());
+
+                //rồi lưu vào Session kèm theo mã đơn hàng orderId
+                //Mục đích: Khi khách thanh toán xong bên PayOS, hệ thống sẽ đọc Session này để biết đơn hàng gồm những món gì và gửi email hóa đơn cho khách.
                 HttpContext.Session.SetString($"CheckoutCartItems_{orderId}", cartItemsJson);
                 // Store success model so Success page can read it when coming from PayOS
+
+                //Khởi tạo đối tượng payosSuccessModel chứa toàn bộ thông tin sẽ hiển thị trên trang "Đặt hàng thành công" (Mã đơn, Tên, SĐT, Địa chỉ, Email, Tổng tiền, Số lượng).
                 var payosSuccessModel = new CheckoutSuccessViewModel
                 {
                     OrderId = orderId,
@@ -472,6 +512,8 @@ public class CheckoutController : Controller
                     Total = cart.GrandTotal,
                     ItemCount = cart.TotalQuantity
                 };
+                //Mã hóa đối tượng này thành chuỗi JSON và cất vào Session tên là "CheckoutSuccess".
+                //Vì khách sắp bị đẩy sang trang web khác (PayOS), nên cất vào Session là cách duy nhất để giữ lại thông tin này khi họ quay về.
                 HttpContext.Session.SetString("CheckoutSuccess", System.Text.Json.JsonSerializer.Serialize(payosSuccessModel));
 
                 if (!string.IsNullOrEmpty(payosCheckoutUrl))
@@ -480,6 +522,8 @@ public class CheckoutController : Controller
                 }
             }
 
+
+            //Chuẩn bị dữ liệu hiển thị (Trường hợp Thanh toán tiền mặt / COD)
             var successModel = new CheckoutSuccessViewModel
             {
                 OrderId = orderId,
@@ -492,7 +536,7 @@ public class CheckoutController : Controller
                 ItemCount = cart.TotalQuantity
             };
 
-            //Gửi email xác nhận
+            //Gửi email xác nhận VỀ GMAIL 
             try
             {
                 await _checkoutEmailService.SendOrderConfirmationAsync(
@@ -509,7 +553,11 @@ public class CheckoutController : Controller
             }
 
             //Lưu dữ liệu success bằng TempData
+            //mã hóa (Serialize) đối tượng successModel (chứa các thông tin: Mã đơn, Tên, SĐT, Địa chỉ, Tổng tiền...) thành một chuỗi văn bản dạng JSON.
             var successJson = System.Text.Json.JsonSerializer.Serialize(successModel);
+
+            //TempData["CheckoutSuccess"]: Lưu chuỗi JSON này vào TempData.
+            //Mục đích là truyền dữ liệu sang trang Thông báo đặt hàng thành công (Success).
             TempData["CheckoutSuccess"] = successJson;
             HttpContext.Session.SetString("CheckoutSuccess", successJson);
 
@@ -517,7 +565,7 @@ public class CheckoutController : Controller
             {
                 TempData["OrderNote"] = orderNote.Trim();
             }
-
+            //Gửi lệnh chuyển hướng trình duyệt (Redirect) sang trang Success (Action Method hiển thị kết quả đặt hàng thành công).
             return RedirectToAction(nameof(Success));
         }
         catch (Exception)
@@ -536,15 +584,16 @@ public class CheckoutController : Controller
 
         if (!string.IsNullOrEmpty(json))
         {
+            //"Giải mã" chuỗi văn bản JSON thành đối tượng C# CheckoutSuccessViewModel và gán vào biến model để sẵn sàng gửi sang View.
             model = System.Text.Json.JsonSerializer.Deserialize<CheckoutSuccessViewModel>(json);
         }
 
         if (!string.IsNullOrEmpty(orderId))
         {
             var order = await _context.Orders
-                .Include(o => o.OrderItems)
-                .Include(o => o.Customer)
-                .FirstOrDefaultAsync(o => o.OrderId == orderId);
+                .Include(o => o.OrderItems)  //Tải kèm danh sách các chi tiết món hàng thuộc đơn này (Eager Loading).
+                .Include(o => o.Customer)  //Tải kèm thông tin Khách hàng sở hữu đơn hàng.
+                .FirstOrDefaultAsync(o => o.OrderId == orderId);  //Tìm đơn hàng khớp chính xác với mã orderId.
 
             if (order != null)
             {
@@ -556,7 +605,7 @@ public class CheckoutController : Controller
                     if (parts.Length >= 2 && long.TryParse(parts[^1], out long orderCode))
                     {
                         try
-                        {
+                        { // Xử lý trường hợp Người dùng Hủy thanh toán
                             bool isPaid = false;
                             string? payOsStatus = Request.Query["status"];
                             string? payOsCancel = Request.Query["cancel"];
@@ -572,12 +621,13 @@ public class CheckoutController : Controller
                                 return RedirectToAction(nameof(Index));
                             }
 
+                            //Xác minh Trạng thái Thanh toán Thành công
                             if (payOsStatus == "PAID")
                             {
                                 isPaid = true;
                             }
                             else
-                            {
+                            {  //chủ động gọi trực tiếp lệnh _payOS.PaymentRequests.GetAsync(orderCode) sang Server PayOS để vấn tin trạng thái giao dịch thực tế.
                                 var paymentInfo = await _payOS.PaymentRequests.GetAsync(orderCode);
                                 if (paymentInfo != null && paymentInfo.Status.ToString().ToUpper() == "PAID")
                                 {

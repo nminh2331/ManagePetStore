@@ -1,3 +1,5 @@
+
+//
 (function () {
     var overlay = document.getElementById('reviewModalOverlay');
     if (overlay) {
@@ -130,7 +132,7 @@
             cancelModal.style.display = 'none';
             document.body.style.overflow = '';
         }
-
+        // // Gắn sự kiện click mở Popup Modal Hủy đơn độc lập
         document.querySelectorAll('.js-open-cancel-order').forEach(function (btn) {
             btn.addEventListener('click', function (e) {
                 e.preventDefault();
