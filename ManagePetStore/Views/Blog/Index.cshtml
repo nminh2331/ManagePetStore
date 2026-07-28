@@ -36,6 +36,9 @@
         .blog-filter-pill.active {
             background: #f97316; color: #fff; border-color: #f97316;
         }
+        .blog-filter-row {
+            margin-top: 22px; /* adjust value as needed (px) */
+        }
         .blog-grid-card {
             border-radius: 16px;
             overflow: hidden;
@@ -131,7 +134,7 @@
         <!-- Bộ lọc thể loại -->
         @if (categories.Any())
         {
-            <div class="d-flex flex-wrap gap-2 mb-5">
+            <div class="d-flex flex-wrap gap-2 mb-5 blog-filter-row">
                 <a href="/Blog" class="blog-filter-pill @(string.IsNullOrEmpty(selectedCategory) ? "active" : "")">
                     Tất cả
                 </a>
