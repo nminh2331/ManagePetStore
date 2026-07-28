@@ -10,13 +10,17 @@
 }
 
 <section class="cart-page">
+    <!-- Tiêu đề và Thông báo hệ thống (Alert)-->
+
     <div class="container-fluid cart-page-inner">
         <a class="cart-back-link" asp-area="" asp-controller="Home" asp-action="Index">
             <i class="bi bi-arrow-left"></i> Tiếp tục mua sắm
         </a>
 
         <h1 class="cart-page-title">Giỏ hàng của bạn</h1>
+        <!-- Đây là cầu nối giữa FE và BE. Khi Backend (Controller) xử lý thành công (ví dụ: xóa sản phẩm), nó lưu câu chữ vào TempData.
 
+        Lúc trang tải lại, FE sẽ kiểm tra xem có câu chữ nào không, nếu có thì vẽ ra một cái hộp màu xanh (Success) hoặc đỏ (Error).-->
         @if (TempData["SuccessMessage"] != null)
         {
             <div class="cart-alert cart-alert-success">@TempData["SuccessMessage"]</div>
@@ -29,7 +33,7 @@
 
         
 
-
+        <!--   Chỉ hiển thị thanh tìm kiếm nếu giỏ hàng có ít nhất 1 sản phẩm.-->
         @if (Model.Items.Any())
         {
             <div class="cart-toolbar">
@@ -45,7 +49,7 @@
                     <button type="submit" class="cart-filter-btn">Lọc</button>
                     @if (Model.HasFilter)
                     {
-                        <a asp-action="Index" class="cart-reset-btn">Xóa lọc</a>
+                        <a asp-action="Index" class="cart-reset-btn">Xóa lọc</a>  <!--  nút xóa lọc .-->
                     }
                 </form>
 
@@ -88,6 +92,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    <!--  bảng chi tiết sản phẩm vòng lặp.-->
                                     @foreach (var item in Model.VisibleItems)
                                     {
                                         <tr>
@@ -101,19 +106,22 @@
                                                 </div>
                                             </td>
                                             <td>
-                                                <span class="cart-unit-price">@item.UnitPrice.ToString("N0")đ</span>
+                                                <span class="cart-unit-price">@item.UnitPrice.ToString("N0")đ</span><!--format so tien theo chuan dau ,-->
                                             </td>
                                             <td>
                                                 <div class="cart-qty-control">
-                                                    <form asp-action="Decrease" method="post" class="d-inline">
+                                                    <form asp-action="Decrease" method="post" class="d-inline"> 
+                                                        <!--nút giảm số lượng giỏ hàng 
+                                                        Khi click dấu -, nó gửi một HTTP POST đến hàm decrease() trong CartController.
+                                                                    -->
                                                         @Html.AntiForgeryToken()
                                                         <input type="hidden" name="sku" value="@item.Sku" />
                                                         <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
                                                         <input type="hidden" name="page" value="@Model.Page" />
-                                                        <button type="submit" class="cart-qty-btn" aria-label="Giảm số lượng">−</button>
+                                                        <button type="submit" class="cart-qty-btn" aria-label="Giảm số lượng">−</button> <!-- nút giảm số lượng-->
                                                     </form>
                                                     <span class="cart-qty-value">@item.Quantity</span>
-                                                    <form asp-action="Increase" method="post" class="d-inline">
+                                                    <form asp-action="Increase" method="post" class="d-inline"> <!-- nút tăng số lượng sản phẩm trong giỏ -->
                                                         @Html.AntiForgeryToken()
                                                         <input type="hidden" name="sku" value="@item.Sku" />
                                                         <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
@@ -121,7 +129,7 @@
                                                         <button type="submit"
                                                                 class="cart-qty-btn"
                                                                 aria-label="Tăng số lượng"
-                                                                @(item.Quantity >= item.MaxStock ? "disabled" : null)>
+                                                                @(item.Quantity >= item.MaxStock ? "disabled" : null)> <!-- nút tăng số lượng-->
                                                             +
                                                         </button>
                                                     </form>
@@ -136,7 +144,8 @@
                                                     <input type="hidden" name="sku" value="@item.Sku" />
                                                     <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
                                                     <input type="hidden" name="page" value="@Model.Page" />
-                                                    <button type="submit" class="cart-remove-btn" aria-label="Xóa sản phẩm">
+                                                    <!--nút xóa sản phẩm -->
+                                                    <button type="submit" class="cart-remove-btn" aria-label="Xóa sản phẩm"> 
                                                         <i class="bi bi-trash3"></i>
                                                     </button>
                                                 </form>
@@ -187,6 +196,8 @@
                 }
             </div>
 
+
+            <!-- tóm tắt đơn hàng -->
             @if (Model.Items.Any())
             {
                 <aside class="cart-summary">
@@ -223,7 +234,9 @@
                             <span>TỔNG THANH TOÁN</span>
                             <strong>@Model.GrandTotal.ToString("N0")đ</strong>
                         </div>
-
+                     
+                        
+                        <!-- nút bấm xác nhận thanh toán để chuyển sang trang thanh toán -->
                         <a asp-controller="Checkout" asp-action="Index" class="cart-btn-checkout">
                             Xác nhận thanh toán
                             <i class="bi bi-chevron-right"></i>

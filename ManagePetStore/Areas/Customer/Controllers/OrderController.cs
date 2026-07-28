@@ -1,5 +1,5 @@
 
-// HÀ HOÀNG HIỆP CODE - PHẦN CHI TIẾT ĐƠN HÀNG --
+// HÀ HOÀNG HIỆP CODE - PHẦN VIEW ORDER HISTOY --
 
 using System.Security.Claims;
 using ManagePetStore.Areas.Customer.Models;
@@ -200,9 +200,11 @@ public class OrderController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+
+    // Xử Lý Hủy Đơn HÀNG -- VÀ VALIDATE
     public async Task<IActionResult> Cancel(string orderId, string cancelReason, string? returnAction, string? searchTerm, string statusFilter = "all", int page = 1)
     {
-        if (string.IsNullOrWhiteSpace(orderId))
+        if (string.IsNullOrWhiteSpace(orderId))  
         {
             TempData["ErrorMessage"] = "Không xác định được đơn hàng cần hủy.";
             return RedirectAfterConfirmation(orderId, returnAction, searchTerm, statusFilter, page);
@@ -279,6 +281,7 @@ public class OrderController : Controller
             booking.Status = "Đã hủy";
             _context.Entry(booking).State = EntityState.Modified;
         }
+        //    // Dòng 283-289: Cập nhật Entity Order
 
         order.Status = "Đã hủy";
         order.CancelReason = cancelReason.Trim();
@@ -287,6 +290,9 @@ public class OrderController : Controller
 
         _context.Entry(order).State = EntityState.Modified;
         await _context.SaveChangesAsync();
+
+
+        // Tính lại điểm thưởng & hạng hội viên
         await ManagePetStore.Services.Customer.CustomerRewardHelper.RecalculateCustomerPointsAndTierAsync(layout.Customer.CustomerId, _context);
 
         TempData["SuccessMessage"] = $"Đơn hàng {FormatDisplayOrderId(orderId)} đã được hủy thành công.";
