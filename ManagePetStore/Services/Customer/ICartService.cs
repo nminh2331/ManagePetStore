@@ -9,7 +9,7 @@ namespace ManagePetStore.Services.Customer;
 public interface ICartService
 {
     Task<CartPageViewModel> GetCartPageAsync();
-    int GetTotalQuantity()
+    int GetTotalQuantity();
     Task<(bool Success, string Message)> AddItemAsync(string sku, int quantity);  //thêm item vào cart.
     Task<(bool Success, string Message)> SetQuantityAsync(string sku, int quantity);
     Task<(bool Success, string Message)> IncreaseQuantityAsync(string sku);  //tăng 1.

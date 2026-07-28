@@ -227,7 +227,7 @@
                                 }
                             </td>
                             <td class="text-end">@item.Price.ToString("C0", new System.Globalization.CultureInfo("vi-VN"))</td>
-                            <td class="text-center fw-bold">x@item.Quantity</td>
+                            <td class="text-center fw-bold">x@(item.Quantity)</td>
                             <td class="text-end fw-bold" style="color: var(--admin-primary);">
                                 @((item.Price * item.Quantity).ToString("C0", new System.Globalization.CultureInfo("vi-VN")))
                             </td>
